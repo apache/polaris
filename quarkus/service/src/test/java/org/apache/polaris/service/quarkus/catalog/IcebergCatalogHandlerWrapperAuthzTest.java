@@ -69,6 +69,7 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -866,6 +867,35 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   @Test
+  public void testLoadTableIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper().loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+  }
+
+  @Test
   public void testLoadTableWithReadAccessDelegationSufficientPrivileges() {
     doTestSufficientPrivileges(
         List.of(
@@ -918,6 +948,73 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
         () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
+  }
+
+  @Test
+  public void testLoadTableWithReadAccessDelegationIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithReadAccessDelegationIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+  }
+
+  @Test
+  public void testLoadTableWithWriteAccessDelegationIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            // TODO: Once we give different creds for read/write privilege, move this
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // to receive a read-only credential.
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithWriteAccessDelegationIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
   }
 
   @Test

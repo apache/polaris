@@ -78,6 +78,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -92,6 +93,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.http.IcebergHttpUtil;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -545,10 +548,17 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     return CatalogHandlers.listTables(baseCatalog, namespace);
   }
 
+  /**
+   * Create a table.
+   *
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -559,9 +569,17 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
+
     return CatalogHandlers.createTable(baseCatalog, namespace, request);
   }
 
+  /**
+   * Create a table.
+   *
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse createTableDirectWithWriteDelegation(
       Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
@@ -578,6 +596,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
+
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -617,6 +636,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
                     PolarisStorageActions.WRITE,
                     PolarisStorageActions.LIST)));
       }
+
       return responseBuilder.build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -722,10 +742,18 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     return responseBuilder.build();
   }
 
+  /**
+   * Register a table.
+   *
+   * @param namespace The namespace to register the table in
+   * @param request the register table request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     return CatalogHandlers.registerTable(baseCatalog, namespace, request);
   }
@@ -768,16 +796,67 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         && notificationCatalog.sendNotification(identifier, request);
   }
 
+  /**
+   * Fetch the metastore table entity for the given table identifier
+   *
+   * @param tableIdentifier The identifier of the table
+   * @return the Polaris table entity for the table
+   */
+  private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
+
+    return IcebergTableLikeEntity.of(target.getRawLeafEntity());
+  }
+
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableIfStale(tableIdentifier, null, snapshots).get();
+  }
+
+  /**
+   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the
+   * current state of the table metadata.
+   *
+   * @param tableIdentifier The identifier of the table to load
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
+   */
+  public Optional<LoadTableResponse> loadTableIfStale(
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    String tableEntityTag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+  }
+
+  /**
+   * Attempt to perform a loadTable operation with access delegation only when the if none of the
+   * provided eTags match the current state of the table metadata.
+   *
+   * @param tableIdentifier The identifier of the table to load
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
+   */
+  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -822,6 +901,14 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    String tableETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
+      return Optional.empty();
+    }
+
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
@@ -840,7 +927,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
       }
-      return responseBuilder.build();
+
+      return Optional.of(responseBuilder.build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
