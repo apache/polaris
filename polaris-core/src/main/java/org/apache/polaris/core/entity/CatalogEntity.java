@@ -65,7 +65,6 @@ public class CatalogEntity extends PolarisEntity {
   // translated into "s3://my-bucket/base/location/ns1/ns2/table1".
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
-  public static final String REMOTE_URL = "remoteUrl";
 
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
@@ -86,9 +85,6 @@ public class CatalogEntity extends PolarisEntity {
             .setProperties(catalog.getProperties().toMap())
             .setCatalogType(catalog.getType().name());
     Map<String, String> internalProperties = new HashMap<>();
-    if (catalog instanceof ExternalCatalog) {
-      internalProperties.put(REMOTE_URL, ((ExternalCatalog) catalog).getRemoteUrl());
-    }
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
@@ -120,7 +116,6 @@ public class CatalogEntity extends PolarisEntity {
         : ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(getName())
-            .setRemoteUrl(getInternalPropertiesAsMap().get(REMOTE_URL))
             .setProperties(catalogProps)
             .setCreateTimestamp(getCreateTimestamp())
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
