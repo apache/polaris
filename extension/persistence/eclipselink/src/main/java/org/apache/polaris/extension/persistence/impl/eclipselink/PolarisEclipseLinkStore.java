@@ -443,8 +443,7 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    loadAllTargetsOnPolicy(session, entity.getCatalogId(), entity.getId())
-        .forEach(session::remove);
+    loadAllTargetsOnPolicy(session, entity.getCatalogId(), entity.getId()).forEach(session::remove);
     loadAllPoliciesOnTarget(session, entity.getCatalogId(), entity.getId())
         .forEach(session::remove);
   }

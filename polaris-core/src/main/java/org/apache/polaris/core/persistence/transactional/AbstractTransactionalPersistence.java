@@ -774,7 +774,6 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     return this.runInReadTransaction(
-        callCtx,
-        () -> this.loadAllTargetsOnPolicyInCurrentTxn(callCtx, policyCatalogId, policyId));
+        callCtx, () -> this.loadAllTargetsOnPolicyInCurrentTxn(callCtx, policyCatalogId, policyId));
   }
 }
