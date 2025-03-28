@@ -126,7 +126,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private CatalogApi catalogApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
-  private TestInfo testInfo;
+  private String[] restCatalogConfig;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -170,7 +170,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    this.testInfo = testInfo;
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
@@ -214,6 +213,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
+    restCatalogConfig =
+        testInfo
+            .getTestMethod()
+            .map(m -> m.getAnnotation(RestCatalogConfig.class))
+            .map(RestCatalogConfig::value)
+            .orElse(new String[0]);
+
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
 
@@ -236,21 +242,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
    */
   @Override
   protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
-    Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
-        testInfo
-            .getTestMethod()
-            .flatMap(
-                m ->
-                    Optional.ofNullable(
-                        m.getAnnotation(
-                            PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
     ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
-    restCatalogConfig.ifPresent(
-        config -> {
-          for (int i = 0; i < config.value().length; i += 2) {
-            extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
-          }
-        });
+    for (int i = 0; i < restCatalogConfig.length; i += 2) {
+      extraPropertiesBuilder.put(restCatalogConfig[i], restCatalogConfig[i + 1]);
+    }
     extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
         client,
