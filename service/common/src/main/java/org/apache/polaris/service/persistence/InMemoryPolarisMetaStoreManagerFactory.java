@@ -38,7 +38,6 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.service.context.RealmContextConfiguration;
 
 @ApplicationScoped
 @Identifier("in-memory")
@@ -59,8 +58,9 @@ public class InMemoryPolarisMetaStoreManagerFactory
     this.storageIntegration = storageIntegration;
   }
 
-  public void onStartup(RealmContextConfiguration realmContextConfiguration) {
-    bootstrapRealmsAndPrintCredentials(realmContextConfiguration.realms());
+  @Override
+  public void initializeForService(@Nonnull List<String> realmIds, @Nonnull String defaultRealmId) {
+    bootstrapRealmsAndPrintCredentials(realmIds);
   }
 
   @Override

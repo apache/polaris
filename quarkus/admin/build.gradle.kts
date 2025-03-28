@@ -44,6 +44,9 @@ dependencies {
 
   runtimeOnly(project(":polaris-eclipselink"))
 
+  runtimeOnly(project(":polaris-persistence-bridge"))
+  runtimeOnly(project(":polaris-persistence-cdi-quarkus"))
+
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
@@ -58,6 +61,7 @@ dependencies {
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")
+  testFixturesImplementation(testFixtures(project(":polaris-persistence-mongodb")))
 
   testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
