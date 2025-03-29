@@ -28,6 +28,7 @@ if [ ! -d "${dir}"/polaris-venv ]; then
   python3 -m venv "${dir}"/polaris-venv
   . "${dir}"/polaris-venv/bin/activate
   pip install -r regtests/requirements.txt
+  pip install pydantic python-dateutil
 
   cp "${dir}"/client/python/pyproject.toml "${dir}"
   pushd "$dir" && poetry install ; popd
