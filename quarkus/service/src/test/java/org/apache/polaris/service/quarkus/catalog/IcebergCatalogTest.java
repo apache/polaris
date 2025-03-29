@@ -361,6 +361,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       }
 
       @Override
+      public void initializeForService(
+          @Nonnull List<String> realmIds, @Nonnull String defaultRealmId) {}
+
+      @Override
       public Map<String, PrincipalSecretsResult> bootstrapRealms(
           Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
