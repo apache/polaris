@@ -26,7 +26,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,6 +53,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.CatalogHandlers;
+import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -600,24 +600,14 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse.Builder responseBuilder =
-          LoadTableResponse.builder().withTableMetadata(tableMetadata);
-      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableLocation", tableMetadata.location())
-            .log("Fetching client credentials for table");
-        responseBuilder.addAllConfig(
-            credentialDelegation.getCredentialConfig(
-                tableIdentifier,
-                tableMetadata,
-                Set.of(
-                    PolarisStorageActions.READ,
-                    PolarisStorageActions.WRITE,
-                    PolarisStorageActions.LIST)));
-      }
-      return responseBuilder.build();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier,
+              tableMetadata,
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST))
+          .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -706,20 +696,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
-    LoadTableResponse.Builder responseBuilder =
-        LoadTableResponse.builder().withTableMetadata(metadata);
-
-    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", ident)
-          .addKeyValue("tableLocation", metadata.location())
-          .log("Fetching client credentials for table");
-      responseBuilder.addAllConfig(
-          credentialDelegation.getCredentialConfig(
-              ident, metadata, Set.of(PolarisStorageActions.ALL)));
-    }
-    return responseBuilder.build();
+    return buildLoadTableResponseWithDelegationCredentials(
+            ident, metadata, Set.of(PolarisStorageActions.ALL))
+        .build();
   }
 
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
@@ -789,7 +768,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
     Set<PolarisStorageActions> actionsRequested =
-        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
     try {
       // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
       // easily.
@@ -828,25 +807,39 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse.Builder responseBuilder =
-          LoadTableResponse.builder().withTableMetadata(tableMetadata);
-      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableLocation", tableMetadata.location())
-            .log("Fetching client credentials for table");
-        responseBuilder.addAllConfig(
-            credentialDelegation.getCredentialConfig(
-                tableIdentifier, tableMetadata, actionsRequested));
-      }
-      return responseBuilder.build();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL))
+          .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
+      TableIdentifier tableIdentifier,
+      TableMetadata tableMetadata,
+      Set<PolarisStorageActions> actions) {
+    LoadTableResponse.Builder responseBuilder =
+        LoadTableResponse.builder().withTableMetadata(tableMetadata);
+    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocation", tableMetadata.location())
+          .log("Fetching client credentials for table");
+      Map<String, String> credentialConfig =
+          credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
+      responseBuilder.addAllConfig(credentialConfig);
+      responseBuilder.addCredential(
+          ImmutableCredential.builder()
+              .prefix(tableMetadata.location())
+              .config(credentialConfig)
+              .build());
+    }
+    return responseBuilder;
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
