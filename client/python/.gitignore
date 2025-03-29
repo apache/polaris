@@ -64,3 +64,9 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# Generated Python client files
+python/polaris/**/*.py
+
+# DON'T ignore api_response.py in both catalog and management service
+!python/polaris/**/api_response.py
