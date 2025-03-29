@@ -35,6 +35,9 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+import org.apache.polaris.jpa.models.EntityIdPageToken;
 import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
@@ -278,21 +281,40 @@ public class PolarisEclipseLinkStore {
   }
 
   List<ModelEntity> lookupFullEntitiesActive(
-      EntityManager session, long catalogId, long parentId, @Nonnull PolarisEntityType entityType) {
+      EntityManager session,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      PageToken pageToken) {
     diagnosticServices.check(session != null, "session_is_null");
+    diagnosticServices.check(
+        (pageToken instanceof EntityIdPageToken || pageToken instanceof ReadEverythingPageToken),
+        "unexpected_page_token");
     checkInitialized();
 
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
     String hql =
-        "SELECT m from ModelEntity m where m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode";
+        "SELECT m from ModelEntity m "
+            + "where m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
+
+    if (pageToken instanceof EntityIdPageToken) {
+      hql += " order by m.id asc";
+    }
 
     TypedQuery<ModelEntity> query =
         session
             .createQuery(hql, ModelEntity.class)
             .setParameter("catalogId", catalogId)
             .setParameter("parentId", parentId)
-            .setParameter("typeCode", entityType.getCode());
+            .setParameter("typeCode", entityType.getCode())
+            .setParameter("tokenId", -1L);
 
+    if (pageToken instanceof EntityIdPageToken) {
+      query =
+          query
+              .setParameter("tokenId", ((EntityIdPageToken) pageToken).id)
+              .setMaxResults(pageToken.pageSize);
+    }
     return query.getResultList();
   }
 

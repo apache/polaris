@@ -61,6 +61,8 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -662,7 +664,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType) {
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -674,15 +677,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         catalogPath == null || catalogPath.size() == 0
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
-    List<EntityNameLookupRecord> toreturnList =
-        ms.listEntities(callCtx, catalogId, parentId, entityType);
+    PolarisPage<EntityNameLookupRecord> resultPage =
+        ms.listEntities(callCtx, catalogId, parentId, entityType, pageToken);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      toreturnList =
-          toreturnList.stream()
-              .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-              .collect(Collectors.toList());
+      resultPage =
+          pageToken.buildNextPage(
+              resultPage.data.stream()
+                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
+                  .collect(Collectors.toList()));
     }
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
@@ -692,7 +696,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // in-flight request (the cache-based resolution follows a different path entirely).
 
     // done
-    return new ListEntitiesResult(toreturnList);
+    return ListEntitiesResult.fromPolarisPage(resultPage);
   }
 
   /** {@inheritDoc} */
@@ -1151,13 +1155,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
           ms.listEntities(
-              callCtx,
-              catalogId,
-              catalogId,
-              PolarisEntityType.CATALOG_ROLE,
-              2,
-              entity -> true,
-              Function.identity());
+                  callCtx,
+                  catalogId,
+                  catalogId,
+                  PolarisEntityType.CATALOG_ROLE,
+                  entity -> true,
+                  Function.identity(),
+                  ms.pageTokenBuilder().fromLimit(2))
+              .data;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1451,17 +1456,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
-    List<PolarisBaseEntity> availableTasks =
+    PolarisPage<PolarisBaseEntity> availableTasks =
         ms.listEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
-            limit,
             entity -> {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
@@ -1476,11 +1480,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   || taskState.executor == null
                   || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
-            Function.identity());
+            Function.identity(),
+            pageToken);
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
-    availableTasks.forEach(
+    availableTasks.data.forEach(
         task -> {
           PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
@@ -1517,7 +1522,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       throw new RetryOnConcurrencyException(
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
-    return new EntitiesResult(loadedTasks);
+    return EntitiesResult.fromPolarisPage(PolarisPage.fromData(loadedTasks));
   }
 
   /** {@inheritDoc} */
