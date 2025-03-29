@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 public class GenericTableEntity extends TableLikeEntity {
 
   public static final String FORMAT_KEY = "format";
+  public static final String DOC_KEY = "doc";
 
   public GenericTableEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
@@ -52,6 +53,11 @@ public class GenericTableEntity extends TableLikeEntity {
     return getInternalPropertiesAsMap().get(GenericTableEntity.FORMAT_KEY);
   }
 
+  @JsonIgnore
+  public String getDoc() {
+    return getInternalPropertiesAsMap().get(GenericTableEntity.DOC_KEY);
+  }
+
   public static class Builder
       extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
     public Builder(TableIdentifier tableIdentifier, String format) {
@@ -65,6 +71,11 @@ public class GenericTableEntity extends TableLikeEntity {
     public GenericTableEntity.Builder setFormat(String format) {
       // TODO in the future, we may validate the format and require certain properties
       internalProperties.put(GenericTableEntity.FORMAT_KEY, format);
+      return this;
+    }
+
+    public GenericTableEntity.Builder setDoc(String doc) {
+      internalProperties.put(GenericTableEntity.DOC_KEY, doc);
       return this;
     }
 

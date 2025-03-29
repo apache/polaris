@@ -183,4 +183,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "How many times to retry refreshing metadata when the previous error was retryable")
           .defaultValue(2)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_GENERIC_TABLES")
+          .description("If true, the generic-tables endpoints are enabled")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
