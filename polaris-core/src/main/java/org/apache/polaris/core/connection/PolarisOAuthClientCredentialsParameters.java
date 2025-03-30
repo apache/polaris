@@ -35,6 +35,8 @@ import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 
 public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticationParameters {
 
@@ -46,8 +48,8 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
   @JsonProperty(value = "clientId")
   private final String clientId;
 
-  @JsonProperty(value = "clientSecret")
-  private final String clientSecret;
+  @JsonProperty(value = "clientSecretReference")
+  private final UserSecretReference clientSecretReference;
 
   @JsonProperty(value = "scopes")
   private final List<String> scopes;
@@ -57,13 +59,14 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
           AuthenticationType authenticationType,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
       @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
-      @JsonProperty(value = "clientSecret", required = true) @Nonnull String clientSecret,
+      @JsonProperty(value = "clientSecretReference", required = true) @Nonnull
+          UserSecretReference clientSecretReference,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
     super(authenticationType);
 
     this.tokenUri = tokenUri;
     this.clientId = clientId;
-    this.clientSecret = clientSecret;
+    this.clientSecretReference = clientSecretReference;
     this.scopes = scopes;
 
     validateTokenUri(tokenUri);
@@ -77,17 +80,12 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
     return clientId;
   }
 
-  public @Nonnull String getClientSecret() {
-    return clientSecret;
+  public @Nonnull UserSecretReference getClientSecretReference() {
+    return clientSecretReference;
   }
 
   public @Nonnull List<String> getScopes() {
     return scopes;
-  }
-
-  @JsonIgnore
-  public @Nonnull String getCredential() {
-    return COLON_JOINER.join(clientId, clientSecret);
   }
 
   @JsonIgnore
@@ -96,20 +94,25 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
         Objects.requireNonNullElse(scopes, List.of(OAuth2Properties.CATALOG_SCOPE)));
   }
 
+  private @Nonnull String getCredentialAsConcatenatedString(UserSecretsManager secretsManager) {
+    String clientSecret = secretsManager.readSecret(getClientSecretReference());
+    return COLON_JOINER.join(clientId, clientSecret);
+  }
+
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+      UserSecretsManager secretsManager) {
     HashMap<String, String> properties = new HashMap<>();
     if (getTokenUri() != null) {
       properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());
     }
-    properties.put(OAuth2Properties.CREDENTIAL, getCredential());
+    properties.put(OAuth2Properties.CREDENTIAL, getCredentialAsConcatenatedString(secretsManager));
     properties.put(OAuth2Properties.SCOPE, getScopesAsString());
     return properties;
   }
 
   @Override
   public AuthenticationParameters asAuthenticationParametersModel() {
-    // TODO: redact secrets from the model
     return OAuthClientCredentialsParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())
@@ -137,7 +140,7 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
     return MoreObjects.toStringHelper(this)
         .add("tokenUri", getTokenUri())
         .add("clientId", getClientId())
-        .add("clientSecret", getClientSecret())
+        .add("clientSecretReference", getClientSecretReference())
         .add("scopes", getScopesAsString())
         .toString();
   }

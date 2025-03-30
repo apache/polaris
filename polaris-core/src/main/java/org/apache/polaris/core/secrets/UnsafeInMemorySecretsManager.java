@@ -31,6 +31,10 @@ import org.apache.polaris.core.entity.PolarisEntity;
  * development purposes.
  */
 public class UnsafeInMemorySecretsManager implements UserSecretsManager {
+  // TODO: Remove this and wire into QuarkusProducers; just a placeholder for now to get the
+  // rest of the logic working.
+  public static final UserSecretsManager GLOBAL_INSTANCE = new UnsafeInMemorySecretsManager();
+
   private final Map<String, String> rawSecretStore = new ConcurrentHashMap<>();
   private final SecureRandom rand = new SecureRandom();
 

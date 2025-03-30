@@ -41,14 +41,8 @@ public abstract class UserSecretsManagerBaseTest {
   public void testBasicSecretStorageAndRetrieval() throws JsonProcessingException {
     UserSecretsManager secretsManager = newSecretsManager();
 
-    PolarisEntity entity1 = new CatalogEntity.Builder()
-        .setId(1111L)
-        .setName("entity1")
-        .build();
-    PolarisEntity entity2 = new CatalogEntity.Builder()
-        .setId(2222L)
-        .setName("entity2")
-        .build();
+    PolarisEntity entity1 = new CatalogEntity.Builder().setId(1111L).setName("entity1").build();
+    PolarisEntity entity2 = new CatalogEntity.Builder().setId(2222L).setName("entity2").build();
 
     String secret1 = "sensitivesecret1";
     String secret2 = "sensitivesecret2";
@@ -65,24 +59,17 @@ public abstract class UserSecretsManagerBaseTest {
     UserSecretReference reassembledReference2 =
         DEFAULT_MAPPER.readValue(serializedReference2, UserSecretReference.class);
 
-    Assertions.assertThat(reassembledReference1)
-        .isEqualTo(reference1);
-    Assertions.assertThat(reassembledReference2)
-        .isEqualTo(reference2);
-    Assertions.assertThat(secretsManager.readSecret(reassembledReference1))
-        .isEqualTo(secret1);
-    Assertions.assertThat(secretsManager.readSecret(reassembledReference2))
-        .isEqualTo(secret2);
+    Assertions.assertThat(reassembledReference1).isEqualTo(reference1);
+    Assertions.assertThat(reassembledReference2).isEqualTo(reference2);
+    Assertions.assertThat(secretsManager.readSecret(reassembledReference1)).isEqualTo(secret1);
+    Assertions.assertThat(secretsManager.readSecret(reassembledReference2)).isEqualTo(secret2);
   }
 
   @Test
   public void testMultipleSecretsForSameEntity() {
     UserSecretsManager secretsManager = newSecretsManager();
 
-    PolarisEntity entity1 = new CatalogEntity.Builder()
-        .setId(1111L)
-        .setName("entity1")
-        .build();
+    PolarisEntity entity1 = new CatalogEntity.Builder().setId(1111L).setName("entity1").build();
 
     String secret1 = "sensitivesecret1";
     String secret2 = "sensitivesecret2";
@@ -90,27 +77,21 @@ public abstract class UserSecretsManagerBaseTest {
     UserSecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
     UserSecretReference reference2 = secretsManager.writeSecret(secret2, entity1);
 
-    Assertions.assertThat(secretsManager.readSecret(reference1))
-        .isEqualTo(secret1);
-    Assertions.assertThat(secretsManager.readSecret(reference2))
-        .isEqualTo(secret2);
+    Assertions.assertThat(secretsManager.readSecret(reference1)).isEqualTo(secret1);
+    Assertions.assertThat(secretsManager.readSecret(reference2)).isEqualTo(secret2);
   }
 
   @Test
   public void testDeleteSecret() {
     UserSecretsManager secretsManager = newSecretsManager();
 
-    PolarisEntity entity1 = new CatalogEntity.Builder()
-        .setId(1111L)
-        .setName("entity1")
-        .build();
+    PolarisEntity entity1 = new CatalogEntity.Builder().setId(1111L).setName("entity1").build();
 
     String secret1 = "sensitivesecret1";
 
     UserSecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
 
-    Assertions.assertThat(secretsManager.readSecret(reference1))
-        .isEqualTo(secret1);
+    Assertions.assertThat(secretsManager.readSecret(reference1)).isEqualTo(secret1);
 
     secretsManager.deleteSecret(reference1);
     Assertions.assertThat(secretsManager.readSecret(reference1))

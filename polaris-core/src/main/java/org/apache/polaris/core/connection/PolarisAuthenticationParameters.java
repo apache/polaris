@@ -22,9 +22,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nonnull;
+import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.secrets.UserSecretReference;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authenticationType", visible = true)
 @JsonSubTypes({
@@ -32,6 +34,9 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
   @JsonSubTypes.Type(value = PolarisBearerAuthenticationParameters.class, name = "BEARER"),
 })
 public abstract class PolarisAuthenticationParameters implements IcebergCatalogPropertiesProvider {
+
+  public static final String INLINE_CLIENT_SECRET_REFERENCE_KEY = "inlineClientSecretReference";
+  public static final String INLINE_BEARER_TOKEN_REFERENCE_KEY = "inlineBearerTokenReference";
 
   @JsonProperty(value = "authenticationType")
   private final AuthenticationType authenticationType;
@@ -48,8 +53,9 @@ public abstract class PolarisAuthenticationParameters implements IcebergCatalogP
 
   public abstract AuthenticationParameters asAuthenticationParametersModel();
 
-  public static PolarisAuthenticationParameters fromAuthenticationParametersModel(
-      AuthenticationParameters authenticationParameters) {
+  public static PolarisAuthenticationParameters fromAuthenticationParametersModelWithSecrets(
+      AuthenticationParameters authenticationParameters,
+      Map<String, UserSecretReference> secretReferences) {
     PolarisAuthenticationParameters config = null;
     switch (authenticationParameters.getAuthenticationType()) {
       case OAUTH:
@@ -60,7 +66,7 @@ public abstract class PolarisAuthenticationParameters implements IcebergCatalogP
                 AuthenticationType.OAUTH,
                 oauthClientCredentialsModel.getTokenUri(),
                 oauthClientCredentialsModel.getClientId(),
-                oauthClientCredentialsModel.getClientSecret(),
+                secretReferences.get(INLINE_CLIENT_SECRET_REFERENCE_KEY),
                 oauthClientCredentialsModel.getScopes());
         break;
       case BEARER:
@@ -68,7 +74,7 @@ public abstract class PolarisAuthenticationParameters implements IcebergCatalogP
             (BearerAuthenticationParameters) authenticationParameters;
         config =
             new PolarisBearerAuthenticationParameters(
-                AuthenticationType.BEARER, bearerAuthenticationParametersModel.getBearerToken());
+                AuthenticationType.BEARER, secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
         break;
       default:
         throw new IllegalStateException(

@@ -27,6 +27,7 @@ import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 
 public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionConfigurationInfo
     implements IcebergCatalogPropertiesProvider {
@@ -57,13 +58,14 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+      UserSecretsManager secretsManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    properties.putAll(authenticationParameters.asIcebergCatalogProperties());
+    properties.putAll(authenticationParameters.asIcebergCatalogProperties(secretsManager));
     return properties;
   }
 

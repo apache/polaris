@@ -21,13 +21,13 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 public class PolarisConnectionConfigurationInfoTest {
-  PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
+  PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
   ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
@@ -42,7 +42,13 @@ public class PolarisConnectionConfigurationInfoTest {
             + "    \"authenticationType\": \"OAUTH\","
             + "    \"tokenUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens\","
             + "    \"clientId\": \"client-id\","
-            + "    \"clientSecret\": \"client-secret\","
+            + "    \"clientSecretReference\": {"
+            + "      \"urn\": \"urn:polaris-secret:keystore-id-12345\","
+            + "      \"referencePayload\": {"
+            + "        \"hash\": \"a1b2c3\","
+            + "        \"encryption-key\": \"z0y9x8\""
+            + "      }"
+            + "    },"
             + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
             + "  }"
             + "}";
@@ -65,7 +71,13 @@ public class PolarisConnectionConfigurationInfoTest {
             + "  \"remoteCatalogName\": \"my-catalog\","
             + "  \"authenticationParameters\": {"
             + "    \"authenticationType\": \"BEARER\","
-            + "    \"bearerToken\": \"bearer-token\""
+            + "    \"bearerTokenReference\": {"
+            + "      \"urn\": \"urn:polaris-secret:keystore-id-12345\","
+            + "      \"referencePayload\": {"
+            + "        \"hash\": \"a1b2c3\","
+            + "        \"encryption-key\": \"z0y9x8\""
+            + "      }"
+            + "    }"
             + "  }"
             + "}";
     PolarisConnectionConfigurationInfo connectionConfigurationInfo =

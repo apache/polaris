@@ -20,8 +20,9 @@ package org.apache.polaris.core.connection;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 
 public interface IcebergCatalogPropertiesProvider {
   @Nonnull
-  Map<String, String> asIcebergCatalogProperties();
+  Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager);
 }

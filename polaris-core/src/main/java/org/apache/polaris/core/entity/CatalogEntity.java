@@ -47,6 +47,7 @@ import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.IcebergRestConnectionConfigurationInfo;
 import org.apache.polaris.core.connection.PolarisAuthenticationParameters;
 import org.apache.polaris.core.connection.PolarisConnectionConfigurationInfo;
+import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -72,13 +73,6 @@ public class CatalogEntity extends PolarisEntity {
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
-  // TODO: Refactor all these into ConnectionConfigurationInfo
-  public static final String CONNECTION_REMOTE_URI_KEY = "connection.uri";
-  public static final String CONNECTION_CLIENT_ID_KEY = "connection.clientId";
-  public static final String CONNECTION_CLIENT_SECRET_KEY = "connection.clientSecret";
-  public static final String CONNECTION_CATALOG_NAME_KEY = "connection.catalogName";
-  public static final String CONNECTION_SCOPES_KEY = "connection.scopes";
-
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
   }
@@ -91,7 +85,6 @@ public class CatalogEntity extends PolarisEntity {
   }
 
   public static CatalogEntity fromCatalog(Catalog catalog) {
-
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -102,9 +95,6 @@ public class CatalogEntity extends PolarisEntity {
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
         catalog.getStorageConfigInfo(), getDefaultBaseLocation(catalog));
-    if (catalog instanceof ExternalCatalog) {
-      builder.setConnectionConfigurationInfo(((ExternalCatalog) catalog).getConnectionConfigInfo());
-    }
     return builder.build();
   }
 
@@ -232,31 +222,6 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public String getConnectionUri() {
-    // TODO: Refactor this to use new ConnectionConfigurationInfo
-    return getPropertiesAsMap().get(CONNECTION_REMOTE_URI_KEY);
-  }
-
-  public String getConnectionClientId() {
-    // TODO: Refactor this to use new ConnectionConfigurationInfo
-    return getInternalPropertiesAsMap().get(CONNECTION_CLIENT_ID_KEY);
-  }
-
-  public String getConnectionClientSecret() {
-    // TODO: Refactor this to use new ConnectionConfigurationInfo
-    return getInternalPropertiesAsMap().get(CONNECTION_CLIENT_SECRET_KEY);
-  }
-
-  public String getConnectionCatalogName() {
-    // TODO: Refactor this to use new ConnectionConfigurationInfo
-    return getPropertiesAsMap().get(CONNECTION_CATALOG_NAME_KEY);
-  }
-
-  public String getConnectionScopes() {
-    // TODO: Refactor this to use new ConnectionConfigurationInfo
-    return getPropertiesAsMap().get(CONNECTION_SCOPES_KEY);
-  }
-
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
     public Builder() {
       super();
@@ -357,8 +322,9 @@ public class CatalogEntity extends PolarisEntity {
       }
     }
 
-    public Builder setConnectionConfigurationInfo(
-        ConnectionConfigInfo connectionConfigurationModel) {
+    public Builder setConnectionConfigurationInfoWithSecrets(
+        ConnectionConfigInfo connectionConfigurationModel,
+        Map<String, UserSecretReference> secretReferences) {
       if (connectionConfigurationModel != null) {
         PolarisConnectionConfigurationInfo config;
         switch (connectionConfigurationModel.getConnectionType()) {
@@ -366,8 +332,8 @@ public class CatalogEntity extends PolarisEntity {
             IcebergRestConnectionConfigInfo icebergRestConfigModel =
                 (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
             PolarisAuthenticationParameters authenticationParameters =
-                PolarisAuthenticationParameters.fromAuthenticationParametersModel(
-                    icebergRestConfigModel.getAuthenticationParameters());
+                PolarisAuthenticationParameters.fromAuthenticationParametersModelWithSecrets(
+                    icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
             config =
                 new IcebergRestConnectionConfigurationInfo(
                     ConnectionType.ICEBERG_REST,

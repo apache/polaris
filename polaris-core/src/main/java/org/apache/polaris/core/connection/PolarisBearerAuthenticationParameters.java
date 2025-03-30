@@ -25,35 +25,38 @@ import java.util.Map;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 
 public class PolarisBearerAuthenticationParameters extends PolarisAuthenticationParameters {
 
-  @JsonProperty(value = "bearerToken")
-  private final String bearerToken;
+  @JsonProperty(value = "bearerTokenReference")
+  private final UserSecretReference bearerTokenReference;
 
   public PolarisBearerAuthenticationParameters(
       @JsonProperty(value = "authenticationType", required = true) @Nonnull
           AuthenticationType authenticationType,
-      @JsonProperty(value = "bearerToken", required = true) @Nonnull String bearerToken) {
+      @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull
+          UserSecretReference bearerTokenReference) {
     super(authenticationType);
-    this.bearerToken = bearerToken;
+    this.bearerTokenReference = bearerTokenReference;
   }
 
-  public @Nonnull String getBearerToken() {
-    return bearerToken;
+  public @Nonnull UserSecretReference getBearerTokenReference() {
+    return bearerTokenReference;
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
-    return Map.of(OAuth2Properties.TOKEN, getBearerToken());
+  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+      UserSecretsManager secretsManager) {
+    String bearerToken = secretsManager.readSecret(getBearerTokenReference());
+    return Map.of(OAuth2Properties.TOKEN, bearerToken);
   }
 
   @Override
   public AuthenticationParameters asAuthenticationParametersModel() {
-    // TODO: redact secrets from the model
     return BearerAuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
-        .setBearerToken(getBearerToken())
         .build();
   }
 
@@ -61,6 +64,7 @@ public class PolarisBearerAuthenticationParameters extends PolarisAuthentication
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add("authenticationType", getAuthenticationType())
+        .add("bearerTokenReference", getBearerTokenReference())
         .toString();
   }
 }
