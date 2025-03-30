@@ -23,6 +23,11 @@ plugins {
   id("polaris-quarkus")
 }
 
+configurations.all {
+  // exclude junit4 dependency for this module
+  exclude(group = "junit", module = "junit")
+}
+
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-service"))
@@ -93,9 +98,6 @@ dependencies {
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-extensions-3.5_2.12")
     exclude(group = "org.apache.spark", module = "spark-sql_2.12")
   }
-
-  testFixturesImplementation(platform(libs.quarkus.bom))
-  testFixturesImplementation("io.quarkus:quarkus-junit5")
 
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(testFixtures(project(":polaris-service-common")))
