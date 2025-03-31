@@ -104,6 +104,6 @@ The Apache Polaris build currently requires Java 21 or later. There are a few to
   The discussion on the dev mailing list should happen before having a "ready-for-review" Pull Request.
 * `git log` can help you find the original/relevant authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.
 * Do not re-create a pull-request for the same change. Use one Pull Request related to the same change(s). The purpose here is to keep the history and all comments in the Pull Request.
-* Consider open questions and concerns in all comments of your Pull Request, provide replies and resolve addressed comments, if those don't serve reference purposes. If a comment doesn't contain `nit` or `minor` mention, please provide feedback to the comment.
+* Consider open questions and concerns in all comments of your Pull Request, provide replies and resolve addressed comments, if those don't serve reference purposes. If a comment doesn't contain `nit`, `minor`, or `not a blocker` mention, please provide feedback to the comment before merging.
 * Give time for review. For instance two working days is a good base to get first reviews and comments.
 * If you have the feeling that the discussions in a Pull Request are not going to a consensus, feel free to bring the discussion on the dev mailing list.
