@@ -37,8 +37,10 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
  * defining the internal data model for Polaris, and which defines the basis for the RBAC model
  * provided by Polaris.
  *
- * <p>Each method in this interface must be atomic. It must either fully succeed, or fail without
- * side effects or partial changes.
+ * <p>Each method in this interface must be atomic, meaning that write operations must either fully
+ * succeed with all changes applied, or fail entirely without any side effects or partial updates.
+ * Read operations must return a consistent view of the data as it existed at a specific point in
+ * time, ensuring isolation from concurrent modifications.
  *
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like

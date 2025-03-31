@@ -31,8 +31,10 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
  * persistence entities but which typically involve additional separate external integrations
  * related to identity/auth, kms/secrets storage, etc.
  *
- * <p>Each method in this interface must be atomic. It must either fully succeed, or fail without
- * side effects or partial changes.
+ * <p>Each method in this interface must be atomic, meaning that write operations must either fully
+ * succeed with all changes applied, or fail entirely without any side effects or partial updates.
+ * Read operations must return a consistent view of the data as it existed at a specific point in
+ * time, ensuring isolation from concurrent modifications.
  *
  * <p>Implementations should orchestrate any necessary multi-phase protocols such as leasing an
  * external resource before committing a reference to the external resource in the Polaris
