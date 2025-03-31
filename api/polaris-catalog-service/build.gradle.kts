@@ -81,11 +81,12 @@ openApiGenerate {
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
-  // TODO -- reset this value to `models` after the Iceberg 1.8 change has merged
+  // TODO -- revert the changes to these values after the Iceberg 1.8 change has merged
+  globalProperties.put("apis", "true")
   globalProperties.put("models", "true")
-  globalProperties.put("apiDocs", "false")
-  globalProperties.put("modelTests", "false")
+  globalProperties.put("apiDocs", "true")
+  globalProperties.put("modelTests", "true")
+  // TODO -- end of changes
   configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
   configOptions.put("useBeanValidation", "false")
