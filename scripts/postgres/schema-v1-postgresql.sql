@@ -40,9 +40,12 @@ CREATE TABLE IF NOT EXISTS entities (
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
     grant_records_version INT NOT NULL,
-    PRIMARY KEY (catalog_id, id),
+    PRIMARY KEY (id),
     CONSTRAINT constraint_name UNIQUE (catalog_id, parent_id, type_code, name)
 );
+
+-- TODO: create indexes based on all query pattern.
+CREATE INDEX IF NOT EXISTS idx_entities ON entities (catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
@@ -59,7 +62,7 @@ COMMENT ON COLUMN entities.purge_timestamp IS 'time to start purging entity';
 COMMENT ON COLUMN entities.last_update_timestamp IS 'last time the entity is touched';
 COMMENT ON COLUMN entities.properties IS 'entities properties json';
 COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
-COMMENT ON COLUMN entities.grant_records_version IS 'grant record version of the entity';
+COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
 CREATE TABLE IF NOT EXISTS grant_records (
     securable_catalog_id BIGINT NOT NULL,
@@ -76,7 +79,7 @@ COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the secur
 COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
-COMMENT ON COLUMN grant_records.privilege_code IS 'privilege id';
+COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
