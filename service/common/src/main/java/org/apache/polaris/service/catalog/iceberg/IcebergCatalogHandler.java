@@ -30,18 +30,25 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.BaseTransaction;
+import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SnapshotRef;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -73,6 +80,9 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -827,8 +837,188 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    return catalogHandlerUtils.updateTable(
-        baseCatalog, tableIdentifier, applyUpdateFilters(request));
+    // TODO: pending discussion if table property is right way, or a writer specific knob is
+    // required.
+    return updateTableWithRollback(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+  }
+
+  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
+    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
+    Optional<Integer> formatVersion =
+        request.updates().stream()
+            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
+            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
+            .findFirst();
+    TableMetadata.Builder builder =
+        (TableMetadata.Builder)
+            formatVersion
+                .map(TableMetadata::buildFromEmpty)
+                .orElseGet(TableMetadata::buildFromEmpty);
+    request.updates().forEach((update) -> update.applyTo(builder));
+    ops.commit((TableMetadata) null, builder.build());
+    return ops.current();
+  }
+
+  // TODO: Clean this up when CatalogHandler become extensible.
+  // Copy of CatalogHandler#update
+  private static LoadTableResponse updateTableWithRollback(
+      Catalog catalog, TableIdentifier ident, UpdateTableRequest request) {
+    Schema EMPTY_SCHEMA = new Schema(new Types.NestedField[0]);
+    TableMetadata finalMetadata;
+    if (isCreate(request)) {
+      Transaction transaction =
+          catalog.buildTable(ident, EMPTY_SCHEMA).createOrReplaceTransaction();
+      if (!(transaction instanceof BaseTransaction)) {
+        throw new IllegalStateException(
+            "Cannot wrap catalog that does not produce BaseTransaction");
+      }
+
+      BaseTransaction baseTransaction = (BaseTransaction) transaction;
+      finalMetadata = create(baseTransaction.underlyingOps(), request);
+    } else {
+      Table table = catalog.loadTable(ident);
+      if (!(table instanceof BaseTable)) {
+        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+      }
+
+      TableOperations ops = ((BaseTable) table).operations();
+      finalMetadata = commit(ops, request);
+    }
+
+    return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
+  }
+
+  static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
+    AtomicBoolean isRetry = new AtomicBoolean(false);
+
+    try {
+      Tasks.foreach(new TableOperations[] {ops})
+          .retry(4)
+          .exponentialBackoff(100L, 60000L, 1800000L, (double) 2.0F)
+          .onlyRetryOn(CommitFailedException.class)
+          .run(
+              (taskOps) -> {
+                TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
+                isRetry.set(true);
+                // My prev pr : https://github.com/apache/iceberg/pull/5888
+                // Taking this feature behind a table property presently.
+                boolean rollbackCompaction =
+                    PropertyUtil.propertyAsBoolean(
+                        taskOps.current().properties(),
+                        "rollback.compaction.on-conflicts.enabled",
+                        false);
+                // otherwise create a metadataUpdate to remove the snapshots we had
+                // applied our rollback requests first
+                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
+                TableMetadata newBase = base;
+                try {
+                  request.requirements().forEach((requirement) -> requirement.validate(base));
+                } catch (CommitFailedException e) {
+                  if (!rollbackCompaction) {
+                    throw new ValidationFailureException(e);
+                  }
+                  // Since snapshot has already been created at the client end.
+                  // Nothing much can be done, we can move this
+                  // to writer specific thing, but it would be cool if catalog does this for us.
+                  // Inspect that the requirements states that snapshot
+                  // ref needs to be asserted this usually means in the update section
+                  // it has addSnapshot and setSnapshotRef
+                  UpdateRequirement.AssertRefSnapshotID addSnapshot = null;
+                  int found = 0;
+                  for (UpdateRequirement requirement : request.requirements()) {
+                    // there should be only add snapshot request
+                    if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
+                      ++found;
+                      addSnapshot = (UpdateRequirement.AssertRefSnapshotID) requirement;
+                    }
+                  }
+
+                  if (found != 1) {
+                    // TODO: handle this case, find min snapshot id, to rollback to give it creates
+                    // lineage
+                    // lets not complicate things rn
+                    throw new ValidationFailureException(e);
+                  }
+
+                  Long parentSnapshotId = addSnapshot.snapshotId();
+                  // so we will first check all the snapshots on the top of
+                  // base on which the snapshot we want to commit is of type REPLACE ops.
+                  Long parentToRollbackTo = ops.current().currentSnapshot().snapshotId();
+                  List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
+                  while (!Objects.equals(parentToRollbackTo, parentSnapshotId)) {
+                    Snapshot snap = ops.current().snapshot(parentToRollbackTo);
+                    if (!DataOperations.REPLACE.equals(snap.operation())) {
+                      break;
+                    }
+                    updateToRemoveSnapshot.add(
+                        new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
+                    parentToRollbackTo = snap.parentId();
+                  }
+
+                  MetadataUpdate.SetSnapshotRef ref = null;
+                  // find the SetRefName snapshot update
+                  for (MetadataUpdate update : request.updates()) {
+                    if (update instanceof MetadataUpdate.SetSnapshotRef) {
+                      ++found;
+                      ref = (MetadataUpdate.SetSnapshotRef) update;
+                    }
+                  }
+
+                  if (found != 1 || (!Objects.equals(parentToRollbackTo, parentSnapshotId))) {
+                    // nothing can be done as this implies there was a non replace
+                    // snapshot in between or there is more than setRef ops, we don't know where
+                    // to go.
+                    throw new ValidationFailureException(e);
+                  }
+
+                  // first we should also set back the ref we wanted to set, back to the base
+                  // on which the current update is based on.
+                  metadataBuilder.setBranchSnapshot(parentSnapshotId, ref.name());
+
+                  // apply the remove snapshots update in the current metadata.
+                  // NOTE: we need to setRef to parent first and then apply remove as the remove
+                  // will drop. The tags / branch which don't have reference.
+                  // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
+                  // just something good to do, and not leave for Remove Orphans.
+                  updateToRemoveSnapshot.forEach((update -> update.applyTo(metadataBuilder)));
+                  // Ref rolled back update correctly to snapshot to be committed parent now.
+                  newBase = metadataBuilder.build();
+                }
+
+                // double check if the requirements passes now.
+                try {
+                  TableMetadata baseWithRemovedSnaps = newBase;
+                  request
+                      .requirements()
+                      .forEach((requirement) -> requirement.validate(baseWithRemovedSnaps));
+                } catch (CommitFailedException e) {
+                  throw new ValidationFailureException(e);
+                }
+
+                TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
+                request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                TableMetadata updated = newMetadataBuilder.build();
+                // always commit this
+                taskOps.commit(base, updated);
+              });
+    } catch (ValidationFailureException e) {
+      throw e.wrapped();
+    }
+
+    return ops.current();
+  }
+
+  private static class ValidationFailureException extends RuntimeException {
+    private final CommitFailedException wrapped;
+
+    private ValidationFailureException(CommitFailedException cause) {
+      super(cause);
+      this.wrapped = cause;
+    }
+
+    public CommitFailedException wrapped() {
+      return this.wrapped;
+    }
   }
 
   public LoadTableResponse updateTableForStagedCreate(

@@ -52,8 +52,12 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.DeleteFile;
+import org.apache.iceberg.FileMetadata;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -163,6 +167,15 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     org.assertj.core.api.Assumptions.setPreferredAssumptionException(
         PreferredAssumptionException.JUNIT5);
   }
+
+  DeleteFile FILE_A_DELETES =
+      FileMetadata.deleteFileBuilder(SPEC)
+          .ofPositionDeletes()
+          .withPath("/path/to/data-a-deletes.parquet")
+          .withFileSizeInBytes(10)
+          .withPartitionPath("id_bucket=0") // easy way to set partition data for now
+          .withRecordCount(1)
+          .build();
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -552,6 +565,45 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThatThrownBy(() -> catalog.createNamespace(child1))
         .isInstanceOf(NoSuchNamespaceException.class)
         .hasMessageContaining("Parent");
+  }
+
+  @Test
+  public void testConcurrentWritesWithRollbackNonEmptyTable() {
+    IcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    this.assertNoFiles(table);
+    // commit FILE_A
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    this.assertFiles(catalog.loadTable(TABLE), FILE_A);
+    table.refresh();
+    long lastSnapshotId = table.currentSnapshot().snapshotId();
+    //         Apply the deletes based on FILE_A
+    //         this should conflict when we try to commit
+    //         without the change
+    RowDelta rowDelta =
+        table
+            .newRowDelta()
+            .addDeletes(FILE_A_DELETES)
+            .validateFromSnapshot(lastSnapshotId)
+            .validateDataFilesExist(List.of(FILE_A.location()));
+    Snapshot uncomittedSnapshot = rowDelta.apply();
+
+    // replace FILE_A with FILE_B
+    catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
+
+    // no try commit FILE_A delete, It's impossible to mimic the contention
+    // situation presently as commit triggers client side validation again
+    // even when the apply() method has been called before
+    // TODO: to better add such test cases, may be mocking the taskOps to not
+    // do the refresh, hence make on base snapshot.
+    // also there is an issue on overriding this as all things are package scope
+    // For ex MergingSnapshotPro
+    // rowDelta.commit();
+    this.assertFiles(catalog.loadTable(TABLE), FILE_B);
   }
 
   @Test
