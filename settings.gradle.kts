@@ -63,10 +63,7 @@ val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.pro
 val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
 
 for (sparkVersion in sparkVersions) {
-  val scalaVersions =
-    sparkScalaVersions["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map {
-      it.trim()
-    }
+  val scalaVersions = sparkScalaVersions["scalaVersions"].toString().split(",").map { it.trim() }
   for (scalaVersion in scalaVersions) {
     polarisProject(
       "polaris-spark-${sparkVersion}_${scalaVersion}",
