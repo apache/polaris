@@ -16,17 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.rest;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class PolarisResourcePathsTest {
   private final String testPrefix = "polaris-test";
@@ -44,7 +42,8 @@ public class PolarisResourcePathsTest {
   public void testGenericTablesPath() {
     Namespace ns = Namespace.of("ns1", "ns2");
     String genericTablesPath = paths.genericTables(ns);
-    String expectedPath = String.format("polaris/v1/%s/namespaces/%s/generic-tables", testPrefix, "ns1%1Fns2");
+    String expectedPath =
+        String.format("polaris/v1/%s/namespaces/%s/generic-tables", testPrefix, "ns1%1Fns2");
     Assertions.assertThat(genericTablesPath).isEqualTo(expectedPath);
   }
 
@@ -53,7 +52,9 @@ public class PolarisResourcePathsTest {
     Namespace ns = Namespace.of("ns1");
     TableIdentifier ident = TableIdentifier.of(ns, "test-table");
     String genericTablePath = paths.genericTable(ident);
-    String expectedPath = String.format("polaris/v1/%s/namespaces/%s/generic-tables/%s", testPrefix, "ns1", "test-table");
+    String expectedPath =
+        String.format(
+            "polaris/v1/%s/namespaces/%s/generic-tables/%s", testPrefix, "ns1", "test-table");
     Assertions.assertThat(genericTablePath).isEqualTo(expectedPath);
   }
 }

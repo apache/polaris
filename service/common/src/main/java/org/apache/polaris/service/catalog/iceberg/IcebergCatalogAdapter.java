@@ -130,12 +130,13 @@ public class IcebergCatalogAdapter
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
-  private static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS = ImmutableSet.<Endpoint>builder()
-      .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
-      .add(PolarisEndpoint.V1_CREATE_GENERIC_ABLE)
-      .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
-      .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
-      .build();
+  private static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
+          .add(PolarisEndpoint.V1_CREATE_GENERIC_ABLE)
+          .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
+          .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
+          .build();
 
   private final RealmContext realmContext;
   private final CallContext callContext;
@@ -713,8 +714,11 @@ public class IcebergCatalogAdapter
 
     String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
 
+    // add the generic table endpoints as supported endpoints if generic table feature is enabled.
     Set<Endpoint> supportedGenericTableEndpoints =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES) ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+        PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES, callContext)
+            ? GENERIC_TABLE_ENDPOINTS
+            : ImmutableSet.of();
 
     return Response.ok(
             ConfigResponse.builder()

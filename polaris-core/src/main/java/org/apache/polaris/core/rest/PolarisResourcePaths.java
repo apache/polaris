@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.rest;
 
 import com.google.common.base.Joiner;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
-
-import java.util.Map;
 
 public class PolarisResourcePaths {
   private static final Joiner SLASH = Joiner.on("/").skipNulls();
   public static final String PREFIX = "prefix";
 
   // Generic Table endpoints
-  public static final String V1_GENERIC_TABLES = "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables";
-  public static final String V1_GENERIC_TABLE = "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}";
+  public static final String V1_GENERIC_TABLES =
+      "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables";
+  public static final String V1_GENERIC_TABLE =
+      "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}";
 
   private final String prefix;
 
@@ -45,11 +45,18 @@ public class PolarisResourcePaths {
   }
 
   public String genericTables(Namespace ns) {
-    return SLASH.join("polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "generic-tables");
+    return SLASH.join(
+        "polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "generic-tables");
   }
 
   public String genericTable(TableIdentifier ident) {
-    return SLASH.join("polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ident.namespace()), "generic-tables", RESTUtil.encodeString(ident.name()));
+    return SLASH.join(
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespace(ident.namespace()),
+        "generic-tables",
+        RESTUtil.encodeString(ident.name()));
   }
-
 }
