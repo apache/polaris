@@ -92,13 +92,18 @@ public class TestVarInt {
         arguments(0xfffffff, new byte[] {-1, -1, -1, 127}),
         // 35 bits -> 5 x 7 bits
         arguments(0x7ffffffffL, new byte[] {-1, -1, -1, -1, 127}),
+        arguments(0x321321321L, new byte[] {-95, -90, -56, -119, 50}),
         // 42 bits -> 6 x 7 bits
         arguments(0x3ffffffffffL, new byte[] {-1, -1, -1, -1, -1, 127}),
         // 49 bits -> 7 x 7 bits
         arguments(0x1ffffffffffffL, new byte[] {-1, -1, -1, -1, -1, -1, 127}),
         // 56 bits -> 8 x 7 bits
         arguments(0xffffffffffffffL, new byte[] {-1, -1, -1, -1, -1, -1, -1, 127}),
+        arguments(0x32132132132132L, new byte[] {-78, -62, -52, -112, -109, -28, -124, 25}),
         // 63 bits -> 9 x 7 bits
-        arguments(Long.MAX_VALUE, new byte[] {-1, -1, -1, -1, -1, -1, -1, -1, 127}));
+        arguments(Long.MAX_VALUE, new byte[] {-1, -1, -1, -1, -1, -1, -1, -1, 127}),
+        arguments(
+            Long.MAX_VALUE - 0x1111111111111111L,
+            new byte[] {-18, -35, -69, -9, -18, -35, -69, -9, 110}));
   }
 }
