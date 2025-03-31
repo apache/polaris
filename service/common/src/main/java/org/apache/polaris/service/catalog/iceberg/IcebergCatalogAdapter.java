@@ -59,6 +59,8 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -67,6 +69,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.PolarisEndpoint;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -126,6 +129,13 @@ public class IcebergCatalogAdapter
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
+
+  private static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS = ImmutableSet.<Endpoint>builder()
+      .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
+      .add(PolarisEndpoint.V1_CREATE_GENERIC_ABLE)
+      .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
+      .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
+      .build();
 
   private final RealmContext realmContext;
   private final CallContext callContext;
@@ -702,6 +712,10 @@ public class IcebergCatalogAdapter
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
     String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
+
+    Set<Endpoint> supportedGenericTableEndpoints =
+        PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES) ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
@@ -711,6 +725,7 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
+                        .addAll(supportedGenericTableEndpoints)
                         .build())
                 .build())
         .build();
