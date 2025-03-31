@@ -17,6 +17,10 @@
 # under the License.
 #
 
+# CODE_COPIED_TO_POLARIS
+
+# Apache Iceberg Version: 1.8.1
+
 ---
 openapi: 3.1.1
 info:
