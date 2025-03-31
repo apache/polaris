@@ -126,7 +126,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private CatalogApi catalogApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
-  private String[] restCatalogConfig;
+  private Map<String, String> restCatalogConfig;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -218,7 +218,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .getTestMethod()
             .map(m -> m.getAnnotation(RestCatalogConfig.class))
             .map(RestCatalogConfig::value)
-            .orElse(new String[0]);
+            .map(
+                values -> {
+                  if (values.length % 2 != 0) {
+                    throw new IllegalArgumentException(
+                        String.format("Missing value for config '%s'", values[values.length - 1]));
+                  }
+                  Map<String, String> config = new HashMap<>();
+                  for (int i = 0; i < values.length; i += 2) {
+                    config.put(values[i], values[i + 1]);
+                  }
+                  return config;
+                })
+            .orElse(ImmutableMap.of());
 
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
@@ -243,9 +255,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Override
   protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
     ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
-    for (int i = 0; i < restCatalogConfig.length; i += 2) {
-      extraPropertiesBuilder.put(restCatalogConfig[i], restCatalogConfig[i + 1]);
-    }
+    extraPropertiesBuilder.putAll(restCatalogConfig);
     extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
         client,
