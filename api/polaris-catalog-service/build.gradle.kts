@@ -82,7 +82,8 @@ openApiGenerate {
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
   globalProperties.put("apis", "GenericTableApi,PolicyApi")
-  globalProperties.put("models", models)
+  // TODO -- reset this value to `models` after the Iceberg 1.8 change has merged
+  globalProperties.put("models", "true")
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
