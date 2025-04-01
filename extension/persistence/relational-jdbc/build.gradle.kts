@@ -31,19 +31,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
   implementation("org.apache.commons:commons-dbcp2:2.9.0")
-
-  val relationJdbcDeps: String? = project.findProperty("relationalJdbcDeps") as String?
-  relationJdbcDeps?.let {
-    val dependenciesList = it.split(",")
-    dependenciesList.forEach { dep ->
-      val trimmedDep = dep.trim()
-      if (isValidDep(trimmedDep)) {
-        implementation(trimmedDep)
-      } else {
-        throw GradleException("Invalid dependency format: $trimmedDep")
-      }
-    }
-  }
+  implementation("org.postgresql:postgresql:42.1.4")
 
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-core")
