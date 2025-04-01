@@ -934,15 +934,6 @@ paths:
         key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
       parameters:
         - $ref: '#/components/parameters/data-access'
-        - name: If-None-Match
-          in: header
-          description:
-            An optional header that allows the server to return 304 (Not Modified) if the metadata
-            is current. The content is the value of the ETag received in a previous CreateTableResponse or
-            previous LoadTableResponse.
-          required: false
-          schema:
-            type: string
         - in: query
           name: snapshots
           description:
@@ -958,10 +949,6 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/LoadTableResponse'
-        304:
-          description:
-            Not Modified - The metadata of the table has not changed since the content of the 'If-None-Match' header
-            was generated
         400:
           $ref: '#/components/responses/BadRequestErrorResponse'
         401:
@@ -1889,14 +1876,6 @@ components:
       schema:
         type: integer
         minimum: 1
-
-    etag:
-      name: ETag
-      in: header
-      description: Identifies a unique version of the table metadata.
-      required: false
-      schema:
-        type: string
 
   ##############################
   # Application Schema Objects #
@@ -4597,9 +4576,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadTableResult'
-      headers:
-        etag:
-          $ref: '#/components/parameters/etag'
 
     PlanTableScanResponse:
       description: Result of submitting a table scan to plan
@@ -4628,9 +4604,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadTableResult'
-      headers:
-        etag:
-          $ref: '#/components/parameters/etag'
 
     LoadViewResponse:
       description: View metadata result when loading a view

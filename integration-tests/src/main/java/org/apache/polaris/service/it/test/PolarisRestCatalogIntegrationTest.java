@@ -95,6 +95,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -642,7 +643,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
    * present. Then, invoke a second loadTable to ensure that ETag is matched.
    */
   @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
   public void testLoadTableTwiceWithETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
@@ -686,7 +690,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
    * second loadTable to ensure that ETag is matched.
    */
   @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
   public void testRegisterAndLoadTableWithReturnedETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
@@ -729,7 +736,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   }
 
   @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
   public void testCreateAndLoadTableWithReturnedEtag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =

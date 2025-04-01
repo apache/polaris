@@ -572,7 +572,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
-
     return CatalogHandlers.createTable(baseCatalog, namespace, request);
   }
 
@@ -599,7 +598,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
-
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -639,7 +637,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
                     PolarisStorageActions.WRITE,
                     PolarisStorageActions.LIST)));
       }
-
       return responseBuilder.build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -754,9 +751,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.name()));
 
     return CatalogHandlers.registerTable(baseCatalog, namespace, request);
   }

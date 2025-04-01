@@ -36,7 +36,7 @@ public class IcebergHttpUtil {
     // the metadata file location
     String hashedMetadataFileLocation = DigestUtils.sha256Hex(metadataFileLocation);
 
-    // always issue a weak ETag since we never do a byte by byte comparison
+    // always issue a weak ETag since we semantically compare metadata, not its content byte-by-byte
     return "W/\"" + hashedMetadataFileLocation + "\"";
   }
 }
