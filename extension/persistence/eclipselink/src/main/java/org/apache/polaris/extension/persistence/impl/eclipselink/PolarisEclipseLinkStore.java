@@ -35,10 +35,12 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
 import org.apache.polaris.jpa.models.ModelGrantRecord;
+import org.apache.polaris.jpa.models.ModelPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -409,6 +411,120 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(modelPrincipalSecrets != null, "principal_secretes_not_found");
 
     session.remove(modelPrincipalSecrets);
+  }
+
+  void writeToPolicyMappingRecords(
+      EntityManager session, PolarisPolicyMappingRecord mappingRecord) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    session.persist(ModelPolicyMappingRecord.fromPolicyMappingRecord(mappingRecord));
+  }
+
+  void deleteFromPolicyMappingRecords(
+      EntityManager session, PolarisPolicyMappingRecord mappingRecord) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    ModelPolicyMappingRecord lookupPolicyMappingRecord =
+        lookupPolicyMappingRecord(
+            session,
+            mappingRecord.getTargetCatalogId(),
+            mappingRecord.getTargetId(),
+            mappingRecord.getPolicyTypeCode(),
+            mappingRecord.getPolicyCatalogId(),
+            mappingRecord.getPolicyId());
+
+    diagnosticServices.check(lookupPolicyMappingRecord != null, "policy_mapping_record_not_found");
+    session.remove(lookupPolicyMappingRecord);
+  }
+
+  void deleteAllEntityPolicyMappingRecords(EntityManager session, PolarisEntityCore entity) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    loadAllTargetsOnPolicy(session, entity.getCatalogId(), entity.getId()).forEach(session::remove);
+    loadAllPoliciesOnTarget(session, entity.getCatalogId(), entity.getId())
+        .forEach(session::remove);
+  }
+
+  ModelPolicyMappingRecord lookupPolicyMappingRecord(
+      EntityManager session,
+      long targetCatalogId,
+      long targetId,
+      long policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    return session
+        .createQuery(
+            "SELECT m from ModelPolicyMappingRecord m "
+                + "where m.targetCatalogId=:targetCatalogId "
+                + "and m.targetId=:targetId "
+                + "and m.policyTypeCode=:policyTypeCode "
+                + "and m.policyCatalogId=:policyCatalogId "
+                + "and m.policyId=:policyId",
+            ModelPolicyMappingRecord.class)
+        .setParameter("targetCatalogId", targetCatalogId)
+        .setParameter("targetId", targetId)
+        .setParameter("policyTypeCode", policyTypeCode)
+        .setParameter("policyCatalogId", policyCatalogId)
+        .setParameter("policyId", policyId)
+        .getResultStream()
+        .findFirst()
+        .orElse(null);
+  }
+
+  List<ModelPolicyMappingRecord> loadPoliciesOnTargetByType(
+      EntityManager session, long targetCatalogId, long targetId, int policyTypeCode) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    return session
+        .createQuery(
+            "SELECT m from ModelPolicyMappingRecord m "
+                + "where m.targetCatalogId=:targetCatalogId "
+                + "and m.targetId=:targetId "
+                + "and m.policyTypeCode=:policyTypeCode",
+            ModelPolicyMappingRecord.class)
+        .setParameter("targetCatalogId", targetCatalogId)
+        .setParameter("targetId", targetId)
+        .setParameter("policyTypeCode", policyTypeCode)
+        .getResultList();
+  }
+
+  List<ModelPolicyMappingRecord> loadAllPoliciesOnTarget(
+      EntityManager session, long targetCatalogId, long targetId) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    return session
+        .createQuery(
+            "SELECT m from ModelPolicyMappingRecord m "
+                + " where m.targetCatalogId=:targetCatalogId "
+                + "and m.targetId=:targetId",
+            ModelPolicyMappingRecord.class)
+        .setParameter("targetCatalogId", targetCatalogId)
+        .setParameter("targetId", targetId)
+        .getResultList();
+  }
+
+  List<ModelPolicyMappingRecord> loadAllTargetsOnPolicy(
+      EntityManager session, long policyCatalogId, long policyId) {
+    diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
+
+    return session
+        .createQuery(
+            "SELECT m from ModelPolicyMappingRecord m "
+                + "where  m.policyCatalogId=:policyCatalogId "
+                + "and m.policyId=:policyId",
+            ModelPolicyMappingRecord.class)
+        .setParameter("policyCatalogId", policyCatalogId)
+        .setParameter("policyId", policyId)
+        .getResultList();
   }
 
   private void checkInitialized() {

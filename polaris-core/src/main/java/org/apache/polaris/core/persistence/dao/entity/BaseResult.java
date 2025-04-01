@@ -111,6 +111,12 @@ public class BaseResult {
 
     // error caught while sub-scoping credentials. Error message will be returned
     SUBSCOPE_CREDS_ERROR(13),
+
+    // policy mapping not found
+    POLICY_MAPPING_NOT_FOUND(14),
+
+    // policy mapping of same type already exists
+    POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS(15),
     ;
 
     // code for the enum
