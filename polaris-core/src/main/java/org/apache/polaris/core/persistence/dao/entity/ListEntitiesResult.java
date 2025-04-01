@@ -62,7 +62,7 @@ public class ListEntitiesResult extends BaseResult {
    * @param entities list of entities being returned, implies success
    */
   public ListEntitiesResult(
-      @Nonnull List<EntityNameLookupRecord> entities, @Nullable Optional<PageToken> pageTokenOpt) {
+      @Nonnull List<EntityNameLookupRecord> entities, @Nonnull Optional<PageToken> pageTokenOpt) {
     super(ReturnStatus.SUCCESS);
     this.entities = entities;
     this.pageTokenOpt = pageTokenOpt;
