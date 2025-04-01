@@ -1818,7 +1818,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
-                    .addSchema(SCHEMA, SCHEMA.highestFieldId())
+                    .addSchema(SCHEMA)
                     .setLocation(
                         String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation))
                     .addPartitionSpec(PartitionSpec.unpartitioned())

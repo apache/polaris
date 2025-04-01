@@ -16,57 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator.datacompaction;
+package org.apache.polaris.core.policy.content.maintenance;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Strings;
-import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.policy.PolicyContent;
+import org.apache.polaris.core.policy.content.PolicyContentUtil;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
-import org.apache.polaris.core.policy.validator.PolicyValidatorUtil;
-import org.apache.polaris.core.policy.validator.StrictBooleanDeserializer;
 
-public class DataCompactionPolicyContent implements PolicyContent {
+public class DataCompactionPolicyContent extends BaseMaintenancePolicyContent {
   private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
   private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
-
-  @JsonDeserialize(using = StrictBooleanDeserializer.class)
-  private Boolean enable;
-
-  private String version;
-  private Map<String, String> config;
 
   @JsonCreator
   public DataCompactionPolicyContent(
       @JsonProperty(value = "enable", required = true) boolean enable) {
-    this.enable = enable;
-  }
-
-  public String getVersion() {
-    return version;
-  }
-
-  public void setVersion(String version) {
-    this.version = version;
-  }
-
-  public Boolean enabled() {
-    return enable;
-  }
-
-  public void setEnabled(Boolean enable) {
-    this.enable = enable;
-  }
-
-  public Map<String, String> getConfig() {
-    return config;
-  }
-
-  public void setConfig(Map<String, String> config) {
-    this.config = config;
+    super(enable);
   }
 
   public static DataCompactionPolicyContent fromString(String content) {
@@ -74,24 +40,15 @@ public class DataCompactionPolicyContent implements PolicyContent {
       throw new InvalidPolicyException("Policy is empty");
     }
 
+    DataCompactionPolicyContent policy;
     try {
-      DataCompactionPolicyContent policy =
-          PolicyValidatorUtil.MAPPER.readValue(content, DataCompactionPolicyContent.class);
-      if (policy == null) {
-        throw new InvalidPolicyException("Invalid policy");
-      }
-
-      if (Strings.isNullOrEmpty(policy.getVersion())) {
-        policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
-      }
-
-      if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
-        throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
-      }
-
-      return policy;
+      policy = PolicyContentUtil.MAPPER.readValue(content, DataCompactionPolicyContent.class);
     } catch (Exception e) {
       throw new InvalidPolicyException(e);
     }
+
+    validateVersion(content, policy, DEFAULT_POLICY_SCHEMA_VERSION, POLICY_SCHEMA_VERSIONS);
+
+    return policy;
   }
 }
