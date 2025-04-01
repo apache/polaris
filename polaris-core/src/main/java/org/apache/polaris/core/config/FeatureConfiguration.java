@@ -188,8 +188,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("LIST_PAGINATION_ENABLED")
           .catalogConfig("list-pagination.enabled")
-          .description("If set to true, pagination for APIs like listTables is enabled. The APIs that" +
-              " currently support pagination are listTables, listViews, and listNamespaces.")
+          .description(
+              "If set to true, pagination for APIs like listTables is enabled. The APIs that"
+                  + " currently support pagination are listTables, listViews, and listNamespaces.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }
