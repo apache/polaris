@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -56,6 +57,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -92,6 +94,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -640,6 +643,154 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
         restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Register a table. Then, invoke an initial loadTable request to fetch and ensure ETag is
+   * present. Then, invoke a second loadTable to ensure that ETag is matched.
+   */
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testLoadTableTwiceWithETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
+      Invocation invocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
+              .build("GET");
+      try (Response initialLoadTable = invocation.invoke()) {
+        assertThat(initialLoadTable.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = initialLoadTable.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Invoke an initial registerTable request to fetch and ensure ETag is present. Then, invoke a
+   * second loadTable to ensure that ETag is matched.
+   */
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testRegisterAndLoadTableWithReturnedETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      Invocation registerInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of("name", "my_etagged_table", "metadata-location", fileLocation)));
+      try (Response registerResponse = registerInvocation.invoke()) {
+        assertThat(registerResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = registerResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
+
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testCreateAndLoadTableWithReturnedEtag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      Invocation createInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/tables")
+              .buildPost(
+                  Entity.json(
+                      CreateTableRequest.builder()
+                          .withName("my_etagged_table")
+                          .withLocation(tableMetadata.location())
+                          .withPartitionSpec(tableMetadata.spec())
+                          .withSchema(tableMetadata.schema())
+                          .withWriteOrder(tableMetadata.sortOrder())
+                          .build()));
+      try (Response createResponse = createInvocation.invoke()) {
+        assertThat(createResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = createResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
