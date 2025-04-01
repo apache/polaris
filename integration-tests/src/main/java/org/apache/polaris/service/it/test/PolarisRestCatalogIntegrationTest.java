@@ -76,7 +76,6 @@ import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
@@ -105,7 +104,7 @@ import org.junit.jupiter.api.io.TempDir;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link PolarisConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
+ *       <li>{@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
@@ -118,16 +117,16 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static URI externalCatalogBase;
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
-  private static String principalRoleName;
   private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
-  private static CatalogApi catalogApi;
 
+  private PrincipalWithCredentials principalCredentials;
+  private CatalogApi catalogApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
+  private Map<String, String> restCatalogConfig;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -159,10 +158,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = client.newEntityName("snowman-rest");
-    principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
-    catalogApi = client.catalogApi(principalCredentials);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
@@ -175,10 +170,9 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    String principalName = "snowman-rest-" + UUID.randomUUID();
-    principalRoleName = "rest-admin-" + UUID.randomUUID();
-    PrincipalWithCredentials principalCredentials =
-        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    String principalName = client.newEntityName("snowman-rest");
+    String principalRoleName = client.newEntityName("rest-admin");
+    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
 
@@ -219,29 +213,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
+    restCatalogConfig =
         testInfo
             .getTestMethod()
-            .flatMap(
-                m ->
-                    Optional.ofNullable(
-                        m.getAnnotation(
-                            PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
-    ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
-    restCatalogConfig.ifPresent(
-        config -> {
-          for (int i = 0; i < config.value().length; i += 2) {
-            extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
-          }
-        });
+            .map(m -> m.getAnnotation(RestCatalogConfig.class))
+            .map(RestCatalogConfig::value)
+            .map(
+                values -> {
+                  if (values.length % 2 != 0) {
+                    throw new IllegalArgumentException(
+                        String.format("Missing value for config '%s'", values[values.length - 1]));
+                  }
+                  Map<String, String> config = new HashMap<>();
+                  for (int i = 0; i < values.length; i += 2) {
+                    config.put(values[i], values[i + 1]);
+                  }
+                  return config;
+                })
+            .orElse(ImmutableMap.of());
 
-    restCatalog =
-        IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
+    restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
 
   @AfterEach
@@ -252,6 +243,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
+  }
+
+  /**
+   * Initialize a RESTCatalog for testing.
+   *
+   * @param catalogName this parameter is currently unused.
+   * @param additionalProperties additional properties to apply on top of the default test settings
+   * @return a configured instance of RESTCatalog
+   */
+  @Override
+  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
+    ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
+    extraPropertiesBuilder.putAll(restCatalogConfig);
+    extraPropertiesBuilder.putAll(additionalProperties);
+    return IcebergHelper.restCatalog(
+        client,
+        endpoints,
+        principalCredentials,
+        currentCatalogName,
+        extraPropertiesBuilder.buildKeepingLast());
   }
 
   @Override

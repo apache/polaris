@@ -36,6 +36,7 @@ import org.apache.iceberg.rest.ErrorHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
@@ -72,6 +73,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
         HTTPClient.builder(Map.of())
             .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
             .uri(path)
+            .withAuthSession(AuthSession.EMPTY)
             .build()) {
       String credentialString =
           clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
@@ -102,6 +104,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
         HTTPClient.builder(Map.of())
             .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
             .uri(path)
+            .withAuthSession(AuthSession.EMPTY)
             .build()) {
       var response =
           client.postForm(
@@ -142,6 +145,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
         HTTPClient.builder(Map.of())
             .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
             .uri(path)
+            .withAuthSession(AuthSession.EMPTY)
             .build()) {
       var response =
           client.postForm(

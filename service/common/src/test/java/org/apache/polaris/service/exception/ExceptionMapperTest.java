@@ -42,7 +42,8 @@ public class ExceptionMapperTest {
 
   @ParameterizedTest
   @MethodSource("testFullExceptionIsLogged")
-  public void testFullExceptionIsLogged(ExceptionMapper mapper, Exception exception, Level level) {
+  public void testFullExceptionIsLogged(
+      ExceptionMapper<Exception> mapper, Exception exception, Level level) {
     Logger logger = (Logger) LoggerFactory.getLogger(mapper.getClass());
     ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
     listAppender.start();
