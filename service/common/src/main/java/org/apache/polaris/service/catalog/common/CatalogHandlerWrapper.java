@@ -52,12 +52,13 @@ public abstract class CatalogHandlerWrapper {
   // Initialized in the authorize methods.
   protected PolarisResolutionManifest resolutionManifest = null;
 
+  private final PolarisEntityManager entityManager;
+  private final String catalogName;
+  private final PolarisAuthorizer authorizer;
+
   protected final CallContext callContext;
-  protected final PolarisEntityManager entityManager;
-  protected final String catalogName;
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   protected final SecurityContext securityContext;
-  protected final PolarisAuthorizer authorizer;
 
   public CatalogHandlerWrapper(
       CallContext callContext,
