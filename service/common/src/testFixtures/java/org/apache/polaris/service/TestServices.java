@@ -37,11 +37,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
@@ -133,7 +133,7 @@ public record TestServices(
       RealmEntityManagerFactory realmEntityManagerFactory =
           new RealmEntityManagerFactory(metaStoreManagerFactory) {};
 
-      TransactionalPersistence metaStoreSession =
+      BasePersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
       CallContext callContext =
           new CallContext() {
