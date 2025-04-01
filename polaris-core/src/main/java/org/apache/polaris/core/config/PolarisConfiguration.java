@@ -135,24 +135,6 @@ public abstract class PolarisConfiguration<T> {
         .getConfiguration(callContext.getPolarisCallContext(), configuration);
   }
 
-  /**
-   * Returns the value of a `PolarisConfiguration` within the given callContext, or the default if
-   * no callContext is provided.
-   */
-  public static <T> T loadConfig(PolarisConfiguration<T> configuration, CallContext callContext) {
-    if (callContext == null) {
-      LOGGER.warn(
-          String.format(
-              "No call context available; using %s = %s",
-              configuration.key, configuration.defaultValue));
-      return configuration.defaultValue;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configuration);
-  }
-
   public static <T> Builder<T> builder() {
     return new Builder<>();
   }
