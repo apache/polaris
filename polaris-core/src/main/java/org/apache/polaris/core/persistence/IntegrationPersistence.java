@@ -32,9 +32,9 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
  * related to identity/auth, kms/secrets storage, etc.
  *
  * <p>Each method in this interface must be atomic, meaning that write operations must either fully
- * succeed with all changes applied, or fail entirely without any side effects or partial updates.
- * Read operations must return a consistent view of the data as it existed at a specific point in
- * time, ensuring isolation from concurrent modifications.
+ * succeed with all changes applied, or fail entirely without partial updates. Read operations must
+ * provide a consistent snapshot of the data as it existed at the start of the operation, ensuring
+ * snapshot isolation.
  *
  * <p>Implementations should orchestrate any necessary multi-phase protocols such as leasing an
  * external resource before committing a reference to the external resource in the Polaris
