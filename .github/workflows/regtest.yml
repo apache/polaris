@@ -45,7 +45,7 @@ jobs:
 
       - name: Image build
         run: |
-          ./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+          ./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
 
       - name: Regression Test
         env:
