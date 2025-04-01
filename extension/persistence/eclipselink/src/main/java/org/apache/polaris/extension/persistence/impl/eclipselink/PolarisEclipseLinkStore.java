@@ -285,7 +285,7 @@ public class PolarisEclipseLinkStore {
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      PageToken pageToken) {
+      @Nonnull PageToken pageToken) {
     diagnosticServices.check(session != null, "session_is_null");
     diagnosticServices.check(
         (pageToken instanceof EntityIdPageToken || pageToken instanceof ReadEverythingPageToken),
