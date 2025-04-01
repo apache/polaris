@@ -51,6 +51,10 @@ dependencies {
     runtimeOnly(project(":polaris-eclipselink"))
   }
 
+  if (project.hasProperty("relationalJdbcDeps")) {
+    runtimeOnly(project(":polaris-relational-jdbc"))
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
