@@ -21,31 +21,31 @@ package org.apache.polaris.admintool;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.runtime.StartupEvent;
-import io.quarkus.test.common.WithTestResource;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainTest;
 import jakarta.enterprise.event.Observes;
 import java.util.List;
-import java.util.Map;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.assertj.core.api.SoftAssertions;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusMainTest
-@WithTestResource(PostgresTestResourceLifecycleManager.class)
-@TestProfile(PurgeCommandTest.Profile.class)
-class PurgeCommandTest {
+public abstract class PurgeCommandTestBase {
+  protected SoftAssertions soft;
 
-  public static class Profile implements QuarkusTestProfile {
+  @BeforeEach
+  void setup() {
+    soft = new SoftAssertions();
+  }
 
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of("pre-bootstrap", "true");
-    }
+  @AfterEach
+  void after() {
+    soft.assertAll();
   }
 
   void preBootstrap(
@@ -69,9 +69,9 @@ class PurgeCommandTest {
       value = {"purge", "-r", "realm3"},
       exitCode = BaseCommand.EXIT_CODE_PURGE_ERROR)
   public void testPurgeFailure(LaunchResult result) {
-    assertThat(result.getOutput())
+    soft.assertThat(result.getOutput())
         .contains(
             "Realm realm3 is not bootstrapped, could not load root principal. Please run Bootstrap command.");
-    assertThat(result.getErrorOutput()).contains("Purge encountered errors during operation.");
+    soft.assertThat(result.getErrorOutput()).contains("Purge encountered errors during operation.");
   }
 }
