@@ -30,7 +30,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerBackedByStoreFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentials;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -43,7 +44,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 @ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
+    extends LocalPolarisMetaStoreManagerBackedByStoreFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
@@ -85,7 +86,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  public synchronized Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
+  public synchronized Supplier<BasePersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
