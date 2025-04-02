@@ -19,6 +19,9 @@
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -31,21 +34,24 @@ public class ConnectionManager {
 
   private DataSource dataSource;
   private final Properties properties;
-  private static String PROP_FILE_NAME = "db.properties";
 
-  public ConnectionManager() throws IOException {
-    this.properties = readPropertiesFromResource();
+  public ConnectionManager(String propsFilePath) throws IOException {
+    this.properties = readPropertiesFromResource(propsFilePath);
     this.dataSource = initializeDataSource();
   }
 
-  private static Properties readPropertiesFromResource() throws IOException {
+  private static Properties readPropertiesFromResource(String propsFilePath) throws IOException {
     Properties properties = new Properties();
     ClassLoader classLoader = ConnectionManager.class.getClassLoader();
     try {
-      properties.load(classLoader.getResourceAsStream(PROP_FILE_NAME));
+      properties.load(classLoader.getResourceAsStream(propsFilePath));
     } catch (IOException e) {
-      LOGGER.error("Failed to load properties from {}", PROP_FILE_NAME, e);
       // need to re-throw
+      try {
+        properties.load(fileSystemPath(propsFilePath).toUri().toURL().openStream());
+      } catch (IOException e1) {
+        LOGGER.error("Failed to load properties from {}", propsFilePath, e1);
+      }
       throw e;
     }
     return properties;
@@ -111,5 +117,13 @@ public class ConnectionManager {
       LOGGER.info("Closing BasicDataSource");
       ((BasicDataSource) dataSource).close();
     }
+  }
+
+  private static Path fileSystemPath(String pathStr) {
+    Path path = Paths.get(pathStr);
+    if (!Files.exists(path) || !Files.isRegularFile(path)) {
+      throw new IllegalStateException("Not a regular file: " + pathStr);
+    }
+    return path.normalize().toAbsolutePath();
   }
 }

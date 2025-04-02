@@ -16,27 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.el;
+package org.apache.polaris.admintool.relational.jdbc;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.admintool.BootstrapCommandTestBase;
+import org.junit.jupiter.api.Disabled;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
-import org.apache.polaris.admintool.PostgresTestResourceLifecycleManager;
-
-public class EclipselinkProfile implements QuarkusTestProfile {
-
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of();
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new TestResourceEntry(
-            PostgresTestResourceLifecycleManager.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/el/init.sql")));
-  }
-}
+@TestProfile(RelationalJdbcProfile.class)
+@Disabled
+public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase {}

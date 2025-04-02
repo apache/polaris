@@ -16,27 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.el;
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import java.nio.file.Path;
+import java.util.Optional;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
-import org.apache.polaris.admintool.PostgresTestResourceLifecycleManager;
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+public interface RelationalJdbcConfiguration {
 
-public class EclipselinkProfile implements QuarkusTestProfile {
-
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of();
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new TestResourceEntry(
-            PostgresTestResourceLifecycleManager.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/el/init.sql")));
-  }
+  /**
+   * The path to the relational jdbc configuration file. If not provided, the default (built-in)
+   * configuration file will be used.
+   */
+  Optional<Path> configurationFile();
 }
