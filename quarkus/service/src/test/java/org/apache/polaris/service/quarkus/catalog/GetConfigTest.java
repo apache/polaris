@@ -94,7 +94,8 @@ public class GetConfigTest {
           .doesNotContain(PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
       assertThat(configResponse.endpoints())
           .doesNotContain(PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
+      assertThat(configResponse.endpoints())
+          .doesNotContain(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
       assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     }
   }
