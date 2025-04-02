@@ -38,6 +38,10 @@ import org.apache.polaris.core.policy.PolicyMappingPersistence;
  * defining the internal data model for Polaris, and which defines the basis for the RBAC model
  * provided by Polaris.
  *
+ * <p>Each method in this interface must be atomic, meaning that write operations must either fully
+ * succeed with all changes applied, or fail entirely without partial updates. Read operations must
+ * provide a consistent view of the data as it existed at the start of the operation.
+ *
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
