@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
 /**
  * Interface to the Polaris persistence backend, with which to persist and retrieve all the data
@@ -41,7 +42,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  */
-public interface BasePersistence {
+public interface BasePersistence extends PolicyMappingPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

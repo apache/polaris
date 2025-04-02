@@ -16,20 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy.content;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-public class PolicyValidatorUtil {
-  public static final ObjectMapper MAPPER = configureMapper();
-
-  private static ObjectMapper configureMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    // Fails if a required field (in the constructor) is missing
-    mapper.configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true);
-    // Fails if a required field is present but explicitly null, e.g., {"enable": null}
-    mapper.configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true);
-    return mapper;
-  }
-}
+/** A marker interface for policy content */
+public interface PolicyContent {}

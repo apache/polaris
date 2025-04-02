@@ -21,19 +21,39 @@
 set -e
 
 dir=${0%/*}
+repair=false
+for arg in "$@"; do
+  if [ "$arg" == "--repair" ]; then
+    repair=true
+    shift
+    break
+  fi
+done
 
-if [ ! -d "${dir}"/polaris-venv ]; then
-  echo "Performing first-time setup for the Python client..."
+
+if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
+  if [ ! -d ${dir}/polaris-venv ]; then
+    echo "Performing first-time setup for the Python client..."
+    python3 -m venv "${dir}"/polaris-venv
+  else
+    echo "Repair dependencies for the Python client..."
+  fi
+
   rm -f "${dir}"/poetry.lock
-  python3 -m venv "${dir}"/polaris-venv
   . "${dir}"/polaris-venv/bin/activate
-  pip install -r regtests/requirements.txt
+  pip install --upgrade pip
+  pip install --upgrade -r regtests/requirements.txt
 
   cp "${dir}"/client/python/pyproject.toml "${dir}"
   pushd "$dir" && poetry install ; popd
 
   deactivate
-  echo "First time setup complete."
+
+  if [ ! -d ${dir}/polaris-venv ]; then
+    echo "First time setup complete."
+  else
+    echo "Dependencies repaired."
+  fi
 fi
 
 cd "$dir"

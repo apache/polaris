@@ -80,11 +80,11 @@ cascade:
 | Anoop Johnson | PPMC Member | link:https://www.google.com/[Google]
 | https://github.com/ashvina[Ashvin Agrawal] | PPMC Member | link:https://www.microsoft.com/[Microsoft]
 | Bertrand Delacretaz | Mentor |
-| https://github.com/dennishuo[Dennis Huo] | Committer | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/dimas-b[Dmitri Bourlatchkov] | Committer | link:https://www.dremio.com/[Dremio]
+| https://github.com/dennishuo[Dennis Huo] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/dimas-b[Dmitri Bourlatchkov] | PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/eric-maynard[Eric Maynard] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Holden Karau | Mentor |
-| https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://aws.amazon.com/[Amazon]
+| https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
 | https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
 | https://github.com/vvcephei[John Roesler] | PPMC Member | link:https://www.confluent.io/[Confluent]
 | Kent Yao | Mentor |
@@ -94,7 +94,7 @@ cascade:
 | Ryan Blue | Mentor |
 | https://github.com/takidau[Tyler Akidau] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
-| https://github.com/flyrain[Yufei Gu] | Committer | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/flyrain[Yufei Gu] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===
 {{% /blocks/feature %}}

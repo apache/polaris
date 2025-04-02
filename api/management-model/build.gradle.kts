@@ -68,3 +68,5 @@ sourceSets {
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("processResources") { dependsOn("openApiGenerate") }
