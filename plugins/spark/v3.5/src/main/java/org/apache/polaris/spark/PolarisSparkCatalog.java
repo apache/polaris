@@ -19,8 +19,72 @@
 
 package org.apache.polaris.spark;
 
+import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.catalog.TableChange;
+import org.apache.spark.sql.connector.expressions.Transform;
+import org.apache.spark.sql.types.StructType;
+import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class PolarisSparkCatalog implements TableCatalog {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisSparkCatalog.class);
+
+  private PolarisRESTCatalog restCatalog = null;
+  private String catalogName = null;
+
+  public PolarisSparkCatalog(PolarisRESTCatalog restCatalog) {
+    this.restCatalog = restCatalog;
+  }
+
+  @Override
+  public void initialize(String name, CaseInsensitiveStringMap options) {
+    this.catalogName = name;
+  }
+
+  @Override
+  public String name() {
+    return catalogName;
+  }
+
+  @Override
+  public Table loadTable(Identifier identifier) throws NoSuchTableException {
+    throw new UnsupportedOperationException("load table is not supported");
+  }
+
+  @Override
+  public Table createTable(
+      Identifier identifier, StructType schema, Transform[] transforms, Map<String, String> properties) throws TableAlreadyExistsException, NoSuchNamespaceException {
+    throw new UnsupportedOperationException("create table is not supported");
+  }
+
+  @Override
+  public Table alterTable(Identifier identifier, TableChange... changes) throws NoSuchTableException {
+    throw new NoSuchTableException(identifier);
+  }
+
+  @Override
+  public boolean dropTable(Identifier identifier) {
+    return false;
+  }
+
+  @Override
+  public void renameTable(Identifier from, Identifier to)
+      throws NoSuchTableException, TableAlreadyExistsException {
+    throw new UnsupportedOperationException("renameTable operation is not supported");
+  }
+
+  @Override
+  public Identifier[] listTables(String[] namespace) {
+    throw new UnsupportedOperationException("listTables operation is not supported");
+  }
+
 
 }
