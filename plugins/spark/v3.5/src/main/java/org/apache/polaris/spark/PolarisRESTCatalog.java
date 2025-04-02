@@ -55,12 +55,13 @@ public class PolarisRESTCatalog implements Closeable {
   private PolarisResourcePaths paths = null;
   private Integer pageSize = null;
 
+  // TODO: update to use the predefined GENERIC_TABLE_ENDPOINTS
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoint.V1_CREATE_GENERIC_TABLE)
           .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
-          .add(Endpoint.V1_LIST_TABLES)
-          .add(Endpoint.V1_DELETE_TABLE)
+          .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
+          .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
           .build();
 
   public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {

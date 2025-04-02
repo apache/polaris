@@ -46,6 +46,8 @@ import org.apache.iceberg.util.PropertyUtil;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SparkCatalog
     implements StagingTableCatalog,
@@ -53,8 +55,10 @@ public class SparkCatalog
         SupportsNamespaces,
         ViewCatalog,
         SupportsReplaceView {
+  private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
+
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   private PolarisSparkCatalog polarisSparkCatalog = null;
