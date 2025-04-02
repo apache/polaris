@@ -21,6 +21,8 @@ package org.apache.polaris.core.rest;
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 
 public class PolarisEndpoints {
   public static final Endpoint V1_LIST_GENERIC_TABLES =
@@ -39,4 +41,20 @@ public class PolarisEndpoints {
           .add(V1_DELETE_GENERIC_TABLE)
           .add(V1_LOAD_GENERIC_TABLE)
           .build();
+
+  /**
+   * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
+   * set to true, otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedGenericTableEndpoints(CallContext callContext) {
+    // add the generic table endpoints as supported endpoints if generic table feature is enabled.
+    boolean genericTableEnabled =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
+
+    return genericTableEnabled ? PolarisEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+  }
 }

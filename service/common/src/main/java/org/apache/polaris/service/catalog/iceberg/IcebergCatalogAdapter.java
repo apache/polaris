@@ -59,7 +59,6 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -705,16 +704,6 @@ public class IcebergCatalogAdapter
 
     String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
 
-    // add the generic table endpoints as supported endpoints if generic table feature is enabled.
-    boolean genericTableEnabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
-    Set<Endpoint> supportedGenericTableEndpoints =
-        genericTableEnabled ? PolarisEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
-
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
@@ -724,7 +713,7 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
-                        .addAll(supportedGenericTableEndpoints)
+                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
                         .build())
                 .build())
         .build();
