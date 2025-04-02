@@ -109,6 +109,7 @@ import org.junit.jupiter.api.io.TempDir;
  *     <ul>
  *       <li>{@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
+ *     CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.7.1
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog> {
