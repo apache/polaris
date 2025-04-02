@@ -31,6 +31,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
+import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
  * For test purposes or for elevated-privilege scenarios where entity resolution is allowed to
@@ -94,6 +95,14 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           identifier);
       manifest.resolveAll();
       return manifest.getResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolicyIdentifier identifier) {
+      manifest.addPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier.toTableIdentifier()),
+              entityType),
+          identifier);
+      manifest.resolveAll();
+      return manifest.getResolvedPath(identifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(
@@ -130,6 +139,13 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
       return manifest.getPassthroughResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolicyIdentifier policyIdentifier) {
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(policyIdentifier.toTableIdentifier()),
+              entityType),
+          policyIdentifier);
+      return manifest.getPassthroughResolvedPath(policyIdentifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(
