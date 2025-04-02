@@ -21,7 +21,11 @@ package org.apache.polaris.spark;
 import com.google.common.collect.ImmutableSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.util.PropertyUtil;
 import org.apache.spark.sql.catalyst.analysis.*;
 import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
@@ -32,8 +36,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
+  private PolarisSparkCatalog polarisSparkCatalog = null;
 
-  // TODO: Add Polaris Specific REST Catalog
 
   @Override
   public String name() {
@@ -42,7 +46,20 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
 
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
+    String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
+    if (catalogImpl != null) {
+      throw new UnsupportedOperationException("Customized catalog implementation is currently not supported!");
+    }
+    String catalogType =
+        PropertyUtil.propertyAsString(options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_REST);
+    if (!catalogType.equals(CatalogUtil.ICEBERG_CATALOG_REST)) {
+      throw new UnsupportedOperationException("Only rest catalog type is supported, but got catalog type: " + catalogType);
+    }
+
     this.catalogName = name;
+    this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
+
+
   }
 
   @Override
