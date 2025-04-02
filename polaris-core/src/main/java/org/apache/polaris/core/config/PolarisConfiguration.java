@@ -47,7 +47,7 @@ public abstract class PolarisConfiguration<T> {
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
-    this.typ = (Class<T>) defaultValue.getClass();
+    this.typ = (Class<T>) defaultValue.map(c -> c.getClass()).orElse(null);
   }
 
   public boolean hasCatalogConfig() {
@@ -110,14 +110,16 @@ public abstract class PolarisConfiguration<T> {
 
     public FeatureConfiguration<T> buildFeatureConfiguration() {
       if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue / optional are required");
+        throw new IllegalArgumentException(
+            "key, description, and defaultValue / optional are required");
       }
       return new FeatureConfiguration<>(key, description, defaultValue, catalogConfig);
     }
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
       if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue / optional are required");
+        throw new IllegalArgumentException(
+            "key, description, and defaultValue / optional are required");
       }
       if (catalogConfig.isPresent()) {
         throw new IllegalArgumentException(

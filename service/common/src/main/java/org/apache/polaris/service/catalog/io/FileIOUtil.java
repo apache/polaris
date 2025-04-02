@@ -86,10 +86,12 @@ public class FileIOUtil {
       PolarisEntity entity) {
 
     boolean skipCredentialSubscopingIndirection =
-        configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
+        configurationStore
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+                FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue)
+            .get();
     if (skipCredentialSubscopingIndirection) {
       LOGGER
           .atDebug()

@@ -19,11 +19,11 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -100,8 +100,9 @@ class InMemoryStorageIntegrationTest {
             new PolarisConfigurationStore() {
               @SuppressWarnings("unchecked")
               @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-                return (T) config.get(configName);
+              public <T> @Nonnull Optional<T> getConfiguration(
+                  PolarisCallContext ctx, String configName) {
+                return Optional.of((T) config.get(configName));
               }
             },
             Clock.systemUTC());

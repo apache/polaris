@@ -83,6 +83,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
                 pc ->
                     pc.getConfigurationStore()
                         .getConfiguration(pc, "ALLOW_WILDCARD_LOCATION", false))
+            .flatMap(o -> o)
             .orElse(false);
 
     if (allowWildcardLocation && allowedLocationStrings.contains("*")) {

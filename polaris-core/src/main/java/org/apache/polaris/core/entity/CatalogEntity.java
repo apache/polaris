@@ -281,7 +281,8 @@ public class CatalogEntity extends PolarisEntity {
     private void validateMaxAllowedLocations(Collection<String> allowedLocations) {
       int maxAllowedLocations =
           BehaviorChangeConfiguration.loadConfig(
-              BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS).get();
+                  BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS)
+              .get();
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(

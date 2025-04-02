@@ -20,11 +20,9 @@ package org.apache.polaris.core.config;
 
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
@@ -63,27 +61,45 @@ public interface PolarisConfigurationStore {
   }
 
   /**
+   * Retrieve the current value for a configuration key. If not set, return the non-null default
+   * value.
+   *
+   * @param ctx the current call context
+   * @param configName the name of the configuration key to check
+   * @param defaultValue the default value if the configuration key has no value
+   * @return the current value or the supplied default value
+   * @param <T> the type of the configuration value
+   */
+  default <T> @Nonnull Optional<T> getConfiguration(
+      PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
+    return getConfiguration(ctx, configName, Optional.of(defaultValue));
+  }
+
+  /**
    * In some cases, we may extract a value that doesn't match the expected type for a config. This
    * method can be used to attempt to force-cast it using `String.valueOf`
    */
-  private <T> @Nonnull T tryCast(PolarisConfiguration<T> config, Object value) {
+  private <T> @Nonnull Optional<T> tryCast(PolarisConfiguration<T> config, Object value) {
     if (value == null) {
       return config.defaultValue;
     }
 
-    if (config.defaultValue instanceof Boolean) {
-      return config.cast(Boolean.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Integer) {
-      return config.cast(Integer.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Long) {
-      return config.cast(Long.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Double) {
-      return config.cast(Double.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof List<?>) {
-      return config.cast(new ArrayList<>((List<?>) value));
-    } else {
-      return config.cast(value);
-    }
+    return config.defaultValue.map(
+        d -> {
+          if (d instanceof Boolean) {
+            return config.cast(Boolean.valueOf(String.valueOf(value)));
+          } else if (d instanceof Integer) {
+            return config.cast(Integer.valueOf(String.valueOf(value)));
+          } else if (d instanceof Long) {
+            return config.cast(Long.valueOf(String.valueOf(value)));
+          } else if (d instanceof Double) {
+            return config.cast(Double.valueOf(String.valueOf(value)));
+          } else if (d instanceof List<?>) {
+            return config.cast(new ArrayList<>((List<?>) value));
+          } else {
+            return config.cast(value);
+          }
+        });
   }
 
   /**
@@ -94,9 +110,10 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull Optional<T> getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
+  default <T> @Nonnull Optional<T> getConfiguration(
+      PolarisCallContext ctx, PolarisConfiguration<T> config) {
     Optional<T> result = getConfiguration(ctx, config.key, config.defaultValue);
-    return result.map(r -> tryCast(config, r));
+    return result.map(r -> tryCast(config, r)).flatMap(o -> o);
   }
 
   /**
@@ -115,7 +132,7 @@ public interface PolarisConfigurationStore {
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig()
         && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
-      return Optional.of(tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig())));
+      return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
       return getConfiguration(ctx, config);
     }

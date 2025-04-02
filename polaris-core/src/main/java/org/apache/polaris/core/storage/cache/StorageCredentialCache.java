@@ -74,9 +74,11 @@ public class StorageCredentialCache {
   private static long maxCacheDurationMs() {
     var cacheDurationSeconds =
         PolarisConfiguration.loadConfig(
-            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+                FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS)
+            .get();
     var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS)
+            .get();
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
