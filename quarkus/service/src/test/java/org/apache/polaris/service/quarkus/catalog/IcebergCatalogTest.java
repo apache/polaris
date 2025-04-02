@@ -127,13 +127,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+import org.opentest4j.AssertionFailedError;
 import software.amazon.awssdk.core.exception.NonRetryableException;
 import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -386,18 +386,27 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
-  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1272 */
   @Override
   @Test
-  @Disabled(
-      """
-      Disabled because the behavior is not applicable to Polaris.
-      To unblock:
-      1) Align Polaris behavior with the superclass by handling empty namespaces the same way, or
-      2) Modify this test to expect an exception and add a Polaris-specific version.
-      """)
   public void listNamespacesWithEmptyNamespace() {
-    super.listNamespacesWithEmptyNamespace();
+    // In Polaris, the empty namespace implicitly exists by default.
+    // The superclass test assumes the empty namespace does not exist initially,
+    // so running it will fail as expected.
+    Assertions.assertThatThrownBy(super::listNamespacesWithEmptyNamespace)
+        .isInstanceOf(AssertionFailedError.class);
+  }
+
+  @Test
+  public void listNamespacesWithEmptyNamespaceInPolaris() {
+    catalog().createNamespace(NS);
+
+    Assertions.assertThat(catalog().namespaceExists(Namespace.empty())).isTrue();
+    Assertions.assertThat(catalog().listNamespaces())
+        .contains(NS)
+        .doesNotContain(Namespace.empty());
+    Assertions.assertThat(catalog().listNamespaces(Namespace.empty()))
+        .contains(NS)
+        .doesNotContain(Namespace.empty());
   }
 
   @Test
