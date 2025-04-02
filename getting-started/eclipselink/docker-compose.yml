@@ -49,10 +49,27 @@ services:
       timeout: 10s
       retries: 10
 
+  polaris-purge:
+    # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
+    image: apache/polaris-admin-tool:postgres-latest
+    depends_on:
+      postgres:
+        condition: service_started
+    environment:
+      polaris.persistence.type: eclipse-link
+      polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
+    volumes:
+      - ../assets/eclipselink/:/deployments/config/eclipselink
+    command:
+      - "purge"
+      - "--realm=POLARIS"
+
   polaris-bootstrap:
     # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
     image: apache/polaris-admin-tool:postgres-latest
     depends_on:
+      polaris-purge:
+        condition: service_started
       postgres:
         condition: service_healthy
     environment:
