@@ -703,7 +703,6 @@ public class IcebergCatalogAdapter
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
     String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
-
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
