@@ -19,14 +19,76 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
+import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.ListGenericTablesResponse;
+import org.apache.polaris.service.types.LoadGenericTableResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.function.Function;
 
 @RequestScoped
 public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApiService {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogAdapter.class);
+
+  private final CallContext callContext;
+  private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisAuthorizer polarisAuthorizer;
+
+  @Inject
+  public GenericTableCatalogAdapter(
+      CallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisAuthorizer polarisAuthorizer) {
+    this.callContext = callContext;
+    this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
+    this.polarisAuthorizer = polarisAuthorizer;
+  }
+
+  private Namespace rawStringToNamespace(String namespace) {
+    String[] components = namespace.split("\u001F");
+    return Namespace.of(components);
+  }
+
+  private GenericTableCatalogHandler newHandlerWrapper(
+      SecurityContext securityContext, String catalogName) {
+    AuthenticatedPolarisPrincipal authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    if (authenticatedPrincipal == null) {
+      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
+    }
+
+    return new GenericTableCatalogHandler(
+        callContext,
+        entityManager,
+        metaStoreManager,
+        securityContext,
+        catalogName,
+        polarisAuthorizer
+    );
+  }
+
   @Override
   public Response createGenericTable(
       String prefix,
@@ -34,7 +96,15 @@ public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApi
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.status(501).build(); // not implemented
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    LoadGenericTableResponse response = handler.createGenericTable(
+        TableIdentifier.of(rawStringToNamespace(namespace), createGenericTableRequest.getName()),
+        createGenericTableRequest.getFormat(),
+        createGenericTableRequest.getDoc(),
+        createGenericTableRequest.getProperties()
+    );
+
+    return Response.ok(response).build();
   }
 
   @Override
@@ -44,7 +114,12 @@ public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApi
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.status(501).build(); // not implemented
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    boolean success = handler.dropGenericTable(
+        TableIdentifier.of(rawStringToNamespace(namespace), genericTable)
+    );
+
+    return Response.status(Response.Status.OK).build();
   }
 
   @Override
@@ -55,7 +130,9 @@ public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApi
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.status(501).build(); // not implemented
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    ListGenericTablesResponse response = handler.listGenericTables(rawStringToNamespace(namespace));
+    return Response.ok(response).build();
   }
 
   @Override
@@ -65,6 +142,9 @@ public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApi
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.status(501).build(); // not implemented
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, namespace);
+    LoadGenericTableResponse response = handler
+        .loadGenericTable(TableIdentifier.of(rawStringToNamespace(namespace), genericTable));
+    return Response.ok(response).build();
   }
 }
