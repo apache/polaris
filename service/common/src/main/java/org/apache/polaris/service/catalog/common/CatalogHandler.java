@@ -262,8 +262,10 @@ public abstract class CatalogHandler {
               status.getFailedToResolvePath().getEntityNames());
       if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
+      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NoSuchViewException("View does not exist: %s", identifier);
+      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
       }
     }
 
@@ -321,8 +323,10 @@ public abstract class CatalogHandler {
         == null) {
       if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", src);
-      } else {
+      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NoSuchViewException("View does not exist: %s", src);
+      } else {
+        throw new NoSuchTableException("Generic table does not exist: %s", src);
       }
     }
 

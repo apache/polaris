@@ -474,8 +474,10 @@ public class PolarisAdminService {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
         if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
           throw new NoSuchTableException("Table does not exist: %s", identifier);
-        } else {
+        } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
           throw new NoSuchViewException("View does not exist: %s", identifier);
+        } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+          throw new NoSuchViewException("Generic table does not exist: %s", identifier);
         }
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
@@ -1606,7 +1608,8 @@ public class PolarisAdminService {
             }
           case TABLE_LIKE:
             {
-              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE) {
+              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE ||
+                    baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                 TableIdentifier identifier =
                     IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
@@ -1616,7 +1619,7 @@ public class PolarisAdminService {
                         TablePrivilege.valueOf(privilege.toString()),
                         GrantResource.TypeEnum.TABLE);
                 tableGrants.add(grant);
-              } else {
+              } else if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
                 TableIdentifier identifier =
                     IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 ViewGrant grant =
