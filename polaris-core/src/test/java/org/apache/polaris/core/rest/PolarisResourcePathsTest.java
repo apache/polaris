@@ -27,7 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class PolarisResourcePathsTest {
-  private final String testPrefix = "polaris-test";
+  private static final String testPrefix = "polaris-test";
 
   private PolarisResourcePaths paths;
 

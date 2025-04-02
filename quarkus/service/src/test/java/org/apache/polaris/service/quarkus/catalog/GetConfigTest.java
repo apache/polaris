@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.admin.model.*;
-import org.apache.polaris.core.rest.PolarisEndpoint;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -85,17 +85,17 @@ public class GetConfigTest {
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
     if (enableGenericTable) {
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_CREATE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_DELETE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_LIST_GENERIC_TABLES);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_LOAD_GENERIC_TABLE);
+      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
+      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
+      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     } else {
       assertThat(configResponse.endpoints())
-          .doesNotContain(PolarisEndpoint.V1_CREATE_GENERIC_TABLE);
+          .doesNotContain(PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
       assertThat(configResponse.endpoints())
-          .doesNotContain(PolarisEndpoint.V1_DELETE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoint.V1_LIST_GENERIC_TABLES);
-      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoint.V1_LOAD_GENERIC_TABLE);
+          .doesNotContain(PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
+      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
+      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     }
   }
 }

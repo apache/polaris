@@ -68,7 +68,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.rest.PolarisEndpoint;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -127,14 +127,6 @@ public class IcebergCatalogAdapter
   private static final Set<Endpoint> COMMIT_ENDPOINT =
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
-          .build();
-
-  private static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
-          .add(PolarisEndpoint.V1_CREATE_GENERIC_TABLE)
-          .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
-          .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
           .build();
 
   private final RealmContext realmContext;
@@ -721,7 +713,7 @@ public class IcebergCatalogAdapter
             .getConfiguration(
                 callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
     Set<Endpoint> supportedGenericTableEndpoints =
-        genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+        genericTableEnabled ? PolarisEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
 
     return Response.ok(
             ConfigResponse.builder()
