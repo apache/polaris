@@ -43,15 +43,26 @@ val spark35Version = pluginlibs.versions.spark35.get()
 
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
-    // exclude the iceberg and jackson dependencies, use the
-    // dependencies packed in the iceberg-spark dependency
+    // exclude the iceberg dependencies, use the ones pulled
+    // by iceberg-core
     exclude("org.apache.iceberg", "*")
-    exclude("com.fasterxml.jackson.core", "*")
   }
+  implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
+  ) {
+    // exclude the iceberg rest dependencies, use the ones pulled
+    // with iceberg-core dependency
+    exclude("org.apache.iceberg.rest", "*")
+  }
+
+  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
+
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
