@@ -97,7 +97,7 @@ public class IcebergCatalogAdapter
           .add(Endpoint.V1_LOAD_NAMESPACE)
           .add(Endpoint.V1_NAMESPACE_EXISTS)
           .add(Endpoint.V1_CREATE_NAMESPACE)
-          .add(Endpoint.V1_UPDATE_NAMESPACE)g
+          .add(Endpoint.V1_UPDATE_NAMESPACE)
           .add(Endpoint.V1_DELETE_NAMESPACE)
           .add(Endpoint.V1_LIST_TABLES)
           .add(Endpoint.V1_LOAD_TABLE)
