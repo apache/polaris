@@ -16,27 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.el;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
-import org.apache.polaris.admintool.PostgresTestResourceLifecycleManager;
+-- Note: the database names must follow the pattern polaris_{realm}. That's the pattern
+-- specified by the persistence.xml file used in tests.
 
-public class EclipselinkProfile implements QuarkusTestProfile {
+CREATE DATABASE polaris_realm2;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm2 TO polaris;
 
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of();
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new TestResourceEntry(
-            PostgresTestResourceLifecycleManager.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/el/init.sql")));
-  }
-}
+CREATE DATABASE polaris_realm3;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm3 TO polaris;

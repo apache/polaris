@@ -61,7 +61,6 @@ dependencies {
   testFixturesApi("org.testcontainers:postgresql")
 
   testRuntimeOnly(project(":polaris-eclipselink"))
-  testRuntimeOnly(project(":polaris-relational-jdbc"))
   testRuntimeOnly("org.postgresql:postgresql")
 
   runScript(project(":polaris-quarkus-run-script", "runScript"))

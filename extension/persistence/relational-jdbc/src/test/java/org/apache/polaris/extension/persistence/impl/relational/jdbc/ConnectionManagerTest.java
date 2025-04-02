@@ -34,10 +34,10 @@ public class ConnectionManagerTest {
   @Test
   void testReadProperties() throws Exception {
     // To test the db.properties is correctly read and properties are set correctly.
-    BasicDataSource bds = (BasicDataSource) new ConnectionManager().getDataSource();
+    BasicDataSource bds = (BasicDataSource) new ConnectionManager("db.properties").getDataSource();
     assertEquals("jdbc:postgresql://localhost:5432/postgres", bds.getUrl());
-    assertEquals("testuser", bds.getUsername());
-    assertEquals("password", bds.getPassword());
+    assertEquals("sa", bds.getUsername());
+    assertEquals("", bds.getPassword());
     assertEquals("org.postgresql.Driver", bds.getDriverClassName());
     assertEquals(5, bds.getInitialSize());
     assertEquals(20, bds.getMaxTotal());
@@ -47,7 +47,7 @@ public class ConnectionManagerTest {
   void testCloseDataSource() throws Exception {
     // Mocking BasicDataSource to verify that close is called
     BasicDataSource mockBds = mock(BasicDataSource.class);
-    connectionManager = new ConnectionManager();
+    connectionManager = new ConnectionManager("db.properties");
     connectionManager.setDataSource(mockBds);
 
     connectionManager.closeDataSource();
@@ -60,7 +60,7 @@ public class ConnectionManagerTest {
     BasicDataSource mockBds = mock(BasicDataSource.class);
     doThrow(new Exception("Error closing")).when(mockBds).close();
 
-    connectionManager = new ConnectionManager();
+    connectionManager = new ConnectionManager("db.properties");
     connectionManager.setDataSource(mockBds);
 
     Exception exception = assertThrows(Exception.class, () -> connectionManager.closeDataSource());
