@@ -1608,8 +1608,8 @@ public class PolarisAdminService {
             }
           case TABLE_LIKE:
             {
-              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE ||
-                    baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
+              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+                  || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                 TableIdentifier identifier =
                     IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
