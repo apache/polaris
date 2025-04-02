@@ -79,15 +79,12 @@ fun addAdditionalJarContent(project: Project): Unit =
       val additionalJarContent =
         tasks.register("additionalJarContent", Sync::class.java) {
           // Have to manually declare the inputs of this task here on top of the from/include below
-          inputs.files(rootProject.layout.files("LICENSE", "NOTICE"))
+          inputs.files(rootProject.layout.files("licenses/LICENSE", "licenses/NOTICE"))
           inputs.property("GAV", "${project.group}:${project.name}:${project.version}")
           dependsOn("generatePomFileForMavenPublication")
           from(rootProject.rootDir) {
-            include("LICENSE", "NOTICE")
-            eachFile {
-              this.path =
-                "META-INF/licenses/${project.group}/${project.name}-${project.version}/$sourceName"
-            }
+            include("licenses/LICENSE", "licenses/NOTICE")
+            eachFile { this.path = "META-INF/$sourceName" }
           }
           from(tasks.named("generatePomFileForMavenPublication")) {
             include("pom-default.xml")
