@@ -36,13 +36,13 @@ public abstract class PolarisConfiguration<T> {
 
   public final String key;
   public final String description;
-  public final T defaultValue;
+  public final Optional<T> defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Class<T> typ;
 
   @SuppressWarnings("unchecked")
   protected PolarisConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+      String key, String description, Optional<T> defaultValue, Optional<String> catalogConfig) {
     this.key = key;
     this.description = description;
     this.defaultValue = defaultValue;
@@ -68,7 +68,7 @@ public abstract class PolarisConfiguration<T> {
   public static class Builder<T> {
     private String key;
     private String description;
-    private T defaultValue;
+    private Optional<T> defaultValue;
     private Optional<String> catalogConfig = Optional.empty();
 
     public Builder<T> key(String key) {
@@ -83,12 +83,23 @@ public abstract class PolarisConfiguration<T> {
 
     @SuppressWarnings("unchecked")
     public Builder<T> defaultValue(T defaultValue) {
+      if (this.defaultValue != null) {
+        throw new IllegalArgumentException("defaultValue / optional can only be set once");
+      }
       if (defaultValue instanceof List<?>) {
         // Type-safe handling of List
-        this.defaultValue = (T) new ArrayList<>((List<?>) defaultValue);
+        this.defaultValue = Optional.of((T) new ArrayList<>((List<?>) defaultValue));
       } else {
-        this.defaultValue = defaultValue;
+        this.defaultValue = Optional.of(defaultValue);
       }
+      return this;
+    }
+
+    public Builder<T> optional() {
+      if (this.defaultValue != null) {
+        throw new IllegalArgumentException("defaultValue / optional can only be set once");
+      }
+      this.defaultValue = Optional.empty();
       return this;
     }
 
@@ -99,14 +110,14 @@ public abstract class PolarisConfiguration<T> {
 
     public FeatureConfiguration<T> buildFeatureConfiguration() {
       if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue are required");
+        throw new IllegalArgumentException("key, description, and defaultValue / optional are required");
       }
       return new FeatureConfiguration<>(key, description, defaultValue, catalogConfig);
     }
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
       if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue are required");
+        throw new IllegalArgumentException("key, description, and defaultValue / optional are required");
       }
       if (catalogConfig.isPresent()) {
         throw new IllegalArgumentException(
@@ -120,7 +131,7 @@ public abstract class PolarisConfiguration<T> {
    * Returns the value of a `PolarisConfiguration`, or the default if it cannot be loaded. This
    * method does not need to be used when a `CallContext` is already available
    */
-  public static <T> T loadConfig(PolarisConfiguration<T> configuration) {
+  public static <T> Optional<T> loadConfig(PolarisConfiguration<T> configuration) {
     var callContext = CallContext.getCurrentContext();
     if (callContext == null) {
       LOGGER.warn(

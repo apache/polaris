@@ -59,7 +59,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
+                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES).get();
     if (!enabled) {
       throw new UnsupportedOperationException("Generic table support is not enabled");
     }

@@ -31,7 +31,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
  */
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+      String key, String description, Optional<T> defaultValue, Optional<String> catalogConfig) {
     super(key, description, defaultValue, catalogConfig);
   }
 
