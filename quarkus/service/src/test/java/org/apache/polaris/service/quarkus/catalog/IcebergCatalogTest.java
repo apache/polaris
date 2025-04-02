@@ -401,12 +401,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     catalog().createNamespace(NS);
 
     Assertions.assertThat(catalog().namespaceExists(Namespace.empty())).isTrue();
-    Assertions.assertThat(catalog().listNamespaces())
-        .contains(NS)
-        .doesNotContain(Namespace.empty());
-    Assertions.assertThat(catalog().listNamespaces(Namespace.empty()))
-        .contains(NS)
-        .doesNotContain(Namespace.empty());
+    Assertions.assertThat(catalog().listNamespaces()).containsExactly(NS);
+    Assertions.assertThat(catalog().listNamespaces(Namespace.empty())).containsExactly(NS);
   }
 
   @Test
