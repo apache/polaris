@@ -25,27 +25,27 @@ import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerWrapper;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
+public class GenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
-  private GenericTableCatalogHandlerWrapper newWrapper() {
+  private GenericTableCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
 
-  private GenericTableCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
+  private GenericTableCatalogHandler newWrapper(Set<String> activatedPrincipalRoles) {
     return newWrapper(activatedPrincipalRoles, CATALOG_NAME);
   }
 
-  private GenericTableCatalogHandlerWrapper newWrapper(
+  private GenericTableCatalogHandler newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
-    return new GenericTableCatalogHandlerWrapper(
+    return new GenericTableCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,

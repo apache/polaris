@@ -47,7 +47,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
  * request is actually forwarded to a catalog. Child types must implement `initializeCatalog` which
  * will be called after a successful authorization.
  */
-public abstract class CatalogHandlerWrapper {
+public abstract class CatalogHandler {
 
   // Initialized in the authorize methods.
   protected PolarisResolutionManifest resolutionManifest = null;
@@ -60,7 +60,7 @@ public abstract class CatalogHandlerWrapper {
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   protected final SecurityContext securityContext;
 
-  public CatalogHandlerWrapper(
+  public CatalogHandler(
       CallContext callContext,
       PolarisEntityManager entityManager,
       SecurityContext securityContext,

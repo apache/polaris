@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
@@ -82,7 +83,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
-import org.apache.polaris.service.catalog.common.CatalogHandlerWrapper;
+import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -105,8 +106,8 @@ import org.slf4j.LoggerFactory;
  * model objects used in this layer to still benefit from the shared implementation of
  * authorization-aware catalog protocols.
  */
-public class IcebergCatalogHandlerWrapper extends CatalogHandlerWrapper implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandlerWrapper.class);
+public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContextCatalogFactory catalogFactory;
@@ -117,7 +118,7 @@ public class IcebergCatalogHandlerWrapper extends CatalogHandlerWrapper implemen
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
 
-  public IcebergCatalogHandlerWrapper(
+  public IcebergCatalogHandler(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,

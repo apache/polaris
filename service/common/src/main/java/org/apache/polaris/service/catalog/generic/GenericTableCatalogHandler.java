@@ -31,18 +31,18 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.catalog.common.CatalogHandlerWrapper;
+import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
-public class GenericTableCatalogHandlerWrapper extends CatalogHandlerWrapper {
+public class GenericTableCatalogHandler extends CatalogHandler {
 
   private PolarisMetaStoreManager metaStoreManager;
 
   private GenericTableCatalog genericTableCatalog;
 
-  public GenericTableCatalogHandlerWrapper(
+  public GenericTableCatalogHandler(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
