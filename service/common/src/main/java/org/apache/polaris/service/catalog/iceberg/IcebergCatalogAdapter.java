@@ -132,7 +132,7 @@ public class IcebergCatalogAdapter
   private static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
-          .add(PolarisEndpoint.V1_CREATE_GENERIC_ABLE)
+          .add(PolarisEndpoint.V1_CREATE_GENERIC_TABLE)
           .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
           .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
           .build();

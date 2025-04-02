@@ -85,12 +85,13 @@ public class GetConfigTest {
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
     if (enableGenericTable) {
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_CREATE_GENERIC_ABLE);
+      assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_CREATE_GENERIC_TABLE);
       assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_DELETE_GENERIC_TABLE);
       assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_LIST_GENERIC_TABLES);
       assertThat(configResponse.endpoints()).contains(PolarisEndpoint.V1_LOAD_GENERIC_TABLE);
     } else {
-      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoint.V1_CREATE_GENERIC_ABLE);
+      assertThat(configResponse.endpoints())
+          .doesNotContain(PolarisEndpoint.V1_CREATE_GENERIC_TABLE);
       assertThat(configResponse.endpoints())
           .doesNotContain(PolarisEndpoint.V1_DELETE_GENERIC_TABLE);
       assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoint.V1_LIST_GENERIC_TABLES);

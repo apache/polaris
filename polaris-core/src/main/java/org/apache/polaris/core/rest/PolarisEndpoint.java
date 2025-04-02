@@ -25,7 +25,7 @@ public class PolarisEndpoint {
       Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLES);
   public static final Endpoint V1_LOAD_GENERIC_TABLE =
       Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLE);
-  public static final Endpoint V1_CREATE_GENERIC_ABLE =
+  public static final Endpoint V1_CREATE_GENERIC_TABLE =
       Endpoint.create("POST", PolarisResourcePaths.V1_GENERIC_TABLES);
   public static final Endpoint V1_DELETE_GENERIC_TABLE =
       Endpoint.create("DELETE", PolarisResourcePaths.V1_GENERIC_TABLE);
