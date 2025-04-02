@@ -163,9 +163,9 @@ public class IcebergCatalogAdapter
   private Response withCatalog(
       SecurityContext securityContext,
       String prefix,
-      Function<IcebergCatalogHandlerWrapper, Response> action) {
+      Function<IcebergCatalogHandler, Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    try (IcebergCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
+    try (IcebergCatalogHandler wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
       LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
@@ -176,7 +176,7 @@ public class IcebergCatalogAdapter
     }
   }
 
-  private IcebergCatalogHandlerWrapper newHandlerWrapper(
+  private IcebergCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
@@ -184,7 +184,7 @@ public class IcebergCatalogAdapter
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
 
-    return new IcebergCatalogHandlerWrapper(
+    return new IcebergCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,
@@ -484,7 +484,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          if (IcebergCatalogHandlerWrapper.isCreate(commitTableRequest)) {
+          if (IcebergCatalogHandler.isCreate(commitTableRequest)) {
             return Response.ok(
                     catalog.updateTableForStagedCreate(tableIdentifier, commitTableRequest))
                 .build();

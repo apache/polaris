@@ -19,7 +19,52 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 
 @RequestScoped
-public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApiService {}
+public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApiService {
+  @Override
+  public Response createGenericTable(
+      String prefix,
+      String namespace,
+      CreateGenericTableRequest createGenericTableRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.status(501).build(); // not implemented
+  }
+
+  @Override
+  public Response dropGenericTable(
+      String prefix,
+      String namespace,
+      String genericTable,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.status(501).build(); // not implemented
+  }
+
+  @Override
+  public Response listGenericTables(
+      String prefix,
+      String namespace,
+      String pageToken,
+      Integer pageSize,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.status(501).build(); // not implemented
+  }
+
+  @Override
+  public Response loadGenericTable(
+      String prefix,
+      String namespace,
+      String genericTable,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.status(501).build(); // not implemented
+  }
+}
