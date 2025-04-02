@@ -17,46 +17,11 @@
  * under the License.
  */
 
-fun isValidDep(dep: String): Boolean {
-  val depRegex = "^[\\w.]+:[\\w\\-.]+:[\\w\\-.]+$".toRegex()
-  return dep.matches(depRegex)
-}
-
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-}
+plugins { id("polaris-server") }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation("org.apache.commons:commons-dbcp2:2.9.0")
-  implementation("org.postgresql:postgresql:42.1.4")
-
-  implementation(platform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-core")
-
+  implementation(libs.commons.dbcp2)
+  implementation(libs.postgresql)
   implementation(libs.slf4j.api)
-
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-  compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
-  compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
-
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-core")
-
-  testImplementation(libs.h2)
-  testImplementation("org.mockito:mockito-junit-jupiter:5.10.0")
-  testImplementation(testFixtures(project(":polaris-core")))
+  testImplementation(libs.mockito.junit.jupiter)
 }
-
-tasks.named("javadoc") { dependsOn("jandex") }
-
-tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
-
-tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
-
-tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
