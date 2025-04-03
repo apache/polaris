@@ -44,6 +44,7 @@ import org.apache.polaris.core.persistence.pagination.OffsetPageToken;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -577,5 +578,87 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public @Nonnull PageToken.PageTokenBuilder<?> pageTokenBuilder() {
     return OffsetPageToken.builder();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.store.getSlicePolicyMappingRecords().write(record);
+    this.store.getSlicePolicyMappingRecordsByPolicy().write(record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFromPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.store.getSlicePolicyMappingRecords().delete(record);
+    this.store.getSlicePolicyMappingRecordsByPolicy().delete(record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    // build composite prefix key and delete policy mapping records on the indexed side of each
+    // mapping table
+    String prefix = this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId());
+    this.store.getSlicePolicyMappingRecords().deleteRange(prefix);
+    this.store.getSlicePolicyMappingRecordsByPolicy().deleteRange(prefix);
+
+    // also delete the other side. We need to delete these mapping one at a time versus doing a
+    // range delete
+    mappingOnTarget.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
+    mappingOnPolicy.forEach(
+        record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nullable PolarisPolicyMappingRecord lookupPolicyMappingRecordInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return this.store
+        .getSlicePolicyMappingRecords()
+        .read(
+            this.store.buildKeyComposite(
+                targetCatalogId, targetId, policyTypeCode, policyCatalogId, policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByTypeInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    return this.store
+        .getSlicePolicyMappingRecords()
+        .readRange(this.store.buildPrefixKeyComposite(targetCatalogId, targetId, policyTypeCode));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull List<PolarisPolicyMappingRecord> loadAllPoliciesOnTargetInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.store
+        .getSlicePolicyMappingRecords()
+        .readRange(this.store.buildPrefixKeyComposite(targetCatalogId, targetId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    return this.store
+        .getSlicePolicyMappingRecordsByPolicy()
+        .readRange(this.store.buildPrefixKeyComposite(policyCatalogId, policyId));
   }
 }

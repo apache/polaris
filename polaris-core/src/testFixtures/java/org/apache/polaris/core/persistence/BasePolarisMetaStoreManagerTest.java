@@ -282,6 +282,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testEntityCache();
   }
 
+  /** Test that attaching/detaching policies works well */
+  @Test
+  void testPolicyMapping() {
+    polarisTestMetaStoreManager.testPolicyMapping();
+  }
+
   @Test
   void testLoadTasks() {
     for (int i = 0; i < 20; i++) {

@@ -222,6 +222,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         name,
         this.catalogName);
 
+    // Ensure catalogProperties is assigned before calling metricsReporter() for proper
+    // functionality.
+    catalogProperties = properties;
+
     // Base location from catalogEntity is primary source of truth, otherwise fall through
     // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
@@ -268,7 +272,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
 
-    catalogProperties = properties;
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
 
@@ -1163,9 +1166,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE), ns));
     ResolverStatus status = resolutionManifest.resolveAll();
     if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new IllegalStateException(
-          "Unable to resolve sibling entities to validate location - could not resolve"
-              + status.getFailedToResolvedEntityName());
+      String message =
+          "Unable to resolve sibling entities to validate location - " + status.getStatus();
+      if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
+        message += ". Could not resolve entity: " + status.getFailedToResolvedEntityName();
+      }
+      throw new IllegalStateException(message);
     }
 
     StorageLocation targetLocation = StorageLocation.of(location);

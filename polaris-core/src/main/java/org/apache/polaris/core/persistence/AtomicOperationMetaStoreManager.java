@@ -56,6 +56,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
@@ -63,6 +65,9 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PolarisPage;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -1825,5 +1830,156 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // return the result
     return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+  }
+
+  @Override
+  public @Nonnull PolicyAttachmentResult attachPolicyToEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> targetCatalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
+      Map<String, String> parameters) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    return this.persistNewPolicyMappingRecord(callCtx, ms, target, policy, parameters);
+  }
+
+  @Override
+  public @Nonnull PolicyAttachmentResult detachPolicyFromEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    PolarisPolicyMappingRecord mappingRecord =
+        ms.lookupPolicyMappingRecord(
+            callCtx,
+            target.getCatalogId(),
+            target.getId(),
+            policy.getPolicyTypeCode(),
+            policy.getCatalogId(),
+            policy.getId());
+    if (mappingRecord == null) {
+      return new PolicyAttachmentResult(BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND, null);
+    }
+
+    ms.deleteFromPolicyMappingRecords(callCtx, mappingRecord);
+
+    return new PolicyAttachmentResult(mappingRecord);
+  }
+
+  @Override
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntity(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    PolarisBaseEntity entity =
+        ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
+      // Target entity does not exist
+      return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    final List<PolarisPolicyMappingRecord> policyMappingRecords =
+        ms.loadAllPoliciesOnTarget(callCtx, target.getCatalogId(), target.getId());
+
+    List<PolarisBaseEntity> policyEntities =
+        loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
+    return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
+  }
+
+  @Override
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull PolicyType policyType) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    PolarisBaseEntity entity =
+        ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
+      // Target entity does not exist
+      return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    final List<PolarisPolicyMappingRecord> policyMappingRecords =
+        ms.loadPoliciesOnTargetByType(
+            callCtx, target.getCatalogId(), target.getId(), policyType.getCode());
+
+    List<PolarisBaseEntity> policyEntities =
+        loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
+    return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
+  }
+
+  /**
+   * Create and persist a new policy mapping record
+   *
+   * @param callCtx call context
+   * @param ms meta store in read/write mode
+   * @param target target
+   * @param policy policy
+   * @param parameters optional parameters
+   * @return new policy mapping record which was created and persisted
+   */
+  private @Nonnull PolicyAttachmentResult persistNewPolicyMappingRecord(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull BasePersistence ms,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull PolicyEntity policy,
+      Map<String, String> parameters) {
+    callCtx.getDiagServices().checkNotNull(target, "unexpected_null_target");
+    callCtx.getDiagServices().checkNotNull(policy, "unexpected_null_policy");
+
+    PolarisPolicyMappingRecord mappingRecord =
+        new PolarisPolicyMappingRecord(
+            target.getCatalogId(),
+            target.getId(),
+            policy.getCatalogId(),
+            policy.getId(),
+            policy.getPolicyTypeCode(),
+            parameters);
+    try {
+      ms.writeToPolicyMappingRecords(callCtx, mappingRecord);
+    } catch (IllegalArgumentException e) {
+      return new PolicyAttachmentResult(
+          BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unknown policy type");
+    } catch (PolicyMappingAlreadyExistsException e) {
+      return new PolicyAttachmentResult(
+          BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS,
+          e.getExistingRecord().getPolicyTypeCode());
+    }
+
+    return new PolicyAttachmentResult(mappingRecord);
+  }
+
+  /**
+   * Load policies from a list of policy mapping records
+   *
+   * @param callCtx call context
+   * @param ms meta store
+   * @param policyMappingRecords a list of policy mapping records
+   * @return a list of policy entities
+   */
+  private List<PolarisBaseEntity> loadPoliciesFromMappingRecords(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull BasePersistence ms,
+      @Nonnull List<PolarisPolicyMappingRecord> policyMappingRecords) {
+    List<PolarisEntityId> policyEntityIds =
+        policyMappingRecords.stream()
+            .map(
+                policyMappingRecord ->
+                    new PolarisEntityId(
+                        policyMappingRecord.getPolicyCatalogId(),
+                        policyMappingRecord.getPolicyId()))
+            .distinct()
+            .collect(Collectors.toList());
+    return ms.lookupEntities(callCtx, policyEntityIds);
   }
 }

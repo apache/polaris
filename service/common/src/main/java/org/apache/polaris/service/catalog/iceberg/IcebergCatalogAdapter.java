@@ -27,6 +27,8 @@ import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
@@ -72,6 +74,8 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.http.IcebergHttpUtil;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -93,23 +97,27 @@ public class IcebergCatalogAdapter
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.V1_LIST_NAMESPACES)
           .add(Endpoint.V1_LOAD_NAMESPACE)
+          .add(Endpoint.V1_NAMESPACE_EXISTS)
           .add(Endpoint.V1_CREATE_NAMESPACE)
           .add(Endpoint.V1_UPDATE_NAMESPACE)
           .add(Endpoint.V1_DELETE_NAMESPACE)
           .add(Endpoint.V1_LIST_TABLES)
           .add(Endpoint.V1_LOAD_TABLE)
+          .add(Endpoint.V1_TABLE_EXISTS)
           .add(Endpoint.V1_CREATE_TABLE)
           .add(Endpoint.V1_UPDATE_TABLE)
           .add(Endpoint.V1_DELETE_TABLE)
           .add(Endpoint.V1_RENAME_TABLE)
           .add(Endpoint.V1_REGISTER_TABLE)
           .add(Endpoint.V1_REPORT_METRICS)
+          .add(Endpoint.V1_COMMIT_TRANSACTION)
           .build();
 
   private static final Set<Endpoint> VIEW_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.V1_LIST_VIEWS)
           .add(Endpoint.V1_LOAD_VIEW)
+          .add(Endpoint.V1_VIEW_EXISTS)
           .add(Endpoint.V1_CREATE_VIEW)
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
@@ -157,9 +165,9 @@ public class IcebergCatalogAdapter
   private Response withCatalog(
       SecurityContext securityContext,
       String prefix,
-      Function<IcebergCatalogHandlerWrapper, Response> action) {
+      Function<IcebergCatalogHandler, Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    try (IcebergCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
+    try (IcebergCatalogHandler wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
       LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
@@ -170,7 +178,7 @@ public class IcebergCatalogAdapter
     }
   }
 
-  private IcebergCatalogHandlerWrapper newHandlerWrapper(
+  private IcebergCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
@@ -178,7 +186,7 @@ public class IcebergCatalogAdapter
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
 
-    return new IcebergCatalogHandlerWrapper(
+    return new IcebergCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,
@@ -325,9 +333,21 @@ public class IcebergCatalogAdapter
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
-            return Response.ok(catalog.createTableDirect(ns, createTableRequest)).build();
+            LoadTableResponse response = catalog.createTableDirect(ns, createTableRequest);
+            return Response.ok(response)
+                .header(
+                    HttpHeaders.ETAG,
+                    IcebergHttpUtil.generateETagForMetadataFileLocation(
+                        response.metadataLocation()))
+                .build();
           } else {
-            return Response.ok(catalog.createTableDirectWithWriteDelegation(ns, createTableRequest))
+            LoadTableResponse response =
+                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            return Response.ok(response)
+                .header(
+                    HttpHeaders.ETAG,
+                    IcebergHttpUtil.generateETagForMetadataFileLocation(
+                        response.metadataLocation()))
                 .build();
           }
         });
@@ -360,16 +380,38 @@ public class IcebergCatalogAdapter
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+
+    // TODO: Populate with header value from parameter once the generated interface
+    //  contains the if-none-match header
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(null);
+
+    if (ifNoneMatch.isWildcard()) {
+      throw new BadRequestException("If-None-Match may not take the value of '*'");
+    }
+
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
+          LoadTableResponse response;
+
           if (delegationModes.isEmpty()) {
-            return Response.ok(catalog.loadTable(tableIdentifier, snapshots)).build();
+            response =
+                catalog
+                    .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
-            return Response.ok(catalog.loadTableWithAccessDelegation(tableIdentifier, snapshots))
-                .build();
+            response =
+                catalog
+                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
+
+          return Response.ok(response)
+              .header(
+                  HttpHeaders.ETAG,
+                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
+              .build();
         });
   }
 
@@ -425,7 +467,15 @@ public class IcebergCatalogAdapter
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> Response.ok(catalog.registerTable(ns, registerTableRequest)).build());
+        catalog -> {
+          LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
+
+          return Response.ok(response)
+              .header(
+                  HttpHeaders.ETAG,
+                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
+              .build();
+        });
   }
 
   @Override
@@ -457,7 +507,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          if (IcebergCatalogHandlerWrapper.isCreate(commitTableRequest)) {
+          if (IcebergCatalogHandler.isCreate(commitTableRequest)) {
             return Response.ok(
                     catalog.updateTableForStagedCreate(tableIdentifier, commitTableRequest))
                 .build();

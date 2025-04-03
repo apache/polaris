@@ -43,6 +43,7 @@ import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
 /**
@@ -50,7 +51,10 @@ import org.apache.polaris.core.storage.PolarisCredentialVendor;
  * authorization. It uses the underlying persistent metastore to store and retrieve Polaris metadata
  */
 public interface PolarisMetaStoreManager
-    extends PolarisSecretsManager, PolarisGrantManager, PolarisCredentialVendor {
+    extends PolarisSecretsManager,
+        PolarisGrantManager,
+        PolarisCredentialVendor,
+        PolarisPolicyMappingManager {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated

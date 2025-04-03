@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import java.io.IOException;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 
-public class StrictBooleanDeserializer extends JsonDeserializer<Boolean> {
-  @Override
-  public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    String text = p.getText();
-    if ("true".equals(text)) {
-      return Boolean.TRUE;
-    } else if ("false".equals(text)) {
-      return Boolean.FALSE;
-    } else {
-      throw new InvalidPolicyException("Invalid boolean value: " + text);
-    }
+/**
+ * Exception raised when an existing policy mapping preveents the attempted creation of a new policy
+ * mapping record.
+ */
+public class PolicyMappingAlreadyExistsException extends RuntimeException {
+  private PolarisPolicyMappingRecord existingRecord;
+
+  /**
+   * @param existingRecord The conflicting record that caused creation to fail.
+   */
+  public PolicyMappingAlreadyExistsException(PolarisPolicyMappingRecord existingRecord) {
+    super("Existing Policy Mapping Record: " + existingRecord);
+    this.existingRecord = existingRecord;
+  }
+
+  public PolarisPolicyMappingRecord getExistingRecord() {
+    return this.existingRecord;
   }
 }

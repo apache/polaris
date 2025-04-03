@@ -29,6 +29,7 @@
     <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
     <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
     <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.jpa.models.ModelPolicyMappingRecord</class>
     <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
     <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>

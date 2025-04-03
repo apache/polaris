@@ -50,9 +50,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -69,17 +67,14 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -88,14 +83,16 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PolarisPage;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
+import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.ListNamespacesResponseWithPageToken;
 import org.apache.polaris.service.types.ListTablesResponseWithPageToken;
+import org.apache.polaris.service.http.IcebergHttpUtil;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,28 +112,19 @@ import org.slf4j.LoggerFactory;
  * model objects used in this layer to still benefit from the shared implementation of
  * authorization-aware catalog protocols.
  */
-public class IcebergCatalogHandlerWrapper implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandlerWrapper.class);
+public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
-  private final CallContext callContext;
-  private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
-  private final String catalogName;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
-  private final SecurityContext securityContext;
-  private final PolarisAuthorizer authorizer;
   private final CallContextCatalogFactory catalogFactory;
-
-  // Initialized in the authorize methods.
-  private PolarisResolutionManifest resolutionManifest = null;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
-  private Catalog baseCatalog = null;
-  private SupportsNamespaces namespaceCatalog = null;
-  private ViewCatalog viewCatalog = null;
+  protected Catalog baseCatalog = null;
+  protected SupportsNamespaces namespaceCatalog = null;
+  protected ViewCatalog viewCatalog = null;
 
-  public IcebergCatalogHandlerWrapper(
+  public IcebergCatalogHandler(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
@@ -144,22 +132,19 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
-    this.callContext = callContext;
-    this.entityManager = entityManager;
+    super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
-    this.catalogName = catalogName;
-    PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
-    diagServices.checkNotNull(securityContext, "null_security_context");
-    diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
-    diagServices.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
-        "invalid_principal_type",
-        "Principal must be an AuthenticatedPolarisPrincipal");
-    this.securityContext = securityContext;
-    this.authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    this.authorizer = authorizer;
     this.catalogFactory = catalogFactory;
+  }
+
+  @Override
+  protected void initializeCatalog() {
+    this.baseCatalog =
+        catalogFactory.createCallContextCatalog(
+            callContext, authenticatedPrincipal, securityContext, resolutionManifest);
+    this.namespaceCatalog =
+        (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
+    this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
   }
 
   /**
@@ -181,282 +166,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     }
 
     return isCreate;
-  }
-
-  private void initializeCatalog() {
-    this.baseCatalog =
-        catalogFactory.createCallContextCatalog(
-            callContext, authenticatedPrincipal, securityContext, resolutionManifest);
-    this.namespaceCatalog =
-        (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
-    this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
-  }
-
-  private void authorizeBasicNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op, Namespace namespace) {
-    authorizeBasicNamespaceOperationOrThrow(op, namespace, null, null);
-  }
-
-  private void authorizeBasicNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op,
-      Namespace namespace,
-      List<Namespace> extraPassthroughNamespaces,
-      List<TableIdentifier> extraPassthroughTableLikes) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
-
-    if (extraPassthroughNamespaces != null) {
-      for (Namespace ns : extraPassthroughNamespaces) {
-        resolutionManifest.addPassthroughPath(
-            new ResolverPath(
-                Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
-            ns);
-      }
-    }
-    if (extraPassthroughTableLikes != null) {
-      for (TableIdentifier id : extraPassthroughTableLikes) {
-        resolutionManifest.addPassthroughPath(
-            new ResolverPath(
-                PolarisCatalogHelpers.tableIdentifierToList(id),
-                PolarisEntityType.TABLE_LIKE,
-                true /* optional */),
-            id);
-      }
-    }
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op, Namespace namespace) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-
-    Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE),
-        parentNamespace);
-
-    // When creating an entity under a namespace, the authz target is the parentNamespace, but we
-    // must also add the actual path that will be created as an "optional" passthrough resolution
-    // path to indicate that the underlying catalog is "allowed" to check the creation path for
-    // a conflicting entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
-        namespace);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(parentNamespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op, TableIdentifier identifier) {
-    Namespace namespace = identifier.namespace();
-
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
-
-    // When creating an entity under a namespace, the authz target is the namespace, but we must
-    // also
-    // add the actual path that will be created as an "optional" passthrough resolution path to
-    // indicate that the underlying catalog is "allowed" to check the creation path for a
-    // conflicting
-    // entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeBasicTableLikeOperationOrThrow(
-      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-
-    // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
-    if (target == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeCollectionOfTableLikeOperationOrThrow(
-      PolarisAuthorizableOperation op,
-      final PolarisEntitySubType subType,
-      List<TableIdentifier> ids) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    ids.forEach(
-        identifier ->
-            resolutionManifest.addPassthroughPath(
-                new ResolverPath(
-                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                    PolarisEntityType.TABLE_LIKE),
-                identifier));
-
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    // If one of the paths failed to resolve, throw exception based on the one that
-    // we first failed to resolve.
-    if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      TableIdentifier identifier =
-          PolarisCatalogHelpers.listToTableIdentifier(
-              status.getFailedToResolvePath().getEntityNames());
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
-    }
-
-    List<PolarisResolvedPathWrapper> targets =
-        ids.stream()
-            .map(
-                identifier ->
-                    Optional.ofNullable(
-                            resolutionManifest.getResolvedPath(
-                                identifier, PolarisEntityType.TABLE_LIKE, subType, true))
-                        .orElseThrow(
-                            () ->
-                                subType == PolarisEntitySubType.ICEBERG_TABLE
-                                    ? new NoSuchTableException(
-                                        "Table does not exist: %s", identifier)
-                                    : new NoSuchViewException(
-                                        "View does not exist: %s", identifier)))
-            .toList();
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        targets,
-        null /* secondaries */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeRenameTableLikeOperationOrThrow(
-      PolarisAuthorizableOperation op,
-      PolarisEntitySubType subType,
-      TableIdentifier src,
-      TableIdentifier dst) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    // Add src, dstParent, and dst(optional)
-    resolutionManifest.addPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE),
-        src);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE),
-        dst.namespace());
-    resolutionManifest.addPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(dst),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        dst);
-    ResolverStatus status = resolutionManifest.resolveAll();
-    if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
-        && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
-    } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
-        == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", src);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", src);
-      }
-    }
-
-    // Normally, since we added the dst as an optional path, we'd expect it to only get resolved
-    // up to its parent namespace, and for there to be no TABLE_LIKE already in the dst in which
-    // case the leafSubType will be NULL_SUBTYPE.
-    // If there is a conflicting TABLE or VIEW, this leafSubType will indicate that conflicting
-    // type.
-    // TODO: Possibly modify the exception thrown depending on whether the caller has privileges
-    // on the parent namespace.
-    PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dst);
-    if (dstLeafSubType == PolarisEntitySubType.ICEBERG_TABLE) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
-    }
-
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType, true);
-    PolarisResolvedPathWrapper secondary =
-        resolutionManifest.getResolvedPath(dst.namespace(), true);
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        secondary);
-
-    initializeCatalog();
   }
 
   public ListNamespacesResponseWithPageToken listNamespaces(Namespace parent, PageToken pageToken) {
@@ -576,10 +285,17 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     return CatalogHandlers.listTables(baseCatalog, namespace);
   }
 
+  /**
+   * Create a table.
+   *
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -593,6 +309,13 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     return CatalogHandlers.createTable(baseCatalog, namespace, request);
   }
 
+  /**
+   * Create a table.
+   *
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse createTableDirectWithWriteDelegation(
       Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
@@ -753,6 +476,13 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     return responseBuilder.build();
   }
 
+  /**
+   * Register a table.
+   *
+   * @param namespace The namespace to register the table in
+   * @param request the register table request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -799,16 +529,67 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         && notificationCatalog.sendNotification(identifier, request);
   }
 
+  /**
+   * Fetch the metastore table entity for the given table identifier
+   *
+   * @param tableIdentifier The identifier of the table
+   * @return the Polaris table entity for the table
+   */
+  private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
+
+    return IcebergTableLikeEntity.of(target.getRawLeafEntity());
+  }
+
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableIfStale(tableIdentifier, null, snapshots).get();
+  }
+
+  /**
+   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the
+   * current state of the table metadata.
+   *
+   * @param tableIdentifier The identifier of the table to load
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
+   */
+  public Optional<LoadTableResponse> loadTableIfStale(
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    String tableEntityTag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+  }
+
+  /**
+   * Attempt to perform a loadTable operation with access delegation only when the if none of the
+   * provided eTags match the current state of the table metadata.
+   *
+   * @param tableIdentifier The identifier of the table to load
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
+   */
+  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -853,6 +634,14 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    String tableETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
+      return Optional.empty();
+    }
+
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
@@ -871,7 +660,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
       }
-      return responseBuilder.build();
+
+      return Optional.of(responseBuilder.build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

@@ -48,8 +48,14 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+<<<<<<< HEAD
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+=======
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+>>>>>>> b50e594ed25297a112e721c8fcf4cd878489c664
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -958,6 +964,195 @@ public class PolarisTestMetaStoreManager {
 
     // now validate that the privilege is gone
     this.ensureGrantRecordRemoved(granted, grantee, priv);
+  }
+
+  /** attach a policy to a target */
+  void attachPolicyToTarget(
+      List<PolarisEntityCore> targetCatalogPath,
+      PolarisBaseEntity target,
+      List<PolarisEntityCore> policyCatalogPath,
+      PolicyEntity policy) {
+    polarisMetaStoreManager.attachPolicyToEntity(
+        polarisCallContext, targetCatalogPath, target, policyCatalogPath, policy, null);
+    ensurePolicyMappingRecordExists(target, policy);
+  }
+
+  /** detach a policy from a target */
+  void detachPolicyFromTarget(
+      List<PolarisEntityCore> targetCatalogPath,
+      PolarisBaseEntity target,
+      List<PolarisEntityCore> policyCatalogPath,
+      PolicyEntity policy) {
+    polarisMetaStoreManager.detachPolicyFromEntity(
+        polarisCallContext, targetCatalogPath, target, policyCatalogPath, policy);
+    ensurePolicyMappingRecordRemoved(target, policy);
+  }
+
+  /**
+   * Ensure that the specified policy mapping record exists
+   *
+   * @param target the target
+   * @param policy the policy
+   */
+  void ensurePolicyMappingRecordExists(PolarisBaseEntity target, PolicyEntity policy) {
+    target =
+        polarisMetaStoreManager
+            .loadEntity(
+                this.polarisCallContext, target.getCatalogId(), target.getId(), target.getType())
+            .getEntity();
+    Assertions.assertThat(target).isNotNull();
+
+    policy =
+        PolicyEntity.of(
+            polarisMetaStoreManager
+                .loadEntity(
+                    this.polarisCallContext,
+                    policy.getCatalogId(),
+                    policy.getId(),
+                    PolarisEntityType.POLICY)
+                .getEntity());
+    Assertions.assertThat(policy).isNotNull();
+
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(this.polarisCallContext, target);
+
+    validateLoadedPolicyMappings(loadPolicyMappingsResult);
+
+    checkPolicyMappingRecordExists(
+        loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy);
+
+    // also try load by specific type
+    LoadPolicyMappingsResult loadPolicyMappingsResultByType =
+        polarisMetaStoreManager.loadPoliciesOnEntityByType(
+            this.polarisCallContext, target, policy.getPolicyType());
+    validateLoadedPolicyMappings(loadPolicyMappingsResultByType);
+    checkPolicyMappingRecordExists(
+        loadPolicyMappingsResultByType.getPolicyMappingRecords(), target, policy);
+  }
+
+  /**
+   * Ensure that the specified policy mapping record has been removed
+   *
+   * @param target the target
+   * @param policy the policy
+   */
+  void ensurePolicyMappingRecordRemoved(PolarisBaseEntity target, PolicyEntity policy) {
+    target =
+        polarisMetaStoreManager
+            .loadEntity(
+                this.polarisCallContext, target.getCatalogId(), target.getId(), target.getType())
+            .getEntity();
+    Assertions.assertThat(target).isNotNull();
+
+    policy =
+        PolicyEntity.of(
+            polarisMetaStoreManager
+                .loadEntity(
+                    this.polarisCallContext,
+                    policy.getCatalogId(),
+                    policy.getId(),
+                    PolarisEntityType.POLICY)
+                .getEntity());
+    Assertions.assertThat(policy).isNotNull();
+
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(this.polarisCallContext, target);
+
+    validateLoadedPolicyMappings(loadPolicyMappingsResult);
+
+    checkPolicyMappingRecordRemoved(
+        loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy);
+
+    // also try load by specific type
+    LoadPolicyMappingsResult loadPolicyMappingsResultByType =
+        polarisMetaStoreManager.loadPoliciesOnEntityByType(
+            this.polarisCallContext, target, policy.getPolicyType());
+    validateLoadedPolicyMappings(loadPolicyMappingsResultByType);
+    checkPolicyMappingRecordRemoved(
+        loadPolicyMappingsResultByType.getPolicyMappingRecords(), target, policy);
+  }
+
+  /**
+   * Validate the return of loadPoliciesOnEntity() or LoadPoliciesOnEntityByType()
+   *
+   * @param loadPolicyMappingRecords return from calling
+   *     loadPoliciesOnEntity()/LoadPoliciesOnEntityByType()
+   */
+  void validateLoadedPolicyMappings(LoadPolicyMappingsResult loadPolicyMappingRecords) {
+    Assertions.assertThat(loadPolicyMappingRecords).isNotNull();
+
+    Map<Long, PolarisBaseEntity> policyEntities = loadPolicyMappingRecords.getEntitiesAsMap();
+    Assertions.assertThat(policyEntities).isNotNull();
+
+    for (PolarisPolicyMappingRecord policyMappingRecord :
+        loadPolicyMappingRecords.getPolicyMappingRecords()) {
+      PolicyEntity entity =
+          PolicyEntity.of(
+              polarisMetaStoreManager
+                  .loadEntity(
+                      this.polarisCallContext,
+                      policyMappingRecord.getPolicyCatalogId(),
+                      policyMappingRecord.getPolicyId(),
+                      PolarisEntityType.POLICY)
+                  .getEntity());
+
+      Assertions.assertThat(entity).isNotNull();
+      Assertions.assertThat(policyEntities.get(entity.getId())).isEqualTo(entity);
+    }
+  }
+
+  /**
+   * Check that the policy mapping record exists
+   *
+   * @param policyMappingRecords list of policy mapping records
+   * @param target the target
+   * @param policy the policy
+   */
+  void checkPolicyMappingRecordExists(
+      List<PolarisPolicyMappingRecord> policyMappingRecords,
+      PolarisBaseEntity target,
+      PolicyEntity policy) {
+    boolean exists = isPolicyMappingRecordExists(policyMappingRecords, target, policy);
+    Assertions.assertThat(exists).isTrue();
+  }
+
+  /**
+   * Check that the policy mapping record has been removed
+   *
+   * @param policyMappingRecords list of policy mapping records
+   * @param target the target
+   * @param policy the policy
+   */
+  void checkPolicyMappingRecordRemoved(
+      List<PolarisPolicyMappingRecord> policyMappingRecords,
+      PolarisBaseEntity target,
+      PolicyEntity policy) {
+    boolean exists = isPolicyMappingRecordExists(policyMappingRecords, target, policy);
+    Assertions.assertThat(exists).isFalse();
+  }
+
+  /**
+   * Check if the policy mapping record exists
+   *
+   * @param policyMappingRecords list of policy mapping records
+   * @param target the target
+   * @param policy the policy
+   */
+  boolean isPolicyMappingRecordExists(
+      List<PolarisPolicyMappingRecord> policyMappingRecords,
+      PolarisBaseEntity target,
+      PolicyEntity policy) {
+    long policyMappingCount =
+        policyMappingRecords.stream()
+            .filter(
+                record ->
+                    record.getPolicyCatalogId() == policy.getCatalogId()
+                        && record.getPolicyId() == policy.getId()
+                        && record.getTargetCatalogId() == target.getCatalogId()
+                        && record.getTargetId() == target.getId()
+                        && record.getPolicyTypeCode() == policy.getPolicyTypeCode())
+            .count();
+    return policyMappingCount == 1;
   }
 
   /**
@@ -2453,5 +2648,63 @@ public class PolarisTestMetaStoreManager {
     // refresh a purged entity
     this.refreshCacheEntry(
         1, 1, PolarisEntityType.TABLE_LIKE, N1.getCatalogId() + 1000, N1.getId(), false);
+  }
+
+  void testPolicyMapping() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    Assertions.assertThat(catalog).isNotNull();
+
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity N1_N2 =
+        this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
+    PolarisBaseEntity N5 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N5");
+
+    PolarisBaseEntity N1_N2_T1 =
+        this.ensureExistsByName(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "T1");
+
+    PolicyEntity N1_P1 =
+        this.createPolicy(List.of(catalog, N1), "P1", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    PolicyEntity N1_P2 =
+        this.createPolicy(List.of(catalog, N1), "P2", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    PolicyEntity N5_P3 =
+        this.createPolicy(List.of(catalog, N5), "P3", PredefinedPolicyTypes.METADATA_COMPACTION);
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
+    // attach a different policy of different inheritable type to the same target, should succeed
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
+
+    // attach a different policy of same inheritable type to the same target, should fail
+    PolicyAttachmentResult policyAttachmentResult =
+        polarisMetaStoreManager.attachPolicyToEntity(
+            polarisCallContext,
+            List.of(catalog, N1, N1_N2),
+            N1_N2_T1,
+            List.of(catalog, N1),
+            N1_P2,
+            null);
+
+    Assertions.assertThat(policyAttachmentResult.isSuccess()).isFalse();
+    Assertions.assertThat(policyAttachmentResult.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS);
+
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntityByType(
+            polarisCallContext, N1_N2_T1, PredefinedPolicyTypes.DATA_COMPACTION);
+    Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).hasSize(1);
+    PolicyEntity policyEntity = PolicyEntity.of(loadPolicyMappingsResult.getEntities().get(0));
+    Assertions.assertThat(policyEntity.getId()).isEqualTo(N1_P1.getId());
+    Assertions.assertThat(policyEntity.getPolicyType())
+        .isEqualTo(PredefinedPolicyTypes.DATA_COMPACTION);
+
+    detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
+    detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
   }
 }
