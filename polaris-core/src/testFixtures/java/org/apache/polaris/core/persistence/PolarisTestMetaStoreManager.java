@@ -67,8 +67,10 @@ public class PolarisTestMetaStoreManager {
   final PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the start time
-  private final long testStartTime = System.currentTimeMillis();
+  private final long testStartTime;
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  private final boolean supportsChangeTracking;
 
   // if true, simulate retries by client
   private boolean doRetry;
@@ -76,13 +78,23 @@ public class PolarisTestMetaStoreManager {
   // initialize the test
   public PolarisTestMetaStoreManager(
       PolarisMetaStoreManager polarisMetaStoreManager, PolarisCallContext polarisCallContext) {
-    this.polarisCallContext = polarisCallContext;
-    this.polarisMetaStoreManager = polarisMetaStoreManager;
-    this.doRetry = false;
+    this(polarisMetaStoreManager, polarisCallContext, System.currentTimeMillis(), true);
 
     // bootstrap the Polaris service
     polarisMetaStoreManager.purge(polarisCallContext);
     polarisMetaStoreManager.bootstrapPolarisService(polarisCallContext);
+  }
+
+  public PolarisTestMetaStoreManager(
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      PolarisCallContext polarisCallContext,
+      long testStartTime,
+      boolean supportsChangeTracking) {
+    this.testStartTime = testStartTime;
+    this.polarisCallContext = polarisCallContext;
+    this.polarisMetaStoreManager = polarisMetaStoreManager;
+    this.supportsChangeTracking = supportsChangeTracking;
+    this.doRetry = false;
   }
 
   public void forceRetry() {
@@ -1443,16 +1455,18 @@ public class PolarisTestMetaStoreManager {
         .isEqualTo(jsonNode(entity.getInternalProperties()));
 
     // lookup the tracking slice to verify this has been updated too
-    List<PolarisChangeTrackingVersions> versions =
-        polarisMetaStoreManager
-            .loadEntitiesChangeTracking(
-                this.polarisCallContext, List.of(new PolarisEntityId(catalogId, entity.getId())))
-            .getChangeTrackingVersions();
-    Assertions.assertThat(versions).hasSize(1);
-    Assertions.assertThat(versions.get(0).getEntityVersion())
-        .isEqualTo(updatedEntity.getEntityVersion());
-    Assertions.assertThat(versions.get(0).getGrantRecordsVersion())
-        .isEqualTo(updatedEntity.getGrantRecordsVersion());
+    if (supportsChangeTracking) {
+      List<PolarisChangeTrackingVersions> versions =
+          polarisMetaStoreManager
+              .loadEntitiesChangeTracking(
+                  this.polarisCallContext, List.of(new PolarisEntityId(catalogId, entity.getId())))
+              .getChangeTrackingVersions();
+      Assertions.assertThat(versions).hasSize(1);
+      Assertions.assertThat(versions.get(0).getEntityVersion())
+          .isEqualTo(updatedEntity.getEntityVersion());
+      Assertions.assertThat(versions.get(0).getGrantRecordsVersion())
+          .isEqualTo(updatedEntity.getGrantRecordsVersion());
+    }
 
     return updatedEntity;
   }
@@ -2430,12 +2444,12 @@ public class PolarisTestMetaStoreManager {
     // the renamed entity
     PolarisEntity renamedEntityInput = new PolarisEntity(entity);
     renamedEntityInput.setName(newName);
-    String updatedInternalPropertiesString = "{\"key1\": \"updatedDataForInternalProperties1234\"}";
-    String updatedPropertiesString = "{\"key1\": \"updatedDataForProperties9876\"}";
+    var updatedInternalProperties = Map.of("key1", "updatedDataForInternalProperties1234");
+    var updatedProperties = Map.of("key1", "updatedDataForProperties9876");
 
     // this is to test that properties are also updated during the rename operation
-    renamedEntityInput.setInternalProperties(updatedInternalPropertiesString);
-    renamedEntityInput.setProperties(updatedPropertiesString);
+    renamedEntityInput.setInternalPropertiesAsMap(updatedInternalProperties);
+    renamedEntityInput.setPropertiesAsMap(updatedProperties);
 
     // check to see if we would have a name conflict
     EntityResult newNameLookup =
@@ -2468,9 +2482,10 @@ public class PolarisTestMetaStoreManager {
       Assertions.assertThat(renamedEntity).isEqualTo(renamedEntityOut);
 
       // ensure properties have been updated
-      Assertions.assertThat(renamedEntityOut.getInternalProperties())
-          .isEqualTo(updatedInternalPropertiesString);
-      Assertions.assertThat(renamedEntityOut.getProperties()).isEqualTo(updatedPropertiesString);
+      Assertions.assertThat(renamedEntityOut.getInternalPropertiesAsMap())
+          .containsAllEntriesOf(updatedInternalProperties);
+      Assertions.assertThat(renamedEntityOut.getPropertiesAsMap())
+          .containsAllEntriesOf(updatedProperties);
 
       // ensure the old one is gone
       EntityResult res =
