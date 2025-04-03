@@ -56,6 +56,7 @@ dependencies {
     // exclude the iceberg rest dependencies, use the ones pulled
     // with iceberg-core dependency
     exclude("org.apache.iceberg.rest", "*")
+    exclude("org.apache.iceberg.hadoop", "*")
   }
 
   implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")

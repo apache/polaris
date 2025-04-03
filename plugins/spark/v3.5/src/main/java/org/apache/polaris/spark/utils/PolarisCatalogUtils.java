@@ -21,6 +21,9 @@ package org.apache.polaris.spark.utils;
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
 import java.util.Map;
+
+import org.apache.iceberg.CachingCatalog;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
@@ -93,9 +96,17 @@ public class PolarisCatalogUtils {
    */
   public static OAuth2Util.AuthSession getAuthSession(SparkCatalog sparkCatalog) {
     try {
-      Field icebergRestCatalogField = sparkCatalog.getClass().getDeclaredField("icebergCatalog");
-      icebergRestCatalogField.setAccessible(true);
-      RESTCatalog icebergRestCatalog = (RESTCatalog) icebergRestCatalogField.get(sparkCatalog);
+      Field icebergCatalogField = sparkCatalog.getClass().getDeclaredField("icebergCatalog");
+      icebergCatalogField.setAccessible(true);
+      Catalog icebergCatalog = (Catalog) icebergCatalogField.get(sparkCatalog);
+      RESTCatalog icebergRestCatalog;
+      if (icebergCatalog instanceof CachingCatalog) {
+        Field catalogField = icebergCatalog.getClass().getDeclaredField("catalog");
+        catalogField.setAccessible(true);
+        icebergRestCatalog = (RESTCatalog) catalogField.get(icebergCatalog);
+      } else {
+        icebergRestCatalog = (RESTCatalog) icebergCatalog;
+      }
 
       Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
       sessionCatalogField.setAccessible(true);

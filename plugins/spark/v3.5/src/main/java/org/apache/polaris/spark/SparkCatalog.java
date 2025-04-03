@@ -126,7 +126,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
 
   @Override
   public String[] defaultNamespace() {
-    throw new UnsupportedOperationException("defaultNamespace");
+    return this.icebergsSparkCatalog.defaultNamespace();
   }
 
   @Override
