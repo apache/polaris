@@ -32,6 +32,10 @@ public class IcebergHttpUtil {
    * @return the generated ETag
    */
   public static String generateETagForMetadataFileLocation(String metadataFileLocation) {
+    if (metadataFileLocation == null) {
+      metadataFileLocation = "";
+    }
+
     // Use hash of metadata location since we don't want clients to use the ETag to try to extract
     // the metadata file location
     String hashedMetadataFileLocation = DigestUtils.sha256Hex(metadataFileLocation);

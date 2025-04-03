@@ -503,8 +503,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return the Polaris table entity for the table
    */
   private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
 
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
@@ -529,12 +528,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-    String tableEntityTag =
-        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-
-    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
-      return Optional.empty();
+    if (ifNoneMatch != null) {
+      // Perform freshness-aware table loading if caller specified ifNoneMatch.
+      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      String tableEntityTag =
+          IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+      if (ifNoneMatch.anyMatch(tableEntityTag)) {
+        return Optional.empty();
+      }
     }
 
     return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
@@ -601,12 +602,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
-    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-    String tableETag =
-        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-
-    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
-      return Optional.empty();
+    if (ifNoneMatch != null) {
+      // Perform freshness-aware table loading if caller specified ifNoneMatch.
+      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      String tableETag =
+          IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+      if (ifNoneMatch.anyMatch(tableETag)) {
+        return Optional.empty();
+      }
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
