@@ -51,11 +51,8 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-<<<<<<< HEAD
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
-=======
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
->>>>>>> b50e594ed25297a112e721c8fcf4cd878489c664
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
