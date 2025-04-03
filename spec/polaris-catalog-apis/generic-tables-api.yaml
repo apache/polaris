@@ -243,7 +243,6 @@ components:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
         identifiers:
           type: array
-          uniqueItems: true
           items:
             $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableIdentifier'
 
