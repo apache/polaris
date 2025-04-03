@@ -477,7 +477,9 @@ public class PolarisAdminService {
         } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
           throw new NoSuchViewException("View does not exist: %s", identifier);
         } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-          throw new NoSuchViewException("Generic table does not exist: %s", identifier);
+          throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+        } else {
+          throw new IllegalStateException("Unrecognized entity subtype " + subType);
         }
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
@@ -1629,6 +1631,8 @@ public class PolarisAdminService {
                         ViewPrivilege.valueOf(privilege.toString()),
                         GrantResource.TypeEnum.VIEW);
                 viewGrants.add(grant);
+              } else {
+                throw new IllegalStateException("Unrecognized entity subtype " + baseEntity.getSubType());
               }
               break;
             }
@@ -1715,6 +1719,8 @@ public class PolarisAdminService {
         throw new NotFoundException("Table %s not found", identifier);
       } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NotFoundException("Generic table %s not found", identifier);
+      } else {
+        throw new IllegalStateException("Unrecognized entity subtype " + subType);
       }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
@@ -1755,6 +1761,8 @@ public class PolarisAdminService {
         throw new NotFoundException("Table %s not found", identifier);
       } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NotFoundException("Generic table %s not found", identifier);
+      } else {
+        throw new IllegalStateException("Unrecognized entity subtype " + subType);
       }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
