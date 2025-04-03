@@ -55,6 +55,6 @@ public class PolarisEndpoints {
             .getConfiguration(
                 callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
 
-    return genericTableEnabled ? PolarisEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+    return genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
   }
 }
