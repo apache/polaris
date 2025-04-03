@@ -22,11 +22,10 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.admin.model.*;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -35,21 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
-@TestProfile(GetConfigTest.Profile.class)
 public class GetConfigTest {
-  public static class Profile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
-          "true",
-          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
-    }
-  }
-
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testGetConfig(boolean enableGenericTable) {
@@ -60,7 +45,7 @@ public class GetConfigTest {
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://"))
             .build();
-    String catalogName = "test-catalog";
+    String catalogName = "test-catalog-" + UUID.randomUUID();
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
