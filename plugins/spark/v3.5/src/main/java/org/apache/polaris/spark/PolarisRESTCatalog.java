@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.spark;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -31,17 +35,14 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
-import org.apache.polaris.core.rest.PolarisEndpoint;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
+import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class PolarisRESTCatalog implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
@@ -58,10 +59,10 @@ public class PolarisRESTCatalog implements Closeable {
   // TODO: update to use the predefined GENERIC_TABLE_ENDPOINTS
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
-          .add(PolarisEndpoint.V1_CREATE_GENERIC_TABLE)
-          .add(PolarisEndpoint.V1_LOAD_GENERIC_TABLE)
-          .add(PolarisEndpoint.V1_DELETE_GENERIC_TABLE)
-          .add(PolarisEndpoint.V1_LIST_GENERIC_TABLES)
+          .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_DELETE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_LIST_GENERIC_TABLES)
           .build();
 
   public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
@@ -104,7 +105,6 @@ public class PolarisRESTCatalog implements Closeable {
     this.closeables = new CloseableGroup();
     this.closeables.addCloseable(this.restClient);
     this.closeables.setSuppressCloseFailure(true);
-
   }
 
   protected static ConfigResponse fetchConfig(
@@ -145,12 +145,38 @@ public class PolarisRESTCatalog implements Closeable {
     throw new UnsupportedOperationException("dropTable not supported");
   }
 
-  public GenericTable createTable(TableIdentifier identifier, String format, Map<String, String> props) {
-    throw new UnsupportedOperationException("CreateTable not supported");
+  public GenericTable createTable(
+      TableIdentifier identifier, String format, Map<String, String> props) {
+    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    CreateGenericTableRESTRequest request =
+        new CreateGenericTableRESTRequest(identifier.name(), format, null, props);
+
+    LoadGenericTableRESTResponse response =
+        restClient
+            .withAuthSession(this.catalogAuth)
+            .post(
+                paths.genericTables(identifier.namespace()),
+                request,
+                LoadGenericTableRESTResponse.class,
+                Map.of(),
+                ErrorHandlers.tableErrorHandler());
+
+    return response.getTable();
   }
 
   public GenericTable loadTable(TableIdentifier identifier) {
-    throw new UnsupportedOperationException("loadTable not supported");
-  }
+    Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
+    PolarisCatalogUtils.checkIdentifierIsValid(identifier);
+    LoadGenericTableRESTResponse response =
+        restClient
+            .withAuthSession(this.catalogAuth)
+            .get(
+                paths.genericTable(identifier),
+                null,
+                LoadGenericTableRESTResponse.class,
+                Map.of(),
+                ErrorHandlers.tableErrorHandler());
 
+    return response.getTable();
+  }
 }

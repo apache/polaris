@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.spark;
 
+import java.util.Map;
+import org.apache.iceberg.spark.Spark3Util;
+import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
@@ -31,8 +34,6 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 public class PolarisSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisSparkCatalog.class);
@@ -56,17 +57,28 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
-    throw new UnsupportedOperationException("load table is not supported");
+    GenericTable genericTable =
+        this.restCatalog.loadTable(Spark3Util.identifierToTableIdentifier(identifier));
+    return PolarisCatalogUtils.loadSparkTable(genericTable);
   }
 
   @Override
   public Table createTable(
-      Identifier identifier, StructType schema, Transform[] transforms, Map<String, String> properties) throws TableAlreadyExistsException, NoSuchNamespaceException {
-    throw new UnsupportedOperationException("create table is not supported");
+      Identifier identifier,
+      StructType schema,
+      Transform[] transforms,
+      Map<String, String> properties)
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
+    String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+    GenericTable genericTable =
+        this.restCatalog.createTable(
+            Spark3Util.identifierToTableIdentifier(identifier), format, properties);
+    return PolarisCatalogUtils.loadSparkTable(genericTable);
   }
 
   @Override
-  public Table alterTable(Identifier identifier, TableChange... changes) throws NoSuchTableException {
+  public Table alterTable(Identifier identifier, TableChange... changes)
+      throws NoSuchTableException {
     throw new NoSuchTableException(identifier);
   }
 
@@ -85,6 +97,4 @@ public class PolarisSparkCatalog implements TableCatalog {
   public Identifier[] listTables(String[] namespace) {
     throw new UnsupportedOperationException("listTables operation is not supported");
   }
-
-
 }
