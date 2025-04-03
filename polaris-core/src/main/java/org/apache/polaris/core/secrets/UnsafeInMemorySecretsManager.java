@@ -23,7 +23,9 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
@@ -90,13 +92,9 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
     Map<String, String> referencePayload = new HashMap<>();
 
-    // Keep a hash to detect data corruption or tampering; String::hashCode is standardized and can
-    // help detect systematic bugs causing corrupted secrets even if not secure against intentional
-    // tampering.
-    // A production implementation should use a cryptographic hash function instead if integrity
-    // of the secret is an actual concern.
-    referencePayload.put(
-        CIPHERTEXT_HASH, Integer.toString(encryptedSecretCipherTextBase64.hashCode()));
+    // Keep a hash to detect data corruption or tampering; hash the base64-encoded string so
+    // we detect the corruption even before attempting to base64-decode it.
+    referencePayload.put(CIPHERTEXT_HASH, DigestUtils.sha256Hex(encryptedSecretCipherTextBase64));
 
     // Keep the randomly generated one-time-use encryption key in the reference payload.
     // A production implementation may choose to store an encryption key reference or URN if the
@@ -121,15 +119,15 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
     // Validate integrity of the base64-encoded ciphertext which was retrieved from the secret
     // store against the hash we stored in the referencePayload.
-    int expecteCipherTextBase64Hash =
-        Integer.parseInt(secretReference.getReferencePayload().get(CIPHERTEXT_HASH));
-    if (encryptedSecretCipherTextBase64.hashCode() != expecteCipherTextBase64Hash) {
+    String expecteCipherTextBase64Hash = secretReference.getReferencePayload().get(CIPHERTEXT_HASH);
+    String retrievedCipherTextBase64Hash = DigestUtils.sha256Hex(encryptedSecretCipherTextBase64);
+    if (!Objects.equals(retrievedCipherTextBase64Hash, expecteCipherTextBase64Hash)) {
       throw new IllegalArgumentException(
           String.format(
-              "Ciphertext hash mismatch for URN %s; expected %d got %d",
+              "Ciphertext hash mismatch for URN %s; expected %s got %s",
               secretReference.getUrn(),
               expecteCipherTextBase64Hash,
-              encryptedSecretCipherTextBase64.hashCode()));
+              retrievedCipherTextBase64Hash));
     }
 
     byte[] cipherTextBytes = Base64.getDecoder().decode(encryptedSecretCipherTextBase64);
