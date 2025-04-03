@@ -32,7 +32,9 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -67,6 +69,16 @@ public class PolicyCatalog {
 
   public Policy createPolicy(
       PolicyIdentifier policyIdentifier, String type, String description, String content) {
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(policyIdentifier.getNamespace());
+    if (resolvedParent == null) {
+      // Illegal state because the namespace should've already been in the static resolution set.
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for Policy '%s'", policyIdentifier));
+    }
+
+    List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
+
     PolarisResolvedPathWrapper resolvedPolicyEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
@@ -85,18 +97,39 @@ public class PolicyCatalog {
           new PolicyEntity.Builder(
                   policyIdentifier.getNamespace(), policyIdentifier.getName(), policyType)
               .setCatalogId(catalogId)
+              .setParentId(resolvedParent.getRawLeafEntity().getId())
               .setDescription(description)
               .setContent(content)
-              .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+              .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+              .setCreateTimestamp(System.currentTimeMillis())
               .build();
 
       PolicyValidators.validate(entity);
-
     } else {
       throw new AlreadyExistsException("Policy already exists %s", policyIdentifier);
     }
 
-    return constructPolicy(createPolicyEntity(policyIdentifier, entity));
+    EntityResult res =
+        metaStoreManager.createEntityIfNotExists(
+            getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+
+    if (!res.isSuccess()) {
+      switch (res.getReturnStatus()) {
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
+          throw new AlreadyExistsException("Policy already exists %s", policyIdentifier);
+
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Unknown error status for identifier %s: %s with extraInfo: %s",
+                  policyIdentifier, res.getReturnStatus(), res.getExtraInformation()));
+      }
+    }
+
+    PolicyEntity resultEntity = PolicyEntity.of(res.getEntity());
+    LOGGER.debug(
+        "Created Policy entity {} with PolicyIdentifier {}", resultEntity, policyIdentifier);
+    return constructPolicy(resultEntity);
   }
 
   public List<PolicyIdentifier> listPolicies(Namespace namespace, PolicyType policyType) {
@@ -108,7 +141,7 @@ public class PolicyCatalog {
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
     List<PolicyEntity> policyEntities =
-        getMetaStoreManager()
+        metaStoreManager
             .listEntities(
                 getCurrentPolarisContext(),
                 PolarisEntity.toCoreList(catalogPath),
@@ -119,7 +152,7 @@ public class PolicyCatalog {
             .map(
                 polarisEntityActiveRecord ->
                     PolicyEntity.of(
-                        getMetaStoreManager()
+                        metaStoreManager
                             .loadEntity(
                                 getCurrentPolarisContext(),
                                 polarisEntityActiveRecord.getCatalogId(),
@@ -173,36 +206,49 @@ public class PolicyCatalog {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
     }
 
-    PolicyEntity.Builder newPolicyBuilder = new PolicyEntity.Builder(policy);
+    // Verify that the current version of the policy matches the version that the user is trying to
+    // update
     int policyVersion = policy.getPolicyVersion();
     if (currentPolicyVersion != policyVersion) {
       throw new PolicyVersionMismatchException(
           String.format("Policy version mismatch. Current version is %d", policyVersion));
     }
-    boolean hasUpdate = false;
-    if (newContent != null) {
-      newPolicyBuilder.setContent(newContent);
-      hasUpdate = true;
-    }
 
-    if (newDescription != null) {
-      newPolicyBuilder.setDescription(newDescription);
-      hasUpdate = true;
-    }
-
-    if (!hasUpdate) {
+    if (newDescription.equals(policy.getDescription()) && newContent.equals(policy.getContent())) {
+      // No need to update the policy if the new description and content are the same as the current
       return constructPolicy(policy);
     }
 
+    PolicyEntity.Builder newPolicyBuilder = new PolicyEntity.Builder(policy);
+    newPolicyBuilder.setContent(newContent);
+    newPolicyBuilder.setDescription(newDescription);
     newPolicyBuilder.setPolicyVersion(policyVersion + 1);
     PolicyEntity newPolicyEntity = newPolicyBuilder.build();
+
     PolicyValidators.validate(newPolicyEntity);
-    newPolicyEntity = PolicyEntity.of(updatePolicy(policyIdentifier, newPolicyEntity));
+
+    List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
+    newPolicyEntity =
+        Optional.ofNullable(
+                metaStoreManager
+                    .updateEntityPropertiesIfNotChanged(
+                        getCurrentPolarisContext(),
+                        PolarisEntity.toCoreList(catalogPath),
+                        newPolicyEntity)
+                    .getEntity())
+            .map(PolicyEntity::of)
+            .orElse(null);
+
+    if (newPolicyEntity == null) {
+      throw new IllegalStateException(
+          String.format("Failed to update policy %s", policyIdentifier));
+    }
 
     return constructPolicy(newPolicyEntity);
   }
 
   public boolean dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
+    // TODO: Implement detachAll when we support attach/detach policy
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
@@ -214,77 +260,14 @@ public class PolicyCatalog {
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
     DropEntityResult dropEntityResult =
-        getMetaStoreManager()
-            .dropEntityIfExists(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                leafEntity,
-                Map.of(),
-                false);
+        metaStoreManager.dropEntityIfExists(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            leafEntity,
+            Map.of(),
+            false);
 
     return dropEntityResult.isSuccess();
-  }
-
-  private PolicyEntity createPolicyEntity(PolicyIdentifier identifier, PolarisEntity entity) {
-    PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.getNamespace());
-    if (resolvedParent == null) {
-      // Illegal state because the namespace should've already been in the static resolution set.
-      throw new IllegalStateException(
-          String.format("Failed to fetch resolved parent for Policy '%s'", identifier));
-    }
-
-    List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
-    if (entity.getParentId() <= 0) {
-      entity =
-          new PolarisEntity.Builder(entity)
-              .setParentId(resolvedParent.getRawLeafEntity().getId())
-              .build();
-    }
-
-    entity =
-        new PolarisEntity.Builder(entity).setCreateTimestamp(System.currentTimeMillis()).build();
-
-    PolarisEntity returnedEntity =
-        PolarisEntity.of(
-            getMetaStoreManager()
-                .createEntityIfNotExists(
-                    getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity));
-
-    LOGGER.debug("Created Policy entity {} with Identifier {}", entity, identifier);
-    if (returnedEntity == null) {
-      throw new IllegalStateException("Failed to create Policy entity");
-    }
-
-    return PolicyEntity.of(returnedEntity);
-  }
-
-  private PolarisEntity updatePolicy(PolicyIdentifier identifier, PolarisEntity entity) {
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, entity.getType(), entity.getSubType());
-    if (resolvedEntities == null) {
-      throw new IllegalStateException(
-          String.format("Failed to fetch resolved PolicyIdentifier '%s'", identifier));
-    }
-
-    List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
-    PolarisEntity returnedEntity =
-        Optional.ofNullable(
-                getMetaStoreManager()
-                    .updateEntityPropertiesIfNotChanged(
-                        getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity)
-                    .getEntity())
-            .map(PolarisEntity::new)
-            .orElse(null);
-    if (returnedEntity == null) {
-      throw new IllegalStateException("Failed to update Policy entity");
-    }
-
-    return returnedEntity;
-  }
-
-  private PolarisMetaStoreManager getMetaStoreManager() {
-    return metaStoreManager;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
