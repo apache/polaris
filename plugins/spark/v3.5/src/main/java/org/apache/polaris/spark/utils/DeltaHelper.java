@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.spark.utils;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import org.apache.iceberg.common.DynConstructors;
 import org.apache.polaris.spark.PolarisSparkCatalog;
 import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
@@ -26,13 +27,11 @@ import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-
 public class DeltaHelper {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaHelper.class);
 
-  private static final String DELTA_CATALOG_CLASS = "org.apache.spark.sql.delta.catalog.DeltaCatalog";
+  private static final String DELTA_CATALOG_CLASS =
+      "org.apache.spark.sql.delta.catalog.DeltaCatalog";
   private TableCatalog deltaCatalog = null;
 
   public TableCatalog loadDeltaCatalog(PolarisSparkCatalog polarisSparkCatalog) {
@@ -54,7 +53,9 @@ public class DeltaHelper {
       this.deltaCatalog = ctor.newInstance();
     } catch (ClassCastException e) {
       throw new IllegalArgumentException(
-          String.format("Cannot initialize Delta Catalog, %s does not implement Table Catalog.", DELTA_CATALOG_CLASS),
+          String.format(
+              "Cannot initialize Delta Catalog, %s does not implement Table Catalog.",
+              DELTA_CATALOG_CLASS),
           e);
     }
 
@@ -63,20 +64,31 @@ public class DeltaHelper {
 
     // https://github.com/delta-io/delta/issues/4306
     try {
-      Field field = this.deltaCatalog.getClass().getDeclaredField("isUnityCatalog");
-        field.setAccessible(true);
-        // Access the lazy val field's underlying method
-        String methodGetName = "isUnityCatalog" + "$lzycompute";
-        Method method = this.deltaCatalog.getClass().getDeclaredMethod(methodGetName);
-        method.setAccessible(true);
-        // invoke the lazy methods before it
-        method.invoke(this.deltaCatalog);
-        field.set(this.deltaCatalog, true);
-    } catch (NoSuchFieldException e) {
-        throw new RuntimeException("Failed find the isUnityCatalog field, delt", e);
+      // Access the lazy val field's underlying method
+      String methodGetName = "isUnityCatalog" + "$lzycompute";
+      Method method = this.deltaCatalog.getClass().getDeclaredMethod(methodGetName);
+      method.setAccessible(true);
+      // invoke the lazy methods before it is set
+      method.invoke(this.deltaCatalog);
     } catch (NoSuchMethodException e) {
-      throw new RuntimeException("Failed to invoke isUnityCatalog evaluation method", e);
+      throw new RuntimeException(
+          "Failed to find lazy compute method for isUnityCatalog, delta-spark version >= 3.2.1 is required",
+          e);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to invoke the lazy compute methods for isUnityCatalog", e);
     }
+
+    try {
+      Field field = this.deltaCatalog.getClass().getDeclaredField("isUnityCatalog");
+      field.setAccessible(true);
+      field.set(this.deltaCatalog, true);
+    } catch (NoSuchFieldException e) {
+      throw new RuntimeException(
+          "Failed find the isUnityCatalog field, delta-spark version >= 3.2.1 is required", e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Failed to set the isUnityCatalog field", e);
+    }
+
     return this.deltaCatalog;
   }
 }

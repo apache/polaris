@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.spark;
 
-import com.google.common.collect.ImmutableSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.spark.SupportsReplaceView;
@@ -41,8 +40,10 @@ import org.apache.spark.sql.connector.catalog.ViewCatalog;
 import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
@@ -57,12 +58,11 @@ public class SparkCatalog
         SupportsReplaceView {
   private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
-  private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
-
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   private PolarisSparkCatalog polarisSparkCatalog = null;
 
+  private DeltaHelper deltaHelper = null;
 
   @Override
   public String name() {
@@ -72,30 +72,57 @@ public class SparkCatalog
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
     String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
+    // TODO: relax this once AuthManager reuse enabled
     if (catalogImpl != null) {
-      throw new UnsupportedOperationException("Customized catalog implementation is currently not supported!");
+      throw new UnsupportedOperationException(
+          "Customized catalog implementation is currently not supported!");
     }
     String catalogType =
-        PropertyUtil.propertyAsString(options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_REST);
-    if (!catalogType.equals(CatalogUtil.ICEBERG_CATALOG_REST)) {
-      throw new UnsupportedOperationException("Only rest catalog type is supported, but got catalog type: " + catalogType);
+        PropertyUtil.propertyAsString(
+            options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
+    if (!catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST)) {
+      throw new UnsupportedOperationException(
+          "Only rest catalog type is supported, but got catalog type: " + catalogType);
     }
 
     this.catalogName = name;
+    // initialize the icebergSparkCatalog
     this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
     this.icebergsSparkCatalog.initialize(name, options);
+
+    // initialize the polaris spark catalog
+    OAuth2Util.AuthSession catalogAuth =
+        PolarisCatalogUtils.getAuthSession(this.icebergsSparkCatalog);
+    PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
+    restCatalog.initialize(options, catalogAuth);
+    this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
+    this.polarisSparkCatalog.initialize(name, options);
+
+    this.deltaHelper = new DeltaHelper();
   }
 
   @Override
   public Table loadTable(Identifier ident) throws NoSuchTableException {
-    throw new UnsupportedOperationException("loadTable");
+    try {
+      return this.icebergsSparkCatalog.loadTable(ident);
+    } catch (NoSuchTableException e) {
+      return this.polarisSparkCatalog.loadTable(ident);
+    }
   }
 
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
-      throws TableAlreadyExistsException {
-    throw new UnsupportedOperationException("createTable");
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
+    String provider = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+    if (PolarisCatalogUtils.useIceberg(provider)) {
+      return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
+    } else if (PolarisCatalogUtils.useDelta(provider)) {
+      TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
+      return deltaCatalog.createTable(ident, schema, transforms, properties);
+    } else {
+      return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
+    }
   }
 
   @Override
