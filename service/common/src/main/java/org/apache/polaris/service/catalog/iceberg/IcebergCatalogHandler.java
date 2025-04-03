@@ -538,6 +538,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .addKeyValue("tableEntity", tableEntity)
             .log("Failed to getMetadataLocation to generate ETag when loading table");
       } else {
+        // TODO: Refactor null-checking into the helper method once we create a more canonical
+        // interface for associate etags with entities.
         String tableEntityTag =
             IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
         if (ifNoneMatch.anyMatch(tableEntityTag)) {
@@ -620,6 +622,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .addKeyValue("tableEntity", tableEntity)
             .log("Failed to getMetadataLocation to generate ETag when loading table");
       } else {
+        // TODO: Refactor null-checking into the helper method once we create a more canonical
+        // interface for associate etags with entities.
         String tableETag =
             IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
         if (ifNoneMatch.anyMatch(tableETag)) {
