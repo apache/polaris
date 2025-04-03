@@ -224,8 +224,10 @@ public abstract class CatalogHandler {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
       } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-      } else {
+      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NoSuchViewException("View does not exist: %s", identifier);
+      } else {
+        throw new IllegalStateException("Unrecognized entity subtype " + subType);
       }
     }
     authorizer.authorizeOrThrow(
@@ -266,6 +268,8 @@ public abstract class CatalogHandler {
         throw new NoSuchViewException("View does not exist: %s", identifier);
       } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+      } else {
+        throw new IllegalStateException("Unrecognized entity subtype " + subType);
       }
     }
 
