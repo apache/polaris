@@ -21,7 +21,6 @@ package org.apache.polaris.spark.utils;
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
 import java.util.Map;
-
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
