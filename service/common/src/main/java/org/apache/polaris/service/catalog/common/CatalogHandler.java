@@ -323,7 +323,7 @@ public abstract class CatalogHandler {
         == null) {
       if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", src);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NoSuchViewException("View does not exist: %s", src);
       } else {
         throw new NoSuchTableException("Generic table does not exist: %s", src);
