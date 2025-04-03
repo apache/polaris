@@ -58,7 +58,7 @@ public class PolarisSparkCatalog implements TableCatalog {
   @Override
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
     GenericTable genericTable =
-        this.restCatalog.loadTable(Spark3Util.identifierToTableIdentifier(identifier));
+        this.restCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
     return PolarisCatalogUtils.loadSparkTable(genericTable);
   }
 
@@ -71,7 +71,7 @@ public class PolarisSparkCatalog implements TableCatalog {
       throws TableAlreadyExistsException, NoSuchNamespaceException {
     String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
     GenericTable genericTable =
-        this.restCatalog.createTable(
+        this.restCatalog.createGenericTable(
             Spark3Util.identifierToTableIdentifier(identifier), format, properties);
     return PolarisCatalogUtils.loadSparkTable(genericTable);
   }

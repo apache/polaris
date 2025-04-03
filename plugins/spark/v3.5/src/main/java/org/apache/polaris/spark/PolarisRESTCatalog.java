@@ -137,17 +137,17 @@ public class PolarisRESTCatalog implements Closeable {
     }
   }
 
-  public List<TableIdentifier> listTables(Namespace ns) {
+  public List<TableIdentifier> listGenericTables(Namespace ns) {
     throw new UnsupportedOperationException("listTables not supported");
   }
 
-  public boolean dropTable(TableIdentifier identifier) {
+  public boolean dropGenericTable(TableIdentifier identifier) {
     throw new UnsupportedOperationException("dropTable not supported");
   }
 
-  public GenericTable createTable(
+  public GenericTable createGenericTable(
       TableIdentifier identifier, String format, Map<String, String> props) {
-    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(identifier.name(), format, null, props);
 
@@ -164,8 +164,8 @@ public class PolarisRESTCatalog implements Closeable {
     return response.getTable();
   }
 
-  public GenericTable loadTable(TableIdentifier identifier) {
-    Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
+  public GenericTable loadGenericTable(TableIdentifier identifier) {
+    // Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     PolarisCatalogUtils.checkIdentifierIsValid(identifier);
     LoadGenericTableRESTResponse response =
         restClient
