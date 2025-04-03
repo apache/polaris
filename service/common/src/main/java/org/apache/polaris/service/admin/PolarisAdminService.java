@@ -1632,7 +1632,8 @@ public class PolarisAdminService {
                         GrantResource.TypeEnum.VIEW);
                 viewGrants.add(grant);
               } else {
-                throw new IllegalStateException("Unrecognized entity subtype " + baseEntity.getSubType());
+                throw new IllegalStateException(
+                    "Unrecognized entity subtype " + baseEntity.getSubType());
               }
               break;
             }
