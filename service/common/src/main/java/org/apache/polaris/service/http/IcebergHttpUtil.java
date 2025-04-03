@@ -32,6 +32,11 @@ public class IcebergHttpUtil {
    * @return the generated ETag
    */
   public static String generateETagForMetadataFileLocation(String metadataFileLocation) {
+    if (metadataFileLocation == null) {
+      // Throw a more appropriate exception than letting DigestUtils die randomly.
+      throw new IllegalArgumentException("Unable to generate etag for null metadataFileLocation");
+    }
+
     // Use hash of metadata location since we don't want clients to use the ETag to try to extract
     // the metadata file location
     String hashedMetadataFileLocation = DigestUtils.sha256Hex(metadataFileLocation);

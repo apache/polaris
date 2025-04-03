@@ -235,6 +235,31 @@ public class IcebergCatalogAdapter
     return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
   }
 
+  /**
+   * For situations where we typically expect a metadataLocation to be present in the response and
+   * so expect to insert an etag header, this helper gracefully falls back to omitting the header if
+   * unable to get metadata location and logs a warning.
+   */
+  private Response.ResponseBuilder tryInsertETagHeader(
+      Response.ResponseBuilder builder,
+      LoadTableResponse response,
+      String namespace,
+      String tableName) {
+    if (response.metadataLocation() != null) {
+      builder =
+          builder.header(
+              HttpHeaders.ETAG,
+              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()));
+    } else {
+      LOGGER
+          .atWarn()
+          .addKeyValue("namespace", namespace)
+          .addKeyValue("tableName", tableName)
+          .log("Response has null metadataLocation; omitting etag");
+    }
+    return builder;
+  }
+
   @Override
   public Response namespaceExists(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
@@ -312,20 +337,14 @@ public class IcebergCatalogAdapter
             }
           } else if (delegationModes.isEmpty()) {
             LoadTableResponse response = catalog.createTableDirect(ns, createTableRequest);
-            return Response.ok(response)
-                .header(
-                    HttpHeaders.ETAG,
-                    IcebergHttpUtil.generateETagForMetadataFileLocation(
-                        response.metadataLocation()))
+            return tryInsertETagHeader(
+                    Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           } else {
             LoadTableResponse response =
                 catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
-            return Response.ok(response)
-                .header(
-                    HttpHeaders.ETAG,
-                    IcebergHttpUtil.generateETagForMetadataFileLocation(
-                        response.metadataLocation()))
+            return tryInsertETagHeader(
+                    Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           }
         });
@@ -384,11 +403,7 @@ public class IcebergCatalogAdapter
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
-          return Response.ok(response)
-              .header(
-                  HttpHeaders.ETAG,
-                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
-              .build();
+          return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
   }
 
@@ -446,11 +461,8 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
-
-          return Response.ok(response)
-              .header(
-                  HttpHeaders.ETAG,
-                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
+          return tryInsertETagHeader(
+                  Response.ok(response), response, namespace, registerTableRequest.name())
               .build();
         });
   }
