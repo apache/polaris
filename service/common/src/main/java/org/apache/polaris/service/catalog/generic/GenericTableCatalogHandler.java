@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.ws.rs.core.SecurityContext;
-
 import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
