@@ -1497,10 +1497,10 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
+        op, catalogName, PolarisEntitySubType.ANY_SUBTYPE, identifier, catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ANY_SUBTYPE, privilege);
   }
 
   public boolean revokePrivilegeOnTableFromRole(
@@ -1515,7 +1515,7 @@ public class PolarisAdminService {
         op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ANY_SUBTYPE, privilege);
   }
 
   public boolean grantPrivilegeOnViewToRole(
@@ -1711,8 +1711,10 @@ public class PolarisAdminService {
     if (resolvedPathWrapper == null) {
       if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NotFoundException("View %s not found", identifier);
-      } else {
+      } else if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NotFoundException("Table %s not found", identifier);
+      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+        throw new NotFoundException("Generic table %s not found", identifier);
       }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
@@ -1749,8 +1751,10 @@ public class PolarisAdminService {
     if (resolvedPathWrapper == null) {
       if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NotFoundException("View %s not found", identifier);
-      } else {
+      } else if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NotFoundException("Table %s not found", identifier);
+      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+        throw new NotFoundException("Generic table %s not found", identifier);
       }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
