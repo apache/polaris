@@ -531,10 +531,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
       IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-      String tableEntityTag =
-          IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-      if (ifNoneMatch.anyMatch(tableEntityTag)) {
-        return Optional.empty();
+      if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableEntity", tableEntity)
+            .log("Failed to getMetadataLocation to generate ETag when loading table");
+      } else {
+        String tableEntityTag =
+            IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+        if (ifNoneMatch.anyMatch(tableEntityTag)) {
+          return Optional.empty();
+        }
       }
     }
 
@@ -605,10 +613,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
       IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-      String tableETag =
-          IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-      if (ifNoneMatch.anyMatch(tableETag)) {
-        return Optional.empty();
+      if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableEntity", tableEntity)
+            .log("Failed to getMetadataLocation to generate ETag when loading table");
+      } else {
+        String tableETag =
+            IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+        if (ifNoneMatch.anyMatch(tableETag)) {
+          return Optional.empty();
+        }
       }
     }
 
