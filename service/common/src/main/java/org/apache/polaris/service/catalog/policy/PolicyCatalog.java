@@ -25,7 +25,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -84,7 +83,7 @@ public class PolicyCatalog {
 
       entity =
           new PolicyEntity.Builder(
-                  policyIdentifier.namespace(), policyIdentifier.name(), policyType)
+                  policyIdentifier.getNamespace(), policyIdentifier.getName(), policyType)
               .setCatalogId(catalogId)
               .setDescription(description)
               .setContent(content)
@@ -134,8 +133,13 @@ public class PolicyCatalog {
     List<PolarisEntity.NameAndId> entities =
         policyEntities.stream().map(PolarisEntity::nameAndId).toList();
 
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities).stream()
-        .map(PolicyIdentifier::fromTableIdentifier)
+    return entities.stream()
+        .map(
+            entity ->
+                PolicyIdentifier.builder()
+                    .setNamespace(namespace)
+                    .setName(entity.getName())
+                    .build())
         .toList();
   }
 
@@ -223,7 +227,7 @@ public class PolicyCatalog {
 
   private PolicyEntity createPolicyEntity(PolicyIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.namespace());
+        resolvedEntityView.getResolvedPath(identifier.getNamespace());
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(

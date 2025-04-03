@@ -95,14 +95,15 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           identifier);
       manifest.resolveAll();
       return manifest.getResolvedPath(identifier, entityType, subType);
-    } else if (key instanceof PolicyIdentifier identifier) {
+    } else if (key instanceof PolicyIdentifier policyIdentifier) {
       manifest.addPath(
           new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier.toTableIdentifier()),
+              PolarisCatalogHelpers.identifierToList(
+                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
               entityType),
-          identifier);
+          policyIdentifier);
       manifest.resolveAll();
-      return manifest.getResolvedPath(identifier, entityType, subType);
+      return manifest.getResolvedPath(policyIdentifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(
@@ -142,7 +143,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
     } else if (key instanceof PolicyIdentifier policyIdentifier) {
       manifest.addPassthroughPath(
           new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(policyIdentifier.toTableIdentifier()),
+              PolarisCatalogHelpers.identifierToList(
+                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
               entityType),
           policyIdentifier);
       return manifest.getPassthroughResolvedPath(policyIdentifier, entityType, subType);

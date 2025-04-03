@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -38,11 +37,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
-import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -122,6 +119,12 @@ public class PolicyCatalogTest {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
+  private static final Namespace NS1 = Namespace.of("ns1");
+  private static final PolicyIdentifier POLICY1 = new PolicyIdentifier(NS1, "p1");
+  private static final PolicyIdentifier POLICY2 = new PolicyIdentifier(NS1, "p2");
+  private static final PolicyIdentifier POLICY3 = new PolicyIdentifier(NS1, "p3");
+  private static final PolicyIdentifier POLICY4 = new PolicyIdentifier(NS1, "p4");
+
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -140,11 +143,6 @@ public class PolicyCatalogTest {
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-
-  protected static final Schema SCHEMA =
-      new Schema(
-          required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
-          required(4, "data", Types.StringType.get()));
 
   @BeforeAll
   public static void setUpMocks() {
@@ -306,12 +304,11 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyDoesNotThrow() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     Assertions.assertThatCode(
             () ->
                 policyCatalog.createPolicy(
-                    PolicyIdentifier.of("ns", "p1"),
+                    POLICY1,
                     PredefinedPolicyTypes.DATA_COMPACTION.getName(),
                     "test",
                     "{\"enable\": false}"))
@@ -320,18 +317,14 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyAlreadyExists() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     Assertions.assertThatThrownBy(
             () ->
                 policyCatalog.createPolicy(
-                    PolicyIdentifier.of("ns", "p1"),
+                    POLICY1,
                     PredefinedPolicyTypes.DATA_COMPACTION.getName(),
                     "test",
                     "{\"enable\": false}"))
@@ -340,7 +333,7 @@ public class PolicyCatalogTest {
     Assertions.assertThatThrownBy(
             () ->
                 policyCatalog.createPolicy(
-                    PolicyIdentifier.of("ns", "p1"),
+                    POLICY1,
                     PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(),
                     "test",
                     "{\"enable\": false}"))
@@ -349,85 +342,64 @@ public class PolicyCatalogTest {
 
   @Test
   public void testListPolicies() {
-    Namespace namespace = Namespace.of("ns");
-    PolicyIdentifier identifer1 = PolicyIdentifier.of("ns", "p1");
-    PolicyIdentifier identifer2 = PolicyIdentifier.of("ns", "p2");
-    PolicyIdentifier identifer3 = PolicyIdentifier.of("ns", "p3");
-    PolicyIdentifier identifer4 = PolicyIdentifier.of("ns", "p4");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        identifer1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer2,
+        POLICY2,
         PredefinedPolicyTypes.METADATA_COMPACTION.getName(),
         "test",
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer3,
-        PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer4,
+        POLICY4,
         PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL.getName(),
         "test",
         "{\"enable\": false}");
 
-    List<PolicyIdentifier> listResult = policyCatalog.listPolicies(Namespace.of("ns"), null);
+    List<PolicyIdentifier> listResult = policyCatalog.listPolicies(NS1, null);
     Assertions.assertThat(listResult).hasSize(4);
-    Assertions.assertThat(listResult)
-        .containsExactlyInAnyOrder(identifer1, identifer2, identifer3, identifer4);
+    Assertions.assertThat(listResult).containsExactlyInAnyOrder(POLICY1, POLICY2, POLICY3, POLICY4);
   }
 
   @Test
   public void testListPoliciesFilterByPolicyType() {
-    Namespace namespace = Namespace.of("ns");
-    PolicyIdentifier identifer1 = PolicyIdentifier.of("ns", "p1");
-    PolicyIdentifier identifer2 = PolicyIdentifier.of("ns", "p2");
-    PolicyIdentifier identifer3 = PolicyIdentifier.of("ns", "p3");
-    PolicyIdentifier identifer4 = PolicyIdentifier.of("ns", "p4");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        identifer1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer2,
+        POLICY2,
         PredefinedPolicyTypes.METADATA_COMPACTION.getName(),
         "test",
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer3,
-        PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        identifer4,
+        POLICY4,
         PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL.getName(),
         "test",
         "{\"enable\": false}");
 
     List<PolicyIdentifier> listResult =
-        policyCatalog.listPolicies(Namespace.of("ns"), PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL);
+        policyCatalog.listPolicies(NS1, PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL);
     Assertions.assertThat(listResult).hasSize(1);
-    Assertions.assertThat(listResult).containsExactlyInAnyOrder(identifer4);
+    Assertions.assertThat(listResult).containsExactlyInAnyOrder(POLICY4);
   }
 
   @Test
   public void testLoadPolicy() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    Policy policy = policyCatalog.loadPolicy(PolicyIdentifier.of("ns", "p1"));
+    Policy policy = policyCatalog.loadPolicy(POLICY1);
     Assertions.assertThat(policy.getVersion()).isEqualTo(0);
     Assertions.assertThat(policy.getPolicyType())
         .isEqualTo(PredefinedPolicyTypes.DATA_COMPACTION.getName());
@@ -438,41 +410,32 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyWithInvalidContent() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
 
     Assertions.assertThatThrownBy(
             () ->
                 policyCatalog.createPolicy(
-                    PolicyIdentifier.of("ns", "p1"),
-                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-                    "test",
-                    "invalid"))
+                    POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "invalid"))
         .isInstanceOf(InvalidPolicyException.class);
   }
 
   @Test
   public void testLoadPolicyNotExist() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
 
-    Assertions.assertThatThrownBy(() -> policyCatalog.loadPolicy(PolicyIdentifier.of("ns", "p1")))
+    Assertions.assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
   }
 
   @Test
   public void testUpdatePolicy() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    policyCatalog.updatePolicy(PolicyIdentifier.of("ns", "p1"), "updated", "{\"enable\": true}", 0);
+    policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0);
 
-    Policy policy = policyCatalog.loadPolicy(PolicyIdentifier.of("ns", "p1"));
+    Policy policy = policyCatalog.loadPolicy(POLICY1);
     Assertions.assertThat(policy.getVersion()).isEqualTo(1);
     Assertions.assertThat(policy.getPolicyType())
         .isEqualTo(PredefinedPolicyTypes.DATA_COMPACTION.getName());
@@ -483,73 +446,51 @@ public class PolicyCatalogTest {
 
   @Test
   public void testUpdatePolicyWithWrongVersion() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     Assertions.assertThatThrownBy(
-            () ->
-                policyCatalog.updatePolicy(
-                    PolicyIdentifier.of("ns", "p1"), "updated", "{\"enable\": true}", 1))
+            () -> policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 1))
         .isInstanceOf(PolicyVersionMismatchException.class);
   }
 
   @Test
   public void testUpdatePolicyWithInvalidContent() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     Assertions.assertThatThrownBy(
-            () ->
-                policyCatalog.updatePolicy(
-                    PolicyIdentifier.of("ns", "p1"), "updated", "invalid", 0))
+            () -> policyCatalog.updatePolicy(POLICY1, "updated", "invalid", 0))
         .isInstanceOf(InvalidPolicyException.class);
   }
 
   @Test
   public void testUpdatePolicyNotExist() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
 
     Assertions.assertThatThrownBy(
-            () ->
-                policyCatalog.updatePolicy(
-                    PolicyIdentifier.of("ns", "p1"), "updated", "{\"enable\": true}", 0))
+            () -> policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0))
         .isInstanceOf(NoSuchPolicyException.class);
   }
 
   @Test
   public void testDropPolicy() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
     policyCatalog.createPolicy(
-        PolicyIdentifier.of("ns", "p1"),
-        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    Assertions.assertThat(policyCatalog.dropPolicy(PolicyIdentifier.of("ns", "p1"), false))
-        .isTrue();
-    Assertions.assertThatThrownBy(() -> policyCatalog.loadPolicy(PolicyIdentifier.of("ns", "p1")))
+    Assertions.assertThat(policyCatalog.dropPolicy(POLICY1, false)).isTrue();
+    Assertions.assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
   }
 
   @Test
   public void testDropPolicyNotExist() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createNamespace(NS1);
 
-    Assertions.assertThatThrownBy(
-            () -> policyCatalog.dropPolicy(PolicyIdentifier.of("ns", "p1"), false))
+    Assertions.assertThatThrownBy(() -> policyCatalog.dropPolicy(POLICY1, false))
         .isInstanceOf(NoSuchPolicyException.class);
   }
 }
