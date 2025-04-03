@@ -220,15 +220,7 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      } else {
-        throw new IllegalStateException("Unrecognized entity subtype " + subType);
-      }
+      throwNotFoundException(identifier, subType);
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
@@ -262,15 +254,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier =
           PolarisCatalogHelpers.listToTableIdentifier(
               status.getFailedToResolvePath().getEntityNames());
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-      } else {
-        throw new IllegalStateException("Unrecognized entity subtype " + subType);
-      }
+      throwNotFoundException(identifier, subType);
     }
 
     List<PolarisResolvedPathWrapper> targets =
@@ -363,5 +347,24 @@ public abstract class CatalogHandler {
         secondary);
 
     initializeCatalog();
+  }
+
+  /**
+   * Helper function for when a TABLE_LIKE entity is not found & we want to throw the appropriate
+   * exception
+   *
+   * @param subType The subtype of the entity that the exception should report doesn't exist
+   */
+  public static void throwNotFoundException(
+      TableIdentifier identifier, PolarisEntitySubType subType) {
+    if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+      throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+    } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
+      throw new NoSuchViewException("View does not exist: %s", identifier);
+    } else {
+      throw new IllegalStateException("Unrecognized entity subtype " + subType);
+    }
   }
 }

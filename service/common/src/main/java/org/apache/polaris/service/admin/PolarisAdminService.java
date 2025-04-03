@@ -40,8 +40,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -95,6 +93,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -472,15 +471,7 @@ public class PolarisAdminService {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-          throw new NoSuchTableException("Table does not exist: %s", identifier);
-        } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-          throw new NoSuchViewException("View does not exist: %s", identifier);
-        } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-          throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-        } else {
-          throw new IllegalStateException("Unrecognized entity subtype " + subType);
-        }
+        CatalogHandler.throwNotFoundException(identifier, subType);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
@@ -1714,15 +1705,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NotFoundException("View %s not found", identifier);
-      } else if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NotFoundException("Table %s not found", identifier);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new NotFoundException("Generic table %s not found", identifier);
-      } else {
-        throw new IllegalStateException("Unrecognized entity subtype " + subType);
-      }
+      CatalogHandler.throwNotFoundException(identifier, subType);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1756,15 +1739,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NotFoundException("View %s not found", identifier);
-      } else if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NotFoundException("Table %s not found", identifier);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new NotFoundException("Generic table %s not found", identifier);
-      } else {
-        throw new IllegalStateException("Unrecognized entity subtype " + subType);
-      }
+      CatalogHandler.throwNotFoundException(identifier, subType);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
