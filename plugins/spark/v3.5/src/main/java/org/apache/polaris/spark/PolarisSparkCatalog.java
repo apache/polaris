@@ -19,6 +19,7 @@
 package org.apache.polaris.spark;
 
 import java.util.Map;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.spark.Spark3Util;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
@@ -57,9 +58,13 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
-    GenericTable genericTable =
-        this.restCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
-    return PolarisCatalogUtils.loadSparkTable(genericTable);
+    try {
+      GenericTable genericTable =
+          this.restCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
+      return PolarisCatalogUtils.loadSparkTable(genericTable);
+    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
+      throw new NoSuchTableException(identifier);
+    }
   }
 
   @Override
@@ -69,11 +74,15 @@ public class PolarisSparkCatalog implements TableCatalog {
       Transform[] transforms,
       Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
-    String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
-    GenericTable genericTable =
-        this.restCatalog.createGenericTable(
-            Spark3Util.identifierToTableIdentifier(identifier), format, properties);
-    return PolarisCatalogUtils.loadSparkTable(genericTable);
+    try {
+      String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+      GenericTable genericTable =
+          this.restCatalog.createGenericTable(
+              Spark3Util.identifierToTableIdentifier(identifier), format, properties);
+      return PolarisCatalogUtils.loadSparkTable(genericTable);
+    } catch (AlreadyExistsException e) {
+      throw new TableAlreadyExistsException(identifier);
+    }
   }
 
   @Override

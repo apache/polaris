@@ -50,6 +50,11 @@ dependencies {
   implementation(project(":polaris-api-catalog-service"))
   implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
 
+  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   ) {
@@ -58,12 +63,6 @@ dependencies {
     exclude("org.apache.iceberg.rest", "*")
     exclude("org.apache.iceberg.hadoop", "*")
   }
-
-  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
-
-  implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
