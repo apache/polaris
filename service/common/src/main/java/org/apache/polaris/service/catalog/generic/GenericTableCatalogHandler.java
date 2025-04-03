@@ -19,8 +19,9 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.ws.rs.core.SecurityContext;
+
+import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.TreeSet;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -77,7 +78,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     return ListGenericTablesResponse.builder()
-        .setIdentifiers(new TreeSet<>(genericTableCatalog.listGenericTables(parent)))
+        .setIdentifiers(new LinkedHashSet<>(genericTableCatalog.listGenericTables(parent)))
         .build();
   }
 

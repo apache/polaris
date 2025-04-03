@@ -135,7 +135,7 @@ public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApi
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, namespace);
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.loadGenericTable(TableIdentifier.of(rawStringToNamespace(namespace), genericTable));
     return Response.ok(response).build();
