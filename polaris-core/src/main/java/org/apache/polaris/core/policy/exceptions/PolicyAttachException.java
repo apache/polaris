@@ -16,32 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.policy.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
-import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-/**
- * Exception raised when an existing policy mapping preveents the attempted creation of a new policy
- * mapping record.
- */
-public class PolicyMappingAlreadyExistsException extends RuntimeException {
-  private PolarisPolicyMappingRecord existingRecord;
-
-  /**
-   * @param existingRecord The conflicting record that caused creation to fail.
-   */
-  public PolicyMappingAlreadyExistsException(PolarisPolicyMappingRecord existingRecord) {
-    super("Existing Policy Mapping Record: " + existingRecord);
-    this.existingRecord = existingRecord;
+public class PolicyAttachException extends PolarisException {
+  @FormatMethod
+  public PolicyAttachException(String message, Object... args) {
+    super(String.format(message, args));
   }
 
   @FormatMethod
-  public PolicyMappingAlreadyExistsException(String message, Object... arg) {
-    super(String.format(message, arg));
-  }
-
-  public PolarisPolicyMappingRecord getExistingRecord() {
-    return this.existingRecord;
+  public PolicyAttachException(Throwable cause, String message, Object... args) {
+    super(String.format(message, args), cause);
   }
 }

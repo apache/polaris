@@ -26,6 +26,7 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.service.context.UnresolvableRealmContextException;
@@ -48,6 +49,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
     } else if (exception instanceof UnresolvableRealmContextException) {
       return Response.Status.NOT_FOUND;
     } else if (exception instanceof InvalidPolicyException) {
+      return Response.Status.BAD_REQUEST;
+    } else if (exception instanceof PolicyAttachException) {
       return Response.Status.BAD_REQUEST;
     } else if (exception instanceof NoSuchPolicyException) {
       return Response.Status.NOT_FOUND;
