@@ -358,14 +358,15 @@ public abstract class CatalogHandler {
    */
   public static void throwNotFoundException(
       TableIdentifier identifier, PolarisEntitySubType subType) {
-    if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-      throw new NoSuchTableException("Table does not exist: %s", identifier);
-    } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-      throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-    } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-      throw new NoSuchViewException("View does not exist: %s", identifier);
-    } else {
-      throw new NoSuchTableException("Entity does not exist: %s", subType);
+    switch (subType) {
+      case ICEBERG_TABLE:
+        throw new NoSuchTableException("Table does not exist: %s", identifier);
+      case ICEBERG_VIEW:
+        throw new NoSuchViewException("View does not exist: %s", identifier);
+      case GENERIC_TABLE:
+        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+      default:
+        throw new NoSuchTableException("Entity does not exist: %s", subType);
     }
   }
 }
