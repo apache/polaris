@@ -462,7 +462,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-    if (!namespaceExists(namespace) && !namespace.isEmpty()) {
+    if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: %s", namespace);
     }
@@ -633,7 +633,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean namespaceExists(Namespace namespace) {
-    return resolvedEntityView.getResolvedPath(namespace) != null;
+    return Optional.ofNullable(namespace)
+        .filter(ns -> !ns.isEmpty())
+        .map(resolvedEntityView::getResolvedPath)
+        .isPresent();
   }
 
   @Override
@@ -798,7 +801,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-    if (!namespaceExists(namespace) && !namespace.isEmpty()) {
+    if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: %s", namespace);
     }
