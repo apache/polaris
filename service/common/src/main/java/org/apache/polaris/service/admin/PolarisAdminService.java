@@ -674,7 +674,12 @@ public class PolarisAdminService {
             .build();
 
     if (requiresSecretReferenceExtraction(catalogRequest)) {
-      // TODO: Also gate this on a feature parameter
+      LOGGER
+          .atDebug()
+          .addKeyValue("catalogName", entity.getName())
+          .log("Extracting secret references to create federated catalog");
+      FeatureConfiguration.enforceFeatureEnabledOrThrow(
+          callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
       // For fields that contain references to secrets, we'll separately process the secrets from
       // the original request first, and then populate those fields with the extracted secret
       // references as part of the construction of the internal persistence entity.
