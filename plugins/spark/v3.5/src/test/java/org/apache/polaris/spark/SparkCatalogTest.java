@@ -38,6 +38,15 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.spark.SparkUtil;
+import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
+import org.apache.spark.SparkContext;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +70,9 @@ public class SparkCatalogTest {
     Map<String, String> catalogConfig = Maps.newHashMap();
     catalogConfig.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfig.put("cache-enabled", "false");
-
+    catalogConfig.put(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY, "true");
+    catalogConfig.put(
+        DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.InMemoryDeltaCatalog");
     catalog = new SparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
@@ -83,8 +94,10 @@ public class SparkCatalogTest {
     catalog.createNamespace(defaultNS, Maps.newHashMap());
   }
 
+
   @Test
-  void testCreateAndLoadNamespace() throws Exception {
+  void testCreateAndLoadNamespace()
+      throws NoSuchNamespaceException, NamespaceAlreadyExistsException {
     String[] namespace = new String[] {"ns1"};
     Map<String, String> metadata = Maps.newHashMap();
     metadata.put("key1", "value1");
@@ -292,11 +305,6 @@ public class SparkCatalogTest {
     Identifier identifier = Identifier.of(namespace, "table1");
     Identifier new_identifier = Identifier.of(namespace, "table2");
     // table methods
-    assertThatThrownBy(() -> catalog.loadTable(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(
-            () -> catalog.createTable(identifier, Mockito.mock(StructType.class), null, null))
-        .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.alterTable(identifier))
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.dropTable(identifier))
@@ -308,6 +316,5 @@ public class SparkCatalogTest {
     assertThatThrownBy(() -> catalog.invalidateTable(identifier))
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.purgeTable(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
   }
 }

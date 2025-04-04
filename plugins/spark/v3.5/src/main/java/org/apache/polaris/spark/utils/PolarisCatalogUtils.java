@@ -23,9 +23,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTSessionCatalog;
@@ -45,11 +43,8 @@ public class PolarisCatalogUtils {
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
 
-  public static void checkNamespaceIsValid(Namespace namespace) {
-    if (namespace.isEmpty()) {
-      throw new NoSuchNamespaceException("Invalid namespace: %s", namespace);
-    }
-  }
+  // whether enable the inMemory catalogs, used by testing.
+  public static final String ENABLE_IN_MEMORY_CATALOG_KEY = "enable_in_memory_catalog";
 
   public static void checkIdentifierIsValid(TableIdentifier tableIdentifier) {
     if (tableIdentifier.namespace().isEmpty()) {
@@ -57,29 +52,37 @@ public class PolarisCatalogUtils {
     }
   }
 
+  /** Check whether the table provider is iceberg. */
   public static boolean useIceberg(String provider) {
     return provider == null || "iceberg".equalsIgnoreCase(provider);
   }
 
+  /** Check whether the table provider is delta. */
   public static boolean useDelta(String provider) {
     return "delta".equalsIgnoreCase(provider);
   }
 
+  /**
+   * Load spark table using DataSourceV2.
+   *
+   * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
+   *     DeltaTableV2.
+   */
   public static Table loadSparkTable(GenericTable genericTable) {
     SparkSession sparkSession = SparkSession.active();
     TableProvider provider =
         DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
             .get();
     Map<String, String> properties = genericTable.getProperties();
-    boolean hasLocationClause =
-        properties.containsKey(TableCatalog.PROP_LOCATION)
-            && (properties.get(TableCatalog.PROP_LOCATION) != null);
-    boolean hasPathClause =
-        properties.containsKey(TABLE_PATH_KEY) && (properties.get(TABLE_PATH_KEY) != null);
+    boolean hasLocationClause = properties.get(TableCatalog.PROP_LOCATION) != null;
+    boolean hasPathClause = properties.get(TABLE_PATH_KEY) != null;
     Map<String, String> tableProperties = Maps.newHashMap();
     tableProperties.putAll(properties);
     if (!hasPathClause && hasLocationClause) {
-      // DataSourceV2 requires the path for table loading
+      // DataSourceV2 requires the path property on table loading. However, spark today
+      // doesn't create the corresponding path property if the path keyword is not
+      // provided by user when location is provided. Here, we duplicate the location
+      // property as path to make sure the table can be loaded.
       tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
     }
     CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);

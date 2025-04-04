@@ -24,15 +24,25 @@ import org.apache.iceberg.common.DynConstructors;
 import org.apache.polaris.spark.PolarisSparkCatalog;
 import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DeltaHelper {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaHelper.class);
 
-  private static final String DELTA_CATALOG_CLASS =
+  public static final String DELTA_CATALOG_IMPL_KEY = "delta-catalog-impl";
+  private static final String DEFAULT_DELTA_CATALOG_CLASS =
       "org.apache.spark.sql.delta.catalog.DeltaCatalog";
+
   private TableCatalog deltaCatalog = null;
+  private String deltaCatalogImpl = DEFAULT_DELTA_CATALOG_CLASS;
+
+  public DeltaHelper(CaseInsensitiveStringMap options) {
+    if (options.get(DELTA_CATALOG_IMPL_KEY) != null) {
+      this.deltaCatalogImpl = options.get(DELTA_CATALOG_IMPL_KEY);
+    }
+  }
 
   public TableCatalog loadDeltaCatalog(PolarisSparkCatalog polarisSparkCatalog) {
     if (this.deltaCatalog != null) {
@@ -41,11 +51,10 @@ public class DeltaHelper {
 
     DynConstructors.Ctor<TableCatalog> ctor;
     try {
-      ctor = DynConstructors.builder(TableCatalog.class).impl(DELTA_CATALOG_CLASS).buildChecked();
+      ctor = DynConstructors.builder(TableCatalog.class).impl(deltaCatalogImpl).buildChecked();
     } catch (NoSuchMethodException e) {
       throw new IllegalArgumentException(
-          String.format(
-              "Cannot initialize Delta Catalog %s: %s", DELTA_CATALOG_CLASS, e.getMessage()),
+          String.format("Cannot initialize Delta Catalog %s: %s", deltaCatalogImpl, e.getMessage()),
           e);
     }
 
@@ -55,7 +64,7 @@ public class DeltaHelper {
       throw new IllegalArgumentException(
           String.format(
               "Cannot initialize Delta Catalog, %s does not implement Table Catalog.",
-              DELTA_CATALOG_CLASS),
+              deltaCatalogImpl),
           e);
     }
 

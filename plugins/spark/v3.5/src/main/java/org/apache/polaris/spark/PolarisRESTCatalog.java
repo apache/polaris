@@ -41,12 +41,8 @@ import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class PolarisRESTCatalog implements Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
-
+public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   public static final String REST_PAGE_SIZE = "rest-page-size";
 
   private RESTClient restClient = null;
@@ -56,14 +52,8 @@ public class PolarisRESTCatalog implements Closeable {
   private PolarisResourcePaths paths = null;
   private Integer pageSize = null;
 
-  // TODO: update to use the predefined GENERIC_TABLE_ENDPOINTS
-  private static final Set<Endpoint> DEFAULT_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
-          .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
-          .add(PolarisEndpoints.V1_DELETE_GENERIC_TABLE)
-          .add(PolarisEndpoints.V1_LIST_GENERIC_TABLES)
-          .build();
+  // the default endpoints to config if server doesn't specify the 'endpoints' configuration.
+  private static final Set<Endpoint> DEFAULT_ENDPOINTS = PolarisEndpoints.GENERIC_TABLE_ENDPOINTS;
 
   public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
     Preconditions.checkArgument(unresolved != null, "Invalid configuration: null");
@@ -137,17 +127,20 @@ public class PolarisRESTCatalog implements Closeable {
     }
   }
 
+  @Override
   public List<TableIdentifier> listGenericTables(Namespace ns) {
     throw new UnsupportedOperationException("listTables not supported");
   }
 
+  @Override
   public boolean dropGenericTable(TableIdentifier identifier) {
     throw new UnsupportedOperationException("dropTable not supported");
   }
 
+  @Override
   public GenericTable createGenericTable(
       TableIdentifier identifier, String format, Map<String, String> props) {
-    // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(identifier.name(), format, null, props);
 
@@ -164,8 +157,9 @@ public class PolarisRESTCatalog implements Closeable {
     return response.getTable();
   }
 
+  @Override
   public GenericTable loadGenericTable(TableIdentifier identifier) {
-    // Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
+    Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     PolarisCatalogUtils.checkIdentifierIsValid(identifier);
     LoadGenericTableRESTResponse response =
         restClient

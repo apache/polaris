@@ -16,27 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.spark.rest;
+package org.apache.polaris.spark;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.iceberg.rest.RESTResponse;
+import java.util.List;
+import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.types.GenericTable;
-import org.apache.polaris.service.types.LoadGenericTableResponse;
 
-/**
- * RESTResponse definition for LoadGenericTable which extends the iceberg RESTResponse. This is
- * currently required because the Iceberg HTTPClient requires the request and response to be a class
- * of RESTRequest and RESTResponse.
- */
-public class LoadGenericTableRESTResponse extends LoadGenericTableResponse implements RESTResponse {
+public interface PolarisCatalog {
+  List<TableIdentifier> listGenericTables(Namespace ns);
 
-  @JsonCreator
-  public LoadGenericTableRESTResponse(
-      @JsonProperty(value = "table", required = true) GenericTable table) {
-    super(table);
-  }
+  GenericTable loadGenericTable(TableIdentifier identifier);
 
-  @Override
-  public void validate() {}
+  boolean dropGenericTable(TableIdentifier identifier);
+
+  GenericTable createGenericTable(
+      TableIdentifier identifier, String format, Map<String, String> props);
 }
