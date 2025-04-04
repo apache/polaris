@@ -23,31 +23,58 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import java.util.Map;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.ConnectionManager;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@QuarkusTest
+@TestProfile(ConnectionManagerTest.Profile.class)
 public class ConnectionManagerTest {
 
-  private ConnectionManager connectionManager;
+  public static class Profile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.persistence.relational.jdbc-url",
+          "jdbc:postgresql://localhost:5432/postgres",
+          "polaris.persistence.relational.user-name",
+          "sa",
+          "polaris.persistence.relational.password",
+          "pp",
+          "polaris.persistence.relational.driver-class-name",
+          "org.postgresql.Driver");
+    }
+  }
+
+  @BeforeEach
+  public void beforeEach() {
+    this.connectionManager = new ConnectionManager(relationalJdbcConfiguration);
+  }
+
+  @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+  ConnectionManager connectionManager;
 
   @Test
-  void testReadProperties() throws Exception {
+  void testReadProperties() {
     // To test the db.properties is correctly read and properties are set correctly.
-    BasicDataSource bds = (BasicDataSource) new ConnectionManager("db.properties").getDataSource();
+    BasicDataSource bds = (BasicDataSource) connectionManager.getDataSource();
     assertEquals("jdbc:postgresql://localhost:5432/postgres", bds.getUrl());
     assertEquals("sa", bds.getUsername());
-    assertEquals("", bds.getPassword());
+    assertEquals("pp", bds.getPassword());
     assertEquals("org.postgresql.Driver", bds.getDriverClassName());
-    assertEquals(5, bds.getInitialSize());
-    assertEquals(20, bds.getMaxTotal());
   }
 
   @Test
   void testCloseDataSource() throws Exception {
     // Mocking BasicDataSource to verify that close is called
     BasicDataSource mockBds = mock(BasicDataSource.class);
-    connectionManager = new ConnectionManager("db.properties");
     connectionManager.setDataSource(mockBds);
 
     connectionManager.closeDataSource();
@@ -60,7 +87,6 @@ public class ConnectionManagerTest {
     BasicDataSource mockBds = mock(BasicDataSource.class);
     doThrow(new Exception("Error closing")).when(mockBds).close();
 
-    connectionManager = new ConnectionManager("db.properties");
     connectionManager.setDataSource(mockBds);
 
     Exception exception = assertThrows(Exception.class, () -> connectionManager.closeDataSource());

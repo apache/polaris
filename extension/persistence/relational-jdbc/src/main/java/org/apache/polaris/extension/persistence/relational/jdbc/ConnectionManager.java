@@ -18,11 +18,6 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
@@ -33,72 +28,53 @@ public class ConnectionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionManager.class);
 
   private DataSource dataSource;
-  private final Properties properties;
 
-  public ConnectionManager(String propsFilePath) throws IOException {
-    this.properties = readPropertiesFromResource(propsFilePath);
-    this.dataSource = initializeDataSource();
+  public ConnectionManager(RelationalJdbcConfiguration jdbcConfiguration) {
+    this.dataSource = initializeDataSource(jdbcConfiguration);
   }
 
-  private static Properties readPropertiesFromResource(String propsFilePath) throws IOException {
-    Properties properties = new Properties();
-    ClassLoader classLoader = ConnectionManager.class.getClassLoader();
-    try {
-      properties.load(classLoader.getResourceAsStream(propsFilePath));
-    } catch (IOException e) {
-      // need to re-throw
-      try {
-        properties.load(fileSystemPath(propsFilePath).toUri().toURL().openStream());
-      } catch (IOException e1) {
-        LOGGER.error("Failed to load properties from {}", propsFilePath, e1);
-      }
-      throw e;
-    }
-    return properties;
-  }
-
-  private BasicDataSource initializeDataSource() throws IOException {
+  private BasicDataSource initializeDataSource(RelationalJdbcConfiguration jdbcConfiguration) {
     BasicDataSource bds = new BasicDataSource();
-    bds.setUrl(properties.getProperty("jdbc.url"));
-    bds.setUsername(properties.getProperty("jdbc.username"));
-    bds.setPassword(properties.getProperty("jdbc.password"));
-    bds.setDriverClassName(properties.getProperty("jdbc.driverClassName"));
+
+    // set-up jdbc driver
+    bds.setUrl(jdbcConfiguration.jdbcUrl().get());
+    bds.setUsername(jdbcConfiguration.userName().get());
+    bds.setPassword(jdbcConfiguration.password().get());
+    bds.setDriverClassName(jdbcConfiguration.driverClassName().get());
 
     // Optional connection pool configuration
-    if (properties.getProperty("dbcp2.initialSize") != null) {
-      bds.setInitialSize(Integer.parseInt(properties.getProperty("dbcp2.initialSize")));
+    if (jdbcConfiguration.initialPoolSize().isPresent()) {
+      bds.setInitialSize(jdbcConfiguration.initialPoolSize().get());
     }
-    if (properties.getProperty("dbcp2.maxTotal") != null) {
-      bds.setMaxTotal(Integer.parseInt(properties.getProperty("dbcp2.maxTotal")));
+    if (jdbcConfiguration.maxTotal().isPresent()) {
+      bds.setMaxTotal(jdbcConfiguration.maxTotal().get());
     }
-    if (properties.getProperty("dbcp2.maxIdle") != null) {
-      bds.setMaxIdle(Integer.parseInt(properties.getProperty("dbcp2.maxIdle")));
+    if (jdbcConfiguration.maxIdle().isPresent()) {
+      bds.setMaxIdle(jdbcConfiguration.maxIdle().get());
     }
-    if (properties.getProperty("dbcp2.minIdle") != null) {
-      bds.setMinIdle(Integer.parseInt(properties.getProperty("dbcp2.minIdle")));
+    if (jdbcConfiguration.minIdle().isPresent()) {
+      bds.setMinIdle(jdbcConfiguration.minIdle().get());
     }
-    if (properties.getProperty("dbcp2.maxWaitMillis") != null) {
-      bds.setMaxWaitMillis(Long.parseLong(properties.getProperty("dbcp2.maxWaitMillis")));
+    if (jdbcConfiguration.maxWaitMillis().isPresent()) {
+      bds.setMaxWaitMillis(jdbcConfiguration.maxWaitMillis().get());
     }
-    if (properties.getProperty("dbcp2.testOnBorrow") != null) {
-      bds.setTestOnBorrow(Boolean.parseBoolean(properties.getProperty("dbcp2.testOnBorrow")));
+    if (jdbcConfiguration.testOnBorrow().isPresent()) {
+      bds.setTestOnBorrow(jdbcConfiguration.testOnBorrow().get());
     }
-    if (properties.getProperty("dbcp2.testOnReturn") != null) {
-      bds.setTestOnReturn(Boolean.parseBoolean(properties.getProperty("dbcp2.testOnReturn")));
+    if (jdbcConfiguration.testOnReturn().isPresent()) {
+      bds.setTestOnReturn(jdbcConfiguration.testOnReturn().get());
     }
-    if (properties.getProperty("dbcp2.testWhileIdle") != null) {
-      bds.setTestWhileIdle(Boolean.parseBoolean(properties.getProperty("dbcp2.testWhileIdle")));
+    if (jdbcConfiguration.testWhileIdle().isPresent()) {
+      bds.setTestWhileIdle(jdbcConfiguration.testWhileIdle().get());
     }
-    if (properties.getProperty("dbcp2.validationQuery") != null) {
-      bds.setValidationQuery(properties.getProperty("dbcp2.validationQuery"));
+    if (jdbcConfiguration.validationQuery().isPresent()) {
+      bds.setValidationQuery(jdbcConfiguration.validationQuery().get());
     }
-    if (properties.getProperty("dbcp2.timeBetweenEvictionRunsMillis") != null) {
-      bds.setTimeBetweenEvictionRunsMillis(
-          Long.parseLong(properties.getProperty("dbcp2.timeBetweenEvictionRunsMillis")));
+    if (jdbcConfiguration.timeBetweenEvictionRunsMillis().isPresent()) {
+      bds.setTimeBetweenEvictionRunsMillis(jdbcConfiguration.timeBetweenEvictionRunsMillis().get());
     }
-    if (properties.getProperty("dbcp2.minEvictableIdleTimeMillis") != null) {
-      bds.setMinEvictableIdleTimeMillis(
-          Long.parseLong(properties.getProperty("dbcp2.minEvictableIdleTimeMillis")));
+    if (jdbcConfiguration.minEvictableIdleTimeMillis().isPresent()) {
+      bds.setMinEvictableIdleTimeMillis(jdbcConfiguration.minEvictableIdleTimeMillis().get());
     }
 
     return bds;
@@ -117,13 +93,5 @@ public class ConnectionManager {
       LOGGER.info("Closing BasicDataSource");
       ((BasicDataSource) dataSource).close();
     }
-  }
-
-  private static Path fileSystemPath(String pathStr) {
-    Path path = Paths.get(pathStr);
-    if (!Files.exists(path) || !Files.isRegularFile(path)) {
-      throw new IllegalStateException("Not a regular file: " + pathStr);
-    }
-    return path.normalize().toAbsolutePath();
   }
 }

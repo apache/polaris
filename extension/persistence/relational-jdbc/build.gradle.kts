@@ -28,6 +28,7 @@ dependencies {
   implementation(libs.commons.dbcp2)
   implementation(libs.slf4j.api)
 
+  implementation("io.quarkus:quarkus-arc")
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-core")
 
@@ -36,6 +37,7 @@ dependencies {
 
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)
+  testImplementation("io.quarkus:quarkus-junit5")
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

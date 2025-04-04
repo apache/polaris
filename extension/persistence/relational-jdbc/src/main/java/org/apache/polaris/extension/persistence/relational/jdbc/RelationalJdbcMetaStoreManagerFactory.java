@@ -21,7 +21,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
@@ -70,9 +69,5 @@ public class RelationalJdbcMetaStoreManagerFactory implements MetaStoreManagerFa
   @Override
   public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
     throw new UnsupportedOperationException("Relational jdbc metastore manager is not supported");
-  }
-
-  private String configurationFile() {
-    return jdbcConfiguration.configurationFile().map(Path::toString).orElse(null);
   }
 }
