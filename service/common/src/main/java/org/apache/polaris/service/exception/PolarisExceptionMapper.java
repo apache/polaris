@@ -25,6 +25,8 @@ import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
+import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.service.context.UnresolvableRealmContextException;
 import org.slf4j.Logger;
@@ -47,6 +49,10 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
       return Response.Status.NOT_FOUND;
     } else if (exception instanceof InvalidPolicyException) {
       return Response.Status.BAD_REQUEST;
+    } else if (exception instanceof NoSuchPolicyException) {
+      return Response.Status.NOT_FOUND;
+    } else if (exception instanceof PolicyVersionMismatchException) {
+      return Response.Status.CONFLICT;
     } else {
       return Response.Status.INTERNAL_SERVER_ERROR;
     }
