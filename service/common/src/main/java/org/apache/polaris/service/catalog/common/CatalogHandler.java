@@ -309,13 +309,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
     } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", src);
-      } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NoSuchViewException("View does not exist: %s", src);
-      } else {
-        throw new NoSuchTableException("Generic table does not exist: %s", src);
-      }
+      throwNotFoundException(dst, subType);
     }
 
     // Normally, since we added the dst as an optional path, we'd expect it to only get resolved
