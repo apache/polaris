@@ -24,6 +24,11 @@ import java.util.Map;
 import org.apache.iceberg.rest.RESTRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 
+/**
+ * RESTRequest definition for CreateGenericTable which extends the iceberg RESTRequest. This is
+ * currently required because the Iceberg HTTPClient requires the request and response to be a class
+ * of RESTRequest and RESTResponse.
+ */
 public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
     implements RESTRequest {
 

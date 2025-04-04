@@ -41,6 +41,13 @@ val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
 
+val scalaLibraryVersion =
+  if (scalaVersion.equals("2.12")) {
+    pluginlibs.versions.scala212.get()
+  } else {
+    pluginlibs.versions.scala213.get()
+  }
+
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
     // exclude the iceberg dependencies, use the ones pulled
@@ -64,6 +71,7 @@ dependencies {
     exclude("org.apache.iceberg.hadoop", "*")
   }
 
+  compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -106,7 +114,10 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
   // therefore excluded from the optimization.
-  // minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
+  minimize {
+    exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
+    exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
+  }
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }

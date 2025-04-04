@@ -30,12 +30,14 @@ import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * SparkCatalog Implementation that is able to interact with both Iceberg SparkCatalog and Polaris
+ * SparkCatalog. All namespaces and view related operations continue goes through the Iceberg
+ * SparkCatalog. For table operations, depends on the table format, the operation can be achieved
+ * with interaction with both Iceberg and Polaris SparkCatalog.
+ */
 public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatalog {
-  private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
-
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   private PolarisSparkCatalog polarisSparkCatalog = null;
@@ -47,14 +49,32 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
     return catalogName;
   }
 
-  @Override
-  public void initialize(String name, CaseInsensitiveStringMap options) {
+  /**
+   * Initialize an inMemory Iceberg Catalog and Polaris Catalog. NOTE: This should only be used by
+   * testing.
+   */
+  private void initInMemoryCatalog(String name, CaseInsensitiveStringMap options) {
     String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
-    // TODO: relax this once AuthManager reuse enabled
-    if (catalogImpl != null) {
-      throw new UnsupportedOperationException(
-          "Customized catalog implementation is currently not supported!");
+    if (catalogImpl == null) {
+      throw new IllegalStateException(
+          "Missing catalog-impl configuration, required when InMemory Catalog mode is enabled");
     }
+    // initialize the icebergSparkCatalog with configured CATALOG_IMPL
+    this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
+    this.icebergsSparkCatalog.initialize(name, options);
+
+    // initialize the polarisSparkCatalog with PolarisSparkCatalog
+    PolarisInMemoryCatalog inMemoryCatalog = new PolarisInMemoryCatalog();
+    this.polarisSparkCatalog = new PolarisSparkCatalog(inMemoryCatalog);
+    this.polarisSparkCatalog.initialize(name, options);
+  }
+
+  /**
+   * Initialize REST Catalog for Iceberg and Polaris, this is the only catalog type supported by
+   * Polaris at this moment.
+   */
+  private void initRESTCatalog(String name, CaseInsensitiveStringMap options) {
+    // TODO: relax this in the future
     String catalogType =
         PropertyUtil.propertyAsString(
             options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
@@ -63,7 +83,12 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
           "Only rest catalog type is supported, but got catalog type: " + catalogType);
     }
 
-    this.catalogName = name;
+    String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
+    if (catalogImpl != null) {
+      throw new UnsupportedOperationException(
+          "Customized catalog implementation is currently not supported!");
+    }
+
     // initialize the icebergSparkCatalog
     this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
     this.icebergsSparkCatalog.initialize(name, options);
@@ -75,8 +100,23 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
     restCatalog.initialize(options, catalogAuth);
     this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
     this.polarisSparkCatalog.initialize(name, options);
+  }
 
-    this.deltaHelper = new DeltaHelper();
+  @Override
+  public void initialize(String name, CaseInsensitiveStringMap options) {
+    this.catalogName = name;
+    boolean enableInMemoryCatalog =
+        options.containsKey(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY)
+            && options
+                .get(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY)
+                .equalsIgnoreCase("true");
+    if (enableInMemoryCatalog) {
+      initInMemoryCatalog(name, options);
+    } else {
+      initRESTCatalog(name, options);
+    }
+
+    this.deltaHelper = new DeltaHelper(options);
   }
 
   @Override
@@ -96,6 +136,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
     if (PolarisCatalogUtils.useIceberg(provider)) {
       return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
     } else if (PolarisCatalogUtils.useDelta(provider)) {
+      // For delta table, we load the delta catalog to help dealing with the
+      // delta log creation.
       TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
       return deltaCatalog.createTable(ident, schema, transforms, properties);
     } else {
@@ -148,7 +190,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
   @Override
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
-    throw new UnsupportedOperationException("createNamespace");
+    this.icebergsSparkCatalog.createNamespace(namespace, metadata);
   }
 
   @Override

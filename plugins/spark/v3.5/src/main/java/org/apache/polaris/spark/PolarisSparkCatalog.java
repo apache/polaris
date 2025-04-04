@@ -33,17 +33,19 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * A spark TableCatalog Implementation interacts with Polaris specific APIs only. The APIs it
+ * interacts with is generic table APIs, and all table operations performed in this class are
+ * expected to be for non-iceberg tables.
+ */
 public class PolarisSparkCatalog implements TableCatalog {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisSparkCatalog.class);
 
-  private PolarisRESTCatalog restCatalog = null;
+  private PolarisCatalog polarisCatalog = null;
   private String catalogName = null;
 
-  public PolarisSparkCatalog(PolarisRESTCatalog restCatalog) {
-    this.restCatalog = restCatalog;
+  public PolarisSparkCatalog(PolarisCatalog polarisCatalog) {
+    this.polarisCatalog = polarisCatalog;
   }
 
   @Override
@@ -60,7 +62,7 @@ public class PolarisSparkCatalog implements TableCatalog {
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
     try {
       GenericTable genericTable =
-          this.restCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
+          this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
       return PolarisCatalogUtils.loadSparkTable(genericTable);
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(identifier);
@@ -77,7 +79,7 @@ public class PolarisSparkCatalog implements TableCatalog {
     try {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
       GenericTable genericTable =
-          this.restCatalog.createGenericTable(
+          this.polarisCatalog.createGenericTable(
               Spark3Util.identifierToTableIdentifier(identifier), format, properties);
       return PolarisCatalogUtils.loadSparkTable(genericTable);
     } catch (AlreadyExistsException e) {
