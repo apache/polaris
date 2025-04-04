@@ -18,14 +18,12 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -43,8 +41,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-
-import junit.framework.AssertionFailedError;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -62,7 +58,6 @@ import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -1312,15 +1307,18 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                   return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
                 });
 
-    tableGrants.forEach(g -> {
-      try (Response response = managementApi.request(
-              "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-              Map.of("cat", currentCatalogName, "role", "catalogrole1"))
-          .put(Entity.json(g))) {
+    tableGrants.forEach(
+        g -> {
+          try (Response response =
+              managementApi
+                  .request(
+                      "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                      Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                  .put(Entity.json(g))) {
 
-        assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-      }
-    });
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+          }
+        });
 
     genericTableApi.purge(currentCatalogName, namespace);
   }
