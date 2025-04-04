@@ -38,7 +38,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
@@ -80,7 +80,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
     RealmContext realmContext = callContext.getRealmContext();
     PolarisEntityManager entityManager =
         realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
-    PolarisCredentialVendor credentialVendor =
+    CredentialVendorDao credentialVendor =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
     // Get subcoped creds

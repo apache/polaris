@@ -23,14 +23,16 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisGrantManager;
-import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
+import org.apache.polaris.core.persistence.dao.GrantRecordDao;
+import org.apache.polaris.core.persistence.dao.PolicyMappingDao;
+import org.apache.polaris.core.persistence.dao.PrincipalSecretsDao;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -42,18 +44,13 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
 /**
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
  * authorization. It uses the underlying persistent metastore to store and retrieve Polaris metadata
  */
 public interface PolarisMetaStoreManager
-    extends PolarisSecretsManager,
-        PolarisGrantManager,
-        PolarisCredentialVendor,
-        PolarisPolicyMappingManager {
+    extends PrincipalSecretsDao, GrantRecordDao, CredentialVendorDao, PolicyMappingDao {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
