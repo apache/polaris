@@ -1490,10 +1490,10 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ANY_SUBTYPE, identifier, catalogRoleName);
+        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ANY_SUBTYPE, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
   }
 
   public boolean revokePrivilegeOnTableFromRole(
@@ -1505,10 +1505,10 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ANY_SUBTYPE, identifier, catalogRoleName);
+        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ANY_SUBTYPE, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
   }
 
   public boolean grantPrivilegeOnViewToRole(
