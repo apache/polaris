@@ -350,8 +350,8 @@ public abstract class CatalogHandler {
   }
 
   /**
-   * Helper function for when a TABLE_LIKE entity is not found & we want to throw the appropriate
-   * exception
+   * Helper function for when a TABLE_LIKE entity is not found so we want to throw the appropriate
+   * exception. Used in Iceberg APIs, so the Iceberg messages cannot be changed.
    *
    * @param subType The subtype of the entity that the exception should report doesn't exist
    */

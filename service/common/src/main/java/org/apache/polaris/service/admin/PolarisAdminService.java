@@ -453,7 +453,7 @@ public class PolarisAdminService {
   private void authorizeGrantOnTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op,
       String catalogName,
-      PolarisEntitySubType subType,
+      List<PolarisEntitySubType> subTypes,
       TableIdentifier identifier,
       String catalogRoleName) {
     resolutionManifest =
@@ -467,11 +467,18 @@ public class PolarisAdminService {
         catalogRoleName);
     ResolverStatus status = resolutionManifest.resolveAll();
 
+    final PolarisEntitySubType searchSubtype;
+    if (subTypes.size() > 1) {
+      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
+    } else {
+      searchSubtype = subTypes.getFirst();
+    }
+
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        CatalogHandler.throwNotFoundException(identifier, subType);
+        CatalogHandler.throwNotFoundException(identifier, searchSubtype);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
@@ -479,7 +486,11 @@ public class PolarisAdminService {
 
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
+            identifier, PolarisEntityType.TABLE_LIKE, searchSubtype, true);
+    if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
+    }
+
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
@@ -1491,10 +1502,18 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
+        op,
+        catalogName,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier,
+        catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        privilege);
   }
 
   public boolean revokePrivilegeOnTableFromRole(
@@ -1506,10 +1525,18 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
+        op,
+        catalogName,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier,
+        catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        privilege);
   }
 
   public boolean grantPrivilegeOnViewToRole(
@@ -1520,10 +1547,14 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
+        op, catalogName, List.of(PolarisEntitySubType.ICEBERG_VIEW), identifier, catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        privilege);
   }
 
   public boolean revokePrivilegeOnViewFromRole(
@@ -1535,10 +1566,14 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
+        op, catalogName, List.of(PolarisEntitySubType.ICEBERG_VIEW), identifier, catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        privilege);
   }
 
   public List<PolarisEntity> listAssigneePrincipalRolesForCatalogRole(
@@ -1694,7 +1729,7 @@ public class PolarisAdminService {
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
-      boolean isView,
+      List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
     if (findCatalogByName(catalogName).isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
@@ -1703,10 +1738,18 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
+    final PolarisEntitySubType searchSubtype;
+    if (subTypes.size() > 1) {
+      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
+    } else {
+      searchSubtype = subTypes.getFirst();
+    }
+
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
-    if (resolvedPathWrapper == null) {
-      CatalogHandler.throwNotFoundException(identifier, subType);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
+    if (resolvedPathWrapper == null
+        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1728,7 +1771,7 @@ public class PolarisAdminService {
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
-      PolarisEntitySubType subType,
+      List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
     if (findCatalogByName(catalogName).isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
@@ -1737,10 +1780,17 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
+    final PolarisEntitySubType searchSubtype;
+    if (subTypes.size() > 1) {
+      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
+    } else {
+      searchSubtype = subTypes.getFirst();
+    }
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
-    if (resolvedPathWrapper == null) {
-      CatalogHandler.throwNotFoundException(identifier, subType);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
+    if (resolvedPathWrapper == null
+        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();

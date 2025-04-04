@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -1281,13 +1280,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
 
-    Stream<TableGrant> tableGrants = Arrays.stream(TablePrivilege.values()).map(p -> {
-      return new TableGrant(
-          List.of("ns1"),
-          "tbl1",
-          p,
-          GrantResource.TypeEnum.TABLE);
-    });
+    Stream<TableGrant> tableGrants =
+        Arrays.stream(TablePrivilege.values())
+            .map(
+                p -> {
+                  return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                });
 
     tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
 
