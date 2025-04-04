@@ -364,7 +364,7 @@ public abstract class CatalogHandler {
     } else if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
       throw new NoSuchViewException("View does not exist: %s", identifier);
     } else {
-      throw new IllegalStateException("Unrecognized entity subtype " + subType);
+      throw new NoSuchTableException("Entity does not exist: %s", subType);
     }
   }
 }
