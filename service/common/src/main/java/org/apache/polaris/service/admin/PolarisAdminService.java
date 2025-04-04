@@ -478,7 +478,8 @@ public class PolarisAdminService {
     }
 
     PolarisResolvedPathWrapper tableLikeWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
@@ -1693,7 +1694,7 @@ public class PolarisAdminService {
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
-      PolarisEntitySubType subType,
+      boolean isView,
       PolarisPrivilege privilege) {
     if (findCatalogByName(catalogName).isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
@@ -1703,7 +1704,7 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null) {
       CatalogHandler.throwNotFoundException(identifier, subType);
     }

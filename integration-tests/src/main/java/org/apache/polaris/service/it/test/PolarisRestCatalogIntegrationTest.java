@@ -33,11 +33,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -1265,6 +1268,28 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Assertions.assertThatCode(
             () -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
         .isInstanceOf(ProcessingException.class);
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testGrantsOnGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+
+    Stream<TableGrant> tableGrants = Arrays.stream(TablePrivilege.values()).map(p -> {
+      return new TableGrant(
+          List.of("ns1"),
+          "tbl1",
+          p,
+          GrantResource.TypeEnum.TABLE);
+    });
+
+    tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
 
     genericTableApi.purge(currentCatalogName, namespace);
   }
