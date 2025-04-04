@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.service.storage;
 
-import jakarta.annotation.Nullable;
+import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -49,10 +50,11 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> @Nonnull Optional<T> getConfiguration(
+              PolarisCallContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
-                return (T) String.valueOf(c.defaultValue);
+                return Optional.ofNullable((T) String.valueOf(c.defaultValue));
               }
             }
 
@@ -81,8 +83,8 @@ public class PolarisConfigurationStoreTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(PolarisCallContext ctx, String configName) {
-            return (T) "abc123";
+          public <T> Optional<T> getConfiguration(PolarisCallContext ctx, String configName) {
+            return Optional.of((T) "abc123");
           }
         };
 
@@ -114,7 +116,7 @@ public class PolarisConfigurationStoreTest {
 
     public <T> T consumeConfiguration(
         PolarisConfiguration<Boolean> config, Supplier<T> code, T defaultVal) {
-      if (configurationStore.getConfiguration(polarisCallContext, config)) {
+      if (configurationStore.getConfiguration(polarisCallContext, config).get()) {
         return code.get();
       }
       return defaultVal;

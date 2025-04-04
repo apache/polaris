@@ -210,7 +210,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
     int batchSize =
         polarisCallContext
             .getConfigurationStore()
-            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
+            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10)
+            .get();
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
