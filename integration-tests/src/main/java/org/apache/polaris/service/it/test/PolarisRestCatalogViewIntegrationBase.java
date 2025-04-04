@@ -62,6 +62,16 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
+  public static Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
+      Map.of(
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1", "catalog-default-key1",
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2", "catalog-default-key2",
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key3", "catalog-default-key3",
+          org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3",
+              "catalog-override-key3",
+          org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4",
+              "catalog-override-key4");
+
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -120,15 +130,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     restCatalog =
         IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            catalogName,
-            Map.of(
-                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
-                "catalog-default-key1",
-                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
-                "catalog-default-key2"));
+            client, endpoints, principalCredentials, catalogName, DEFAULT_REST_CATALOG_CONFIG);
   }
 
   @AfterEach
