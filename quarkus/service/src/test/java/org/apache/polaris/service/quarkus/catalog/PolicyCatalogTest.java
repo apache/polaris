@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
+import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,9 +44,11 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -118,20 +122,26 @@ public class PolicyCatalogTest {
     }
   }
 
-  protected static final Namespace NS = Namespace.of("newdb");
-  protected static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
-  public static final String CATALOG_NAME = "polaris-catalog";
-  public static final String TEST_ACCESS_KEY = "test_access_key";
-  public static final String SECRET_ACCESS_KEY = "secret_access_key";
-  public static final String SESSION_TOKEN = "session_token";
+  private static final Namespace NS = Namespace.of("ns1");
+  private static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
+  private static final String CATALOG_NAME = "polaris-catalog";
+  private static final String TEST_ACCESS_KEY = "test_access_key";
+  private static final String SECRET_ACCESS_KEY = "secret_access_key";
+  private static final String SESSION_TOKEN = "session_token";
+  private static final Schema SCHEMA =
+      new Schema(
+          required(3, "id", Types.IntegerType.get(), "unique ID"),
+          required(4, "data", Types.StringType.get()));
 
-  private static final Namespace NS1 = Namespace.of("ns1");
-  private static final PolicyIdentifier POLICY1 = new PolicyIdentifier(NS1, "p1");
-  private static final PolicyIdentifier POLICY2 = new PolicyIdentifier(NS1, "p2");
-  private static final PolicyIdentifier POLICY3 = new PolicyIdentifier(NS1, "p3");
-  private static final PolicyIdentifier POLICY4 = new PolicyIdentifier(NS1, "p4");
+  private static final PolicyIdentifier POLICY1 = new PolicyIdentifier(NS, "p1");
+  private static final PolicyIdentifier POLICY2 = new PolicyIdentifier(NS, "p2");
+  private static final PolicyIdentifier POLICY3 = new PolicyIdentifier(NS, "p3");
+  private static final PolicyIdentifier POLICY4 = new PolicyIdentifier(NS, "p4");
   private static final PolicyAttachmentTarget POLICY_ATTACH_TARGET_NS =
-      new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS1.levels()));
+      new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS.levels()));
+  private static final PolicyAttachmentTarget POLICY_ATTACH_TARGET_TBL =
+      new PolicyAttachmentTarget(
+          PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(TABLE.toString().split("\\.")));
 
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
@@ -312,7 +322,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyDoesNotThrow() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     assertThatCode(
             () ->
                 policyCatalog.createPolicy(
@@ -325,7 +335,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyAlreadyExists() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
     assertThatThrownBy(
@@ -349,7 +359,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testListPolicies() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -363,19 +373,16 @@ public class PolicyCatalogTest {
         POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY4,
-        PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
 
-    List<PolicyIdentifier> listResult = policyCatalog.listPolicies(NS1, null);
+    List<PolicyIdentifier> listResult = policyCatalog.listPolicies(NS, null);
     assertThat(listResult).hasSize(4);
     assertThat(listResult).containsExactlyInAnyOrder(POLICY1, POLICY2, POLICY3, POLICY4);
   }
 
   @Test
   public void testListPoliciesFilterByPolicyType() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -389,20 +396,16 @@ public class PolicyCatalogTest {
         POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY4,
-        PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL.getName(),
-        "test",
-        "{\"enable\": false}");
+        POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
 
-    List<PolicyIdentifier> listResult =
-        policyCatalog.listPolicies(NS1, PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL);
+    List<PolicyIdentifier> listResult = policyCatalog.listPolicies(NS, ORPHAN_FILE_REMOVAL);
     assertThat(listResult).hasSize(1);
     assertThat(listResult).containsExactlyInAnyOrder(POLICY4);
   }
 
   @Test
   public void testLoadPolicy() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -416,7 +419,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testCreatePolicyWithInvalidContent() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
 
     assertThatThrownBy(
             () ->
@@ -427,7 +430,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testLoadPolicyNotExist() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
 
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
@@ -435,7 +438,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testUpdatePolicy() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
     policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0);
@@ -450,7 +453,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testUpdatePolicyWithWrongVersion() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -461,7 +464,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testUpdatePolicyWithInvalidContent() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -471,7 +474,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testUpdatePolicyNotExist() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
 
     assertThatThrownBy(
             () -> policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0))
@@ -480,7 +483,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testDropPolicy() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
@@ -491,7 +494,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testDropPolicyNotExist() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
 
     assertThatThrownBy(() -> policyCatalog.dropPolicy(POLICY1, false))
         .isInstanceOf(NoSuchPolicyException.class);
@@ -499,7 +502,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testAttachPolicy() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
@@ -509,7 +512,7 @@ public class PolicyCatalogTest {
 
   @Test
   public void testAttachPolicyConflict() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
     policyCatalog.createPolicy(POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
 
@@ -526,18 +529,18 @@ public class PolicyCatalogTest {
 
   @Test
   public void testDetachPolicy() {
-    icebergCatalog.createNamespace(NS1);
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     assertThat(policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null)).isTrue();
-    assertThat(policyCatalog.getApplicablePolicies(NS1, null, null).size()).isEqualTo(1);
+    assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
     assertThat(policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS)).isTrue();
-    assertThat(policyCatalog.getApplicablePolicies(NS1, null, null).size()).isEqualTo(0);
+    assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
   }
 
   @Test
-  public void testAttachPolicyOverwrite() {
-    icebergCatalog.createNamespace(NS1);
+  public void testPolicyOverwrite() {
+    icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
     policyCatalog.createPolicy(POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
 
@@ -547,25 +550,72 @@ public class PolicyCatalogTest {
 
     // attach to namespace
     assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
-    var applicablePolicies = policyCatalog.getApplicablePolicies(NS1, null, null);
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(1);
-    assertThat(applicablePolicies.getFirst().getName()).isEqualTo(POLICY2.getName());
+    assertThat(applicablePolicies.getFirst().getName())
+        .isEqualTo(POLICY2.getName())
+        .as("Namespace level policy overwrite the catalog level policy with the same type");
   }
 
   @Test
-  public void testAttachPolicyInheritance() {
-    icebergCatalog.createNamespace(NS1);
-    policyCatalog.createPolicy(
-        POLICY1, METADATA_COMPACTION.getName(), "test", "{\"enable\": false}");
-    policyCatalog.createPolicy(POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
+  public void testPolicyInheritance() {
+    icebergCatalog.createNamespace(NS);
+    var p1 =
+        policyCatalog.createPolicy(
+            POLICY1, METADATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var p2 =
+        policyCatalog.createPolicy(
+            POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
 
-    // attach to catalog
+    // attach a policy to catalog
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
     assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
 
-    // attach to namespace
+    // attach a different type of policy to namespace
     assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
-    var applicablePolicies = policyCatalog.getApplicablePolicies(NS1, null, null);
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(2);
+    assertThat(applicablePolicies.contains(p1)).isTrue();
+    assertThat(applicablePolicies.contains(p2)).isTrue();
+
+    // attach policies to a table
+    icebergCatalog.createTable(TABLE, SCHEMA);
+    applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
+    assertThat(applicablePolicies.size()).isEqualTo(2);
+    // attach a third type of policy to a table
+    policyCatalog.createPolicy(
+        POLICY3, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
+    assertThat(policyCatalog.attachPolicy(POLICY3, POLICY_ATTACH_TARGET_TBL, null)).isTrue();
+    applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
+    assertThat(applicablePolicies.size()).isEqualTo(3);
+    // create policy 4 with one of types from its parent
+    var p4 =
+        policyCatalog.createPolicy(
+            POLICY4, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    assertThat(policyCatalog.attachPolicy(POLICY4, POLICY_ATTACH_TARGET_TBL, null)).isTrue();
+    applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
+    // p2 should be overwritten by p4, as they are the same type
+    assertThat(applicablePolicies.contains(p4)).isTrue();
+    assertThat(applicablePolicies.contains(p2)).isFalse();
+  }
+
+  @Test
+  public void testGetApplicablePoliciesFilterOnType() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, METADATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var p2 =
+        policyCatalog.createPolicy(
+            POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
+
+    // attach a policy to catalog
+    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+
+    // attach a different type of policy to namespace
+    assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, DATA_COMPACTION);
+    // only p2 is with the type fetched
+    assertThat(applicablePolicies.contains(p2)).isTrue();
   }
 }

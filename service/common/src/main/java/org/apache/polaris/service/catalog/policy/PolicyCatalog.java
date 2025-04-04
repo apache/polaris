@@ -190,16 +190,8 @@ public class PolicyCatalog {
   }
 
   public Policy loadPolicy(PolicyIdentifier policyIdentifier) {
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
-
-    PolicyEntity policy =
-        PolicyEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
-
-    if (policy == null) {
-      throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
-    }
+    var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
+    var policy = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
     return constructPolicy(policy);
   }
 
@@ -208,16 +200,8 @@ public class PolicyCatalog {
       String newDescription,
       String newContent,
       int currentPolicyVersion) {
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
-
-    PolicyEntity policy =
-        PolicyEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
-
-    if (policy == null) {
-      throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
-    }
+    var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
+    var policy = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
 
     // Verify that the current version of the policy matches the version that the user is trying to
     // update
@@ -242,7 +226,7 @@ public class PolicyCatalog {
 
     PolicyValidators.validate(newPolicyEntity);
 
-    List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
+    List<PolarisEntity> catalogPath = resolvedPolicyPath.getRawParentPath();
     newPolicyEntity =
         Optional.ofNullable(
                 metaStoreManager
@@ -340,6 +324,27 @@ public class PolicyCatalog {
     return getEffectivePolicies(targetFullPath, policyType);
   }
 
+  /**
+   * Returns the effective policies for a given hierarchical path and policy type.
+   *
+   * <p>Potential Performance Improvements:
+   *
+   * <ul>
+   *   <li>Range Query Optimization: Enhance the query mechanism to fetch policies for all entities
+   *       in a single range query, reducing the number of individual queries against the mapping
+   *       table.
+   *   <li>Filtering on Inheritable: Improve the filtering process by applying the inheritable
+   *       condition at the data retrieval level, so that only the relevant policies for non-leaf
+   *       nodes are processed.
+   *   <li>Caching: Implement caching for up-level policies to avoid redundant calculations and
+   *       lookups, especially for frequently accessed paths.
+   * </ul>
+   *
+   * @param path the list of entities representing the hierarchical path
+   * @param policyType the type of policy to filter on
+   * @return a list of effective policies, combining inherited policies from upper levels and
+   *     non-inheritable policies from the final entity
+   */
   private List<Policy> getEffectivePolicies(List<PolarisEntity> path, PolicyType policyType) {
     if (path == null || path.isEmpty()) {
       return List.of();
@@ -420,16 +425,11 @@ public class PolicyCatalog {
     }
   }
 
-  private static Policy toPolicy(PolarisBaseEntity polarisBaseEntity) {
-    var policyEntity = PolicyEntity.of(polarisBaseEntity);
-    return constructPolicy(policyEntity);
-  }
-
   private PolarisResolvedPathWrapper getResolvedPathWrapper(PolicyIdentifier policyIdentifier) {
     var resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
-    if (resolvedEntities == null) {
+    if (resolvedEntities == null || resolvedEntities.getResolvedLeafEntity() == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
     }
     return resolvedEntities;
@@ -461,6 +461,11 @@ public class PolicyCatalog {
       }
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     };
+  }
+
+  private static Policy toPolicy(PolarisBaseEntity polarisBaseEntity) {
+    var policyEntity = PolicyEntity.of(polarisBaseEntity);
+    return constructPolicy(policyEntity);
   }
 
   private static Policy constructPolicy(PolicyEntity policyEntity) {
