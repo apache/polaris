@@ -4019,7 +4019,7 @@ components:
           properties:
             inherited:
               type: boolean
-            namespaces:
+            namespace-path:
               type: array
               description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
               items:
