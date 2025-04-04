@@ -74,7 +74,7 @@ public class GenericTableApi extends RestApi {
   public List<TableIdentifier> listGenericTables(String catalog, Namespace namespace) {
     String ns = RESTUtil.encodeNamespace(namespace);
     try (Response res =
-        request("v1/{cat}/namespaces/{ns}/generic-tables", Map.of("cat", catalog, "ns", ns))
+        request("polaris/v1/{cat}/namespaces/{ns}/generic-tables", Map.of("cat", catalog, "ns", ns))
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListGenericTablesResponse.class).getIdentifiers().stream().toList();
@@ -85,7 +85,7 @@ public class GenericTableApi extends RestApi {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
-                "v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
                 Map.of("cat", catalog, "table", id.name(), "ns", ns))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
@@ -96,7 +96,7 @@ public class GenericTableApi extends RestApi {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
-                "v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
                 Map.of("cat", catalog, "table", id.name(), "ns", ns))
             .get()) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();
@@ -107,7 +107,9 @@ public class GenericTableApi extends RestApi {
       String catalog, TableIdentifier id, String format, Map<String, String> properties) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
-        request("v1/{cat}/namespaces/{ns}/generic-tables/}", Map.of("cat", catalog, "ns", ns))
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
+                Map.of("cat", catalog, "ns", ns))
             .post(
                 Entity.json(new CreateGenericTableRequest(id.name(), format, "doc", properties)))) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();

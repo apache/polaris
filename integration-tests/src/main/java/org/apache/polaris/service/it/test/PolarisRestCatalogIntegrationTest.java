@@ -1260,6 +1260,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
     Assertions.assertThat(loadResponse1.getFormat()).isEqualTo("format");
 
+    genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
+
     Assertions.assertThatCode(
             () -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
         .isInstanceOf(ProcessingException.class);
