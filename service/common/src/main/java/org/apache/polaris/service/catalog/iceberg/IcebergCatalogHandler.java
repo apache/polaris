@@ -86,7 +86,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -117,6 +116,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
   private final PolarisMetaStoreManager metaStoreManager;
+  private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
@@ -129,12 +129,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
+      UserSecretsManager userSecretsManager,
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
+    this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
   }
 
@@ -160,8 +162,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   private UserSecretsManager getUserSecretsManager() {
-    // TODO: Wire into appropriate factories and/or contexts.
-    return UnsafeInMemorySecretsManager.GLOBAL_INSTANCE;
+    return userSecretsManager;
   }
 
   @Override

@@ -58,6 +58,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -98,6 +100,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   public static final String CATALOG_NAME = "polaris-catalog";
 
   @Inject MetaStoreManagerFactory managerFactory;
+  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
 
@@ -105,6 +108,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
+  private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
 
   @BeforeAll
@@ -131,6 +135,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     RealmContext realmContext = () -> realmName;
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -167,6 +172,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(

@@ -94,6 +94,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
         Objects.requireNonNullElse(scopes, List.of(OAuth2Properties.CATALOG_SCOPE)));
   }
 
+  @JsonIgnore
   private @Nonnull String getCredentialAsConcatenatedString(UserSecretsManager secretsManager) {
     String clientSecret = secretsManager.readSecret(getClientSecretReference());
     return COLON_JOINER.join(clientId, clientSecret);

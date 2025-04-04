@@ -100,7 +100,6 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -129,6 +128,7 @@ public class PolarisAdminService {
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
+  private final UserSecretsManager userSecretsManager;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -137,6 +137,7 @@ public class PolarisAdminService {
       @NotNull CallContext callContext,
       @NotNull PolarisEntityManager entityManager,
       @NotNull PolarisMetaStoreManager metaStoreManager,
+      @NotNull UserSecretsManager userSecretsManager,
       @NotNull SecurityContext securityContext,
       @NotNull PolarisAuthorizer authorizer) {
     this.callContext = callContext;
@@ -154,6 +155,7 @@ public class PolarisAdminService {
     this.authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
+    this.userSecretsManager = userSecretsManager;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -161,8 +163,7 @@ public class PolarisAdminService {
   }
 
   private UserSecretsManager getUserSecretsManager() {
-    // TODO: Wire into appropriate factories and/or contexts.
-    return UnsafeInMemorySecretsManager.GLOBAL_INSTANCE;
+    return userSecretsManager;
   }
 
   private Optional<CatalogEntity> findCatalogByName(String name) {

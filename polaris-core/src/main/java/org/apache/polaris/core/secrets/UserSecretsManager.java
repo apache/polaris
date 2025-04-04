@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.secrets;
 
+import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
@@ -42,7 +43,8 @@ public interface UserSecretsManager {
    * @return A reference object that can be used to retrieve the secret which is safe to store in
    *     its entirety within a persisted PolarisEntity
    */
-  UserSecretReference writeSecret(String secret, PolarisEntity forEntity);
+  @Nonnull
+  UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntity forEntity);
 
   /**
    * Retrieve a secret using the {@code secretReference}.
@@ -50,12 +52,13 @@ public interface UserSecretsManager {
    * @param secretReference Identifier and any associated payload used for retrieving the secret
    * @return The stored secret, or null if it no longer exists
    */
-  String readSecret(UserSecretReference secretReference);
+  @Nonnull
+  String readSecret(@Nonnull UserSecretReference secretReference);
 
   /**
    * Delete a stored secret
    *
    * @param secretReference Identifier and any associated payload used for retrieving the secret
    */
-  void deleteSecret(UserSecretReference secretReference);
+  void deleteSecret(@Nonnull UserSecretReference secretReference);
 }

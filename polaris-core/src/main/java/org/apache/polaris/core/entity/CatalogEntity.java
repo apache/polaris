@@ -39,14 +39,10 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
-import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -325,25 +321,9 @@ public class CatalogEntity extends PolarisEntity {
         ConnectionConfigInfo connectionConfigurationModel,
         Map<String, UserSecretReference> secretReferences) {
       if (connectionConfigurationModel != null) {
-        ConnectionConfigInfoDpo config;
-        switch (connectionConfigurationModel.getConnectionType()) {
-          case ICEBERG_REST:
-            IcebergRestConnectionConfigInfo icebergRestConfigModel =
-                (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
-            AuthenticationParametersDpo authenticationParameters =
-                AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
-                    icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
-            config =
-                new IcebergRestConnectionConfigInfoDpo(
-                    ConnectionType.ICEBERG_REST,
-                    icebergRestConfigModel.getUri(),
-                    icebergRestConfigModel.getRemoteCatalogName(),
-                    authenticationParameters);
-            break;
-          default:
-            throw new IllegalStateException(
-                "Unsupported connection type: " + connectionConfigurationModel.getConnectionType());
-        }
+        ConnectionConfigInfoDpo config =
+            ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                connectionConfigurationModel, secretReferences);
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }

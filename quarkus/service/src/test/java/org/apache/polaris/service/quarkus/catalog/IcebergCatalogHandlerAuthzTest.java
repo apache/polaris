@@ -111,6 +111,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         callContext,
         entityManager,
         metaStoreManager,
+        userSecretsManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
@@ -249,6 +250,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -281,6 +283,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -1802,6 +1805,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
               }
             },
             managerFactory,
+            userSecretsManagerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(
                 realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {})) {

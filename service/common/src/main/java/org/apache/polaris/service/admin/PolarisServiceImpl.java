@@ -68,6 +68,8 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
@@ -85,16 +87,19 @@ public class PolarisServiceImpl
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
 
   @Inject
   public PolarisServiceImpl(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
     // FIXME: This is a hack to set the current context for downstream calls.
@@ -113,8 +118,15 @@ public class PolarisServiceImpl
         entityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    UserSecretsManager userSecretsManager =
+        userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     return new PolarisAdminService(
-        callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer);
+        callContext,
+        entityManager,
+        metaStoreManager,
+        userSecretsManager,
+        securityContext,
+        polarisAuthorizer);
   }
 
   /** From PolarisCatalogsApiService */

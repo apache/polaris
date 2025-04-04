@@ -29,8 +29,11 @@ import jakarta.annotation.Nonnull;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Map;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.secrets.UserSecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,17 +50,26 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The URI of the remote catalog
   private final String uri;
 
+  // The authentication parameters for the connection
+  private final AuthenticationParametersDpo authenticationParameters;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri) {
-    this(connectionType, uri, true);
+      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
+      @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
+          AuthenticationParametersDpo authenticationParameters) {
+    this(connectionType, uri, authenticationParameters, true);
   }
 
   protected ConnectionConfigInfoDpo(
-      ConnectionType connectionType, String uri, boolean validateUri) {
+      @Nonnull ConnectionType connectionType,
+      @Nonnull String uri,
+      @Nonnull AuthenticationParametersDpo authenticationParameters,
+      boolean validateUri) {
     this.connectionType = connectionType;
     this.uri = uri;
+    this.authenticationParameters = authenticationParameters;
     if (validateUri) {
       validateUri(uri);
     }
@@ -69,6 +81,10 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public String getUri() {
     return uri;
+  }
+
+  public AuthenticationParametersDpo getAuthenticationParameters() {
+    return authenticationParameters;
   }
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -106,6 +122,31 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     } catch (IllegalArgumentException | MalformedURLException e) {
       throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
     }
+  }
+
+  public static ConnectionConfigInfoDpo fromConnectionConfigInfoModelWithSecrets(
+      ConnectionConfigInfo connectionConfigurationModel,
+      Map<String, UserSecretReference> secretReferences) {
+    ConnectionConfigInfoDpo config = null;
+    switch (connectionConfigurationModel.getConnectionType()) {
+      case ICEBERG_REST:
+        IcebergRestConnectionConfigInfo icebergRestConfigModel =
+            (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
+        AuthenticationParametersDpo authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
+        config =
+            new IcebergRestConnectionConfigInfoDpo(
+                ConnectionType.ICEBERG_REST,
+                icebergRestConfigModel.getUri(),
+                authenticationParameters,
+                icebergRestConfigModel.getRemoteCatalogName());
+        break;
+      default:
+        throw new IllegalStateException(
+            "Unsupported connection type: " + connectionConfigurationModel.getConnectionType());
+    }
+    return config;
   }
 
   public abstract ConnectionConfigInfo asConnectionConfigInfoModel();

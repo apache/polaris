@@ -34,27 +34,20 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
 
   private final String remoteCatalogName;
 
-  private final AuthenticationParametersDpo authenticationParameters;
-
   public IcebergRestConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
+      @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
+          AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
-          String remoteCatalogName,
-      @JsonProperty(value = "authenticationParameters", required = false) @Nonnull
-          AuthenticationParametersDpo authenticationParameters) {
-    super(connectionType, uri);
+          String remoteCatalogName) {
+    super(connectionType, uri, authenticationParameters);
     this.remoteCatalogName = remoteCatalogName;
-    this.authenticationParameters = authenticationParameters;
   }
 
   public String getRemoteCatalogName() {
     return remoteCatalogName;
-  }
-
-  public AuthenticationParametersDpo getAuthenticationParameters() {
-    return authenticationParameters;
   }
 
   @Override
@@ -65,7 +58,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    properties.putAll(authenticationParameters.asIcebergCatalogProperties(secretsManager));
+    properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
     return properties;
   }
 
@@ -75,7 +68,8 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
         .setUri(getUri())
         .setRemoteCatalogName(getRemoteCatalogName())
-        .setAuthenticationParameters(authenticationParameters.asAuthenticationParametersModel())
+        .setAuthenticationParameters(
+            getAuthenticationParameters().asAuthenticationParametersModel())
         .build();
   }
 

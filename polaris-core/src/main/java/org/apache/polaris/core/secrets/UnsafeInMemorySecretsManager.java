@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.secrets;
 
+import jakarta.annotation.Nonnull;
 import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -46,7 +47,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  public UserSecretReference writeSecret(String secret, PolarisEntity forEntity) {
+  @Nonnull
+  public UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntity forEntity) {
     // For illustrative purposes and to exercise the control flow of requiring both the stored
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.
@@ -107,7 +109,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  public String readSecret(UserSecretReference secretReference) {
+  @Nonnull
+  public String readSecret(@Nonnull UserSecretReference secretReference) {
     // TODO: Precondition checks and/or wire in PolarisDiagnostics
     String encryptedSecretCipherTextBase64 = rawSecretStore.get(secretReference.getUrn());
     if (encryptedSecretCipherTextBase64 == null) {
@@ -148,7 +151,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteSecret(UserSecretReference secretReference) {
+  public void deleteSecret(@Nonnull UserSecretReference secretReference) {
     rawSecretStore.remove(secretReference.getUrn());
   }
 }
