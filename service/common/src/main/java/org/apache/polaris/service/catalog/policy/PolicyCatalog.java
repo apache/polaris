@@ -31,7 +31,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -115,13 +114,15 @@ public class PolicyCatalog {
 
     if (!res.isSuccess()) {
 
-      if (res.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
-        throw new AlreadyExistsException("Policy already exists %s", policyIdentifier);
-      } else {
-        throw new IllegalStateException(
-            String.format(
-                "Unknown error status for identifier %s: %s with extraInfo: %s",
-                policyIdentifier, res.getReturnStatus(), res.getExtraInformation()));
+      switch (res.getReturnStatus()) {
+        case ENTITY_ALREADY_EXISTS:
+          throw new AlreadyExistsException("Policy already exists %s", policyIdentifier);
+
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Unknown error status for identifier %s: %s with extraInfo: %s",
+                  policyIdentifier, res.getReturnStatus(), res.getExtraInformation()));
       }
     }
 
