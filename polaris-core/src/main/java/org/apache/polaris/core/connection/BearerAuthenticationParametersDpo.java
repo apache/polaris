@@ -28,12 +28,12 @@ import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
-public class PolarisBearerAuthenticationParameters extends PolarisAuthenticationParameters {
+public class BearerAuthenticationParametersDpo extends AuthenticationParametersDpo {
 
   @JsonProperty(value = "bearerTokenReference")
   private final UserSecretReference bearerTokenReference;
 
-  public PolarisBearerAuthenticationParameters(
+  public BearerAuthenticationParametersDpo(
       @JsonProperty(value = "authenticationType", required = true) @Nonnull
           AuthenticationType authenticationType,
       @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull

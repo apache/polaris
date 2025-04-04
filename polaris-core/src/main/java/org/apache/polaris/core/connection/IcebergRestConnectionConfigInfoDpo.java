@@ -29,21 +29,21 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
-public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionConfigurationInfo
+public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     implements IcebergCatalogPropertiesProvider {
 
   private final String remoteCatalogName;
 
-  private final PolarisAuthenticationParameters authenticationParameters;
+  private final AuthenticationParametersDpo authenticationParameters;
 
-  public IcebergRestConnectionConfigurationInfo(
+  public IcebergRestConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName,
       @JsonProperty(value = "authenticationParameters", required = false) @Nonnull
-          PolarisAuthenticationParameters authenticationParameters) {
+          AuthenticationParametersDpo authenticationParameters) {
     super(connectionType, uri);
     this.remoteCatalogName = remoteCatalogName;
     this.authenticationParameters = authenticationParameters;
@@ -53,7 +53,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
     return remoteCatalogName;
   }
 
-  public PolarisAuthenticationParameters getAuthenticationParameters() {
+  public AuthenticationParametersDpo getAuthenticationParameters() {
     return authenticationParameters;
   }
 

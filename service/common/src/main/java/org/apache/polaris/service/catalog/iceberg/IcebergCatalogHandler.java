@@ -74,8 +74,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.connection.IcebergRestConnectionConfigurationInfo;
-import org.apache.polaris.core.connection.PolarisConnectionConfigurationInfo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -168,7 +168,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity =
         CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
-    PolarisConnectionConfigurationInfo connectionConfigurationInfo =
+    ConnectionConfigInfoDpo connectionConfigurationInfo =
         resolvedCatalogEntity.getConnectionConfigurationInfo();
     if (connectionConfigurationInfo != null) {
       LOGGER
@@ -188,7 +188,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
                           .build());
           federatedCatalog.initialize(
-              ((IcebergRestConnectionConfigurationInfo) connectionConfigurationInfo)
+              ((IcebergRestConnectionConfigInfoDpo) connectionConfigurationInfo)
                   .getRemoteCatalogName(),
               connectionConfigurationInfo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;

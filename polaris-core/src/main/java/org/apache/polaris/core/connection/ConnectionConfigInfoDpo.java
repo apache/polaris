@@ -36,12 +36,10 @@ import org.slf4j.LoggerFactory;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "connectionType", visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = IcebergRestConnectionConfigurationInfo.class, name = "ICEBERG_REST"),
+  @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "ICEBERG_REST"),
 })
-public abstract class PolarisConnectionConfigurationInfo
-    implements IcebergCatalogPropertiesProvider {
-  private static final Logger logger =
-      LoggerFactory.getLogger(PolarisConnectionConfigurationInfo.class);
+public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
+  private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
 
   // The type of the connection
   private final ConnectionType connectionType;
@@ -49,14 +47,14 @@ public abstract class PolarisConnectionConfigurationInfo
   // The URI of the remote catalog
   private final String uri;
 
-  public PolarisConnectionConfigurationInfo(
+  public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri) {
     this(connectionType, uri, true);
   }
 
-  protected PolarisConnectionConfigurationInfo(
+  protected ConnectionConfigInfoDpo(
       ConnectionType connectionType, String uri, boolean validateUri) {
     this.connectionType = connectionType;
     this.uri = uri;
@@ -89,10 +87,10 @@ public abstract class PolarisConnectionConfigurationInfo
     }
   }
 
-  public static PolarisConnectionConfigurationInfo deserialize(
+  public static ConnectionConfigInfoDpo deserialize(
       @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
     try {
-      return DEFAULT_MAPPER.readValue(jsonStr, PolarisConnectionConfigurationInfo.class);
+      return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
     } catch (JsonProcessingException exception) {
       diagnostics.fail(
           "fail_to_deserialize_connection_configuration", exception, "jsonStr={}", jsonStr);

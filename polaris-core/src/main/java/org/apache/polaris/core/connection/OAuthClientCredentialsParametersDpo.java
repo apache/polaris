@@ -38,7 +38,7 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
-public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticationParameters {
+public class OAuthClientCredentialsParametersDpo extends AuthenticationParametersDpo {
 
   private static final Joiner COLON_JOINER = Joiner.on(":");
 
@@ -54,7 +54,7 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
   @JsonProperty(value = "scopes")
   private final List<String> scopes;
 
-  public PolarisOAuthClientCredentialsParameters(
+  public OAuthClientCredentialsParametersDpo(
       @JsonProperty(value = "authenticationType", required = true) @Nonnull
           AuthenticationType authenticationType,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,

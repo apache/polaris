@@ -26,7 +26,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class PolarisConnectionConfigurationInfoTest {
+public class ConnectionConfigInfoDpoTest {
   PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
   ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,8 +52,8 @@ public class PolarisConnectionConfigurationInfoTest {
             + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
             + "  }"
             + "}";
-    PolarisConnectionConfigurationInfo connectionConfigurationInfo =
-        PolarisConnectionConfigurationInfo.deserialize(polarisDiagnostics, json);
+    ConnectionConfigInfoDpo connectionConfigurationInfo =
+        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
     Assertions.assertNotNull(connectionConfigurationInfo);
     System.out.println(connectionConfigurationInfo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);
@@ -80,8 +80,8 @@ public class PolarisConnectionConfigurationInfoTest {
             + "    }"
             + "  }"
             + "}";
-    PolarisConnectionConfigurationInfo connectionConfigurationInfo =
-        PolarisConnectionConfigurationInfo.deserialize(polarisDiagnostics, json);
+    ConnectionConfigInfoDpo connectionConfigurationInfo =
+        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
     Assertions.assertNotNull(connectionConfigurationInfo);
     System.out.println(connectionConfigurationInfo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);

@@ -74,7 +74,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.connection.PolarisAuthenticationParameters;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -612,8 +612,7 @@ public class PolarisAdminService {
               UserSecretReference secretReference =
                   secretsManager.writeSecret(inlineClientSecret, forEntity);
               secretReferences.put(
-                  PolarisAuthenticationParameters.INLINE_CLIENT_SECRET_REFERENCE_KEY,
-                  secretReference);
+                  AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
               break;
             }
           case BEARER:
@@ -624,8 +623,7 @@ public class PolarisAdminService {
               UserSecretReference secretReference =
                   secretsManager.writeSecret(inlineBearerToken, forEntity);
               secretReferences.put(
-                  PolarisAuthenticationParameters.INLINE_BEARER_TOKEN_REFERENCE_KEY,
-                  secretReference);
+                  AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
               break;
             }
           default:
