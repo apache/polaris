@@ -67,6 +67,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -728,6 +729,7 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
+                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
                         .build())
                 .build())
         .build();
