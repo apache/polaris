@@ -20,16 +20,38 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import java.nio.file.Path;
 import java.util.Optional;
 
 @StaticInitSafe
-@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+@ConfigMapping(prefix = "polaris.persistence.relational")
 public interface RelationalJdbcConfiguration {
+  Optional<String> jdbcUrl();
 
-  /**
-   * The path to the relational jdbc configuration file. If not provided, the default (built-in)
-   * configuration file will be used.
-   */
-  Optional<Path> configurationFile();
+  Optional<String> userName();
+
+  Optional<String> password();
+
+  Optional<String> driverClassName();
+
+  Optional<Integer> initialPoolSize();
+
+  Optional<Integer> maxTotal();
+
+  Optional<Integer> maxIdle();
+
+  Optional<Integer> minIdle();
+
+  Optional<Long> maxWaitMillis();
+
+  Optional<Boolean> testOnBorrow();
+
+  Optional<Boolean> testOnReturn();
+
+  Optional<Boolean> testWhileIdle();
+
+  Optional<String> validationQuery();
+
+  Optional<Long> timeBetweenEvictionRunsMillis();
+
+  Optional<Integer> minEvictableIdleTimeMillis();
 }
