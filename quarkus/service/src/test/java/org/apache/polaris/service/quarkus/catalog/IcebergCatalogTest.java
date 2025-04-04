@@ -123,6 +123,7 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -133,7 +134,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import org.opentest4j.AssertionFailedError;
 import software.amazon.awssdk.core.exception.NonRetryableException;
 import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -164,6 +164,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
+  protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
   public static final String CATALOG_NAME = "polaris-catalog";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
@@ -386,23 +387,29 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
-  @Override
   @Test
-  public void listNamespacesWithEmptyNamespace() {
-    // In Polaris, the empty namespace implicitly exists by default.
-    // The superclass test assumes the empty namespace does not exist initially,
-    // so running it will fail as expected.
-    Assertions.assertThatThrownBy(super::listNamespacesWithEmptyNamespace)
-        .isInstanceOf(AssertionFailedError.class);
-  }
+  public void testEmptyNamespace() {
+    IcebergCatalog catalog = catalog();
+    TableIdentifier tableInRootNs = TableIdentifier.of("table");
 
-  @Test
-  public void listNamespacesWithEmptyNamespaceInPolaris() {
-    catalog().createNamespace(NS);
+    ThrowingCallable createTable = () -> catalog.createTable(tableInRootNs, SCHEMA);
+    Assertions.assertThatThrownBy(createTable).isInstanceOf(NoSuchNamespaceException.class);
 
-    Assertions.assertThat(catalog().namespaceExists(Namespace.empty())).isTrue();
-    Assertions.assertThat(catalog().listNamespaces()).containsExactly(NS);
-    Assertions.assertThat(catalog().listNamespaces(Namespace.empty())).containsExactly(NS);
+    ThrowingCallable createView =
+        () ->
+            catalog
+                .buildView(tableInRootNs)
+                .withSchema(SCHEMA)
+                .withDefaultNamespace(Namespace.empty())
+                .withQuery("spark", VIEW_QUERY)
+                .create();
+    Assertions.assertThatThrownBy(createView).isInstanceOf(NoSuchNamespaceException.class);
+
+    ThrowingCallable listTables = () -> catalog.listTables(Namespace.empty());
+    Assertions.assertThatThrownBy(listTables).isInstanceOf(NoSuchNamespaceException.class);
+
+    ThrowingCallable listViews = () -> catalog.listViews(Namespace.empty());
+    Assertions.assertThatThrownBy(listViews).isInstanceOf(NoSuchNamespaceException.class);
   }
 
   @Test
