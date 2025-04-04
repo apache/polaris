@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheInterface;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -36,7 +36,7 @@ public interface MetaStoreManagerFactory {
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
-  EntityCache getOrCreateEntityCache(RealmContext realmContext);
+  EntityCacheInterface getOrCreateEntityCache(RealmContext realmContext);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet);

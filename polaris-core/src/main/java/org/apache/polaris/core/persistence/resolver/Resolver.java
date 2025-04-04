@@ -42,8 +42,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
+import org.apache.polaris.core.persistence.cache.EntityCacheInterface;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
@@ -64,7 +64,7 @@ public class Resolver {
   private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
-  @Nullable private final EntityCache cache;
+  @Nullable private final EntityCacheInterface cache;
 
   // the id of the principal making the call or 0 if unknown
   private final @Nonnull AuthenticatedPolarisPrincipal polarisPrincipal;
@@ -125,7 +125,7 @@ public class Resolver {
       @Nonnull PolarisCallContext polarisCallContext,
       @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
       @Nonnull SecurityContext securityContext,
-      @Nullable EntityCache cache,
+      @Nullable EntityCacheInterface cache,
       @Nullable String referenceCatalogName) {
     this.polarisCallContext = polarisCallContext;
     this.diagnostics = polarisCallContext.getDiagServices();
