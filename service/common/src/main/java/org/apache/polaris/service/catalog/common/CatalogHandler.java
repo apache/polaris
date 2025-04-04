@@ -326,13 +326,20 @@ public abstract class CatalogHandler {
     // TODO: Possibly modify the exception thrown depending on whether the caller has privileges
     // on the parent namespace.
     PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dst);
-    if (dstLeafSubType == PolarisEntitySubType.ICEBERG_TABLE) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.GENERIC_TABLE) {
-      throw new AlreadyExistsException(
-          "Cannot rename %s to %s. Generic table already exists", src, dst);
+
+    switch (dstLeafSubType) {
+      case PolarisEntitySubType.ICEBERG_TABLE:
+        throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
+
+      case PolarisEntitySubType.ICEBERG_VIEW:
+        throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
+
+      case PolarisEntitySubType.GENERIC_TABLE:
+        throw new AlreadyExistsException(
+            "Cannot rename %s to %s. Generic table already exists", src, dst);
+
+      default:
+        break;
     }
 
     PolarisResolvedPathWrapper target =

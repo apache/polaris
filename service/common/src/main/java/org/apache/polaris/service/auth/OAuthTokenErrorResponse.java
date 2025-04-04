@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /** An OAuth Error Token Response as defined by the Iceberg REST API OpenAPI Spec. */
 public class OAuthTokenErrorResponse {
 
+  @SuppressWarnings("JavaLangClash")
   public enum Error {
     invalid_request("The request is invalid"),
     invalid_client("The Client is invalid"),
