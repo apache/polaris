@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage;
+package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
 import java.util.Set;
@@ -24,9 +24,10 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /** Manage credentials for storage locations. */
-public interface PolarisCredentialVendor {
+public interface CredentialVendorDao {
   /**
    * Get a sub-scoped credentials for an entity against the provided allowed read and write
    * locations.

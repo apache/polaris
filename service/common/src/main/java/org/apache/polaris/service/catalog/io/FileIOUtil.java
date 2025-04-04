@@ -29,7 +29,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
@@ -78,7 +78,7 @@ public class FileIOUtil {
   public static Map<String, String> refreshCredentials(
       CallContext callContext,
       PolarisEntityManager entityManager,
-      PolarisCredentialVendor credentialVendor,
+      CredentialVendorDao credentialVendor,
       PolarisConfigurationStore configurationStore,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,

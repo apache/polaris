@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 
 /** Manages secrets for Polaris principals. */
-public interface PolarisSecretsManager {
+public interface PrincipalSecretsDao {
   /**
    * Load the principal secrets given the client_id.
    *
