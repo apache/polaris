@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -1208,6 +1209,58 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     GenericTable createResponse =
         genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
     Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testLoadGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    GenericTable loadResponse =
+        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+    Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testListGenericTables() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
+    TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
+
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
+
+    List<TableIdentifier> identifiers = genericTableApi.listGenericTables(currentCatalogName, namespace);
+
+    Assertions.assertThat(identifiers).hasSize(2);
+    Assertions.assertThat(identifiers).containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testDropGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    GenericTable loadResponse1 =
+        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+    Assertions.assertThat(loadResponse1.getFormat()).isEqualTo("format");
+
+    Assertions.assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+        .isInstanceOf(ProcessingException.class);
 
     genericTableApi.purge(currentCatalogName, namespace);
   }

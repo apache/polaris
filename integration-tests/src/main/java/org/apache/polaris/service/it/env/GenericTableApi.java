@@ -31,7 +31,6 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
@@ -93,14 +92,24 @@ public class GenericTableApi extends RestApi {
     }
   }
 
+  public GenericTable getGenericTable(String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                Map.of("cat", catalog, "table", id.name(), "ns", ns))
+            .get()) {
+      return res.readEntity(LoadGenericTableResponse.class).getTable();
+    }
+  }
+
   public GenericTable createGenericTable(
       String catalog, TableIdentifier id, String format, Map<String, String> properties) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
-             request(
-                 "v1/{cat}/namespaces/{ns}/generic-tables/}",
-                 Map.of("cat", catalog, "ns", ns))
-                 .post(Entity.json(new CreateGenericTableRequest(id.name(), format, "doc", properties)))) {
+        request("v1/{cat}/namespaces/{ns}/generic-tables/}", Map.of("cat", catalog, "ns", ns))
+            .post(
+                Entity.json(new CreateGenericTableRequest(id.name(), format, "doc", properties)))) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();
     }
   }
