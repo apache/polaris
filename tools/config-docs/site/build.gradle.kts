@@ -26,7 +26,6 @@ description = "Polaris site - reference docs"
 val genProjectPaths = listOf(
   ":polaris-quarkus-service",
   ":polaris-eclipselink",
-  ":polaris-relational-jdbc"
 )
 
 val genProjects by configurations.creating

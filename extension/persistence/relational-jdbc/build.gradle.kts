@@ -30,7 +30,6 @@ dependencies {
 
   implementation("io.quarkus:quarkus-arc")
   implementation(platform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-core")
 
   compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
   compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
