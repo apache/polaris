@@ -82,12 +82,14 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.GenericTable;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -127,6 +129,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   private PrincipalWithCredentials principalCredentials;
   private CatalogApi catalogApi;
+  private GenericTableApi genericTableApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private Map<String, String> restCatalogConfig;
@@ -178,6 +181,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
+    genericTableApi = client.genericTableApi(principalCredentials);
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
@@ -1193,5 +1197,18 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .head()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
+  }
+
+  @Test
+  public void testCreateGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    GenericTable createResponse =
+        genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+    Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.purge(currentCatalogName, namespace);
   }
 }
