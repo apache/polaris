@@ -220,7 +220,6 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-
       switch (subType) {
         case PolarisEntitySubType.ICEBERG_TABLE:
           throw new NoSuchTableException("Table does not exist: %s", identifier);
