@@ -37,6 +37,6 @@ public class EclipselinkProfile implements QuarkusTestProfile {
     return List.of(
         new TestResourceEntry(
             PostgresTestResourceLifecycleManager.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/el/init.sql")));
+            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
   }
 }

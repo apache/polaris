@@ -58,15 +58,6 @@ public class ConnectionManager {
     if (jdbcConfiguration.maxWaitMillis().isPresent()) {
       bds.setMaxWaitMillis(jdbcConfiguration.maxWaitMillis().get());
     }
-    if (jdbcConfiguration.testOnBorrow().isPresent()) {
-      bds.setTestOnBorrow(jdbcConfiguration.testOnBorrow().get());
-    }
-    if (jdbcConfiguration.testOnReturn().isPresent()) {
-      bds.setTestOnReturn(jdbcConfiguration.testOnReturn().get());
-    }
-    if (jdbcConfiguration.testWhileIdle().isPresent()) {
-      bds.setTestWhileIdle(jdbcConfiguration.testWhileIdle().get());
-    }
     if (jdbcConfiguration.validationQuery().isPresent()) {
       bds.setValidationQuery(jdbcConfiguration.validationQuery().get());
     }

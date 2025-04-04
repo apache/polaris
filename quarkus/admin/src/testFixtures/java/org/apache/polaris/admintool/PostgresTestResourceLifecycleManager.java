@@ -34,10 +34,10 @@ public class PostgresTestResourceLifecycleManager
 
   public static final String INIT_SCRIPT = "init-script";
 
-  protected PostgreSQLContainer<?> postgres;
-  protected String initScript;
-  protected DevServicesContext context;
-  protected Path rootDir;
+  private PostgreSQLContainer<?> postgres;
+  private String initScript;
+  private DevServicesContext context;
+  private Path rootDir;
 
   @Override
   public void init(Map<String, String> initArgs) {
