@@ -1235,14 +1235,15 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
     TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
 
-
     genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
     genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
 
-    List<TableIdentifier> identifiers = genericTableApi.listGenericTables(currentCatalogName, namespace);
+    List<TableIdentifier> identifiers =
+        genericTableApi.listGenericTables(currentCatalogName, namespace);
 
     Assertions.assertThat(identifiers).hasSize(2);
-    Assertions.assertThat(identifiers).containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+    Assertions.assertThat(identifiers)
+        .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
 
     genericTableApi.purge(currentCatalogName, namespace);
   }
@@ -1259,7 +1260,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
     Assertions.assertThat(loadResponse1.getFormat()).isEqualTo("format");
 
-    Assertions.assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+    Assertions.assertThatCode(
+            () -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
         .isInstanceOf(ProcessingException.class);
 
     genericTableApi.purge(currentCatalogName, namespace);
