@@ -23,7 +23,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
 
-  <persistence-unit name="polaris-staging" transaction-type="RESOURCE_LOCAL">
+  <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
     <class>org.apache.polaris.jpa.models.ModelEntity</class>
     <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
@@ -34,10 +34,9 @@
     <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
-      <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:postgresql://34.69.68.69:5432/polaris"/>
-      <property name="jakarta.persistence.jdbc.user" value="polaris_staging"/>
-      <property name="jakarta.persistence.jdbc.password" value="36#aU27-5zSNA7_N"/>
+      <property name="jakarta.persistence.jdbc.url" value=""/>
+      <property name="jakarta.persistence.jdbc.user" value=""/>
+      <property name="jakarta.persistence.jdbc.password" value=""/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
       <property name="eclipselink.logging.level.sql" value="INFO"/>
       <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
