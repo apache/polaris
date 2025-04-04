@@ -184,7 +184,10 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+            .loadTasks(
+                callContext.getPolarisCallContext(),
+                "testExecutor",
+                callContext.getPolarisCallContext().getMetaStore().pageTokenBuilder().fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));

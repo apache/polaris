@@ -81,12 +81,16 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.types.ListNamespacesResponseWithPageToken;
+import org.apache.polaris.service.types.ListTablesResponseWithPageToken;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,6 +164,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     return isCreate;
+  }
+
+  public ListNamespacesResponseWithPageToken listNamespaces(Namespace parent, PageToken pageToken) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      return ListNamespacesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listNamespaces(parent, pageToken));
+    } else {
+      return ListNamespacesResponseWithPageToken.fromPolarisPage(
+          PolarisPage.fromData(
+              CatalogHandlers.listNamespaces(namespaceCatalog, parent).namespaces()));
+    }
   }
 
   public ListNamespacesResponse listNamespaces(Namespace parent) {
@@ -243,6 +261,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     return CatalogHandlers.updateNamespaceProperties(namespaceCatalog, namespace, request);
+  }
+
+  public ListTablesResponseWithPageToken listTables(Namespace namespace, PageToken pageToken) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listTables(namespace, pageToken));
+    } else {
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
+    }
   }
 
   public ListTablesResponse listTables(Namespace namespace) {
@@ -873,6 +904,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
+    }
+  }
+
+  public ListTablesResponseWithPageToken listViews(Namespace namespace, PageToken pageToken) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listViews(namespace, pageToken));
+    } else {
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }
 
