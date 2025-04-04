@@ -169,18 +169,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity =
         CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
-    ConnectionConfigInfoDpo connectionConfigurationInfo =
-        resolvedCatalogEntity.getConnectionConfigurationInfo();
-    if (connectionConfigurationInfo != null) {
+    ConnectionConfigInfoDpo connectionConfigInfoDpo =
+        resolvedCatalogEntity.getConnectionConfigInfoDpo();
+    if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigurationInfo.getUri())
+          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       Catalog federatedCatalog;
-      switch (connectionConfigurationInfo.getConnectionType()) {
+      switch (connectionConfigInfoDpo.getConnectionType()) {
         case ICEBERG_REST:
           SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
           federatedCatalog =
@@ -191,13 +191,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
                           .build());
           federatedCatalog.initialize(
-              ((IcebergRestConnectionConfigInfoDpo) connectionConfigurationInfo)
-                  .getRemoteCatalogName(),
-              connectionConfigurationInfo.asIcebergCatalogProperties(getUserSecretsManager()));
+              ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         default:
           throw new UnsupportedOperationException(
-              "Connection type not supported: " + connectionConfigurationInfo.getConnectionType());
+              "Connection type not supported: " + connectionConfigInfoDpo.getConnectionType());
       }
       this.baseCatalog = federatedCatalog;
     } else {

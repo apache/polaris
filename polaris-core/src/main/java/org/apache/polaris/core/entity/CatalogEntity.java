@@ -172,7 +172,7 @@ public class CatalogEntity extends PolarisEntity {
   private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(
         PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
-      ConnectionConfigInfoDpo configInfo = getConnectionConfigurationInfo();
+      ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
       return configInfo.asConnectionConfigInfoModel();
     }
     return null;
@@ -207,7 +207,7 @@ public class CatalogEntity extends PolarisEntity {
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
   }
 
-  public ConnectionConfigInfoDpo getConnectionConfigurationInfo() {
+  public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {
     String configStr =
         getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
@@ -317,7 +317,7 @@ public class CatalogEntity extends PolarisEntity {
       }
     }
 
-    public Builder setConnectionConfigurationInfoWithSecrets(
+    public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
         Map<String, UserSecretReference> secretReferences) {
       if (connectionConfigurationModel != null) {

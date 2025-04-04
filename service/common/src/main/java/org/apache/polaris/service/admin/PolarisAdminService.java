@@ -687,7 +687,7 @@ public class PolarisAdminService {
           extractSecretReferences(catalogRequest, entity);
       entity =
           new CatalogEntity.Builder(entity)
-              .setConnectionConfigurationInfoWithSecrets(
+              .setConnectionConfigInfoDpoWithSecrets(
                   ((ExternalCatalog) catalogRequest.getCatalog()).getConnectionConfigInfo(),
                   processedSecretReferences)
               .build();

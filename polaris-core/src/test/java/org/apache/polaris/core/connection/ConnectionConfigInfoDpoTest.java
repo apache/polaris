@@ -52,12 +52,12 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
             + "  }"
             + "}";
-    ConnectionConfigInfoDpo connectionConfigurationInfo =
+    ConnectionConfigInfoDpo connectionConfigInfoDpo =
         ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
-    Assertions.assertNotNull(connectionConfigurationInfo);
-    System.out.println(connectionConfigurationInfo.serialize());
+    Assertions.assertNotNull(connectionConfigInfoDpo);
+    System.out.println(connectionConfigInfoDpo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);
-    JsonNode tree2 = objectMapper.readTree(connectionConfigurationInfo.serialize());
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
     Assertions.assertEquals(tree1, tree2);
   }
 
@@ -80,12 +80,12 @@ public class ConnectionConfigInfoDpoTest {
             + "    }"
             + "  }"
             + "}";
-    ConnectionConfigInfoDpo connectionConfigurationInfo =
+    ConnectionConfigInfoDpo connectionConfigInfoDpo =
         ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
-    Assertions.assertNotNull(connectionConfigurationInfo);
-    System.out.println(connectionConfigurationInfo.serialize());
+    Assertions.assertNotNull(connectionConfigInfoDpo);
+    System.out.println(connectionConfigInfoDpo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);
-    JsonNode tree2 = objectMapper.readTree(connectionConfigurationInfo.serialize());
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
     Assertions.assertEquals(tree1, tree2);
   }
 }
