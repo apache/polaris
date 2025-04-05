@@ -220,16 +220,7 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      switch (subType) {
-        case PolarisEntitySubType.ICEBERG_TABLE:
-          throw new NoSuchTableException("Table does not exist: %s", identifier);
-
-        case PolarisEntitySubType.GENERIC_TABLE:
-          throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-
-        default:
-          throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
+      throwNotFoundExceptionForTableLikeEntity(identifier, subType);
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
@@ -263,11 +254,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier =
           PolarisCatalogHelpers.listToTableIdentifier(
               status.getFailedToResolvePath().getEntityNames());
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
+      throwNotFoundExceptionForTableLikeEntity(identifier, subType);
     }
 
     List<PolarisResolvedPathWrapper> targets =
@@ -322,11 +309,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
     } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", src);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", src);
-      }
+      throwNotFoundExceptionForTableLikeEntity(dst, subType);
     }
 
     // Normally, since we added the dst as an optional path, we'd expect it to only get resolved
@@ -365,5 +348,25 @@ public abstract class CatalogHandler {
         secondary);
 
     initializeCatalog();
+  }
+
+  /**
+   * Helper function for when a TABLE_LIKE entity is not found so we want to throw the appropriate
+   * exception. Used in Iceberg APIs, so the Iceberg messages cannot be changed.
+   *
+   * @param subType The subtype of the entity that the exception should report doesn't exist
+   */
+  public static void throwNotFoundExceptionForTableLikeEntity(
+      TableIdentifier identifier, PolarisEntitySubType subType) {
+    switch (subType) {
+      case ICEBERG_TABLE:
+        throw new NoSuchTableException("Table does not exist: %s", identifier);
+      case ICEBERG_VIEW:
+        throw new NoSuchViewException("View does not exist: %s", identifier);
+      case GENERIC_TABLE:
+        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+      default:
+        throw new NoSuchTableException("Table does not exist: %s", subType);
+    }
   }
 }
