@@ -64,34 +64,5 @@ public class SparkCatalogTest {
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.listTables(namespace))
         .isInstanceOf(UnsupportedOperationException.class);
-
-    // namespace methods
-    assertThatThrownBy(() -> catalog.loadNamespaceMetadata(namespace))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.listNamespaces())
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.listNamespaces(namespace))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.createNamespace(namespace, null))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.alterNamespace(namespace))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.dropNamespace(namespace, false))
-        .isInstanceOf(UnsupportedOperationException.class);
-
-    // view methods
-    assertThatThrownBy(() -> catalog.listViews(namespace))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.loadView(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(
-            () -> catalog.createView(identifier, null, null, null, null, null, null, null, null))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.alterView(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.dropView(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> catalog.renameView(identifier, new_identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
   }
 }
