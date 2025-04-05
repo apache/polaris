@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.cache;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
-import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
@@ -477,5 +480,27 @@ public class EntityCacheTest {
 
     // now the loading by the old name should return null
     Assertions.assertThat(cache.getOrLoadEntityByName(callCtx, T4_name)).isNull();
+  }
+
+  /* Helper for `testEntityWeigher` */
+  private int getEntityWeight(PolarisEntity entity) {
+    return EntityWeigher.getInstance()
+        .weigh(-1L, new ResolvedPolarisEntity(diagServices, entity, List.of(), 1));
+  }
+
+  @Test
+  void testEntityWeigher() {
+    var smallEntity = new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
+    var mediumEntity =
+        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+            .setMetadataLocation("a".repeat(10000))
+            .build();
+    var largeEntity =
+        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+            .setMetadataLocation("a".repeat(1000 * 1000))
+            .build();
+
+    Assertions.assertThat(getEntityWeight(smallEntity)).isLessThan(getEntityWeight(mediumEntity));
+    Assertions.assertThat(getEntityWeight(mediumEntity)).isLessThan(getEntityWeight(largeEntity));
   }
 }
