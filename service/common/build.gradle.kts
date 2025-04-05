@@ -75,8 +75,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.bouncycastle.bcprov)
-
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
