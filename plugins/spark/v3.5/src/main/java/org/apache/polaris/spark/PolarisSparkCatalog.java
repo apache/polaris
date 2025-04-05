@@ -80,7 +80,7 @@ public class PolarisSparkCatalog implements TableCatalog {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
       GenericTable genericTable =
           this.polarisCatalog.createGenericTable(
-              Spark3Util.identifierToTableIdentifier(identifier), format, properties);
+              Spark3Util.identifierToTableIdentifier(identifier), format, null, properties);
       return PolarisCatalogUtils.loadSparkTable(genericTable);
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(identifier);

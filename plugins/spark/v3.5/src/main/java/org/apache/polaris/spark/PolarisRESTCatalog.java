@@ -151,10 +151,10 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
   @Override
   public GenericTable createGenericTable(
-      TableIdentifier identifier, String format, Map<String, String> props) {
+      TableIdentifier identifier, String format, String doc, Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest(identifier.name(), format, null, props);
+        new CreateGenericTableRESTRequest(identifier.name(), format, doc, props);
 
     LoadGenericTableRESTResponse response =
         restClient
