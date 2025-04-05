@@ -35,15 +35,17 @@ github:
     squash: true
     rebase: false
 
+  del_branch_on_merge: true
+
   protected_branches:
     main:
       required_pull_request_reviews:
         require_code_owner_reviews: false
+        dismiss_stale_reviews: true
+        require_last_push_approval: false
         required_approving_review_count: 1
 
       required_linear_history: true
-
-      del_branch_on_merge: true
 
       required_status_checks:
         # strict means "Require branches to be up to date before merging".
@@ -61,6 +63,8 @@ github:
     wiki: false
     issues: true
     projects: true
+    discussions: true
+
   ghp_branch: gh-pages
   ghp_path: /
 
@@ -68,11 +72,13 @@ github:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
     - renovate-bot
     - singhpk234
+    - gh-yzou
 
 notifications:
   commits:      commits@polaris.apache.org
   issues:       issues@polaris.apache.org
   pullrequests: issues@polaris.apache.org
+  discussions:  issues@polaris.apache.org
   jira_options: link label
 
 publish:

@@ -31,17 +31,22 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
 /**
  * Interface to the Polaris persistence backend, with which to persist and retrieve all the data
  * defining the internal data model for Polaris, and which defines the basis for the RBAC model
  * provided by Polaris.
  *
+ * <p>Each method in this interface must be atomic, meaning that write operations must either fully
+ * succeed with all changes applied, or fail entirely without partial updates. Read operations must
+ * provide a consistent view of the data as it existed at the start of the operation.
+ *
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  */
-public interface BasePersistence {
+public interface BasePersistence extends PolicyMappingPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.
@@ -392,4 +397,15 @@ public interface BasePersistence {
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId);
+
+  /**
+   * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}
+   * instance from the state of the returned instance as far as multithreaded usage is concerned. If
+   * the implementation has state that is not supposed to be accessed or modified by multiple
+   * threads, it may return a copy from this method. If the implementation is thread-safe, it may
+   * return {@code this}.
+   */
+  default BasePersistence detach() {
+    return this;
+  }
 }

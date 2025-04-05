@@ -185,6 +185,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_GENERIC_TABLES")
+          .description("If true, the generic-tables endpoints are enabled")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")

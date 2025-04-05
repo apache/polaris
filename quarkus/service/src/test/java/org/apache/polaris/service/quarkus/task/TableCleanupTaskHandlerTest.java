@@ -46,8 +46,8 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -127,7 +127,7 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new TableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -196,8 +196,8 @@ class TableCleanupTaskHandlerTest {
     String metadataFile = "v1-49494949.metadata.json";
     TaskTestUtils.writeTableMetadata(fileIO, metadataFile, snapshot);
 
-    TableLikeEntity tableLikeEntity =
-        new TableLikeEntity.Builder(tableIdentifier, metadataFile)
+    IcebergTableLikeEntity icebergTableLikeEntity =
+        new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
             .setName("table1")
             .setCatalogId(1)
             .setCreateTimestamp(100)
@@ -206,7 +206,7 @@ class TableCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
-            .withData(tableLikeEntity)
+            .withData(icebergTableLikeEntity)
             .build();
     addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
@@ -263,7 +263,7 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new TableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -388,7 +388,7 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new TableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -546,7 +546,7 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new TableLikeEntity.Builder(tableIdentifier, secondMetadataFile)
+                new IcebergTableLikeEntity.Builder(tableIdentifier, secondMetadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)

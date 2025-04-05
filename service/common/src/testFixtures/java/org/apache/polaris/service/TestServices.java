@@ -44,10 +44,10 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
-import org.apache.polaris.service.catalog.DefaultIcebergCatalogPrefixParser;
-import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
-import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
@@ -64,6 +64,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 public record TestServices(
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
+    IcebergRestConfigurationApi restConfigurationApi,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
@@ -171,20 +172,18 @@ public record TestServices(
           new PolarisCallContextCatalogFactory(
               realmEntityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
 
-      IcebergRestCatalogApiService service =
+      IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(
               realmContext,
               callContext,
               callContextFactory,
               entityManager,
               metaStoreManager,
-              metaStoreSession,
-              configurationStore,
-              polarisDiagnostics,
               authorizer,
-              new DefaultIcebergCatalogPrefixParser());
+              new DefaultCatalogPrefixParser());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
+      IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -229,6 +228,7 @@ public record TestServices(
       return new TestServices(
           catalogsApi,
           restApi,
+          restConfigurationApi,
           configurationStore,
           polarisDiagnostics,
           realmEntityManagerFactory,

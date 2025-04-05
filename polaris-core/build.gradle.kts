@@ -41,7 +41,6 @@ dependencies {
   implementation(libs.commons.codec1)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
   compileOnly(project(":polaris-immutables"))
@@ -60,7 +59,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.0.2") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.1") {
       because("Vulnerability detected in 9.8.1")
     }
   }

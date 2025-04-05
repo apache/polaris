@@ -61,7 +61,7 @@ public class PolarisCallContext {
 
   public static PolarisCallContext copyOf(PolarisCallContext original) {
     return new PolarisCallContext(
-        original.getMetaStore(),
+        original.getMetaStore().detach(),
         original.getDiagServices(),
         original.getConfigurationStore(),
         original.getClock());

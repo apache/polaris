@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.config;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -70,7 +69,7 @@ public final class Serializers {
       extends JsonDeserializer<CreateCatalogRequest> {
     @Override
     public CreateCatalogRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("catalog")) {
         return CreateCatalogRequest.builder()
@@ -92,7 +91,7 @@ public final class Serializers {
       extends JsonDeserializer<CreatePrincipalRequest> {
     @Override
     public CreatePrincipalRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("principal")) {
         return CreatePrincipalRequest.builder()
@@ -118,7 +117,7 @@ public final class Serializers {
       extends JsonDeserializer<CreatePrincipalRoleRequest> {
     @Override
     public CreatePrincipalRoleRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("principalRole")) {
         return CreatePrincipalRoleRequest.builder()
@@ -141,7 +140,7 @@ public final class Serializers {
       extends JsonDeserializer<GrantPrincipalRoleRequest> {
     @Override
     public GrantPrincipalRoleRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("principalRole")) {
         return GrantPrincipalRoleRequest.builder()
@@ -164,7 +163,7 @@ public final class Serializers {
       extends JsonDeserializer<CreateCatalogRoleRequest> {
     @Override
     public CreateCatalogRoleRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("catalogRole")) {
         return CreateCatalogRoleRequest.builder()
@@ -187,7 +186,7 @@ public final class Serializers {
       extends JsonDeserializer<GrantCatalogRoleRequest> {
     @Override
     public GrantCatalogRoleRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("catalogRole")) {
         return GrantCatalogRoleRequest.builder()
@@ -208,7 +207,7 @@ public final class Serializers {
   public static final class AddGrantRequestDeserializer extends JsonDeserializer<AddGrantRequest> {
     @Override
     public AddGrantRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("grant")) {
         return AddGrantRequest.builder()
@@ -230,7 +229,7 @@ public final class Serializers {
       extends JsonDeserializer<RevokeGrantRequest> {
     @Override
     public RevokeGrantRequest deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("grant")) {
         return RevokeGrantRequest.builder()

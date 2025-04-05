@@ -32,14 +32,14 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -51,7 +51,7 @@ public class EntityCacheTest {
   private final PolarisDiagnostics diagServices;
 
   // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
+  private final TreeMapMetaStore store;
 
   // to interact with the metastore
   private final TransactionalPersistence metaStore;
@@ -89,10 +89,10 @@ public class EntityCacheTest {
    */
   public EntityCacheTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    store = new TreeMapMetaStore(diagServices);
+    metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
@@ -302,7 +302,7 @@ public class EntityCacheTest {
         this.tm.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
             PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.TABLE,
+            PolarisEntitySubType.ICEBERG_TABLE,
             "T6");
     Assertions.assertThat(T6v1).isNotNull();
 
@@ -490,13 +490,13 @@ public class EntityCacheTest {
 
   @Test
   void testEntityWeigher() {
-    var smallEntity = new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
+    var smallEntity = new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
     var mediumEntity =
-        new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(10000))
             .build();
     var largeEntity =
-        new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(1000 * 1000))
             .build();
 

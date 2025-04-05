@@ -19,7 +19,9 @@
 
 FROM jupyter/all-spark-notebook:spark-3.5.0
 
-COPY --chown=jovyan regtests/client /home/jovyan/client
+ENV LANGUAGE='en_US:en'
+
+COPY --chown=jovyan client /home/jovyan/client
 COPY --chown=jovyan regtests/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt && \
     cd client/python && \

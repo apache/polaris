@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import io.quarkus.gradle.tasks.QuarkusBuild
 import io.quarkus.gradle.tasks.QuarkusRun
 
 plugins {
@@ -27,6 +28,17 @@ plugins {
   // id("polaris-license-report")
   id("distribution")
 }
+
+val quarkusRunner by
+  configurations.creating { description = "Used to reference the generated runner-jar" }
+
+val runScript by configurations.creating { description = "Used to reference the run.sh script" }
+
+val distributionZip by
+  configurations.creating { description = "Used to reference the distribution zip" }
+
+val distributionTar by
+  configurations.creating { description = "Used to reference the distribution tarball" }
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -42,6 +54,8 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
+
+  runScript(project(":polaris-quarkus-run-script", "runScript"))
 }
 
 quarkus {
@@ -61,10 +75,6 @@ quarkus {
   )
 }
 
-tasks.named("distZip") { dependsOn("quarkusBuild") }
-
-tasks.named("distTar") { dependsOn("quarkusBuild") }
-
 tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
@@ -75,10 +85,47 @@ tasks.named<QuarkusRun>("quarkusRun") {
 distributions {
   main {
     contents {
+      from(runScript)
       from(project.layout.buildDirectory.dir("quarkus-app"))
-      from("../../NOTICE")
-      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+      from("distribution/NOTICE")
+      from("distribution/LICENSE")
       exclude("lib/main/io.quarkus.quarkus-container-image*")
+    }
+  }
+}
+
+val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
+
+val distTar =
+  tasks.named<Tar>("distTar") {
+    dependsOn(quarkusBuild)
+    inputs.files(runScript)
+    compression = Compression.GZIP
+  }
+
+val distZip =
+  tasks.named<Zip>("distZip") {
+    dependsOn(quarkusBuild)
+    inputs.files(runScript)
+  }
+
+// Expose runnable jar via quarkusRunner configuration for integration-tests that require the
+// server.
+artifacts {
+  add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
+    builtBy(quarkusBuild)
+  }
+  add(distributionTar.name, provider { distTar.get().archiveFile }) { builtBy(distTar) }
+  add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
+}
+
+afterEvaluate {
+  publishing {
+    publications {
+      named<MavenPublication>("maven") {
+        artifact(distTar.get().archiveFile) { builtBy(distTar) }
+        artifact(distZip.get().archiveFile) { builtBy(distZip) }
+      }
     }
   }
 }

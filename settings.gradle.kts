@@ -57,6 +57,21 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
+// load the polaris spark plugin projects
+val polarisSparkDir = "plugins/spark"
+val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
+val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
+
+for (sparkVersion in sparkVersions) {
+  val scalaVersions = sparkScalaVersions["scalaVersions"].toString().split(",").map { it.trim() }
+  for (scalaVersion in scalaVersions) {
+    polarisProject(
+      "polaris-spark-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}"),
+    )
+  }
+}
+
 pluginManagement {
   repositories {
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
@@ -70,6 +85,11 @@ dependencyResolutionManagement {
     mavenCentral()
     gradlePluginPortal()
   }
+}
+
+dependencyResolutionManagement {
+  // version catalog used by the polaris plugin code, such as polaris-spark-3.5
+  versionCatalogs { create("pluginlibs") { from(files("plugins/pluginlibs.versions.toml")) } }
 }
 
 gradle.beforeProject {

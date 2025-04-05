@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.21-1.1741781258
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.22-1.1743605859
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris
 LABEL org.opencontainers.image.description="Apache Polaris (incubating) Admin Tool"
@@ -31,12 +31,15 @@ RUN groupadd --gid 10001 polaris \
       && chown -R polaris:polaris /deployments
 
 USER polaris
-WORKDIR /deployments
+WORKDIR /home/polaris
 ENV USER=polaris
 ENV UID=10000
 ENV HOME=/home/polaris
-ENV PWD=/deployments
 
-COPY --chown=polaris:polaris build/*-runner.jar /deployments/polaris-server-admin-tool.jar
+# We make four distinct layers so if there are application changes the library layers can be re-used
+COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
+COPY --chown=polaris:polaris build/quarkus-app/quarkus-run.jar /deployments/polaris-admin-tool.jar
+COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
+COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
 
-ENTRYPOINT [ "java", "-jar", "/deployments/polaris-server-admin-tool.jar" ]
+ENTRYPOINT [ "java", "-jar", "/deployments/polaris-admin-tool.jar" ]

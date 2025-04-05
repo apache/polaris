@@ -31,6 +31,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
+import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
  * For test purposes or for elevated-privilege scenarios where entity resolution is allowed to
@@ -83,23 +84,31 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   }
 
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
+  public PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPath(
-          new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.TABLE_LIKE),
+          new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
       manifest.resolveAll();
-      return manifest.getResolvedPath(identifier, subType);
+      return manifest.getResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolicyIdentifier policyIdentifier) {
+      manifest.addPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.identifierToList(
+                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
+              entityType),
+          policyIdentifier);
+      manifest.resolveAll();
+      return manifest.getResolvedPath(policyIdentifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(
-              "Trying to getResolvedPath(key, subType) for %s with class %s and subType %s",
-              key, key.getClass(), subType));
+              "Trying to getResolvedPath(key, subType) for %s with class %s and type %s / %s",
+              key, key.getClass(), entityType, subType));
     }
   }
 
@@ -122,17 +131,23 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntitySubType subType) {
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPassthroughPath(
-          new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.TABLE_LIKE),
+          new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
-      return manifest.getPassthroughResolvedPath(identifier, subType);
+      return manifest.getPassthroughResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolicyIdentifier policyIdentifier) {
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.identifierToList(
+                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
+              entityType),
+          policyIdentifier);
+      return manifest.getPassthroughResolvedPath(policyIdentifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(

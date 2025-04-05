@@ -35,11 +35,6 @@ curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: appl
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/spark_sql_s3_catalog/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
 
-# For now, also explicitly assign the catalog_admin to the service_admin. Remove once GS fully rolled out for auto-assign.
-curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/spark_sql_s3_catalog \
-  -d '{"name": "catalog_admin"}' > /dev/stderr
-
 curl -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/config?warehouse=spark_sql_s3_catalog"
 echo
