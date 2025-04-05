@@ -24,6 +24,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Gcp storage storage configuration information. */
@@ -60,5 +61,20 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
         .add("allowedLocation", getAllowedLocations())
         .add("gcpServiceAccount", gcpServiceAccount)
         .toString();
+  }
+
+  public @Nonnull GcpStorageConfigurationInfo merge(@Nonnull GcpStorageConfigurationInfo other) {
+    if (other.getStorageType() != this.getStorageType()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage type mismatch: %s vs %s", this.getStorageType(), other.getStorageType()));
+    }
+
+    GcpStorageConfigurationInfo ret =
+        new GcpStorageConfigurationInfo(
+            Optional.ofNullable(other.getAllowedLocations()).orElseGet(this::getAllowedLocations));
+    ret.setGcpServiceAccount(
+        Optional.ofNullable(other.getGcpServiceAccount()).orElseGet(this::getGcpServiceAccount));
+    return ret;
   }
 }

@@ -200,6 +200,7 @@ public class CatalogEntity extends PolarisEntity {
 
     public Builder(CatalogEntity original) {
       super(original);
+      original.getStorageConfigurationInfo();
     }
 
     public Builder setCatalogType(String type) {
@@ -221,6 +222,11 @@ public class CatalogEntity extends PolarisEntity {
 
     public Builder setStorageConfigurationInfo(
         StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+      return setStorageConfigurationInfo(storageConfigModel, defaultBaseLocation, false);
+    }
+
+    public Builder setStorageConfigurationInfo(
+        StorageConfigInfo storageConfigModel, String defaultBaseLocation, boolean inherit) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -235,6 +241,21 @@ public class CatalogEntity extends PolarisEntity {
         }
         allowedLocations.add(defaultBaseLocation);
         validateMaxAllowedLocations(allowedLocations);
+
+        PolarisStorageConfigurationInfo existingConfig = null;
+        if (inherit) {
+          String existingConfigStr =
+              internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+          if (existingConfigStr != null) {
+            existingConfig =
+                PolarisStorageConfigurationInfo.deserialize(
+                    new PolarisDefaultDiagServiceImpl(), existingConfigStr);
+          }
+          if (existingConfig == null) {
+            throw new BadRequestException("No existing storage configuration to inherit from");
+          }
+        }
+
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -245,23 +266,32 @@ public class CatalogEntity extends PolarisEntity {
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId(),
                     awsConfigModel.getRegion());
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
+            awsConfig.setUserARN(awsConfigModel.getUserArn());
+            if (inherit && existingConfig instanceof AwsStorageConfigurationInfo) {
+              awsConfig = ((AwsStorageConfigurationInfo) existingConfig).merge(awsConfig);
+            }
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureConfigInfo =
+            AzureStorageConfigurationInfo azureConfig =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureConfigInfo;
+            azureConfig.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureConfig.setConsentUrl(azureConfigModel.getConsentUrl());
+            if (inherit && existingConfig instanceof AzureStorageConfigurationInfo) {
+              azureConfig = ((AzureStorageConfigurationInfo) existingConfig).merge(azureConfig);
+            }
+            config = azureConfig;
             break;
           case GCS:
             GcpStorageConfigurationInfo gcpConfig =
                 new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
             gcpConfig.setGcpServiceAccount(
                 ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
+            if (inherit && existingConfig instanceof GcpStorageConfigurationInfo) {
+              gcpConfig = ((GcpStorageConfigurationInfo) existingConfig).merge(gcpConfig);
+            }
             config = gcpConfig;
             break;
           case FILE:

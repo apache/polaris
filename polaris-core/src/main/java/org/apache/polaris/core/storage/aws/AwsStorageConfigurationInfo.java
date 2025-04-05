@@ -25,6 +25,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -61,6 +62,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
       @JsonProperty(value = "region", required = false) @Nullable String region) {
     this(storageType, allowedLocations, roleARN, null, region);
+    validateArn(roleARN);
   }
 
   public AwsStorageConfigurationInfo(
@@ -149,6 +151,23 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     } else {
       throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
     }
+  }
+
+  public @Nonnull AwsStorageConfigurationInfo merge(@Nonnull AwsStorageConfigurationInfo other) {
+    if (other.getStorageType() != this.getStorageType()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage type mismatch: %s vs %s", this.getStorageType(), other.getStorageType()));
+    }
+    AwsStorageConfigurationInfo ret =
+        new AwsStorageConfigurationInfo(
+            this.getStorageType(),
+            Optional.ofNullable(other.getAllowedLocations()).orElseGet(this::getAllowedLocations),
+            Optional.ofNullable(other.getRoleARN()).orElseGet(this::getRoleARN),
+            Optional.ofNullable(other.getExternalId()).orElseGet(this::getExternalId),
+            Optional.ofNullable(other.getRegion()).orElseGet(this::getRegion));
+    ret.setUserARN(Optional.ofNullable(other.getUserARN()).orElseGet(this::getUserARN));
+    return ret;
   }
 
   @Override
