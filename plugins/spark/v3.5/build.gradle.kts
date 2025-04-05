@@ -42,7 +42,7 @@ val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
 
 val scalaLibraryVersion =
-  if (scalaVersion.equals("2.12")) {
+  if (scalaVersion == "2.12") {
     pluginlibs.versions.scala212.get()
   } else {
     pluginlibs.versions.scala213.get()

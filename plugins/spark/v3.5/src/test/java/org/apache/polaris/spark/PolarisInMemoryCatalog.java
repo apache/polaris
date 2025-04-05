@@ -24,12 +24,14 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.polaris.service.types.GenericTable;
 
 /** InMemory implementation for the Polaris Catalog. This class is mainly used by testing. */
-public class PolarisInMemoryCatalog implements PolarisCatalog {
+public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCatalog {
   private final ConcurrentMap<TableIdentifier, GenericTable> genericTables;
 
   public PolarisInMemoryCatalog() {
@@ -69,6 +71,18 @@ public class PolarisInMemoryCatalog implements PolarisCatalog {
   public GenericTable createGenericTable(
       TableIdentifier identifier, String format, Map<String, String> props) {
     synchronized (this) {
+      if (!namespaceExists(identifier.namespace())) {
+        throw new NoSuchNamespaceException(
+            "Cannot create generic table %s. Namespace does not exist: %s",
+            identifier, identifier.namespace());
+      }
+      if (listViews(identifier.namespace()).contains(identifier)) {
+        throw new AlreadyExistsException("View with same name already exists: %s", identifier);
+      }
+      if (listTables(identifier.namespace()).contains(identifier)) {
+        throw new AlreadyExistsException(
+            "Iceberg table  with same name already exists: %s", identifier);
+      }
       if (this.genericTables.containsKey(identifier)) {
         throw new AlreadyExistsException("Generic table %s already exists", identifier);
       }
