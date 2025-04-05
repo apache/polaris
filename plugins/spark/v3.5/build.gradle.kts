@@ -103,11 +103,11 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
 
+  dependencies { exclude("META-INF/**") }
+
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
-
-  mergeServiceFiles()
 
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,

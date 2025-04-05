@@ -84,6 +84,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
 
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
+    this.catalogName = name;
     initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
   }
