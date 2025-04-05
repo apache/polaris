@@ -103,8 +103,6 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
 
-  dependencies { exclude("META-INF/**") }
-
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
@@ -118,6 +116,8 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
     exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
   }
+
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
