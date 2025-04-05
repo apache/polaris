@@ -220,7 +220,7 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      throwNotFoundException(identifier, subType);
+      throwNotFoundExceptionForTableLikeEntity(identifier, subType);
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
@@ -254,7 +254,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier =
           PolarisCatalogHelpers.listToTableIdentifier(
               status.getFailedToResolvePath().getEntityNames());
-      throwNotFoundException(identifier, subType);
+      throwNotFoundExceptionForTableLikeEntity(identifier, subType);
     }
 
     List<PolarisResolvedPathWrapper> targets =
@@ -309,7 +309,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
     } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {
-      throwNotFoundException(dst, subType);
+      throwNotFoundExceptionForTableLikeEntity(dst, subType);
     }
 
     // Normally, since we added the dst as an optional path, we'd expect it to only get resolved
@@ -356,7 +356,7 @@ public abstract class CatalogHandler {
    *
    * @param subType The subtype of the entity that the exception should report doesn't exist
    */
-  public static void throwNotFoundException(
+  public static void throwNotFoundExceptionForTableLikeEntity(
       TableIdentifier identifier, PolarisEntitySubType subType) {
     switch (subType) {
       case ICEBERG_TABLE:
@@ -366,7 +366,7 @@ public abstract class CatalogHandler {
       case GENERIC_TABLE:
         throw new NoSuchTableException("Generic table does not exist: %s", identifier);
       default:
-        throw new NoSuchTableException("Entity does not exist: %s", subType);
+        throw new NoSuchTableException("Table does not exist: %s", subType);
     }
   }
 }

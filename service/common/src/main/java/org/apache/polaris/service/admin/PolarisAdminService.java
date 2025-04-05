@@ -478,7 +478,7 @@ public class PolarisAdminService {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        CatalogHandler.throwNotFoundException(identifier, searchSubtype);
+        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
@@ -488,7 +488,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, searchSubtype, true);
     if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
     }
 
     PolarisResolvedPathWrapper catalogRoleWrapper =
@@ -1749,7 +1749,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1790,7 +1790,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundException(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
