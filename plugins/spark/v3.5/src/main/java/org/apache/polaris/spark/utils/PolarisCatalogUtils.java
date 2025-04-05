@@ -43,9 +43,6 @@ public class PolarisCatalogUtils {
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
 
-  // whether enable the inMemory catalogs, used by testing.
-  public static final String ENABLE_IN_MEMORY_CATALOG_KEY = "enable_in_memory_catalog";
-
   public static void checkIdentifierIsValid(TableIdentifier tableIdentifier) {
     if (tableIdentifier.namespace().isEmpty()) {
       throw new NoSuchTableException("Invalid table identifier: %s", tableIdentifier);

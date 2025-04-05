@@ -66,31 +66,11 @@ public class SparkCatalog
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   private PolarisSparkCatalog polarisSparkCatalog = null;
 
-  private DeltaHelper deltaHelper = null;
+  protected DeltaHelper deltaHelper = null;
 
   @Override
   public String name() {
     return catalogName;
-  }
-
-  /**
-   * Initialize an inMemory Iceberg Catalog and Polaris Catalog. NOTE: This should only be used by
-   * testing.
-   */
-  private void initInMemoryCatalog(String name, CaseInsensitiveStringMap options) {
-    String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
-    if (catalogImpl == null) {
-      throw new IllegalStateException(
-          "Missing catalog-impl configuration, required when InMemory Catalog mode is enabled");
-    }
-    // initialize the icebergSparkCatalog with configured CATALOG_IMPL
-    this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
-    this.icebergsSparkCatalog.initialize(name, options);
-
-    // initialize the polarisSparkCatalog with PolarisSparkCatalog
-    PolarisInMemoryCatalog inMemoryCatalog = new PolarisInMemoryCatalog();
-    this.polarisSparkCatalog = new PolarisSparkCatalog(inMemoryCatalog);
-    this.polarisSparkCatalog.initialize(name, options);
   }
 
   /**
@@ -128,18 +108,7 @@ public class SparkCatalog
 
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
-    this.catalogName = name;
-    boolean enableInMemoryCatalog =
-        options.containsKey(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY)
-            && options
-                .get(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY)
-                .equalsIgnoreCase("true");
-    if (enableInMemoryCatalog) {
-      initInMemoryCatalog(name, options);
-    } else {
-      initRESTCatalog(name, options);
-    }
-
+    initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
   }
 

@@ -22,9 +22,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -45,6 +47,8 @@ import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   public static final String REST_PAGE_SIZE = "rest-page-size";
 
+  private final Function<Map<String, String>, RESTClient> clientBuilder;
+
   private RESTClient restClient = null;
   private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
@@ -55,6 +59,14 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   // the default endpoints to config if server doesn't specify the 'endpoints' configuration.
   private static final Set<Endpoint> DEFAULT_ENDPOINTS = PolarisEndpoints.GENERIC_TABLE_ENDPOINTS;
 
+  public PolarisRESTCatalog() {
+    this(config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
+  }
+
+  public PolarisRESTCatalog(Function<Map<String, String>, RESTClient> clientBuilder) {
+    this.clientBuilder = clientBuilder;
+  }
+
   public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
     Preconditions.checkArgument(unresolved != null, "Invalid configuration: null");
 
@@ -64,14 +76,14 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     // TODO: switch to use authManager once iceberg dependency is updated to 1.9.0
     this.catalogAuth = catalogAuth;
 
-    this.restClient =
-        HTTPClient.builder(props)
-            .uri(props.get(CatalogProperties.URI))
-            .build()
-            .withAuthSession(catalogAuth);
+    ConfigResponse config;
+    try (RESTClient initClient = clientBuilder.apply(props).withAuthSession(catalogAuth)) {
+      config = fetchConfig(initClient, catalogAuth.headers(), props);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to close HTTP client", e);
+    }
 
     // call getConfig to get the server configurations
-    ConfigResponse config = fetchConfig(this.restClient, catalogAuth.headers(), props);
     Map<String, String> mergedProps = config.merge(props);
     if (config.endpoints().isEmpty()) {
       this.endpoints = DEFAULT_ENDPOINTS;
@@ -80,11 +92,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     }
 
     this.paths = PolarisResourcePaths.forCatalogProperties(mergedProps);
-    this.restClient =
-        HTTPClient.builder(mergedProps)
-            .uri(mergedProps.get(CatalogProperties.URI))
-            .build()
-            .withAuthSession(catalogAuth);
+    this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
 
     this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
     if (pageSize != null) {

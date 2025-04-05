@@ -23,6 +23,7 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+
 import com.google.common.collect.Maps;
 import java.util.Arrays;
 import java.util.Map;
@@ -38,23 +39,74 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.spark.SparkUtil;
+import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
-import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.*;
+import org.apache.spark.sql.connector.expressions.Transform;
+import org.apache.spark.sql.execution.datasources.DataSource;
+import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.internal.SQLConf;
+import org.apache.spark.sql.internal.SessionState;
+import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import scala.Option;
 
 public class SparkCatalogTest {
-  private SparkCatalog catalog;
+  private class InMemoryIcebergSparkCatalog extends org.apache.iceberg.spark.SparkCatalog {
+    private PolarisInMemoryCatalog inMemoryCatalog = null;
+
+    @Override
+    protected Catalog buildIcebergCatalog(String name, CaseInsensitiveStringMap options) {
+      PolarisInMemoryCatalog inMemoryCatalog = new PolarisInMemoryCatalog();
+      inMemoryCatalog.initialize(name, options);
+
+      this.inMemoryCatalog = inMemoryCatalog;
+
+      return inMemoryCatalog;
+    }
+
+    public PolarisInMemoryCatalog getInMemoryCatalog() {
+      return this.inMemoryCatalog;
+    }
+  }
+
+  /**
+   * And SparkCatalog implementation that uses InMemory catalog implementation for both Iceberg and
+   * Polaris
+   */
+  private class InMemorySparkCatalog extends SparkCatalog {
+    @Override
+    public void initialize(String name, CaseInsensitiveStringMap options) {
+      this.catalogName = name;
+      // initialize the InMemory icebergSparkCatalog
+      this.icebergsSparkCatalog = new InMemoryIcebergSparkCatalog();
+      this.icebergsSparkCatalog.initialize(name, options);
+
+      // initialize the polarisSparkCatalog with PolarisSparkCatalog
+      this.polarisSparkCatalog =
+          new PolarisSparkCatalog(
+              ((InMemoryIcebergSparkCatalog) this.icebergsSparkCatalog).getInMemoryCatalog());
+      this.polarisSparkCatalog.initialize(name, options);
+
+      this.deltaHelper = new DeltaHelper(options);
+    }
+  }
+
+  private InMemorySparkCatalog catalog;
   private String catalogName;
 
   private static final String[] defaultNS = new String[] {"ns"};
@@ -70,10 +122,9 @@ public class SparkCatalogTest {
     Map<String, String> catalogConfig = Maps.newHashMap();
     catalogConfig.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfig.put("cache-enabled", "false");
-    catalogConfig.put(PolarisCatalogUtils.ENABLE_IN_MEMORY_CATALOG_KEY, "true");
     catalogConfig.put(
         DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.InMemoryDeltaCatalog");
-    catalog = new SparkCatalog();
+    catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
             Mockito.mockStatic(SparkSession.class);
@@ -96,8 +147,7 @@ public class SparkCatalogTest {
 
 
   @Test
-  void testCreateAndLoadNamespace()
-      throws NoSuchNamespaceException, NamespaceAlreadyExistsException {
+  void testCreateAndLoadNamespace() throws Exception {
     String[] namespace = new String[] {"ns1"};
     Map<String, String> metadata = Maps.newHashMap();
     metadata.put("key1", "value1");
@@ -251,7 +301,7 @@ public class SparkCatalogTest {
   @Test
   void testListViews() throws Exception {
     // create a new namespace under the default NS
-    String[] namespace = new String[] {"ns", "nsl2"};
+    String[] namespace = new String[]{"ns", "nsl2"};
     catalog.createNamespace(namespace, Maps.newHashMap());
     // table schema
     StructType schema = new StructType().add("id", "long").add("name", "string");
@@ -269,10 +319,10 @@ public class SparkCatalogTest {
         new String[0],
         Maps.newHashMap());
     // create two views under ns.nsl2
-    String[] nsl2ViewNames = new String[] {"test-view2", "test-view3"};
+    String[] nsl2ViewNames = new String[]{"test-view2", "test-view3"};
     String[] nsl2ViewSQLs =
-        new String[] {
-          "select id from test-table where id == 3", "select id from test-table where id < 3"
+        new String[]{
+            "select id from test-table where id == 3", "select id from test-table where id < 3"
         };
     for (int i = 0; i < nsl2ViewNames.length; i++) {
       catalog.createView(
@@ -297,6 +347,92 @@ public class SparkCatalogTest {
     for (String name : nsl2ViewNames) {
       assertThat(Arrays.asList(l2Views)).contains(Identifier.of(namespace, name));
     }
+  }
+
+  void testCreateAndLoadIcebergTable() throws Exception {
+    String[] namespace = new String[] {"ns"};
+    Identifier identifier = Identifier.of(namespace, "iceberg-table");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    StructType schema = new StructType().add("boolType", "boolean");
+
+    assertThatThrownBy(() -> catalog.createTable(identifier, schema, new Transform[0], properties))
+        .isInstanceOf(org.apache.iceberg.exceptions.NoSuchNamespaceException.class);
+
+    catalog.createNamespace(namespace, Maps.newHashMap());
+
+    Table createdTable = catalog.createTable(identifier, schema, new Transform[0], properties);
+    assertThat(createdTable).isInstanceOf(SparkTable.class);
+
+    // load the table
+    Table table = catalog.loadTable(identifier);
+    // verify iceberg SparkTable is loaded
+    assertThat(table).isInstanceOf(SparkTable.class);
+
+    // verify create table with the same identifier fails with spark TableAlreadyExistsException
+    StructType newSchema = new StructType().add("LongType", "Long");
+    Map<String, String> newProperties = Maps.newHashMap();
+    newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
+    newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    assertThatThrownBy(
+            () -> catalog.createTable(identifier, newSchema, new Transform[0], newProperties))
+        .isInstanceOf(TableAlreadyExistsException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"delta", "csv"})
+  void testCreateAndLoadGenericTable(String format) throws Exception {
+    String[] namespace = new String[] {"ns"};
+    Identifier identifier = Identifier.of(namespace, "generic-test-table");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, format);
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/");
+    StructType schema = new StructType().add("boolType", "boolean");
+
+    assertThatThrownBy(() -> catalog.createTable(identifier, schema, new Transform[0], properties))
+        .isInstanceOf(org.apache.iceberg.exceptions.NoSuchNamespaceException.class);
+
+    catalog.createNamespace(namespace, Maps.newHashMap());
+
+    SQLConf conf = new SQLConf();
+    try (MockedStatic<SparkSession> mockedStaticSparkSession =
+            Mockito.mockStatic(SparkSession.class);
+        MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
+        MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
+            Mockito.mockStatic(DataSourceV2Utils.class)) {
+      SparkSession mockedSession = Mockito.mock(SparkSession.class);
+      mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
+      SessionState mockedState = Mockito.mock(SessionState.class);
+      Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
+      Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      TableProvider provider = Mockito.mock(TableProvider.class);
+      mockedStaticDS
+          .when(() -> DataSource.lookupDataSourceV2(Mockito.eq(format), Mockito.any()))
+          .thenReturn(Option.apply(provider));
+      V1Table table = Mockito.mock(V1Table.class);
+      mockedStaticDSV2
+          .when(
+              () ->
+                  DataSourceV2Utils.getTableFromProvider(
+                      Mockito.eq(provider), Mockito.any(), Mockito.any()))
+          .thenReturn(table);
+      Table createdTable = catalog.createTable(identifier, schema, new Transform[0], properties);
+      assertThat(createdTable).isInstanceOf(V1Table.class);
+
+      // load the table
+      Table loadedTable = catalog.loadTable(identifier);
+      assertThat(loadedTable).isInstanceOf(V1Table.class);
+    }
+
+    StructType newSchema = new StructType().add("LongType", "Long");
+    Map<String, String> newProperties = Maps.newHashMap();
+    newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "parquet");
+    newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    assertThatThrownBy(
+            () -> catalog.createTable(identifier, newSchema, new Transform[0], newProperties))
+        .isInstanceOf(TableAlreadyExistsException.class);
   }
 
   @Test
