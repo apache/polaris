@@ -45,6 +45,7 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
@@ -55,7 +56,6 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
@@ -154,12 +154,14 @@ public class QuarkusProducers {
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
    */
-  public void maybeInitializeInMemoryRealm(
+  public void maybeBootstrap(
       @Observes StartupEvent event,
       MetaStoreManagerFactory factory,
+      QuarkusPersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
-    if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
-      ((InMemoryPolarisMetaStoreManagerFactory) factory).onStartup(realmContextConfiguration);
+    if (config.isAutoBootstrap()) {
+      RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
+      factory.bootstrapRealms(realmContextConfiguration.realms(), rootCredentialsSet);
     }
   }
 
