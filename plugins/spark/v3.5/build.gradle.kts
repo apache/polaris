@@ -103,7 +103,13 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
 
-  dependencies { exclude("META-INF/**") }
+  dependencies {
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+  }
+
+  mergeServiceFiles()
 
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
