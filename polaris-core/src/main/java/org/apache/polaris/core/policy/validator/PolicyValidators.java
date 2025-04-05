@@ -18,6 +18,11 @@
  */
 package org.apache.polaris.core.policy.validator;
 
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.SNAPSHOT_RETENTION;
+
 import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
@@ -29,11 +34,6 @@ import org.apache.polaris.core.policy.content.maintenance.SnapshotRetentionPolic
 import org.apache.polaris.core.policy.validator.maintenance.BaseMaintenancePolicyValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.SNAPSHOT_RETENTION;
 
 /**
  * Validates a given {@link PolicyEntity} against its defined policy type.
