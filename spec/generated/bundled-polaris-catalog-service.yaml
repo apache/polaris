@@ -4005,6 +4005,26 @@ components:
       properties:
         target:
           $ref: '#/components/schemas/PolicyAttachmentTarget'
+    ApplicablePolicy:
+      allOf:
+        - type: object
+          description: |
+            For policies returned by GetApplicablePolicies, there are 2 additional fields
+
+            - **inherited:** A boolean flag indicating whether the policy is inherited from target's parents
+            - **namespaces:** A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+          required:
+            - inherited
+            - namespaces
+          properties:
+            inherited:
+              type: boolean
+            namespace-path:
+              type: array
+              description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+              items:
+                type: string
+        - $ref: '#/components/schemas/Policy'
     GetApplicablePoliciesResponse:
       type: object
       required:
@@ -4016,7 +4036,7 @@ components:
           type: array
           uniqueItems: true
           items:
-            $ref: '#/components/schemas/Policy'
+            $ref: '#/components/schemas/ApplicablePolicy'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.

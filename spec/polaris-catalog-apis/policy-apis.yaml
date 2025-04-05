@@ -529,6 +529,28 @@ components:
         version:
           type: integer
 
+    ApplicablePolicy:
+      allOf:
+       - type: object
+         description: |
+            For policies returned by GetApplicablePolicies, there are 2 additional fields
+
+            - **inherited:** A boolean flag indicating whether the policy is inherited from target's parents
+            - **namespaces:** A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+         required:
+           - inherited
+           - namespaces
+         properties:
+            inherited:
+              type: boolean
+            namespace-path:
+              type: array
+              description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+              items:
+                type: string
+       - $ref: '#/components/schemas/Policy'
+       
+
     CreatePolicyRequest:
       type: object
       required:
@@ -641,7 +663,7 @@ components:
           type: array
           uniqueItems: true
           items:
-            $ref: '#/components/schemas/Policy'
+            $ref: '#/components/schemas/ApplicablePolicy'
 
   responses:
     CreatePolicyResponse:
