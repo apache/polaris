@@ -409,6 +409,11 @@ public class PolarisEntity extends PolarisBaseEntity {
       return (B) this;
     }
 
+    public B addInternalProperty(String key, String value) {
+      this.internalProperties.put(key, value);
+      return (B) this;
+    }
+
     public B setEntityVersion(int entityVersion) {
       this.entityVersion = entityVersion;
       return (B) this;

@@ -52,6 +52,9 @@ public class PolarisEntityConstants {
   private static final String STORAGE_INTEGRATION_IDENTIFIER_PROPERTY_NAME =
       "storage_integration_identifier";
 
+  private static final String CONNECTION_CONFIGURATION_INFO_PROPERTY_NAME =
+      "connection_configuration_info";
+
   private static final String PRINCIPAL_TYPE_NAME = "principal_type_name";
 
   public static final String PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE =
@@ -102,6 +105,10 @@ public class PolarisEntityConstants {
 
   public static String getStorageConfigInfoPropertyName() {
     return STORAGE_CONFIGURATION_INFO_PROPERTY_NAME;
+  }
+
+  public static String getConnectionConfigInfoPropertyName() {
+    return CONNECTION_CONFIGURATION_INFO_PROPERTY_NAME;
   }
 
   public static String getPolarisStorageIntegrationNameFormat() {
