@@ -41,18 +41,37 @@ val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
 
+val scalaLibraryVersion =
+  if (scalaVersion == "2.12") {
+    pluginlibs.versions.scala212.get()
+  } else {
+    pluginlibs.versions.scala213.get()
+  }
+
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
-    // exclude the iceberg and jackson dependencies, use the
-    // dependencies packed in the iceberg-spark dependency
+    // exclude the iceberg dependencies, use the ones pulled
+    // by iceberg-core
     exclude("org.apache.iceberg", "*")
-    exclude("com.fasterxml.jackson.core", "*")
   }
+  implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
+
+  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
+  ) {
+    // exclude the iceberg rest dependencies, use the ones pulled
+    // with iceberg-core dependency
+    exclude("org.apache.iceberg", "rest")
+    exclude("org.apache.iceberg", "hadoop")
+  }
 
+  compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -84,18 +103,27 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
 
-  dependencies { exclude("META-INF/**") }
+  dependencies {
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+  }
+
+  mergeServiceFiles()
 
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  mergeServiceFiles()
-
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
   // therefore excluded from the optimization.
-  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
+  minimize {
+    exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
+    exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
+  }
+
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
