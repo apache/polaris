@@ -25,6 +25,7 @@ import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
+import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -55,6 +56,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
     } else if (exception instanceof NoSuchPolicyException) {
       return Response.Status.NOT_FOUND;
     } else if (exception instanceof PolicyVersionMismatchException) {
+      return Response.Status.CONFLICT;
+    } else if (exception instanceof PolicyMappingAlreadyExistsException) {
       return Response.Status.CONFLICT;
     } else {
       return Response.Status.INTERNAL_SERVER_ERROR;

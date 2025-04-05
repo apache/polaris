@@ -19,13 +19,14 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.errorprone.annotations.FormatMethod;
+import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 
 /**
  * Exception raised when an existing policy mapping preveents the attempted creation of a new policy
  * mapping record.
  */
-public class PolicyMappingAlreadyExistsException extends RuntimeException {
+public class PolicyMappingAlreadyExistsException extends PolarisException {
   private PolarisPolicyMappingRecord existingRecord;
 
   /**

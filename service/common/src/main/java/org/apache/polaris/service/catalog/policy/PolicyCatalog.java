@@ -36,7 +36,6 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -350,31 +349,31 @@ public class PolicyCatalog {
       return List.of();
     }
 
-    Map<String, Policy> inheritedPolicies = new LinkedHashMap<>();
+    Map<String, PolicyEntity> inheritedPolicies = new LinkedHashMap<>();
     // Final list of effective policies (inheritable + last-entity non-inheritable)
-    List<Policy> finalPolicies = new ArrayList<>();
+    List<PolicyEntity> finalPolicies = new ArrayList<>();
 
     // Process all entities except the last one
     for (int i = 0; i < path.size() - 1; i++) {
       PolarisEntity entity = path.get(i);
-      List<Policy> currentPolicies = getPolicies(entity, policyType);
+      var currentPolicies = getPolicies(entity, policyType);
 
-      for (Policy policy : currentPolicies) {
+      for (var policy : currentPolicies) {
         // For non-last entities, we only carry forward inheritable policies
-        if (policy.getInheritable()) {
+        if (policy.getPolicyType().isInheritable()) {
           // Put in map; overwrites by policyType if encountered again
-          inheritedPolicies.put(policy.getPolicyType(), policy);
+          inheritedPolicies.put(policy.getPolicyType().getName(), policy);
         }
       }
     }
 
     // Now handle the last entity's policies
-    List<Policy> lastPolicies = getPolicies(path.getLast(), policyType);
+    List<PolicyEntity> lastPolicies = getPolicies(path.getLast(), policyType);
 
-    for (Policy policy : lastPolicies) {
-      if (policy.getInheritable()) {
+    for (var policy : lastPolicies) {
+      if (policy.getPolicyType().isInheritable()) {
         // Overwrite anything by the same policyType in the inherited map
-        inheritedPolicies.put(policy.getPolicyType(), policy);
+        inheritedPolicies.put(policy.getPolicyType().getName(), policy);
       } else {
         // Non-inheritable => goes directly to final list
         finalPolicies.add(policy);
@@ -384,10 +383,10 @@ public class PolicyCatalog {
     // Append all inherited policies at the end, preserving insertion order
     finalPolicies.addAll(inheritedPolicies.values());
 
-    return finalPolicies;
+    return finalPolicies.stream().map(PolicyCatalog::constructPolicy).toList();
   }
 
-  private List<Policy> getPolicies(PolarisEntity target, PolicyType policyType) {
+  private List<PolicyEntity> getPolicies(PolarisEntity target, PolicyType policyType) {
     LoadPolicyMappingsResult result;
     if (policyType == null) {
       result = metaStoreManager.loadPoliciesOnEntity(callContext.getPolarisCallContext(), target);
@@ -397,7 +396,7 @@ public class PolicyCatalog {
               callContext.getPolarisCallContext(), target, policyType);
     }
 
-    return result.getEntities().stream().map(PolicyCatalog::toPolicy).toList();
+    return result.getEntities().stream().map(PolicyEntity::of).toList();
   }
 
   private List<PolarisEntity> getFullPath(Namespace namespace, String targetName) {
@@ -461,11 +460,6 @@ public class PolicyCatalog {
       }
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     };
-  }
-
-  private static Policy toPolicy(PolarisBaseEntity polarisBaseEntity) {
-    var policyEntity = PolicyEntity.of(polarisBaseEntity);
-    return constructPolicy(policyEntity);
   }
 
   private static Policy constructPolicy(PolicyEntity policyEntity) {
