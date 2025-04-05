@@ -67,8 +67,8 @@ dependencies {
   ) {
     // exclude the iceberg rest dependencies, use the ones pulled
     // with iceberg-core dependency
-    exclude("org.apache.iceberg.rest", "*")
-    exclude("org.apache.iceberg.hadoop", "*")
+    exclude("org.apache.iceberg", "rest")
+    exclude("org.apache.iceberg", "hadoop")
   }
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")

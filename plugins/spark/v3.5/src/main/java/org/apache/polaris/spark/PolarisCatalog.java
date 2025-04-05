@@ -32,5 +32,5 @@ public interface PolarisCatalog {
   boolean dropGenericTable(TableIdentifier identifier);
 
   GenericTable createGenericTable(
-      TableIdentifier identifier, String format, Map<String, String> props);
+      TableIdentifier identifier, String format, String doc, Map<String, String> props);
 }
