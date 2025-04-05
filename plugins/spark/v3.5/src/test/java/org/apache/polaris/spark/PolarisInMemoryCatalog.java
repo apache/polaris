@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.spark;
 
+import com.google.common.collect.Maps;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -27,7 +28,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
-import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.polaris.service.types.GenericTable;
 
 /** InMemory implementation for the Polaris Catalog. This class is mainly used by testing. */
@@ -70,31 +70,23 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
   @Override
   public GenericTable createGenericTable(
       TableIdentifier identifier, String format, Map<String, String> props) {
-    synchronized (this) {
-      if (!namespaceExists(identifier.namespace())) {
-        throw new NoSuchNamespaceException(
-            "Cannot create generic table %s. Namespace does not exist: %s",
-            identifier, identifier.namespace());
-      }
-      if (listViews(identifier.namespace()).contains(identifier)) {
-        throw new AlreadyExistsException("View with same name already exists: %s", identifier);
-      }
-      if (listTables(identifier.namespace()).contains(identifier)) {
-        throw new AlreadyExistsException(
-            "Iceberg table  with same name already exists: %s", identifier);
-      }
-      if (this.genericTables.containsKey(identifier)) {
-        throw new AlreadyExistsException("Generic table %s already exists", identifier);
-      }
-      this.genericTables.compute(
-          identifier,
-          (k, table) -> {
-            return GenericTable.builder()
-                .setName(k.name())
+    if (!namespaceExists(identifier.namespace())) {
+      throw new NoSuchNamespaceException(
+          "Cannot create generic table %s. Namespace does not exist: %s",
+          identifier, identifier.namespace());
+    }
+
+    GenericTable previous =
+        this.genericTables.putIfAbsent(
+            identifier,
+            GenericTable.builder()
+                .setName(identifier.name())
                 .setFormat(format)
                 .setProperties(props)
-                .build();
-          });
+                .build());
+
+    if (previous != null) {
+      throw new AlreadyExistsException("Generic table already exists: %s", identifier);
     }
 
     return this.genericTables.get(identifier);
