@@ -26,6 +26,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -298,6 +299,12 @@ public class PolicyCatalogTest {
       @Override
       public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
         throw new NotImplementedException("Purging realms is not supported");
+      }
+
+      @Override
+      public void initializeForService(
+          @Nonnull List<String> realmIds, @Nonnull String defaultRealmId) {
+        throw new NotImplementedException("Bootstrapping realms is not supported");
       }
     };
   }
