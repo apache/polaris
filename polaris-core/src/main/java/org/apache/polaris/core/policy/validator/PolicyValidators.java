@@ -30,6 +30,11 @@ import org.apache.polaris.core.policy.validator.maintenance.BaseMaintenancePolic
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.SNAPSHOT_RETENTION;
+
 /**
  * Validates a given {@link PolicyEntity} against its defined policy type.
  *
@@ -89,6 +94,16 @@ public class PolicyValidators {
 
     var entityType = targetEntity.getType();
     var entitySubType = targetEntity.getSubType();
+
+    if (policyType == DATA_COMPACTION) {
+      System.out.println();
+    } else if (policyType == METADATA_COMPACTION) {
+      System.out.println();
+    } else if (policyType == SNAPSHOT_RETENTION) {
+      System.out.println();
+    } else if (policyType == ORPHAN_FILE_REMOVAL) {
+      System.out.println();
+    }
 
     switch (policyType) {
       case DATA_COMPACTION:
