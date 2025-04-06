@@ -641,6 +641,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
+    if (namespace.isEmpty()) {
+      throw new IllegalArgumentException("Cannot drop root namespace");
+    }
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       return false;

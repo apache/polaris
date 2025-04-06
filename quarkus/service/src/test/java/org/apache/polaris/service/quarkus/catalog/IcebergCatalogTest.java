@@ -393,6 +393,16 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     TableIdentifier tableInRootNs = TableIdentifier.of("table");
     String expectedMessage = "Namespace does not exist: ";
 
+    ThrowingCallable createEmptyNamespace = () -> catalog.createNamespace(Namespace.empty());
+    Assertions.assertThatThrownBy(createEmptyNamespace)
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessage("Cannot create root namespace, as it already exists implicitly.");
+
+    ThrowingCallable dropEmptyNamespace = () -> catalog.dropNamespace(Namespace.empty());
+    Assertions.assertThatThrownBy(dropEmptyNamespace)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot drop root namespace");
+
     ThrowingCallable createTable = () -> catalog.createTable(tableInRootNs, SCHEMA);
     Assertions.assertThatThrownBy(createTable)
         .isInstanceOf(NoSuchNamespaceException.class)
