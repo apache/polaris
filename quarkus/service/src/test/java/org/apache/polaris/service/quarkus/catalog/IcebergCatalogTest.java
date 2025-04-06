@@ -391,7 +391,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   public void testEmptyNamespace() {
     IcebergCatalog catalog = catalog();
     TableIdentifier tableInRootNs = TableIdentifier.of("table");
-    String expectedMessage = "Namespace does not exist: ";
+    String expectedMessage = "Namespace does not exist: ''";
 
     ThrowingCallable createEmptyNamespace = () -> catalog.createNamespace(Namespace.empty());
     Assertions.assertThatThrownBy(createEmptyNamespace)

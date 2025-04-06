@@ -464,7 +464,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public List<TableIdentifier> listTables(Namespace namespace) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
-          "Cannot list tables for namespace. Namespace does not exist: %s", namespace);
+          "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_TABLE, namespace);
@@ -806,7 +806,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public List<TableIdentifier> listViews(Namespace namespace) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
-          "Cannot list views for namespace. Namespace does not exist: %s", namespace);
+          "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace);
@@ -1257,7 +1257,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
-            "Cannot create table %s. Namespace does not exist: %s",
+            "Cannot create table '%s'. Namespace does not exist: '%s'",
             tableIdentifier, tableIdentifier.namespace());
       }
 
@@ -1498,7 +1498,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
         throw new NoSuchNamespaceException(
-            "Cannot create view %s. Namespace does not exist: %s",
+            "Cannot create view '%s'. Namespace does not exist: '%s'",
             identifier, identifier.namespace());
       }
 
