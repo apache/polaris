@@ -1277,13 +1277,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
               : resolvedTableEntities;
 
+      Map<String, String> tableProperties = new HashMap<>(metadata.properties());
+
       // refresh credentials because we need to read the metadata file to validate its location
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
+              tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       List<PolarisEntity> resolvedNamespace =
@@ -1369,6 +1371,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setBaseLocation(metadata.location())
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+                .setProperties(tableProperties)
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
@@ -1586,6 +1589,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setSubType(PolarisEntitySubType.ICEBERG_VIEW)
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+                .setProperties(tableProperties)
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
