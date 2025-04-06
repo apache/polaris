@@ -201,6 +201,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     String location = Paths.get(tempDir.toUri().toString()).toString();
     String customLocation = Paths.get(tempDir.toUri().toString(), "custom-location").toString();
     String customLocation2 = Paths.get(tempDir.toUri().toString(), "custom-location2").toString();
+    String customLocationChild =
+        Paths.get(tempDir.toUri().toString(), "custom-location/child").toString();
 
     if (requiresNamespaceCreate()) {
       catalog()
@@ -242,5 +244,16 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
                     .commit())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Forbidden: Invalid locations");
+
+    catalog()
+        .loadView(identifier)
+        .updateProperties()
+        .set(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customLocationChild)
+        .commit();
+    View childView = catalog().loadView(identifier);
+    assertThat(childView.properties()).containsEntry("write.metadata.path", customLocationChild);
+    assertThat(((BaseView) childView).operations().current().metadataFileLocation())
+        .isNotNull()
+        .startsWith(customLocationChild);
   }
 }
