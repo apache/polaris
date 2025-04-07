@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.context;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.realm-context")
 public interface QuarkusRealmContextConfiguration extends RealmContextConfiguration {
 

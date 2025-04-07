@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.metrics;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import java.util.Map;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.metrics")
 public interface QuarkusMetricsConfiguration {
 
