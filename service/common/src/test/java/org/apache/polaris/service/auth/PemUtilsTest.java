@@ -51,7 +51,7 @@ public class PemUtilsTest {
 
   private static final String RSA_PRIVATE_KEY_FILE = "rsa-private-key.pem";
 
-  private static final String RSA_PUBLIC_KEY_AND_PRIVATE_KEY_FILE = "rsa-public-key-and-private-key.pem";
+  private static final String RSA_PUBLIC_KEY_AND_PRIVATE_KEY_FILE = "rsa-public-key-pair.pem";
 
   private static final String EMPTY_FILE = "empty.pem";
 
@@ -112,14 +112,16 @@ public class PemUtilsTest {
 
   @Test
   public void testReadPublicKeyFromFileRSAWithPrivateKeyIgnored() throws IOException {
-    final PublicKey publicKeyRead = PemUtils.readPublicKeyFromFile(rsaPublicKeyAndPrivateKeyPath, RSA_ALGORITHM);
+    final PublicKey publicKeyRead =
+        PemUtils.readPublicKeyFromFile(rsaPublicKeyAndPrivateKeyPath, RSA_ALGORITHM);
 
     assertEquals(rsaPublicKey, publicKeyRead);
   }
 
   @Test
   public void testReadEmptyFIle() {
-    assertThrows(IOException.class, () -> PemUtils.readPublicKeyFromFile(emptyFilePath, RSA_ALGORITHM));
+    assertThrows(
+        IOException.class, () -> PemUtils.readPublicKeyFromFile(emptyFilePath, RSA_ALGORITHM));
   }
 
   private static String getPublicKeyEncoded(final PublicKey publicKey) {
