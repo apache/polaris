@@ -23,7 +23,6 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-
 import com.google.common.collect.Maps;
 import java.util.Arrays;
 import java.util.Map;
@@ -36,21 +35,12 @@ import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
-import org.apache.spark.sql.connector.catalog.*;
-import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
-import org.apache.spark.SparkContext;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
-import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
-import org.apache.spark.sql.connector.catalog.*;
-import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.internal.SQLConf;
@@ -66,7 +56,7 @@ import org.mockito.Mockito;
 import scala.Option;
 
 public class SparkCatalogTest {
-  private class InMemoryIcebergSparkCatalog extends org.apache.iceberg.spark.SparkCatalog {
+  private static class InMemoryIcebergSparkCatalog extends org.apache.iceberg.spark.SparkCatalog {
     private PolarisInMemoryCatalog inMemoryCatalog = null;
 
     @Override
@@ -88,7 +78,7 @@ public class SparkCatalogTest {
    * And SparkCatalog implementation that uses InMemory catalog implementation for both Iceberg and
    * Polaris
    */
-  private class InMemorySparkCatalog extends SparkCatalog {
+  private static class InMemorySparkCatalog extends SparkCatalog {
     @Override
     public void initialize(String name, CaseInsensitiveStringMap options) {
       this.catalogName = name;

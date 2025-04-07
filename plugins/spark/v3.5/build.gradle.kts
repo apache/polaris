@@ -97,6 +97,42 @@ dependencies {
   }
 }
 
+tasks.register("checkNoDisallowedImports") {
+  doLast {
+    // List of disallowed imports (modify these according to your needs)
+    val disallowedImports =
+      listOf("import org.apache.iceberg.shaded.", "org.apache.iceberg.relocated.")
+
+    // Directory to scan for Java files
+    val sourceDirs = listOf(file("src/main/java"), file("src/test/java"))
+
+    val violations = mutableListOf<String>()
+    // Scan Java files in each directory
+    sourceDirs.forEach { sourceDir ->
+      fileTree(sourceDir)
+        .matching {
+          include("**/*.java") // Only include Java files
+        }
+        .forEach { file ->
+          val content = file.readText()
+          disallowedImports.forEach { importStatement ->
+            if (content.contains(importStatement)) {
+              violations.add(
+                "Disallowed import found in ${file.relativeTo(projectDir)}: $importStatement"
+              )
+            }
+          }
+        }
+    }
+
+    if (violations.isNotEmpty()) {
+      throw GradleException("Disallowed imports found! $violations")
+    }
+  }
+}
+
+tasks.named("check") { dependsOn("checkNoDisallowedImports") }
+
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   archiveBaseName =
