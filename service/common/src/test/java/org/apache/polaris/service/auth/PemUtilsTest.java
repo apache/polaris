@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,6 +51,10 @@ public class PemUtilsTest {
 
   private static final String RSA_PRIVATE_KEY_FILE = "rsa-private-key.pem";
 
+  private static final String RSA_PUBLIC_KEY_AND_PRIVATE_KEY_FILE = "rsa-public-key-and-private-key.pem";
+
+  private static final String EMPTY_FILE = "empty.pem";
+
   private static final Base64.Encoder encoder = Base64.getMimeEncoder();
 
   @TempDir private static Path tempDir;
@@ -61,6 +66,10 @@ public class PemUtilsTest {
   private static Path rsaPrivateKeyPath;
 
   private static PrivateKey rsaPrivateKey;
+
+  private static Path rsaPublicKeyAndPrivateKeyPath;
+
+  private static Path emptyFilePath;
 
   @BeforeAll
   public static void setKeyPair() throws NoSuchAlgorithmException, IOException {
@@ -77,6 +86,13 @@ public class PemUtilsTest {
 
     rsaPrivateKeyPath = tempDir.resolve(RSA_PRIVATE_KEY_FILE);
     Files.writeString(rsaPrivateKeyPath, privateKeyEncoded);
+
+    rsaPublicKeyAndPrivateKeyPath = tempDir.resolve(RSA_PUBLIC_KEY_AND_PRIVATE_KEY_FILE);
+    final String rsaPublicKeyAndPrivateKey = publicKeyEncoded + LINE_SEPARATOR + privateKeyEncoded;
+    Files.writeString(rsaPublicKeyAndPrivateKeyPath, rsaPublicKeyAndPrivateKey);
+
+    emptyFilePath = tempDir.resolve(EMPTY_FILE);
+    Files.write(emptyFilePath, new byte[0]);
   }
 
   @Test
@@ -92,6 +108,18 @@ public class PemUtilsTest {
         PemUtils.readPrivateKeyFromFile(rsaPrivateKeyPath, RSA_ALGORITHM);
 
     assertEquals(rsaPrivateKey, privateKeyRead);
+  }
+
+  @Test
+  public void testReadPublicKeyFromFileRSAWithPrivateKeyIgnored() throws IOException {
+    final PublicKey publicKeyRead = PemUtils.readPublicKeyFromFile(rsaPublicKeyAndPrivateKeyPath, RSA_ALGORITHM);
+
+    assertEquals(rsaPublicKey, publicKeyRead);
+  }
+
+  @Test
+  public void testReadEmptyFIle() {
+    assertThrows(IOException.class, () -> PemUtils.readPublicKeyFromFile(emptyFilePath, RSA_ALGORITHM));
   }
 
   private static String getPublicKeyEncoded(final PublicKey publicKey) {
