@@ -57,6 +57,8 @@ public class PemUtils {
           headerFound = true;
         } else if (line.startsWith("-----END")) {
           footerFound = true;
+          // Stop reading after finding footer
+          break;
         } else if (!line.isBlank()) {
           encodedBuilder.append(line);
         }
