@@ -34,6 +34,7 @@ public class SparkCatalog
         SupportsNamespaces,
         ViewCatalog,
         SupportsReplaceView {
+
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
@@ -81,8 +82,38 @@ public class SparkCatalog
   }
 
   @Override
+  public void invalidateTable(Identifier ident) {
+    throw new UnsupportedOperationException("invalidateTable");
+  }
+
+  @Override
+  public boolean purgeTable(Identifier ident) {
+    throw new UnsupportedOperationException("purgeTable");
+  }
+
+  @Override
   public Identifier[] listTables(String[] namespace) {
     throw new UnsupportedOperationException("listTables");
+  }
+
+  @Override
+  public StagedTable stageCreate(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
+      throws TableAlreadyExistsException {
+    return this.icebergsSparkCatalog.stageCreate(ident, schema, transforms, properties);
+  }
+
+  @Override
+  public StagedTable stageReplace(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
+      throws NoSuchTableException {
+    return this.icebergsSparkCatalog.stageReplace(ident, schema, transforms, properties);
+  }
+
+  @Override
+  public StagedTable stageCreateOrReplace(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties) {
+    return this.icebergsSparkCatalog.stageCreateOrReplace(ident, schema, transforms, properties);
   }
 
   @Override
@@ -122,38 +153,6 @@ public class SparkCatalog
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
     return this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
-  }
-
-  @Override
-  public StagedTable stageCreate(
-      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
-      throws TableAlreadyExistsException {
-    if (useIceberg(properties.get("provider"))) {
-      return this.icebergsSparkCatalog.stageCreate(ident, schema, transforms, properties);
-    }
-
-    throw new UnsupportedOperationException("stageCreate");
-  }
-
-  @Override
-  public StagedTable stageReplace(
-      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
-      throws NoSuchTableException {
-    if (useIceberg(properties.get("provider"))) {
-      return this.icebergsSparkCatalog.stageReplace(ident, schema, transforms, properties);
-    }
-
-    throw new UnsupportedOperationException("stageReplace");
-  }
-
-  @Override
-  public StagedTable stageCreateOrReplace(
-      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties) {
-    if (useIceberg(properties.get("provider"))) {
-      return this.icebergsSparkCatalog.stageCreateOrReplace(ident, schema, transforms, properties);
-    }
-
-    throw new UnsupportedOperationException("stageCreateOrReplace");
   }
 
   @Override
@@ -229,9 +228,5 @@ public class SparkCatalog
         columnAliases,
         columnComments,
         properties);
-  }
-
-  private boolean useIceberg(String provider) {
-    return provider == null || provider.equals("iceberg");
   }
 }
