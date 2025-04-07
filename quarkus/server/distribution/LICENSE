@@ -2050,6 +2050,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: org.bouncycastle Name: bcprov-jdk18on Version: 1.80
+Project URL (from POM): https://www.bouncycastle.org/download/bouncy-castle-java/
+License (from POM): Bouncy Castle Licence - https://www.bouncycastle.org/licence.html
+
+--------------------------------------------------------------------------------
+
 Group: org.checkerframework Name: checker-qual Version: 3.49.0
 Project URL (from POM): https://checkerframework.org/
 License (from POM): MIT License - http://opensource.org/licenses/MIT
