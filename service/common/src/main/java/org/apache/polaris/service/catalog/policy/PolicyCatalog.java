@@ -246,7 +246,7 @@ public class PolicyCatalog {
     return constructPolicy(newPolicyEntity);
   }
 
-  public void dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
+  public boolean dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
     // TODO: Implement detachAll when we support attach/detach policy
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var catalogPath = resolvedPolicyPath.getRawParentPath();
@@ -266,9 +266,11 @@ public class PolicyCatalog {
               "Failed to drop policy %s error status: %s with extraInfo: %s",
               policyIdentifier, result.getReturnStatus(), result.getExtraInformation()));
     }
+
+    return true;
   }
 
-  public void attachPolicy(
+  public boolean attachPolicy(
       PolicyIdentifier policyIdentifier,
       PolicyAttachmentTarget target,
       Map<String, String> parameters) {
@@ -304,9 +306,11 @@ public class PolicyCatalog {
           "Failed to attach policy %s to %s: %s with extraInfo: %s",
           policyIdentifier, targetId, result.getReturnStatus(), result.getExtraInformation());
     }
+
+    return true;
   }
 
-  public void detachPolicy(PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
+  public boolean detachPolicy(PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policyCatalogPath = PolarisEntity.toCoreList(resolvedPolicyPath.getRawParentPath());
     var policyEntity = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
@@ -332,6 +336,8 @@ public class PolicyCatalog {
               result.getReturnStatus(),
               result.getExtraInformation()));
     }
+
+    return true;
   }
 
   public List<Policy> getApplicablePolicies(
