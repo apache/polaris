@@ -103,6 +103,7 @@ dependencies {
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testFixturesApi(libs.jakarta.annotation.api)
+  testFixturesApi(libs.jakarta.ws.rs.api)
 
   compileOnly(libs.jakarta.annotation.api)
 }
