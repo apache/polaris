@@ -4011,7 +4011,7 @@ components:
           description: |
             For policies returned by GetApplicablePolicies, there are 2 additional fields
 
-            - **inherited:** A boolean flag indicating whether the policy is inherited from target's parents
+            - **inherited:** A boolean flag indicating whether the policy is inherited from target's parents. For non-inheritable policy, it should always be `false`.
             - **namespace:** A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
           required:
             - inherited
@@ -4019,6 +4019,7 @@ components:
           properties:
             inherited:
               type: boolean
+              default: false
             namespace:
               $ref: '#/components/schemas/Namespace'
         - $ref: '#/components/schemas/Policy'
@@ -4029,7 +4030,7 @@ components:
       properties:
         next-page-token:
           $ref: '#/components/schemas/PageToken'
-        policies:
+        applicable-policies:
           type: array
           uniqueItems: true
           items:
