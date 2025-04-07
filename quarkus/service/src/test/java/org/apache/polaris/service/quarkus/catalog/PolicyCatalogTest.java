@@ -487,7 +487,7 @@ public class PolicyCatalogTest {
     policyCatalog.createPolicy(
         POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    assertThat(policyCatalog.dropPolicy(POLICY1, false)).isTrue();
+    policyCatalog.dropPolicy(POLICY1, false);
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
   }
@@ -506,7 +506,7 @@ public class PolicyCatalogTest {
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, target, null);
     assertThat(policyCatalog.getApplicablePolicies(null, null, null).size()).isEqualTo(1);
   }
 
@@ -517,13 +517,13 @@ public class PolicyCatalogTest {
     policyCatalog.createPolicy(POLICY2, DATA_COMPACTION.getName(), "test", "{\"enable\": true}");
 
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, target, null);
     // Attempt to attach a conflicting second policy and expect an exception
     assertThatThrownBy(() -> policyCatalog.attachPolicy(POLICY2, target, null))
         .isInstanceOf(PolicyMappingAlreadyExistsException.class)
         .hasMessage(
             String.format(
-                "The policy mapping of same type(%s) for %s already exists",
+                "The policy mapping of same type (%s) for %s already exists",
                 DATA_COMPACTION.getName(), CATALOG_NAME));
   }
 
@@ -532,9 +532,9 @@ public class PolicyCatalogTest {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    assertThat(policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(1);
-    assertThat(policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS)).isTrue();
+    policyCatalog.detachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS);
     assertThat(policyCatalog.getApplicablePolicies(NS, null, null).size()).isEqualTo(0);
   }
 
@@ -546,10 +546,10 @@ public class PolicyCatalogTest {
 
     // attach to catalog
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, target, null);
 
     // attach to namespace
-    assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(1);
     assertThat(applicablePolicies.getFirst().getName())
@@ -569,10 +569,10 @@ public class PolicyCatalogTest {
 
     // attach a policy to catalog
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, target, null);
 
     // attach a different type of policy to namespace
-    assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(2);
     assertThat(applicablePolicies.contains(p1)).isTrue();
@@ -585,14 +585,14 @@ public class PolicyCatalogTest {
     // attach a third type of policy to a table
     policyCatalog.createPolicy(
         POLICY3, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
-    assertThat(policyCatalog.attachPolicy(POLICY3, POLICY_ATTACH_TARGET_TBL, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY3, POLICY_ATTACH_TARGET_TBL, null);
     applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
     assertThat(applicablePolicies.size()).isEqualTo(3);
     // create policy 4 with one of types from its parent
     var p4 =
         policyCatalog.createPolicy(
             POLICY4, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
-    assertThat(policyCatalog.attachPolicy(POLICY4, POLICY_ATTACH_TARGET_TBL, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY4, POLICY_ATTACH_TARGET_TBL, null);
     applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
     // p2 should be overwritten by p4, as they are the same type
     assertThat(applicablePolicies.contains(p4)).isTrue();
@@ -610,10 +610,10 @@ public class PolicyCatalogTest {
 
     // attach a policy to catalog
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    assertThat(policyCatalog.attachPolicy(POLICY1, target, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY1, target, null);
 
     // attach a different type of policy to namespace
-    assertThat(policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null)).isTrue();
+    policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, DATA_COMPACTION);
     // only p2 is with the type fetched
     assertThat(applicablePolicies.contains(p2)).isTrue();

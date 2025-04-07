@@ -48,6 +48,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.PolicyValidators;
 import org.apache.polaris.service.types.Policy;
@@ -245,23 +246,29 @@ public class PolicyCatalog {
     return constructPolicy(newPolicyEntity);
   }
 
-  public boolean dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
+  public void dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
     // TODO: Implement detachAll when we support attach/detach policy
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var catalogPath = resolvedPolicyPath.getRawParentPath();
     var policyEntity = resolvedPolicyPath.getRawLeafEntity();
 
-    return metaStoreManager
-        .dropEntityIfExists(
+    var result =
+        metaStoreManager.dropEntityIfExists(
             callContext.getPolarisCallContext(),
             PolarisEntity.toCoreList(catalogPath),
             policyEntity,
             Map.of(),
-            false)
-        .isSuccess();
+            false);
+
+    if (!result.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Failed to drop policy %s error status: %s with extraInfo: %s",
+              policyIdentifier, result.getReturnStatus(), result.getExtraInformation()));
+    }
   }
 
-  public boolean attachPolicy(
+  public void attachPolicy(
       PolicyIdentifier policyIdentifier,
       PolicyAttachmentTarget target,
       Map<String, String> parameters) {
@@ -285,20 +292,21 @@ public class PolicyCatalog {
             policyEntity,
             parameters);
 
-    if (result.getReturnStatus() == POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS) {
-      var targetId = catalogEntity.getName();
-      if (target.getType() != CATALOG) {
-        targetId += "." + String.join(".", target.getPath());
+    if (!result.isSuccess()) {
+      var targetId = getIdentifier(target);
+      if (result.getReturnStatus() == POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS) {
+        throw new PolicyMappingAlreadyExistsException(
+            "The policy mapping of same type (%s) for %s already exists",
+            policyEntity.getPolicyType().getName(), targetId);
       }
-      throw new PolicyMappingAlreadyExistsException(
-          "The policy mapping of same type(%s) for %s already exists",
-          policyEntity.getPolicyType().getName(), targetId);
-    }
 
-    return result.isSuccess();
+      throw new PolicyAttachException(
+          "Failed to attach policy %s to %s: %s with extraInfo: %s",
+          policyIdentifier, targetId, result.getReturnStatus(), result.getExtraInformation());
+    }
   }
 
-  public boolean detachPolicy(PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
+  public void detachPolicy(PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policyCatalogPath = PolarisEntity.toCoreList(resolvedPolicyPath.getRawParentPath());
     var policyEntity = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
@@ -307,14 +315,23 @@ public class PolicyCatalog {
     var targetCatalogPath = PolarisEntity.toCoreList(resolvedTargetPath.getRawParentPath());
     var targetEntity = resolvedTargetPath.getRawLeafEntity();
 
-    return metaStoreManager
-        .detachPolicyFromEntity(
+    var result =
+        metaStoreManager.detachPolicyFromEntity(
             callContext.getPolarisCallContext(),
             targetCatalogPath,
             targetEntity,
             policyCatalogPath,
-            policyEntity)
-        .isSuccess();
+            policyEntity);
+
+    if (!result.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Failed to detach policy %s from %s error status: %s with extraInfo: %s",
+              policyIdentifier,
+              getIdentifier(target),
+              result.getReturnStatus(),
+              result.getExtraInformation()));
+    }
   }
 
   public List<Policy> getApplicablePolicies(
@@ -422,6 +439,15 @@ public class PolicyCatalog {
       }
       return resolvedTableEntity.getRawFullPath();
     }
+  }
+
+  private String getIdentifier(PolicyAttachmentTarget target) {
+    String identifier = catalogEntity.getName();
+    // If the target is not of type CATALOG, append the additional path segments.
+    if (target.getType() != CATALOG) {
+      identifier += "." + String.join(".", target.getPath());
+    }
+    return identifier;
   }
 
   private PolarisResolvedPathWrapper getResolvedPathWrapper(PolicyIdentifier policyIdentifier) {
