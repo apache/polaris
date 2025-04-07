@@ -37,6 +37,9 @@ dependencies {
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)
   testImplementation("io.quarkus:quarkus-junit5")
+
+  testImplementation(libs.h2)
+  testImplementation(testFixtures(project(":polaris-core")))
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
