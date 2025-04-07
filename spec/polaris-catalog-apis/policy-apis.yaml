@@ -653,7 +653,7 @@ components:
     GetApplicablePoliciesResponse:
       type: object
       required:
-        - policies
+        - applicable-policies
       properties:
         next-page-token:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'

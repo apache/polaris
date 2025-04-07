@@ -4026,7 +4026,7 @@ components:
     GetApplicablePoliciesResponse:
       type: object
       required:
-        - policies
+        - applicable-policies
       properties:
         next-page-token:
           $ref: '#/components/schemas/PageToken'
