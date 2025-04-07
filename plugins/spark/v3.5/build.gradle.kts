@@ -58,9 +58,6 @@ dependencies {
   implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
 
   implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
-  implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
@@ -138,12 +135,6 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveBaseName =
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
-
-  dependencies {
-    exclude("META-INF/*.SF")
-    exclude("META-INF/*.DSA")
-    exclude("META-INF/*.RSA")
-  }
 
   mergeServiceFiles()
 
