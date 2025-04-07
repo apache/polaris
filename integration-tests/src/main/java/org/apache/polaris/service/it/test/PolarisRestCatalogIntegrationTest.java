@@ -61,6 +61,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
@@ -1319,6 +1320,25 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
           }
         });
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testDropNonExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    try (Response res =
+        genericTableApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
+            .delete()) {
+      assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+    }
 
     genericTableApi.purge(currentCatalogName, namespace);
   }
