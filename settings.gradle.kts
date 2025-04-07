@@ -57,18 +57,39 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
+val ideActive = System.getProperty("idea.active").toBoolean()
+
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
 val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
 val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
 
+// records the spark projects that maps to the same project dir
+val noSourceChecksProjects = mutableSetOf<String>()
+
 for (sparkVersion in sparkVersions) {
   val scalaVersions = sparkScalaVersions["scalaVersions"].toString().split(",").map { it.trim() }
+  var first = true
   for (scalaVersion in scalaVersions) {
-    polarisProject(
-      "polaris-spark-${sparkVersion}_${scalaVersion}",
-      file("${polarisSparkDir}/v${sparkVersion}"),
-    )
+    val artifactId = "polaris-spark-${sparkVersion}_${scalaVersion}"
+    polarisProject(artifactId, file("${polarisSparkDir}/v${sparkVersion}"))
+    if (first) {
+      first = false
+    } else {
+      noSourceChecksProjects.add(":$artifactId")
+    }
+    // skip all duplicated spark client projects in IDE to avoid problems
+    // during Intelij dependency analysis and sync. For example:
+    // "Multiple projects in this build have project directory".
+    if (ideActive) {
+      break
+    }
+  }
+}
+
+gradle.beforeProject {
+  if (noSourceChecksProjects.contains(this.path)) {
+    project.extra["duplicated-project-sources"] = true
   }
 }
 
