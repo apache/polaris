@@ -195,7 +195,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")
-          .description("The target weight for the entity cache.")
+          .description(
+              "The maximum weight for the entity cache. This is a heuristic value without any particular"
+                  + " unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning"
+                  + " requires experimentation in the specific deployment environment")
           .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
           .buildFeatureConfiguration();
 }
