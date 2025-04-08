@@ -52,7 +52,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -184,10 +183,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
-  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1273 */
   @Override
   @Test
-  @Disabled
   public void createViewWithCustomMetadataLocation() {
     Assertions.assertThatThrownBy(super::createViewWithCustomMetadataLocation)
         .isInstanceOf(ForbiddenException.class)
@@ -214,6 +211,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
 
+    // CAN create a view with a custom metadata location `baseLocation/customLocation`,
+    // as long as the location is within the parent namespace's `write.metadata.path=baseLocation`
     View view =
         catalog()
             .buildView(identifier)
@@ -233,6 +232,9 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
         .isNotNull()
         .startsWith(customLocation);
 
+    // CANNOT update the view with a new metadata location `baseLocation/customLocation2`,
+    // even though the new location is still under the parent namespace's
+    // `write.metadata.path=baseLocation`.
     Assertions.assertThatThrownBy(
             () ->
                 catalog()
@@ -245,15 +247,19 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Forbidden: Invalid locations");
 
-    catalog()
-        .loadView(identifier)
-        .updateProperties()
-        .set(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customLocationChild)
-        .commit();
-    View childView = catalog().loadView(identifier);
-    assertThat(childView.properties()).containsEntry("write.metadata.path", customLocationChild);
-    assertThat(((BaseView) childView).operations().current().metadataFileLocation())
-        .isNotNull()
-        .startsWith(customLocationChild);
+    // CANNOT update the view with a child metadata location `baseLocation/customLocation/child`,
+    // even though it is a subpath of the original view's
+    // `write.metadata.path=baseLocation/customLocation`.
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog()
+                    .loadView(identifier)
+                    .updateProperties()
+                    .set(
+                        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                        customLocationChild)
+                    .commit())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Forbidden: Invalid locations");
   }
 }
