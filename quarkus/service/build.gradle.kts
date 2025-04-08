@@ -71,8 +71,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.bouncycastle.bcprov)
-
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
 
