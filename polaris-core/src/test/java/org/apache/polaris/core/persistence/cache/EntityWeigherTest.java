@@ -98,4 +98,12 @@ public class EntityWeigherTest {
             .weigh(1L, getEntity("t", "", "", Optional.of("looong iproperties")));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
+
+    @Test
+    public void testExactWeightCalculation() {
+        int preciseWeight =
+            EntityWeigher.getInstance().weigh(1L,
+                getEntity("name", "location", "{a: b}", Optional.of("{c: d, e: f}")));
+        Assertions.assertThat(preciseWeight).isEqualTo(1066);
+    }
 }
