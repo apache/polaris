@@ -18,25 +18,27 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.RemovalListener;
+import com.google.common.util.concurrent.Striped;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.AbstractMap;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
 /** The entity cache, can be private or shared */
 public class EntityCache {
+  private static final Comparator<ResolvedPolarisEntity> RESOLVED_POLARIS_ENTITY_COMPARATOR =
+      Comparator.nullsLast(
+          Comparator.<ResolvedPolarisEntity>comparingInt(rpe -> rpe.getEntity().getEntityVersion())
+              .thenComparingInt(rpe -> rpe.getEntity().getGrantRecordsVersion()));
+  private static final int STRIPES = 1_024;
 
   // cache mode
   private EntityCacheMode cacheMode;
@@ -44,11 +46,11 @@ public class EntityCache {
   // the meta store manager
   private final PolarisMetaStoreManager polarisMetaStoreManager;
 
-  // Caffeine cache to keep entries by id
-  private final Cache<Long, ResolvedPolarisEntity> byId;
+  // Caffeine cache to keep entries
+  private final IndexedCache<CacheKey, ResolvedPolarisEntity> cache;
 
-  // index by name
-  private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
+  // Locks to ensure that an entity can only be refreshed by one thread at a time
+  private final Striped<Lock> locks;
 
   /**
    * Constructor. Cache can be private or shared
@@ -56,147 +58,34 @@ public class EntityCache {
    * @param polarisMetaStoreManager the meta store manager implementation
    */
   public EntityCache(@Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
-
-    // by name cache
-    this.byName = new ConcurrentHashMap<>();
-
-    // When an entry is removed, we simply remove it from the byName map
-    RemovalListener<Long, ResolvedPolarisEntity> removalListener =
-        (key, value, cause) -> {
-          if (value != null) {
-            // compute name key
-            EntityCacheByNameKey nameKey = new EntityCacheByNameKey(value.getEntity());
-
-            // if it is still active, remove it from the name key
-            this.byName.remove(nameKey, value);
-          }
-        };
-
-    // use a Caffeine cache to purge entries when those have not been used for a long time.
-    // Assuming 1KB per entry, 100K entries is about 100MB.
-    this.byId =
-        Caffeine.newBuilder()
-            .maximumSize(100_000) // Set maximum size to 100,000 elements
-            .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
-            .removalListener(removalListener) // Set the removal listener
-            .build();
-
     // remember the meta store manager
     this.polarisMetaStoreManager = polarisMetaStoreManager;
 
     // enabled by default
     this.cacheMode = EntityCacheMode.ENABLE;
+
+    // Use a Caffeine cache to purge entries when those have not been used for a long time.
+    // Assuming 1KB per entry, 100K entries is about 100MB. Note that each entity is stored twice in
+    // the cache, once indexed by its identifier and once indexed by its name.
+    this.cache =
+        new IndexedCache.Builder<CacheKey, ResolvedPolarisEntity>()
+            .primaryKey(e -> new IdKey(e.getEntity().getId()))
+            .addSecondaryKey(e -> new NameKey(new EntityCacheByNameKey(e.getEntity())))
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .maximumSize(10_000)
+            .build();
+    this.locks = Striped.lock(STRIPES);
   }
 
   /**
-   * Remove the specified cache entry from the cache
+   * Remove the specified cache entry from the cache. This applies both to the cache entry indexed
+   * by its id and by its name.
    *
    * @param cacheEntry cache entry to remove
    */
   public void removeCacheEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
-    // compute name key
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
-
-    // remove this old entry, this will immediately remove the named entry
-    this.byId.asMap().remove(cacheEntry.getEntity().getId(), cacheEntry);
-
-    // remove it from the name key
-    this.byName.remove(nameKey, cacheEntry);
-  }
-
-  /**
-   * Cache new entry
-   *
-   * @param cacheEntry new cache entry
-   */
-  private void cacheNewEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
-
-    // compute name key
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
-
-    // get old value if one exist
-    ResolvedPolarisEntity oldCacheEntry = this.byId.getIfPresent(cacheEntry.getEntity().getId());
-
-    // put new entry, only if really newer one
-    this.byId
-        .asMap()
-        .merge(
-            cacheEntry.getEntity().getId(),
-            cacheEntry,
-            (oldValue, newValue) -> this.isNewer(newValue, oldValue) ? newValue : oldValue);
-
-    // only update the name key if this entity was not dropped
-    if (!cacheEntry.getEntity().isDropped()) {
-      // here we don't really care about concurrent update to the key. Basically if we are
-      // pointing to the wrong entry, we will detect this and fix the issue
-      this.byName.put(nameKey, cacheEntry);
-    }
-
-    // remove old name if it has changed
-    if (oldCacheEntry != null) {
-      // old name
-      EntityCacheByNameKey oldNameKey = new EntityCacheByNameKey(oldCacheEntry.getEntity());
-      if (!oldNameKey.equals(nameKey)) {
-        this.byName.remove(oldNameKey, oldCacheEntry);
-      }
-    }
-  }
-
-  /**
-   * Determine if the newer value is really newer
-   *
-   * @param newValue new cache entry
-   * @param oldValue old cache entry
-   * @return true if the newer cache entry
-   */
-  private boolean isNewer(ResolvedPolarisEntity newValue, ResolvedPolarisEntity oldValue) {
-    return (newValue.getEntity().getEntityVersion() > oldValue.getEntity().getEntityVersion()
-        || newValue.getEntity().getGrantRecordsVersion()
-            > oldValue.getEntity().getGrantRecordsVersion());
-  }
-
-  /**
-   * Replace an old entry with a new one
-   *
-   * @param oldCacheEntry old entry
-   * @param newCacheEntry new entry
-   */
-  private void replaceCacheEntry(
-      @Nullable ResolvedPolarisEntity oldCacheEntry, @Nonnull ResolvedPolarisEntity newCacheEntry) {
-
-    // need to remove old?
-    if (oldCacheEntry != null) {
-      // only replace if there is a difference
-      if (this.entityNameKeyMismatch(oldCacheEntry.getEntity(), newCacheEntry.getEntity())
-          || oldCacheEntry.getEntity().getEntityVersion()
-              < newCacheEntry.getEntity().getEntityVersion()
-          || oldCacheEntry.getEntity().getGrantRecordsVersion()
-              < newCacheEntry.getEntity().getGrantRecordsVersion()) {
-        // write new one
-        this.cacheNewEntry(newCacheEntry);
-
-        // delete the old one assuming it has not been replaced by the above new entry
-        this.removeCacheEntry(oldCacheEntry);
-      }
-    } else {
-      // write new one
-      this.cacheNewEntry(newCacheEntry);
-    }
-  }
-
-  /**
-   * Check if two entities have different cache keys (either by id or by name)
-   *
-   * @param entity the entity
-   * @param otherEntity the other entity
-   * @return true if there is a mismatch
-   */
-  private boolean entityNameKeyMismatch(
-      @Nonnull PolarisBaseEntity entity, @Nonnull PolarisBaseEntity otherEntity) {
-    return entity.getId() != otherEntity.getId()
-        || entity.getParentId() != otherEntity.getParentId()
-        || !entity.getName().equals(otherEntity.getName())
-        || entity.getTypeCode() != otherEntity.getTypeCode();
+    IdKey key = new IdKey(cacheEntry.getEntity().getId());
+    this.cache.invalidate(key);
   }
 
   /**
@@ -218,31 +107,37 @@ public class EntityCache {
   }
 
   /**
-   * Get a cache entity entry given the id of the entity
+   * Get a cache entity entry given the id of the entity. If the entry is not found, return null.
    *
    * @param entityId entity id
    * @return the cache entry or null if not found
    */
   public @Nullable ResolvedPolarisEntity getEntityById(long entityId) {
-    return byId.getIfPresent(entityId);
+    return this.cache.getIfPresent(new IdKey(entityId));
   }
 
   /**
-   * Get a cache entity entry given the name key of the entity
+   * Get a cache entity entry given the name key of the entity. If the entry is not found, return
+   * null.
    *
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @Nonnull EntityCacheByNameKey entityNameKey) {
-    return byName.get(entityNameKey);
+    return this.cache.getIfPresent(new NameKey(entityNameKey));
   }
 
   /**
-   * Refresh the cache if needs be with a version of the entity/grant records matching the minimum
-   * specified version.
+   * Get the cached version of the specified entity and refresh it if needed.
    *
-   * @param callContext the Polaris call context
+   * <p>This method accepts a fully populated entity. It attempts at resolving the entity from the
+   * cache using its id mapping. If the entity is not found in the cache, or if the cached entity
+   * has a version older than the specified minimum versions, it is removed from the cache, and
+   * reloaded from the underlying datastore and added to the cache. Then it is returned.
+   *
+   * @param callContext the Polaris call context Refresh the cache if needs be with a version of the
+   *     entity/grant records matching the minimum specified version.
    * @param entityToValidate copy of the entity held by the caller to validate
    * @param entityMinVersion minimum expected version. Should be reloaded if found in a cache with a
    *     version less than this one
@@ -255,104 +150,74 @@ public class EntityCache {
       @Nonnull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion) {
-    long entityCatalogId = entityToValidate.getCatalogId();
     long entityId = entityToValidate.getId();
-    PolarisEntityType entityType = entityToValidate.getType();
 
-    // first lookup the cache to find the existing cache entry
+    // First lookup the cache to find the existing cache entry
     ResolvedPolarisEntity existingCacheEntry = this.getEntityById(entityId);
 
-    // the caller's fetched entity may have come from a stale lookup byName; we should consider
-    // the existingCacheEntry to be the older of the two for purposes of invalidation to make
-    // sure when we replaceCacheEntry we're also removing the old name if it's no longer valid
-    EntityCacheByNameKey nameKey = new EntityCacheByNameKey(entityToValidate);
-    ResolvedPolarisEntity existingCacheEntryByName = this.getEntityByName(nameKey);
-    if (existingCacheEntryByName != null
-        && existingCacheEntry != null
-        && isNewer(existingCacheEntry, existingCacheEntryByName)) {
-      existingCacheEntry = existingCacheEntryByName;
+    // See if we need to load or refresh that entity
+    if (existingCacheEntry != null
+        && existingCacheEntry.getEntity().getEntityVersion() >= entityMinVersion
+        && existingCacheEntry.getEntity().getGrantRecordsVersion()
+            >= entityGrantRecordsMinVersion) {
+      // Cache hit and cache entry is up to date, nothing to do.
+      return existingCacheEntry;
     }
 
-    // the new one to be returned
-    final ResolvedPolarisEntity newCacheEntry;
+    // Either cache miss, dropped entity or stale entity. In either case, invalidate and reload it.
+    // Do the refresh in a critical section based on the entity ID to avoid race conditions.
+    Lock lock = this.locks.get(entityId);
+    try {
+      lock.lock();
 
-    // see if we need to load or refresh that entity
-    if (existingCacheEntry == null
-        || existingCacheEntry.getEntity().getEntityVersion() < entityMinVersion
-        || existingCacheEntry.getEntity().getGrantRecordsVersion() < entityGrantRecordsMinVersion) {
+      // Lookup the cache again in case another thread has already invalidated it.
+      existingCacheEntry = this.getEntityById(entityId);
 
-      // the refreshed entity
-      final ResolvedEntityResult refreshedCacheEntry;
-
-      // was not found in the cache?
-      final PolarisBaseEntity entity;
-      final List<PolarisGrantRecord> grantRecords;
-      final int grantRecordsVersion;
-      if (existingCacheEntry == null) {
-        // try to load it
-        refreshedCacheEntry =
-            this.polarisMetaStoreManager.loadResolvedEntityById(
-                callContext, entityCatalogId, entityId, entityType);
-        if (refreshedCacheEntry.isSuccess()) {
-          entity = refreshedCacheEntry.getEntity();
-          grantRecords = refreshedCacheEntry.getEntityGrantRecords();
-          grantRecordsVersion = refreshedCacheEntry.getGrantRecordsVersion();
-        } else {
-          return null;
-        }
-      } else {
-        // refresh it
-        refreshedCacheEntry =
-            this.polarisMetaStoreManager.refreshResolvedEntity(
-                callContext,
-                existingCacheEntry.getEntity().getEntityVersion(),
-                existingCacheEntry.getEntity().getGrantRecordsVersion(),
-                entityType,
-                entityCatalogId,
-                entityId);
-        if (refreshedCacheEntry.isSuccess()) {
-          entity =
-              (refreshedCacheEntry.getEntity() != null)
-                  ? refreshedCacheEntry.getEntity()
-                  : existingCacheEntry.getEntity();
-          if (refreshedCacheEntry.getEntityGrantRecords() != null) {
-            grantRecords = refreshedCacheEntry.getEntityGrantRecords();
-            grantRecordsVersion = refreshedCacheEntry.getGrantRecordsVersion();
-          } else {
-            grantRecords = existingCacheEntry.getAllGrantRecords();
-            grantRecordsVersion = existingCacheEntry.getEntity().getGrantRecordsVersion();
-          }
-        } else {
-          // entity has been purged, remove it
-          this.removeCacheEntry(existingCacheEntry);
-          return null;
-        }
+      // See if the entity has been refreshed concurrently
+      if (existingCacheEntry != null
+          && existingCacheEntry.getEntity().getEntityVersion() >= entityMinVersion
+          && existingCacheEntry.getEntity().getGrantRecordsVersion()
+              >= entityGrantRecordsMinVersion) {
+        // Cache hit and cache entry is up to date now, exit
+        return existingCacheEntry;
       }
+
+      // We are the first to act upon this entity id, invalidate it
+      this.cache.invalidate(new IdKey(entityId));
+
+      // Get the entity from the cache or reload it now that it has been invalidated
+      EntityCacheLookupResult cacheLookupResult =
+          this.getOrLoadEntityById(
+              callContext, entityToValidate.getCatalogId(), entityId, entityToValidate.getType());
+      if (cacheLookupResult == null) {
+        // Entity has been purged
+        return null;
+      }
+      ResolvedPolarisEntity entity = cacheLookupResult.getCacheEntry();
 
       // assert that entity, grant records and version are all set
       callContext.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-      callContext.getDiagServices().checkNotNull(grantRecords, "unexpected_null_grant_records");
       callContext
           .getDiagServices()
-          .check(grantRecordsVersion > 0, "unexpected_null_grant_records_version");
+          .checkNotNull(entity.getAllGrantRecords(), "unexpected_null_grant_records");
+      callContext
+          .getDiagServices()
+          .check(
+              entity.getEntity().getGrantRecordsVersion() > 0,
+              "unexpected_null_grant_records_version");
 
-      // create new cache entry
-      newCacheEntry =
-          new ResolvedPolarisEntity(
-              callContext.getDiagServices(), entity, grantRecords, grantRecordsVersion);
-
-      // insert cache entry
-      this.replaceCacheEntry(existingCacheEntry, newCacheEntry);
-    } else {
-      // found it in the cache and it is up-to-date, simply return it
-      newCacheEntry = existingCacheEntry;
+      return entity;
+    } finally {
+      lock.unlock();
     }
-
-    return newCacheEntry;
   }
 
   /**
-   * Get the specified entity by name and load it if it is not found.
+   * Get the specified entity by id from the cache or load it if it is not in cache.
+   *
+   * <p>This method attempts at first loading the entity from the cache using its id mapping. If the
+   * entity is not found in the cache, it is loaded from the backend and added to the cache using
+   * both its id and name mappings. Then it is returned.
    *
    * @param callContext the Polaris call context
    * @param entityCatalogId id of the catalog where this entity resides or NULL_ID if top-level
@@ -365,50 +230,46 @@ public class EntityCache {
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
+    final AtomicBoolean cacheHit = new AtomicBoolean(true);
 
-    // if it exists, we are set
-    ResolvedPolarisEntity entry = this.getEntityById(entityId);
-    final boolean cacheHit;
+    ResolvedPolarisEntity entity =
+        this.cache.get(
+            new IdKey(entityId),
+            () -> {
+              cacheHit.set(false);
+              ResolvedEntityResult result =
+                  polarisMetaStoreManager.loadResolvedEntityById(
+                      callContext, entityCatalogId, entityId, entityType);
+              if (!result.isSuccess()) {
+                return null;
+              }
+              callContext
+                  .getDiagServices()
+                  .checkNotNull(result.getEntity(), "entity_should_loaded");
+              callContext
+                  .getDiagServices()
+                  .checkNotNull(
+                      result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+              return new ResolvedPolarisEntity(
+                  callContext.getDiagServices(),
+                  result.getEntity(),
+                  result.getEntityGrantRecords(),
+                  result.getGrantRecordsVersion());
+            });
 
-    // we need to load it if it does not exist
-    if (entry == null) {
-      // this is a miss
-      cacheHit = false;
-
-      // load it
-      ResolvedEntityResult result =
-          polarisMetaStoreManager.loadResolvedEntityById(
-              callContext, entityCatalogId, entityId, entityType);
-
-      // not found, exit
-      if (!result.isSuccess()) {
-        return null;
-      }
-
-      // if found, setup entry
-      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
-      callContext
-          .getDiagServices()
-          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
-      entry =
-          new ResolvedPolarisEntity(
-              callContext.getDiagServices(),
-              result.getEntity(),
-              result.getEntityGrantRecords(),
-              result.getGrantRecordsVersion());
-
-      // the above loading could take a long time so check again if the entry exists and only
-      this.cacheNewEntry(entry);
+    if (entity == null) {
+      return null;
     } else {
-      cacheHit = true;
+      return new EntityCacheLookupResult(entity, cacheHit.get());
     }
-
-    // return what we found
-    return new EntityCacheLookupResult(entry, cacheHit);
   }
 
   /**
-   * Get the specified entity by name and load it if it is not found.
+   * Get the specified entity by name from the cache or load it if it is not in cache.
+   *
+   * <p>This method attempts at first loading the entity from the cache using its name mapping. If
+   * the entity is not found in the cache, it is loaded from the backend and added to the cache
+   * using both its id and name mappings. Then it is returned.
    *
    * @param callContext the Polaris call context
    * @param entityNameKey name of the entity to load
@@ -417,51 +278,40 @@ public class EntityCache {
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityByName(
       @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
+    final AtomicBoolean cacheHit = new AtomicBoolean(true);
+    ResolvedPolarisEntity entity =
+        this.cache.get(
+            new NameKey(entityNameKey),
+            () -> {
+              cacheHit.set(false);
+              ResolvedEntityResult result =
+                  polarisMetaStoreManager.loadResolvedEntityByName(
+                      callContext,
+                      entityNameKey.getCatalogId(),
+                      entityNameKey.getParentId(),
+                      entityNameKey.getType(),
+                      entityNameKey.getName());
+              if (!result.isSuccess()) {
+                return null;
+              }
+              callContext
+                  .getDiagServices()
+                  .checkNotNull(result.getEntity(), "entity_should_loaded");
+              callContext
+                  .getDiagServices()
+                  .checkNotNull(
+                      result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+              return new ResolvedPolarisEntity(
+                  callContext.getDiagServices(),
+                  result.getEntity(),
+                  result.getEntityGrantRecords(),
+                  result.getGrantRecordsVersion());
+            });
 
-    // if it exists, we are set
-    ResolvedPolarisEntity entry = this.getEntityByName(entityNameKey);
-    final boolean cacheHit;
-
-    // we need to load it if it does not exist
-    if (entry == null) {
-      // this is a miss
-      cacheHit = false;
-
-      // load it
-      ResolvedEntityResult result =
-          polarisMetaStoreManager.loadResolvedEntityByName(
-              callContext,
-              entityNameKey.getCatalogId(),
-              entityNameKey.getParentId(),
-              entityNameKey.getType(),
-              entityNameKey.getName());
-
-      // not found, exit
-      if (!result.isSuccess()) {
-        return null;
-      }
-
-      // validate return
-      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
-      callContext
-          .getDiagServices()
-          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
-
-      // if found, setup entry
-      entry =
-          new ResolvedPolarisEntity(
-              callContext.getDiagServices(),
-              result.getEntity(),
-              result.getEntityGrantRecords(),
-              result.getGrantRecordsVersion());
-
-      // the above loading could take a long time so check again if the entry exists and only
-      this.cacheNewEntry(entry);
+    if (entity == null) {
+      return null;
     } else {
-      cacheHit = true;
+      return new EntityCacheLookupResult(entity, cacheHit.get());
     }
-
-    // return what we found
-    return new EntityCacheLookupResult(entry, cacheHit);
   }
 }
