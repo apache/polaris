@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.persistence;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.persistence")
 public interface QuarkusPersistenceConfiguration {
 

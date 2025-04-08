@@ -34,9 +34,6 @@ dependencies {
 
   implementation(libs.eclipselink)
 
-  implementation(platform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-core")
-
   implementation(libs.slf4j.api)
 
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
@@ -58,8 +55,8 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
-  compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
-  compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
+  compileOnly(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.config.core) // @ConfigMapping
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
