@@ -105,7 +105,10 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
@@ -125,7 +128,9 @@ The easiest way to run Polaris locally is to start the Polaris server from the
 ```shell
 cd ~/polaris
 # Build the server
-./gradlew clean :polaris-quarkus-server:assemble
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun
 # Start the server
 java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
