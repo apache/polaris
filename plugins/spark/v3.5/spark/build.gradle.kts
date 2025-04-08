@@ -87,6 +87,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   dependencies { exclude("META-INF/**") }
 
   // pack both the source code and dependencies
+
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 

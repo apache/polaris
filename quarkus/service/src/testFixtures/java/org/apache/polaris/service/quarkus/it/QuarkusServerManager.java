@@ -44,6 +44,7 @@ public class QuarkusServerManager implements PolarisServerManager {
         return new ClientPrincipal("root", new ClientCredentials("test-admin", "test-secret"));
       }
 
+
       @Override
       public void close() {
         // Nothing to do
