@@ -19,6 +19,8 @@
 package org.apache.polaris.service.quarkus.persistence;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import java.util.Set;
 
 @ConfigMapping(prefix = "polaris.persistence")
 public interface QuarkusPersistenceConfiguration {
@@ -28,4 +30,11 @@ public interface QuarkusPersistenceConfiguration {
    * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
    */
   String type();
+
+  @WithDefault("in-memory")
+  Set<String> autoBootstrapTypes();
+
+  default boolean isAutoBootstrap() {
+    return autoBootstrapTypes().contains(type());
+  }
 }
