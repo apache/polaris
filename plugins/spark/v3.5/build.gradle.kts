@@ -96,7 +96,8 @@ dependencies {
 
 tasks.register("checkNoDisallowedImports") {
   doLast {
-    // List of disallowed imports (modify these according to your needs)
+    // List of disallowed imports. Right now, we disallow usage of shaded or
+    // relocated libraries in the iceberg spark runtime jar.
     val disallowedImports =
       listOf("import org.apache.iceberg.shaded.", "org.apache.iceberg.relocated.")
 
