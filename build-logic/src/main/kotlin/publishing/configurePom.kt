@@ -103,7 +103,10 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               connection.set("scm:git:$codeRepo")
               developerConnection.set("scm:git:$codeRepo")
               url.set("$codeRepo/tree/main")
-              tag.set("main")
+              val version = project.version.toString()
+              if (!version.endsWith("-SNAPSHOT")) {
+                tag.set("apache-polaris-$version")
+              }
             }
             issueManagement { url.set(projectPeople.bugDatabase) }
 
