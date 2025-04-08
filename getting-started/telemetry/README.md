@@ -24,7 +24,10 @@ This example requires `jq` to be installed on your machine.
 1. Build the Polaris image if it's not already present locally:
 
     ```shell
-    ./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+    ./gradlew \
+      :polaris-quarkus-server:assemble \
+      :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+      -Dquarkus.container-image.build=true
     ```
 
 2. Start the docker compose group by running the following command from the root of the repository:
