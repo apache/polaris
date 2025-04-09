@@ -22,7 +22,6 @@ import com.google.common.util.concurrent.Striped;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import org.apache.polaris.core.PolarisCallContext;
@@ -34,10 +33,6 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
 /** The entity cache, can be private or shared */
 public class EntityCache {
-  private static final Comparator<ResolvedPolarisEntity> RESOLVED_POLARIS_ENTITY_COMPARATOR =
-      Comparator.nullsLast(
-          Comparator.<ResolvedPolarisEntity>comparingInt(rpe -> rpe.getEntity().getEntityVersion())
-              .thenComparingInt(rpe -> rpe.getEntity().getGrantRecordsVersion()));
   private static final int STRIPES = 1_024;
 
   // cache mode
