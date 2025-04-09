@@ -445,9 +445,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     DropEntityResult dropEntityResult =
         dropTableLike(
             PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, storageProperties, purge);
-    if (!dropEntityResult.isSuccess()) {
-      return false;
-    }
+    dropEntityResult.maybeThrowException();
 
     if (purge && lastMetadata != null && dropEntityResult.getCleanupTaskId() != null) {
       LOGGER.info(
@@ -663,9 +661,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
     }
-
-    // return status of drop operation
-    return dropEntityResult.isSuccess();
+    dropEntityResult.maybeThrowException();
+    return true;
   }
 
   @Override
@@ -813,7 +810,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean dropView(TableIdentifier identifier) {
-    return dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), true).isSuccess();
+    DropEntityResult dropEntityResult =
+        dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), true);
+    dropEntityResult.maybeThrowException();
+    return true;
   }
 
   @Override
@@ -1794,19 +1794,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getMetaStoreManager()
             .createEntityIfNotExists(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
-    if (!res.isSuccess()) {
+    if (res.getException().isPresent()) {
+      RuntimeException resultException = res.getException().get();
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
-          throw new NotFoundException("Parent path does not exist for %s", identifier);
-
+          throw new NotFoundException(resultException, "Parent path does not exist for %s", identifier);
         case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
           throw new AlreadyExistsException(
-              "Iceberg table, view, or generic table already exists: %s", identifier);
+              resultException, "Iceberg table, view, or generic table already exists: %s", identifier);
         default:
-          throw new IllegalStateException(
-              String.format(
-                  "Unknown error status for identifier %s: %s with extraInfo: %s",
-                  identifier, res.getReturnStatus(), res.getExtraInformation()));
+          throw resultException;
       }
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
@@ -1831,20 +1828,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getMetaStoreManager()
             .updateEntityPropertiesIfNotChanged(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
-    if (!res.isSuccess()) {
+    if (res.getException().isPresent()) {
+      RuntimeException resultException = res.getException().get();
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
-          throw new NotFoundException("Parent path does not exist for %s", identifier);
-
+          throw new NotFoundException(resultException, "Parent path does not exist for %s", identifier);
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
           throw new CommitFailedException(
-              "Failed to commit Table or View %s because it was concurrently modified", identifier);
-
+              resultException, "Failed to commit Table or View %s because it was concurrently modified", identifier);
         default:
-          throw new IllegalStateException(
-              String.format(
-                  "Unknown error status for identifier %s: %s with extraInfo: %s",
-                  identifier, res.getReturnStatus(), res.getExtraInformation()));
+          throw resultException;
       }
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
@@ -1910,9 +1903,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Preconditions.checkNotNull(notificationType, "Expected a valid notification type.");
 
     if (notificationType == NotificationType.DROP) {
-      return dropTableLike(
-              PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, Map.of(), false /* purge */)
-          .isSuccess();
+      DropEntityResult dropEntityResult = dropTableLike(
+              PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, Map.of(), false /* purge */);
+      dropEntityResult.maybeThrowException();
+      return true;
     } else if (notificationType == NotificationType.VALIDATE) {
       // In this mode we don't want to make any mutations, so we won't auto-create non-existing
       // parent namespaces. This means when we want to validate allowedLocations for the proposed
