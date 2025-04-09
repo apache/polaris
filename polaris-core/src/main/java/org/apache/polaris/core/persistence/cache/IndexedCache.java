@@ -155,7 +155,7 @@ final class IndexedCache<K, V> {
         .computeIfPresent(
             index.iterator().next(),
             (k, v) -> {
-              indexes.keySet().removeAll(indexes.get(key));
+              indexes.remove(k);
               return null;
             });
   }
