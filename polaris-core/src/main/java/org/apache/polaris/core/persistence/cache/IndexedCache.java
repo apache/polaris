@@ -37,6 +37,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+// CODE_COPIED_TO_POLARIS
 // Source:
 // https://github.com/ben-manes/caffeine/blob/master/examples/indexable/src/main/java/com/github/benmanes/caffeine/examples/indexable/IndexedCache.java
 

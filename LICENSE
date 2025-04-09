@@ -307,3 +307,13 @@ This product includes code from Project Nessie.
 Copyright: Copyright 2015-2025 Dremio Corporation
 Home page: https://projectnessie.org/
 License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product includes code from Caffeine.
+
+* java/org/apache/polaris/core/persistence/cache/IndexedCache.java
+
+Copyright: Copyright 2024 Ben Manes
+Home page: https://github.com/ben-manes/caffeine/
+License: https://www.apache.org/licenses/LICENSE-2.0
