@@ -32,7 +32,7 @@ import org.openjdk.jcstress.infra.results.II_Result;
         + " entity returned by the two calls to getAndRefreshIfNeeded.  The method is invoked using"
         + " a minimum entity version equal to 2.  Expected behaviour is that the two actors get"
         + " the same object twice, or for an object to be updated to a newer version between"
-        + " reads.  But the cache should never go backward and server a stale version after a newer"
+        + " reads.  But the cache should never go backward and serve a stale version after a newer"
         + " one has been observed.")
 @Outcome.Outcomes({
   @Outcome(id = "2, 2", expect = ACCEPTABLE, desc = "Stable cache behaviour"),

@@ -34,7 +34,7 @@ public class EntityCacheGetByIdTest {
           + "twice on the same key.  Each actor returns the version of the entity returned by the "
           + "two calls to getOrLoadById.  Expected behaviour is that the two actors get the same "
           + "object twice, or for an object to be updated to a newer version between reads.  "
-          + "But the cache should never go backward and server a stale version after a newer one "
+          + "But the cache should never go backward and serve a stale version after a newer one "
           + "has been observed as it is not allowed by `cacheNewEntry`.")
   @Outcome.Outcomes({
     @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "Got the same object twice"),
