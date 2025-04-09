@@ -104,7 +104,7 @@ public class BaseResult {
           "A {} was discovered with status {} but without a detailed message",
           this.getClass().getName(),
           ReturnStatus.getStatus(this.returnStatusCode).name());
-      message = "";
+      message = "Error reported by the metastore";
     }
     // TODO use a switch expression if the Java version here is ever raised
     if (this.returnStatusCode == ReturnStatus.SUCCESS.getCode()) {

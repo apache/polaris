@@ -28,7 +28,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -42,6 +41,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -560,7 +560,7 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
-    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1")))
+    Assertions.assertThatCode(() -> icebergCatalog.dropView(TableIdentifier.of("ns", "t1")))
         .isInstanceOf(NotFoundException.class);
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
