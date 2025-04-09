@@ -1691,7 +1691,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntity.toCoreList(newCatalogPath),
                 toEntity);
 
-
     // handle error
     if (returnedEntityResult.getException().isPresent()) {
       LOGGER.debug(
@@ -1709,16 +1708,23 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             if (existingEntitySubType == null) {
               // this code path is unexpected
               throw new AlreadyExistsException(
-                  returnedEntityException, "Cannot rename %s to %s. Object already exists", from, to);
+                  returnedEntityException,
+                  "Cannot rename %s to %s. Object already exists",
+                  from,
+                  to);
             } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_TABLE) {
               throw new AlreadyExistsException(
-                  returnedEntityException, "Cannot rename %s to %s. Table already exists", from, to);
+                  returnedEntityException,
+                  "Cannot rename %s to %s. Table already exists",
+                  from,
+                  to);
             } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_VIEW) {
               throw new AlreadyExistsException(
                   returnedEntityException, "Cannot rename %s to %s. View already exists", from, to);
             }
             throw new IllegalStateException(
-                String.format("Unexpected entity type '%s'", existingEntitySubType), returnedEntityException);
+                String.format("Unexpected entity type '%s'", existingEntitySubType),
+                returnedEntityException);
           }
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
@@ -1798,10 +1804,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       RuntimeException resultException = res.getException().get();
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
-          throw new NotFoundException(resultException, "Parent path does not exist for %s", identifier);
+          throw new NotFoundException(
+              resultException, "Parent path does not exist for %s", identifier);
         case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
           throw new AlreadyExistsException(
-              resultException, "Iceberg table, view, or generic table already exists: %s", identifier);
+              resultException,
+              "Iceberg table, view, or generic table already exists: %s",
+              identifier);
         default:
           throw resultException;
       }
@@ -1832,10 +1841,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       RuntimeException resultException = res.getException().get();
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
-          throw new NotFoundException(resultException, "Parent path does not exist for %s", identifier);
+          throw new NotFoundException(
+              resultException, "Parent path does not exist for %s", identifier);
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
           throw new CommitFailedException(
-              resultException, "Failed to commit Table or View %s because it was concurrently modified", identifier);
+              resultException,
+              "Failed to commit Table or View %s because it was concurrently modified",
+              identifier);
         default:
           throw resultException;
       }
@@ -1903,7 +1915,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Preconditions.checkNotNull(notificationType, "Expected a valid notification type.");
 
     if (notificationType == NotificationType.DROP) {
-      DropEntityResult dropEntityResult = dropTableLike(
+      DropEntityResult dropEntityResult =
+          dropTableLike(
               PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, Map.of(), false /* purge */);
       dropEntityResult.maybeThrowException();
       return true;
