@@ -29,9 +29,14 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Base result class for any call to the persistence layer */
 public class BaseResult {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BaseResult.class);
+
   // return code, indicates success or failure
   private final int returnStatusCode;
 
@@ -79,39 +84,47 @@ public class BaseResult {
    */
   @SuppressWarnings("FormatStringAnnotation")
   public Optional<RuntimeException> getException() {
+    String message = this.extraInformation;
+    if (this.extraInformation == null) {
+      LOGGER.warn(
+          "A {} was discovered with status {} but without a detailed message",
+          this.getClass().getName(),
+          ReturnStatus.getStatus(this.returnStatusCode).name());
+      message = "";
+    }
     // TODO use a switch expression if the Java version here is ever raised
     if (this.returnStatusCode == ReturnStatus.SUCCESS.getCode()) {
       return Optional.empty();
     } else if (this.returnStatusCode == ReturnStatus.UNEXPECTED_ERROR_SIGNALED.getCode()) {
-      return Optional.of(new RuntimeException(this.extraInformation));
+      return Optional.of(new RuntimeException(message));
     } else if (this.returnStatusCode == ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED.getCode()) {
-      return Optional.of(new NotFoundException(this.extraInformation));
+      return Optional.of(new NotFoundException(message));
     } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RESOLVED.getCode()) {
-      return Optional.of(new NotFoundException(this.extraInformation));
+      return Optional.of(new NotFoundException(message));
     } else if (this.returnStatusCode == ReturnStatus.ENTITY_NOT_FOUND.getCode()) {
-      return Optional.of(new NotFoundException(this.extraInformation));
+      return Optional.of(new NotFoundException(message));
     } else if (this.returnStatusCode == ReturnStatus.GRANT_NOT_FOUND.getCode()) {
-      return Optional.of(new NotFoundException(this.extraInformation));
+      return Optional.of(new NotFoundException(message));
     } else if (this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode()) {
-      return Optional.of(new AlreadyExistsException(this.extraInformation));
+      return Optional.of(new AlreadyExistsException(message));
     } else if (this.returnStatusCode == ReturnStatus.NAMESPACE_NOT_EMPTY.getCode()) {
-      return Optional.of(new NamespaceNotEmptyException(this.extraInformation));
+      return Optional.of(new NamespaceNotEmptyException(message));
     } else if (this.returnStatusCode == ReturnStatus.CATALOG_NOT_EMPTY.getCode()) {
-      return Optional.of(new BadRequestException(this.extraInformation));
+      return Optional.of(new BadRequestException(message));
     } else if (this.returnStatusCode
         == ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED.getCode()) {
-      return Optional.of(new CommitFailedException(this.extraInformation));
+      return Optional.of(new CommitFailedException(message));
     } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RENAMED.getCode()) {
-      return Optional.of(new BadRequestException(this.extraInformation));
+      return Optional.of(new BadRequestException(message));
     } else if (this.returnStatusCode == ReturnStatus.SUBSCOPE_CREDS_ERROR.getCode()) {
-      return Optional.of(new UnprocessableEntityException(this.extraInformation));
+      return Optional.of(new UnprocessableEntityException(message));
     } else if (this.returnStatusCode == ReturnStatus.POLICY_MAPPING_NOT_FOUND.getCode()) {
-      return Optional.of(new NotFoundException(this.extraInformation));
+      return Optional.of(new NotFoundException(message));
     } else if (this.returnStatusCode
         == ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS.getCode()) {
-      return Optional.of(new AlreadyExistsException(this.extraInformation));
+      return Optional.of(new AlreadyExistsException(message));
     } else {
-      return Optional.of(new RuntimeException(this.extraInformation));
+      return Optional.of(new RuntimeException(message));
     }
   }
 
