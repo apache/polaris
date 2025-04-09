@@ -18,12 +18,20 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.errorprone.annotations.FormatMethod;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
+import org.apache.polaris.spark.SparkCatalog;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 
-public class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
+public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
+
   @Override
   protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
     return builder
@@ -64,5 +72,49 @@ public class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
     }
 
     managementApi.deleteCatalog(catalogName);
+  }
+
+  @FormatMethod
+  protected List<Object[]> sql(String query, Object... args) {
+    List<Row> rows = spark.sql(String.format(query, args)).collectAsList();
+    if (rows.isEmpty()) {
+      return ImmutableList.of();
+    }
+    return rowsToJava(rows);
+  }
+
+  protected List<Object[]> rowsToJava(List<Row> rows) {
+    return rows.stream().map(this::toJava).collect(Collectors.toList());
+  }
+
+  private Object[] toJava(Row row) {
+    return IntStream.range(0, row.size())
+        .mapToObj(
+            pos -> {
+              if (row.isNullAt(pos)) {
+                return null;
+              }
+
+              Object value = row.get(pos);
+              if (value instanceof Row) {
+                return toJava((Row) value);
+              } else if (value instanceof scala.collection.Seq) {
+                return row.getList(pos);
+              } else if (value instanceof scala.collection.Map) {
+                return row.getJavaMap(pos);
+              } else {
+                return value;
+              }
+            })
+        .toArray(Object[]::new);
+  }
+
+  protected SparkCatalog loadSparkCatalog() {
+    Preconditions.checkArgument(spark != null, "No active spark found");
+    Preconditions.checkArgument(catalogName != null, "No catalogName found");
+    CatalogPlugin catalogPlugin = spark.sessionState().catalogManager().catalog(catalogName);
+    Preconditions.checkArgument(
+        catalogPlugin instanceof SparkCatalog, "The Spark Catalog is not a Polaris SparkCatalog");
+    return (SparkCatalog) catalogPlugin;
   }
 }
