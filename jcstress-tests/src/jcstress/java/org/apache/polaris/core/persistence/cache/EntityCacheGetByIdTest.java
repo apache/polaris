@@ -112,30 +112,14 @@ public class EntityCacheGetByIdTest {
 
     @Actor
     public void actor1() {
-      entityCache
-          .getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG)
-          .getCacheEntry()
-          .getEntity()
-          .getEntityVersion();
-      entityCache
-          .getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG)
-          .getCacheEntry()
-          .getEntity()
-          .getEntityVersion();
+      entityCache.getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG);
+      entityCache.getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG);
     }
 
     @Actor
     public void actor2() {
-      entityCache
-          .getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG)
-          .getCacheEntry()
-          .getEntity()
-          .getEntityVersion();
-      entityCache
-          .getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG)
-          .getCacheEntry()
-          .getEntity()
-          .getEntityVersion();
+      entityCache.getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG);
+      entityCache.getOrLoadEntityById(context, 0L, FakeMetaStoreManager.CATALOG_ID, CATALOG);
     }
 
     @Arbiter
