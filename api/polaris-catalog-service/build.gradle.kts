@@ -37,6 +37,7 @@ val policyManagementModels =
     "CreatePolicyRequest",
     "LoadPolicyResponse",
     "Policy",
+    "ApplicablePolicy",
     "PolicyAttachmentTarget",
     "AttachPolicyRequest",
     "DetachPolicyRequest",

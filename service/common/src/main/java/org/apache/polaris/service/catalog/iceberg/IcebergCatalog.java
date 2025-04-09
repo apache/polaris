@@ -1802,7 +1802,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .createEntityIfNotExists(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
     if (!res.isSuccess()) {
-      RuntimeException resultException = res.getException(callContext).orElse(new RuntimeException());
+      RuntimeException resultException =
+          res.getException(callContext).orElse(new RuntimeException());
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
           throw new NotFoundException(
@@ -1839,7 +1840,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .updateEntityPropertiesIfNotChanged(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
     if (!res.isSuccess()) {
-      RuntimeException resultException = res.getException(callContext).orElse(new RuntimeException());
+      RuntimeException resultException =
+          res.getException(callContext).orElse(new RuntimeException());
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
           throw new NotFoundException(

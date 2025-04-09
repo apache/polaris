@@ -28,6 +28,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -546,7 +547,8 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
-    Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThatCode(() -> icebergCatalog.dropTable(TableIdentifier.of("ns", "t1")))
+        .isInstanceOf(NotFoundException.class);
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }
@@ -558,7 +560,8 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
-    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1")))
+        .isInstanceOf(NotFoundException.class);
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }
