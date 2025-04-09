@@ -42,6 +42,7 @@ public class EntityCacheCoherenceTest {
           + " discrepancy indicates that the caches are out of sync.")
   @Outcome.Outcomes({
     @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "The caches are in sync"),
+    @Outcome(id = "1, 2", expect = FORBIDDEN, desc = "The caches are out of sync"),
     @Outcome(id = "2, 2", expect = ACCEPTABLE, desc = "The caches are in sync"),
     @Outcome(id = "2, 1", expect = FORBIDDEN, desc = "The caches are out of sync"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
