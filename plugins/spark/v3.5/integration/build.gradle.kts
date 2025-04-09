@@ -23,22 +23,17 @@ plugins {
   id("polaris-quarkus")
 }
 
-fun getAndUseScalaVersionForProject(): String {
-  val sparkScala = project.name.split("-").last().split("_")
-
-  val scalaVersion = sparkScala[1]
-
-  // direct the build to build/<scalaVersion> to avoid potential collision problem
-  project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
-
-  return scalaVersion
-}
-
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
+val scalaLibraryVersion =
+  if (scalaVersion == "2.12") {
+    pluginlibs.versions.scala212.get()
+  } else {
+    pluginlibs.versions.scala213.get()
+  }
 
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
@@ -60,7 +55,15 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 
-  testImplementation(project(":polaris-tests"))
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  implementation(
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+  )
+
   testImplementation(testFixtures(project(":polaris-quarkus-service")))
 
   testImplementation(platform(libs.quarkus.bom))
@@ -78,8 +81,8 @@ dependencies {
   testImplementation(libs.s3mock.testcontainers)
 
   // Required for Spark integration tests
-  testImplementation(enforcedPlatform(libs.scala212.lang.library))
-  testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
+  testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
+  testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
   testImplementation(libs.antlr4.runtime)
 }
@@ -113,33 +116,4 @@ tasks.named<Test>("intTest").configure {
   systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
   // For Spark integration tests
   addSparkJvmOptions()
-}
-
-/**
- * Adds the JPMS options required for Spark to run on Java 17, taken from the
- * `DEFAULT_MODULE_OPTIONS` constant in `org.apache.spark.launcher.JavaModuleOptions`.
- */
-fun JavaForkOptions.addSparkJvmOptions() {
-  jvmArgs =
-    (jvmArgs ?: emptyList()) +
-      listOf(
-        // Spark 3.3+
-        "-XX:+IgnoreUnrecognizedVMOptions",
-        "--add-opens=java.base/java.lang=ALL-UNNAMED",
-        "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
-        "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
-        "--add-opens=java.base/java.io=ALL-UNNAMED",
-        "--add-opens=java.base/java.net=ALL-UNNAMED",
-        "--add-opens=java.base/java.nio=ALL-UNNAMED",
-        "--add-opens=java.base/java.util=ALL-UNNAMED",
-        "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
-        "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
-        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
-        "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
-        "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
-        "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED",
-        // Spark 3.4+
-        "-Djdk.reflect.useDirectMethodHandle=false",
-      )
 }

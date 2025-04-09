@@ -18,48 +18,20 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.ExternalCatalog;
-import org.apache.polaris.core.admin.model.PolarisCatalog;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.it.env.CatalogApi;
-import org.apache.polaris.service.it.env.ClientCredentials;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
-import org.apache.polaris.service.it.env.ManagementApi;
-import org.apache.polaris.service.it.env.PolarisApiEndpoints;
-import org.apache.polaris.service.it.env.PolarisClient;
-import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
-import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
-import org.slf4j.LoggerFactory;
 
 /**
  * @implSpec This test expects the server to be configured with the following features enabled:
