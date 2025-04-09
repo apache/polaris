@@ -29,7 +29,9 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,13 +82,27 @@ public class BaseResult {
   /**
    * If this result is not a successful one, this builds an exception from the failed result which
    * the exception mapper can use to provide the caller some useful information about the failure.
-   * The message relies on `extraInformation`.
+   * The message relies on `extraInformation`. If
+   * {@link org.apache.polaris.core.config.FeatureConfiguration#DETAILED_PERSISTENCE_EXCEPTIONS} is
+   * false, this should return an empty option.
    */
   @SuppressWarnings("FormatStringAnnotation")
-  public Optional<RuntimeException> getException() {
+  public Optional<RuntimeException> getException(CallContext callContext) {
+    if (!callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            FeatureConfiguration.DETAILED_PERSISTENCE_EXCEPTIONS
+        )) {
+      return Optional.empty();
+    }
+
     String message = this.extraInformation;
     if (this.extraInformation == null) {
-      LOGGER.warn(
+      // TODO this should ideally never be hit but it's hit often.
+      // We should raise the logging level once it's less common
+      LOGGER.debug(
           "A {} was discovered with status {} but without a detailed message",
           this.getClass().getName(),
           ReturnStatus.getStatus(this.returnStatusCode).name());
@@ -130,11 +146,13 @@ public class BaseResult {
 
   /**
    * If this result is failed, this should throw the appropriate exception which corresponds to the
-   * result status. See {@link BaseResult#getException} for details.
+   * result status. See {@link BaseResult#getException} for details. If
+   * {@link org.apache.polaris.core.config.FeatureConfiguration#DETAILED_PERSISTENCE_EXCEPTIONS} is
+   * false, nothing should be thrown.
    */
-  public void maybeThrowException() throws RuntimeException {
-    if (this.getException().isPresent()) {
-      throw this.getException().get();
+  public void maybeThrowException(CallContext callContext) throws RuntimeException {
+    if (this.getException(callContext).isPresent()) {
+      throw this.getException(callContext).get();
     }
   }
 

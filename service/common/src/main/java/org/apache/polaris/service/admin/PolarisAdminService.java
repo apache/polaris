@@ -603,7 +603,7 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
   }
 
   public @Nonnull CatalogEntity getCatalog(String name) {
@@ -793,7 +793,7 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), false);
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
   }
 
   public @Nonnull PrincipalEntity getPrincipal(String name) {
@@ -947,7 +947,7 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
   }
 
   public @Nonnull PrincipalRoleEntity getPrincipalRole(String name) {
@@ -1058,7 +1058,7 @@ public class PolarisAdminService {
             Map.of(),
             true); // cleanup grants
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
   }
 
   public @Nonnull CatalogRoleEntity getCatalogRole(String catalogName, String name) {

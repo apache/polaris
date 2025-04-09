@@ -26,6 +26,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -158,7 +159,7 @@ public class GenericTableCatalog {
             Map.of(),
             false);
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
     return dropEntityResult.isSuccess();
   }
 

@@ -269,7 +269,7 @@ public class PolicyCatalog {
             Map.of(),
             false);
 
-    dropEntityResult.maybeThrowException();
+    dropEntityResult.maybeThrowException(callContext);
     return dropEntityResult.isSuccess();
   }
 

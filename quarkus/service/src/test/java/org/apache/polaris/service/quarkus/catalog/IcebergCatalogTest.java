@@ -154,7 +154,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.features.defaults.\"DETAILED_PERSISTENCE_EXCEPTIONS\"",
+          "false");
     }
   }
 
