@@ -71,8 +71,8 @@ public class EntityCache {
         new IndexedCache.Builder<CacheKey, ResolvedPolarisEntity>()
             .primaryKey(e -> new IdKey(e.getEntity().getId()))
             .addSecondaryKey(e -> new NameKey(new EntityCacheByNameKey(e.getEntity())))
-            .expireAfterWrite(Duration.ofMinutes(5))
-            .maximumSize(10_000)
+            .expireAfterAccess(Duration.ofHours(1))
+            .maximumSize(100_000)
             .build();
     this.locks = Striped.lock(STRIPES);
   }

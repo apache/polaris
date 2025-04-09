@@ -186,6 +186,12 @@ final class IndexedCache<K, V> {
       cacheBuilder = Caffeine.newBuilder();
     }
 
+    /** See {@link Caffeine#expireAfterAccess(Duration)}. */
+    Builder<K, V> expireAfterAccess(Duration duration) {
+      cacheBuilder.expireAfterAccess(duration);
+      return this;
+    }
+
     /** See {@link Caffeine#expireAfterWrite(Duration)}. */
     Builder<K, V> expireAfterWrite(Duration duration) {
       cacheBuilder.expireAfterWrite(duration);
