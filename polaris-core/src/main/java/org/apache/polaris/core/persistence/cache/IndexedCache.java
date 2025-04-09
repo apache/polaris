@@ -24,6 +24,7 @@ import static java.util.Objects.requireNonNull;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Ticker;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
@@ -65,6 +66,11 @@ final class IndexedCache<K, V> {
         cacheBuilder
             .evictionListener((key, value, cause) -> indexes.keySet().removeAll(indexes.get(key)))
             .build();
+  }
+
+  @VisibleForTesting
+  ConcurrentMap<K, LinkedHashSet<K>> getIndexes() {
+    return indexes;
   }
 
   /** Returns the value associated with the key or {@code null} if not found. */
@@ -156,7 +162,7 @@ final class IndexedCache<K, V> {
         .computeIfPresent(
             index.iterator().next(),
             (k, v) -> {
-              indexes.remove(k);
+              indexes.keySet().removeAll(index);
               return null;
             });
   }
