@@ -22,6 +22,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
+import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
+
+import java.util.Optional;
 
 /** Base result class for any call to the persistence layer */
 public class BaseResult {
@@ -57,15 +65,65 @@ public class BaseResult {
     return extraInformation;
   }
 
-  public boolean isSuccess() {
+  public final boolean isSuccess() {
     return this.returnStatusCode == ReturnStatus.SUCCESS.getCode();
   }
 
-  public boolean alreadyExists() {
+  public final boolean alreadyExists() {
     return this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode();
   }
 
-  /** Possible return code for the various API calls. */
+  /**
+   * If this result is not a successful one, this builds an exception from the failed result
+   * which the exception mapper can use to provide the caller some useful information about
+   * the failure. The message relies on `extraInformation`.
+   */
+  public Optional<RuntimeException> getException() {
+    // TODO use a switch expression if the Java version here is ever raised
+    if (this.returnStatusCode == ReturnStatus.SUCCESS.getCode()) {
+      return Optional.empty();
+    } else if (this.returnStatusCode == ReturnStatus.UNEXPECTED_ERROR_SIGNALED.getCode()) {
+      return Optional.of(new RuntimeException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED.getCode()) {
+      return Optional.of(new NotFoundException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RESOLVED.getCode()) {
+      return Optional.of(new NotFoundException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.GRANT_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode()) {
+      return Optional.of(new AlreadyExistsException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.NAMESPACE_NOT_EMPTY.getCode()) {
+      return Optional.of(new NamespaceNotEmptyException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.CATALOG_NOT_EMPTY.getCode()) {
+      return Optional.of(new BadRequestException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED.getCode()) {
+      return Optional.of(new CommitFailedException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RENAMED.getCode()) {
+      return Optional.of(new BadRequestException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.SUBSCOPE_CREDS_ERROR.getCode()) {
+      return Optional.of(new UnprocessableEntityException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.POLICY_MAPPING_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(this.extraInformation));
+    } else if (this.returnStatusCode == ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS.getCode()) {
+      return Optional.of(new AlreadyExistsException(this.extraInformation));
+    } else {
+      return Optional.of(new RuntimeException(this.extraInformation));
+    }
+  }
+
+  /**
+   * If this result is failed, this should throw the appropriate exception which corresponds
+   * to the result status. See {@link BaseResult#getException} for details.
+   */
+  public void maybeThrowException() throws RuntimeException {
+    if (this.getException().isPresent()) {
+        throw this.getException().get();
+    }
+  }
+
+    /** Possible return code for the various API calls. */
   public enum ReturnStatus {
     // all good
     SUCCESS(1),

@@ -158,6 +158,7 @@ public class GenericTableCatalog {
             Map.of(),
             false);
 
+    dropEntityResult.maybeThrowException();
     return dropEntityResult.isSuccess();
   }
 

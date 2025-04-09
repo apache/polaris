@@ -1691,13 +1691,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntity.toCoreList(newCatalogPath),
                 toEntity);
 
+
     // handle error
-    if (!returnedEntityResult.isSuccess()) {
+    if (returnedEntityResult.getException().isPresent()) {
       LOGGER.debug(
           "Rename error {} trying to rename {} to {}. Checking existing object.",
           returnedEntityResult.getReturnStatus(),
           from,
           to);
+
+      RuntimeException returnedEntityException = returnedEntityResult.getException().get();
       switch (returnedEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
           {
@@ -1706,34 +1709,30 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             if (existingEntitySubType == null) {
               // this code path is unexpected
               throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. Object already exists", from, to);
+                  returnedEntityException, "Cannot rename %s to %s. Object already exists", from, to);
             } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_TABLE) {
               throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. Table already exists", from, to);
+                  returnedEntityException, "Cannot rename %s to %s. Table already exists", from, to);
             } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_VIEW) {
               throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. View already exists", from, to);
+                  returnedEntityException, "Cannot rename %s to %s. View already exists", from, to);
             }
             throw new IllegalStateException(
-                String.format("Unexpected entity type '%s'", existingEntitySubType));
+                String.format("Unexpected entity type '%s'", existingEntitySubType), returnedEntityException);
           }
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
-          throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
-
-        // this is temporary. Should throw a special error that will be caught and retried
-        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
-          throw new RuntimeException("concurrent update detected, please retry");
+          throw new NotFoundException(
+              returnedEntityException, "Cannot rename %s to %s. %s does not exist", from, to, from);
 
         // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
-          throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
+          throw new BadRequestException(
+              returnedEntityException, "Cannot rename built-in object %s", leafEntity.getName());
 
         // some entities cannot be renamed
         default:
-          throw new IllegalStateException(
-              "Unknown error status " + returnedEntityResult.getReturnStatus());
+          throw returnedEntityException;
       }
     } else {
       IcebergTableLikeEntity returnedEntity =
