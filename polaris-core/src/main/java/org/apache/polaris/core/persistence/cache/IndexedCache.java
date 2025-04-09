@@ -29,7 +29,6 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
 import java.util.ArrayDeque;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -113,40 +112,22 @@ final class IndexedCache<K, V> {
 
   /** Associates the {@code value} with its keys, replacing the old value and keys if present. */
   private void put(V value) {
-    putIfNewer(value, (oldValue, newValue) -> 1);
-  }
-
-  /**
-   * Associates the {@code newValue} with its keys if it is newer than the existing value according
-   * to the provided {@code comparator}. If the new value is added, the old value and its associated
-   * keys are replaced.
-   *
-   * @param newValue the new value to be added to the cache
-   * @param comparator a comparator to determine if the new value is newer than the existing value.
-   *     The comparator must support `null` values in case no value exist in the cache prior to
-   *     invocation.
-   */
-  private void putIfNewer(V newValue, Comparator<V> comparator) {
-    requireNonNull(newValue);
-    var index = buildIndex(newValue);
+    requireNonNull(value);
+    var index = buildIndex(value);
     store
         .asMap()
         .compute(
             index.iterator().next(),
-            (key, oldValue) -> {
-              if (comparator.compare(oldValue, newValue) > 0) {
-                if (oldValue != null) {
-                  indexes
-                      .keySet()
-                      .removeAll(Sets.difference(indexes.get(index.iterator().next()), index));
-                }
-                for (var indexKey : index) {
-                  indexes.put(indexKey, index);
-                }
-                return newValue;
-              } else {
-                return oldValue;
+            (key, oldValue1) -> {
+              if (oldValue1 != null) {
+                indexes
+                    .keySet()
+                    .removeAll(Sets.difference(indexes.get(index.iterator().next()), index));
               }
+              for (var indexKey : index) {
+                indexes.put(indexKey, index);
+              }
+              return value;
             });
   }
 
