@@ -17,35 +17,19 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-}
+plugins { id("polaris-server") }
 
 dependencies {
   implementation(project(":polaris-core"))
-  implementation(libs.commons.dbcp2)
   implementation(libs.slf4j.api)
 
-  implementation("io.quarkus:quarkus-arc")
   implementation(platform(libs.quarkus.bom))
-
   compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
   compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
 
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)
-  testImplementation("io.quarkus:quarkus-junit5")
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 }
-
-tasks.named("javadoc") { dependsOn("jandex") }
-
-tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
-
-tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
-
-tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }

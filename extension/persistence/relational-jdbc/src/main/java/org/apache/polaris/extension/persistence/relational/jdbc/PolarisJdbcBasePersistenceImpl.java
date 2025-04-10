@@ -182,25 +182,27 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
       List<PolarisGrantRecord> grantsOnGrantee,
       List<PolarisGrantRecord> grantsOnSecurable) {
     // generate where clause
-    StringBuilder condition = new StringBuilder("(grantee_id, grantee_catalog_id) IN (");
-    condition.append("(" + entity.getId() + ", " + entity.getCatalogId() + ")");
-    condition.append(",");
+    StringBuilder granteeCondition = new StringBuilder("(grantee_id, grantee_catalog_id) IN (");
+    granteeCondition.append("(" + entity.getId() + ", " + entity.getCatalogId() + ")");
+    granteeCondition.append(",");
     // extra , removed
-    condition.deleteCharAt(condition.length() - 1);
-    condition.append(")");
+    granteeCondition.deleteCharAt(granteeCondition.length() - 1);
+    granteeCondition.append(")");
 
-    StringBuilder condition2 = new StringBuilder("(securable_catalog_id, securable_id) IN (");
+    StringBuilder securableCondition =
+        new StringBuilder("(securable_catalog_id, securable_id) IN (");
 
     String in = "(" + entity.getCatalogId() + ", " + entity.getId() + ")";
-    condition2.append(in);
-    condition2.append(",");
+    securableCondition.append(in);
+    securableCondition.append(",");
 
     // extra , removed
-    condition2.deleteCharAt(condition2.length() - 1);
-    condition2.append(")");
+    securableCondition.deleteCharAt(securableCondition.length() - 1);
+    securableCondition.append(")");
 
+    String whereClause = " WHERE " + granteeCondition + " OR " + securableCondition;
     datasourceOperations.executeUpdate(
-        "DELETE FROM polaris_schema.grant_records " + "WHERE " + condition + " OR " + condition2);
+        JdbcCrudQueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause));
   }
 
   @Override

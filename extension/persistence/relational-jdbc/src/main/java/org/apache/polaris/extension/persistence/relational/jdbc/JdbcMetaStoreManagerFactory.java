@@ -18,11 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import io.smallrye.common.annotation.Identifier;
+import io.smallrye.common.constraint.Nullable;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -48,8 +45,6 @@ import org.slf4j.LoggerFactory;
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
  * using a JDBC backed by SQL metastore.
  */
-@ApplicationScoped
-@Identifier("relational-jdbc")
 public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
@@ -60,12 +55,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
-  @Inject DataSource ds;
+  DataSource ds;
   private final PolarisDiagnostics diagnostics;
-  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  private boolean bootstrap;
+  PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  @Inject
   protected JdbcMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
   }
