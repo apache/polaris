@@ -400,7 +400,7 @@ public class IcebergCatalogAdapter
           } else {
             response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots, delegationModes)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 

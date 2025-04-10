@@ -554,8 +554,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+      TableIdentifier tableIdentifier, String snapshots, EnumSet<AccessDelegationMode> accessDelegationModes) {
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots, accessDelegationModes).get();
   }
 
   /**
@@ -569,7 +569,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    *     load table response, otherwise
    */
   public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots, EnumSet<AccessDelegationMode> accessDelegationModes) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
