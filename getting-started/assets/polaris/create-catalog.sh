@@ -41,11 +41,11 @@ curl -s -H "Authorization: Bearer ${token}" \
    http://polaris:8181/api/management/v1/catalogs \
    -d '{
      "catalog": {
-       "name": "polaris_demo",
+       "name": "quickstart_catalog",
        "type": "INTERNAL",
        "readOnly": false,
        "properties": {
-         "default-base-location": "file:///tmp/polaris/"
+         "default-base-location": "file:///tmp/quickstart_catalog/"
        },
        "storageConfigInfo": {
          "storageType": "FILE",
