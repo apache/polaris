@@ -580,10 +580,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisConfigurationStore configurationStore =
         callContext.getPolarisCallContext().getConfigurationStore();
     LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info("allow external catalog credential vending: {}", configurationStore.getConfiguration(
-        callContext.getPolarisCallContext(),
-        catalogEntity,
-        FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
+    LOGGER.info(
+        "allow external catalog credential vending: {}",
+        configurationStore.getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
@@ -650,12 +652,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Map<String, String> credentialConfig =
           credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
       responseBuilder.addAllConfig(credentialConfig);
-      if (!credentialConfig.isEmpty()){
+      if (!credentialConfig.isEmpty()) {
         responseBuilder.addCredential(
-          ImmutableCredential.builder()
-              .prefix(tableMetadata.location())
-              .config(credentialConfig)
-              .build());
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
       }
     }
     return responseBuilder;
