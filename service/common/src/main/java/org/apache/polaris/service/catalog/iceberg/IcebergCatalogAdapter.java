@@ -378,6 +378,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
+
     // TODO: Populate with header value from parameter once the generated interface
     //  contains the if-none-match header
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(null);
@@ -392,15 +393,20 @@ public class IcebergCatalogAdapter
         catalog -> {
           LoadTableResponse response;
 
+
           if (delegationModes.isEmpty()) {
             response =
                 catalog
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
+            String credentialsEndpoint =
+                String.format(
+                    "/v1/%s/namespaces/%s/tables/%s/credentials",
+                    prefix, tableIdentifier.namespace().toString(), tableIdentifier.name());
             response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots, delegationModes)
+                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots, delegationModes, RESTUtil.decodeString(credentialsEndpoint))
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
