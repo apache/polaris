@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.spark.utils;
 
+import com.esotericsoftware.minlog.Log;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import org.apache.iceberg.common.DynConstructors;
@@ -71,18 +72,22 @@ public class DeltaHelper {
     // set the polaris spark catalog as the delegate catalog of delta catalog
     ((DelegatingCatalogExtension) this.deltaCatalog).setDelegateCatalog(polarisSparkCatalog);
 
-    // https://github.com/delta-io/delta/issues/4306
+    // We want to behave exactly the same as unity catalog for Delta. However, DeltaCatalog
+    // implementation today is hard coded for unity catalog. Following issue is used to track
+    // the extension of the usage https://github.com/delta-io/delta/issues/4306.
+    // Here, we use reflection to set the isUnityCatalog to true for exactly same behavior as
+    // unity catalog for now.
     try {
-      // Access the lazy val field's underlying method
+      // isUnityCatalog is a lazy val, access the compute method for the lazy val
+      // make sure the method is triggered before the value is set, otherwise, the
+      // value will be overwritten later when the method is triggered.
       String methodGetName = "isUnityCatalog" + "$lzycompute";
       Method method = this.deltaCatalog.getClass().getDeclaredMethod(methodGetName);
       method.setAccessible(true);
       // invoke the lazy methods before it is set
       method.invoke(this.deltaCatalog);
     } catch (NoSuchMethodException e) {
-      throw new RuntimeException(
-          "Failed to find lazy compute method for isUnityCatalog, delta-spark version >= 3.2.1 is required",
-          e);
+      Log.warn("No lazy compute method found for variable isUnityCatalog");
     } catch (Exception e) {
       throw new RuntimeException("Failed to invoke the lazy compute methods for isUnityCatalog", e);
     }

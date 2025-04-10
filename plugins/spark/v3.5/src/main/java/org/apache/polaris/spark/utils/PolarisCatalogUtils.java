@@ -36,7 +36,6 @@ import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
-import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 public class PolarisCatalogUtils {
@@ -82,9 +81,8 @@ public class PolarisCatalogUtils {
       // property as path to make sure the table can be loaded.
       tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
     }
-    CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);
     return DataSourceV2Utils.getTableFromProvider(
-        provider, property_map, scala.Option$.MODULE$.<StructType>empty());
+        provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());
   }
 
   /**

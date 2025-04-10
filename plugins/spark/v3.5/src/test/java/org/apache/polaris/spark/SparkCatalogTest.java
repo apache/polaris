@@ -113,7 +113,7 @@ public class SparkCatalogTest {
     catalogConfig.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfig.put("cache-enabled", "false");
     catalogConfig.put(
-        DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.InMemoryDeltaCatalog");
+        DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =

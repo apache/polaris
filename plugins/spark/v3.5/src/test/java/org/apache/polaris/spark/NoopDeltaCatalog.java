@@ -20,10 +20,13 @@ package org.apache.polaris.spark;
 
 import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
 
-public class InMemoryDeltaCatalog extends DelegatingCatalogExtension {
+/**
+ * This is a fake delta catalog class that is used for testing. This class is a noop class that
+ * directly passes all calls to the delegate CatalogPlugin configured as part of
+ * DelegatingCatalogExtension.
+ */
+public class NoopDeltaCatalog extends DelegatingCatalogExtension {
+  // This is a mock of isUnityCatalog scala lazy val in
+  // org.apache.spark.sql.delta.catalog.DeltaCatalog.
   private boolean isUnityCatalog = false;
-
-  private void isUnityCatalog$lzycompute() {
-    isUnityCatalog = true;
-  }
 }

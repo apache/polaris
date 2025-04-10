@@ -64,8 +64,7 @@ dependencies {
   ) {
     // exclude the iceberg rest dependencies, use the ones pulled
     // with iceberg-core dependency
-    exclude("org.apache.iceberg", "rest")
-    exclude("org.apache.iceberg", "hadoop")
+    exclude("org.apache.iceberg", "iceberg-core")
   }
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
@@ -94,6 +93,7 @@ dependencies {
   }
 }
 
+// TODO: replace the check using gradlew checkstyle plugin
 tasks.register("checkNoDisallowedImports") {
   doLast {
     // List of disallowed imports. Right now, we disallow usage of shaded or
