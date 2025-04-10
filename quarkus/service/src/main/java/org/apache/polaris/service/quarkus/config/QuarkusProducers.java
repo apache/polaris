@@ -46,6 +46,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
@@ -62,6 +64,7 @@ import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfigurati
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfiguration;
+import org.apache.polaris.service.quarkus.secrets.QuarkusSecretsManagerConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
@@ -150,6 +153,13 @@ public class QuarkusProducers {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
+  @Produces
+  public UserSecretsManagerFactory userSecretsManagerFactory(
+      QuarkusSecretsManagerConfiguration config,
+      @Any Instance<UserSecretsManagerFactory> userSecretsManagerFactories) {
+    return userSecretsManagerFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
   /**
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
@@ -218,6 +228,13 @@ public class QuarkusProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public UserSecretsManager userSecretsManager(
+      RealmContext realmContext, UserSecretsManagerFactory userSecretsManagerFactory) {
+    return userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
   }
 
   @Produces
