@@ -19,7 +19,6 @@
 package org.apache.polaris.spark;
 
 import static org.apache.iceberg.CatalogProperties.CATALOG_IMPL;
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -28,24 +27,30 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.spark.SparkUtil;
-import org.apache.iceberg.types.Types;
-import org.apache.spark.SparkContext;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
-import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
-import org.apache.spark.sql.types.StructType;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
+import org.apache.spark.SparkContext;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.NamespaceChange;
+import org.apache.spark.sql.connector.catalog.Table;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.catalog.TableProvider;
+import org.apache.spark.sql.connector.catalog.V1Table;
+import org.apache.spark.sql.connector.catalog.View;
+import org.apache.spark.sql.connector.catalog.ViewChange;
+import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.internal.SessionState;
-import org.apache.spark.sql.types.*;
+import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,11 +105,6 @@ public class SparkCatalogTest {
   private String catalogName;
 
   private static final String[] defaultNS = new String[] {"ns"};
-  private static final Schema defaultSchema =
-      new Schema(
-          5,
-          required(3, "id", Types.IntegerType.get(), "unique ID"),
-          required(4, "data", Types.StringType.get()));
 
   @BeforeEach
   public void setup() throws Exception {
@@ -134,7 +134,6 @@ public class SparkCatalogTest {
     }
     catalog.createNamespace(defaultNS, Maps.newHashMap());
   }
-
 
   @Test
   void testCreateAndLoadNamespace() throws Exception {
@@ -291,7 +290,7 @@ public class SparkCatalogTest {
   @Test
   void testListViews() throws Exception {
     // create a new namespace under the default NS
-    String[] namespace = new String[]{"ns", "nsl2"};
+    String[] namespace = new String[] {"ns", "nsl2"};
     catalog.createNamespace(namespace, Maps.newHashMap());
     // table schema
     StructType schema = new StructType().add("id", "long").add("name", "string");
@@ -309,10 +308,10 @@ public class SparkCatalogTest {
         new String[0],
         Maps.newHashMap());
     // create two views under ns.nsl2
-    String[] nsl2ViewNames = new String[]{"test-view2", "test-view3"};
+    String[] nsl2ViewNames = new String[] {"test-view2", "test-view3"};
     String[] nsl2ViewSQLs =
-        new String[]{
-            "select id from test-table where id == 3", "select id from test-table where id < 3"
+        new String[] {
+          "select id from test-table where id == 3", "select id from test-table where id < 3"
         };
     for (int i = 0; i < nsl2ViewNames.length; i++) {
       catalog.createView(
@@ -339,18 +338,13 @@ public class SparkCatalogTest {
     }
   }
 
+  @Test
   void testCreateAndLoadIcebergTable() throws Exception {
-    String[] namespace = new String[] {"ns"};
-    Identifier identifier = Identifier.of(namespace, "iceberg-table");
+    Identifier identifier = Identifier.of(defaultNS, "iceberg-table");
     Map<String, String> properties = Maps.newHashMap();
     properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
     properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
     StructType schema = new StructType().add("boolType", "boolean");
-
-    assertThatThrownBy(() -> catalog.createTable(identifier, schema, new Transform[0], properties))
-        .isInstanceOf(org.apache.iceberg.exceptions.NoSuchNamespaceException.class);
-
-    catalog.createNamespace(namespace, Maps.newHashMap());
 
     Table createdTable = catalog.createTable(identifier, schema, new Transform[0], properties);
     assertThat(createdTable).isInstanceOf(SparkTable.class);
@@ -373,17 +367,11 @@ public class SparkCatalogTest {
   @ParameterizedTest
   @ValueSource(strings = {"delta", "csv"})
   void testCreateAndLoadGenericTable(String format) throws Exception {
-    String[] namespace = new String[] {"ns"};
-    Identifier identifier = Identifier.of(namespace, "generic-test-table");
+    Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
     Map<String, String> properties = Maps.newHashMap();
     properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, format);
     properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/");
     StructType schema = new StructType().add("boolType", "boolean");
-
-    assertThatThrownBy(() -> catalog.createTable(identifier, schema, new Transform[0], properties))
-        .isInstanceOf(org.apache.iceberg.exceptions.NoSuchNamespaceException.class);
-
-    catalog.createNamespace(namespace, Maps.newHashMap());
 
     SQLConf conf = new SQLConf();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
@@ -442,5 +430,6 @@ public class SparkCatalogTest {
     assertThatThrownBy(() -> catalog.invalidateTable(identifier))
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.purgeTable(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 }

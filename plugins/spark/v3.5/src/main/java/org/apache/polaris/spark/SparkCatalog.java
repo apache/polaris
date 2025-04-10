@@ -19,8 +19,13 @@
 package org.apache.polaris.spark;
 
 import java.util.Map;
-import java.util.Set;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
@@ -38,15 +43,11 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewCatalog;
 import org.apache.spark.sql.connector.catalog.ViewChange;
-import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.rest.auth.OAuth2Util;
-import org.apache.iceberg.util.PropertyUtil;
-import org.apache.polaris.spark.utils.DeltaHelper;
-import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SparkCatalog Implementation that is able to interact with both Iceberg SparkCatalog and Polaris
@@ -62,9 +63,9 @@ public class SparkCatalog
         SupportsReplaceView {
   private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
-  private String catalogName = null;
-  private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
-  private PolarisSparkCatalog polarisSparkCatalog = null;
+  protected String catalogName = null;
+  protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
+  protected PolarisSparkCatalog polarisSparkCatalog = null;
 
   protected DeltaHelper deltaHelper = null;
 
