@@ -20,6 +20,9 @@
 
 set -e 
 
+pushd "$(dirname "$0")/.." > /dev/null
+TARGET_DIR="$(dirname "$0")/../python"
+
 #############################
 # Regenerate Python clients #
 #############################
@@ -72,10 +75,6 @@ prepend_header() {
   cat "$header_file" "$file" > "$tmpfile"
   mv "$tmpfile" "$file"
 }
-
-
-pushd "$(dirname "$0")/.." > /dev/null
-TARGET_DIR="$(dirname "$0")/../python"
 
 # List of paths to exclude (.../client)
 EXCLUDE_PATHS=(
@@ -134,6 +133,10 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
 done
 
 echo "Regeneration complete"
+
+../gradlew format > /dev/null
+
+echo "Formatting complete"
 
 popd > /dev/null
 
