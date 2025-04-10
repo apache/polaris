@@ -617,26 +617,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse.Builder responseBuilder =
-          LoadTableResponse.builder().withTableMetadata(tableMetadata);
-      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableLocation", tableMetadata.location())
-            .log("Fetching client credentials for table");
-        responseBuilder.addAllConfig(
-            credentialDelegation.getCredentialConfig(
-                tableIdentifier, tableMetadata, actionsRequested));
-      }
-
-      return Optional.of(responseBuilder.build());
-    } else if (table instanceof BaseMetadataTable) {
-      // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-      return buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL))
-          .build();
+      return Optional.of(
+          buildLoadTableResponseWithDelegationCredentials(
+                  tableIdentifier, tableMetadata, actionsRequested)
+              .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
