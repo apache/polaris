@@ -26,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -558,7 +559,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
     Set<PolarisStorageActions> actionsRequested =
-        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
       // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
       // easily.
@@ -578,6 +579,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
     PolarisConfigurationStore configurationStore =
         callContext.getPolarisCallContext().getConfigurationStore();
+    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
+    LOGGER.info("allow external catalog credential vending: {}", configurationStore.getConfiguration(
+        callContext.getPolarisCallContext(),
+        catalogEntity,
+        FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
@@ -644,11 +650,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Map<String, String> credentialConfig =
           credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
       responseBuilder.addAllConfig(credentialConfig);
-      responseBuilder.addCredential(
+      if (!credentialConfig.isEmpty()){
+        responseBuilder.addCredential(
           ImmutableCredential.builder()
               .prefix(tableMetadata.location())
               .config(credentialConfig)
               .build());
+      }
     }
     return responseBuilder;
   }
