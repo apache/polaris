@@ -43,3 +43,9 @@ Also, set the following static credentials for interacting with the Polaris serv
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
+
+To take down the Polaris server, run the following commands:
+
+```shell
+docker compose -f getting-started/eclipselink/docker-compose.yml down
+```
