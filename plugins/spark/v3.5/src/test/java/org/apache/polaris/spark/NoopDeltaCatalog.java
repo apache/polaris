@@ -26,7 +26,7 @@ import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
  * DelegatingCatalogExtension.
  */
 public class NoopDeltaCatalog extends DelegatingCatalogExtension {
-  // This is a mock of isUnityCatalog scala lazy val in
+  // This is a mock of isUnityCatalog scala val in
   // org.apache.spark.sql.delta.catalog.DeltaCatalog.
   private boolean isUnityCatalog = false;
 }

@@ -68,6 +68,7 @@ dependencies {
   }
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
+  compileOnly("org.scala-lang:scala-reflect:${scalaLibraryVersion}")
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
