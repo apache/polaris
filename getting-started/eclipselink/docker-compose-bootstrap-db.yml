@@ -18,28 +18,18 @@
 #
 
 services:
-  postgres:
-    image: postgres:17.4
-    ports:
-      - "5432:5432"
-    # set shared memory limit when using docker-compose
-    shm_size: 128mb
+  polaris-bootstrap:
+    # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
+    image: apache/polaris-admin-tool:postgres-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: POLARIS
-      POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
+      polaris.persistence.type: eclipse-link
+      polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
     volumes:
-      # Bind local conf file to a convenient location in the container
-      - type: bind
-        source: ./postgresql.conf
-        target: /etc/postgresql/postgresql.conf
+      - ../assets/eclipselink/:/deployments/config/eclipselink
     command:
-      - "postgres"
-      - "-c"
-      - "config_file=/etc/postgresql/postgresql.conf"
-    healthcheck:
-      test: "pg_isready -U postgres"
-      interval: 5s
-      timeout: 2s
-      retries: 15
+      - "bootstrap"
+      - "--realm=POLARIS"
+      - "--credential=POLARIS,root,s3cr3t"
