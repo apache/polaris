@@ -33,7 +33,6 @@ public class ResultSetToObjectConverter {
     List<T> resultList = new ArrayList<>();
     ResultSetMetaData metaData = resultSet.getMetaData();
     int columnCount = metaData.getColumnCount();
-    System.out.println(" Called Convert" + resultSet.getMetaData());
     String[] columnNames = new String[columnCount + 1]; // 1-based indexing
 
     for (int i = 1; i <= columnCount; i++) {
@@ -48,11 +47,12 @@ public class ResultSetToObjectConverter {
       for (int i = 1; i <= columnCount; i++) {
         String columnName = columnNames[i];
         Object value;
-//        if (columnName.contains("properties")) {
-//          value = resultSet.getString(i);
-//        } else {
-//          value = resultSet.getObject(i);
-//        }
+        // TODO: This handling doesn't works for H2, works fine with Postgres.
+        //        if (columnName.contains("properties")) {
+        //          value = resultSet.getString(i);
+        //        } else {
+        //          value = resultSet.getObject(i);
+        //        }
         value = resultSet.getObject(i);
 
         try {

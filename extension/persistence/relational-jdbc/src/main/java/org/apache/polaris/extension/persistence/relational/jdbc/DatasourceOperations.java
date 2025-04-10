@@ -18,19 +18,21 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 import javax.sql.DataSource;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
   DataSource datasource;
 
   public DatasourceOperations(DataSource datasource) {
@@ -38,11 +40,14 @@ public class DatasourceOperations {
   }
 
   public void executeScript() {
-    System.out.println("Executing script");
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     try (Connection connection = borrowConnection();
-         Statement statement = connection.createStatement()) {
-      BufferedReader reader = new BufferedReader(new InputStreamReader(classLoader.getResourceAsStream("postgres/schema-v1-postgres.sql"), UTF_8));
+        Statement statement = connection.createStatement()) {
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  Objects.requireNonNull(classLoader.getResourceAsStream("h2/schema-v1-h2.sql")),
+                  UTF_8));
       StringBuilder sqlBuffer = new StringBuilder();
       String line;
       while ((line = reader.readLine()) != null) {
@@ -51,99 +56,72 @@ public class DatasourceOperations {
           sqlBuffer.append(line).append("\n");
           if (line.endsWith(";")) { // Execute statement when semicolon is found
             String sql = sqlBuffer.toString().trim();
-            System.out.println("SQL printing " + sql);
             try {
-              boolean hasResults = statement.execute(sql);
-              if (hasResults) {
-                // Process ResultSet if needed (for SELECT queries)
-                System.out.println("Query executed and returned results.");
-                // You would typically fetch and process the ResultSet here
-              } else {
-                int updateCount = statement.getUpdateCount();
-                System.out.println("Query executed, " + updateCount + " rows affected.");
-              }
+              int rowsUpdated = statement.executeUpdate(sql);
+              LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
             } catch (SQLException e) {
-              System.err.println("Error executing SQL: " + sql);
-              e.printStackTrace();
+              LOGGER.error("Error executing query {}", sql, e);
             }
             sqlBuffer.setLength(0); // Clear the buffer for the next statement
           }
         }
       }
-
-      sqlBuffer.append("SHOW TABLES FROM polaris_schema");
-      ResultSet resultSet = statement.executeQuery(sqlBuffer.toString());
-      System.out.println("Query executed and returned results.");
-      while (resultSet.next()) {
-        System.out.println(resultSet.getString("TABLE_NAME"));
-      }
-      System.out.println("SQL for tables done");
-      sqlBuffer.setLength(0);
-
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.error("Error reading the script file", e);
+      throw new RuntimeException(e);
     } catch (SQLException e) {
-        throw new RuntimeException(e);
+      LOGGER.error("Error executing the script file", e);
+      throw new RuntimeException(e);
     }
   }
 
   public <T> List<T> executeSelect(String query, Class<T> targetClass) {
-    System.out.println("Executing query select query: " + query);
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
       ResultSet s = statement.executeQuery(query);
-      List<T> x = ResultSetToObjectConverter.convert(s, targetClass);
-      return x == null || x.isEmpty() ? null : x;
+      List<T> results = ResultSetToObjectConverter.convert(s, targetClass);
+      return results.isEmpty() ? null : results;
     } catch (Exception e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
+      LOGGER.error("Error executing query {}", query, e);
+      throw new RuntimeException(e);
     }
-    return null;
   }
 
   public int executeUpdate(String query) {
-    System.out.println("Executing query: " + query);
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
-      ResultSet s = statement.executeQuery("SHOW TABLES from polaris_schema");
-      s.next();
       return statement.executeUpdate(query);
-    } catch (Exception e) {
-      e.printStackTrace();
+    } catch (SQLException e) {
+      LOGGER.error("Error executing query {}", query, e);
+      return -1;
     }
-    return 0;
   }
 
   public int executeUpdate(String query, Statement statement) throws SQLException {
     System.out.println("Executing query in transaction : " + query);
-    int i = 0;
     try {
-      i = statement.executeUpdate(query);
+      return statement.executeUpdate(query);
     } catch (SQLException e) {
-      e.printStackTrace();
+      LOGGER.error("Error executing query {}", query, e);
+      return -1;
     }
-    System.out.println("Query executed: " + i);
-    return i;
   }
 
-  public boolean runWithinTransaction(TransactionCallback callback) throws Exception {
-    System.out.println("Executing transaction within callback: " + callback);
+  public void runWithinTransaction(TransactionCallback callback) throws Exception {
     Connection connection = null;
     try {
       connection = borrowConnection();
       connection.setAutoCommit(false); // Disable auto-commit to start a transaction
 
-      boolean result = false;
+      boolean result;
       try (Statement statement = connection.createStatement()) {
         result = callback.execute(statement);
       }
 
       if (result) {
         connection.commit(); // Commit the transaction if successful
-        return true;
       } else {
         connection.rollback(); // Rollback the transaction if not successful
-        return false;
       }
 
     } catch (Exception e) {
@@ -151,10 +129,10 @@ public class DatasourceOperations {
         try {
           connection.rollback(); // Rollback on exception
         } catch (SQLException ex) {
-          ex.printStackTrace(); // Log rollback exception
+          LOGGER.error("Error rolling back transaction", ex);
         }
       }
-      e.printStackTrace();
+      LOGGER.error("Caught Error while executing transaction", e);
       throw e;
     } finally {
       if (connection != null) {
@@ -162,7 +140,7 @@ public class DatasourceOperations {
           connection.setAutoCommit(true); // Restore auto-commit
           connection.close();
         } catch (SQLException e) {
-          e.printStackTrace();
+          LOGGER.error("Error closing connection", e);
         }
       }
     }
@@ -174,7 +152,6 @@ public class DatasourceOperations {
   }
 
   Connection borrowConnection() throws SQLException {
-    Connection c = datasource.getConnection();
-    return c;
+    return datasource.getConnection();
   }
 }

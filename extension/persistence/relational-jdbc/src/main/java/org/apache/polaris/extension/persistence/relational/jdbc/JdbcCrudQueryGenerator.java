@@ -69,17 +69,7 @@ public class JdbcCrudQueryGenerator {
         new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
 
     if (whereClause != null && !whereClause.isEmpty()) {
-      List<String> whereConditions = new ArrayList<>();
-      for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
-        String fieldName = entry.getKey();
-        Object value = entry.getValue();
-        if (value instanceof String) {
-          whereConditions.add(fieldName + " = '" + value + "'");
-        } else {
-          whereConditions.add(fieldName + " = " + value);
-        }
-      }
-      query.append(" WHERE ").append(String.join(" AND ", whereConditions));
+      query.append(generateWhereClause(whereClause));
     }
 
     if (orderBy != null && !orderBy.isEmpty()) {
@@ -97,8 +87,9 @@ public class JdbcCrudQueryGenerator {
     return query.toString();
   }
 
-  public static String generateInsertQuery(Object object, String tableName) {
-    if (object == null || tableName == null || tableName.isEmpty()) {
+  public static String generateInsertQuery(Object object, Class<?> entityClass) {
+    String tableName = getTableName(entityClass);
+    if (object == null || tableName.isEmpty()) {
       return null; // Or throw an exception
     }
 
@@ -116,7 +107,6 @@ public class JdbcCrudQueryGenerator {
           values.add("'" + value.toString() + "'");
         }
       } catch (IllegalAccessException e) {
-        e.printStackTrace(); // Handle the exception appropriately
         return null; // Or throw an exception
       }
     }
@@ -132,9 +122,9 @@ public class JdbcCrudQueryGenerator {
   }
 
   public static String generateUpdateQuery(
-      Object object, Map<String, Object> whereClause, String tableName) {
+      Object object, Map<String, Object> whereClause, Class<?> entityClass) {
+    String tableName = getTableName(entityClass);
     List<String> setClauses = new ArrayList<>();
-    List<String> whereConditions = new ArrayList<>();
     Class<?> objectClass = object.getClass();
     Field[] fields = objectClass.getDeclaredFields();
     List<String> columnNames = new ArrayList<>();
@@ -146,11 +136,10 @@ public class JdbcCrudQueryGenerator {
         Object value = field.get(object);
         if (value != null) { // Only include non-null fields
           columnNames.add(camelToSnake(field.getName()));
-          values.add("'" + value.toString() + "'");
+          values.add("'" + value + "'");
         }
       } catch (IllegalAccessException e) {
-        e.printStackTrace(); // Handle the exception appropriately
-        return null; // Or throw an exception
+        // should never happen
       }
     }
 
@@ -158,51 +147,23 @@ public class JdbcCrudQueryGenerator {
       setClauses.add(columnNames.get(i) + " = " + values.get(i)); // Placeholders
     }
 
-    if (whereClause != null && !whereClause.isEmpty()) {
-      for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
-        String fieldName = entry.getKey();
-        Object value = entry.getValue();
-        if (value instanceof String) {
-          whereConditions.add(fieldName + " = '" + value + "'");
-        } else {
-          whereConditions.add(fieldName + " = " + value);
-        }
-      }
-    }
-
     String setClausesString = String.join(", ", setClauses);
-    String whereConditionsString = String.join(" AND ", whereConditions);
 
-    return "UPDATE "
-        + tableName
-        + " SET "
-        + setClausesString
-        + (whereClause != null && !whereClause.isEmpty() ? " WHERE " + whereConditionsString : "");
+    return "UPDATE " + tableName + " SET " + setClausesString + generateWhereClause(whereClause);
   }
 
-  public static String generateDeleteQuery(Map<String, Object> whereClause, String tableName) {
-    List<String> whereConditions = new ArrayList<>();
-
-    if (whereClause != null && !whereClause.isEmpty()) {
-      for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
-        String fieldName = entry.getKey();
-        Object value = entry.getValue();
-        if (value instanceof String) {
-          whereConditions.add(fieldName + " = '" + value + "'");
-        } else {
-          whereConditions.add(fieldName + " = " + value);
-        }
-      }
-    }
-
-    String whereConditionsString = String.join(" AND ", whereConditions);
-
-    return "DELETE FROM "
-        + tableName
-        + (whereClause != null && !whereClause.isEmpty() ? " WHERE " + whereConditionsString : "");
+  public static String generateDeleteQuery(Map<String, Object> whereClause, Class<?> entityClass) {
+    String tableName = getTableName(entityClass);
+    return "DELETE FROM " + tableName + (generateWhereClause(whereClause));
   }
 
-  public static String generateDeleteQuery(Object obj, String tableName) {
+  public static String generateDeleteAll(Class<?> entityClass) {
+    String tableName = getTableName(entityClass);
+    return "DELETE FROM " + tableName + " WHERE 1 = 1";
+  }
+
+  public static String generateDeleteQuery(Object obj, Class<?> entityClass) {
+    String tableName = getTableName(entityClass);
     List<String> whereConditions = new ArrayList<>();
 
     Class<?> objectClass = obj.getClass();
@@ -220,7 +181,6 @@ public class JdbcCrudQueryGenerator {
           }
         }
       } catch (IllegalAccessException e) {
-        e.printStackTrace(); // Handle the exception appropriately
         return null; // Or throw an exception
       }
     }
@@ -233,17 +193,28 @@ public class JdbcCrudQueryGenerator {
     return "DELETE FROM " + tableName + whereConditionsString;
   }
 
-  public static String generateDeleteQuery(String whereClause, String tableName) {
-    String whereConditionsString = "";
+  private static String generateWhereClause(Map<String, Object> whereClause) {
+    List<String> whereConditions = new ArrayList<>();
+
     if (whereClause != null && !whereClause.isEmpty()) {
-      whereConditionsString = " WHERE " + whereClause;
+      for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
+        String fieldName = entry.getKey();
+        Object value = entry.getValue();
+        if (value instanceof String) {
+          whereConditions.add(fieldName + " = '" + value + "'");
+        } else {
+          whereConditions.add(fieldName + " = " + value);
+        }
+      }
     }
-    return "DELETE FROM " + tableName + whereConditionsString;
+
+    String whereConditionsString = String.join(" AND ", whereConditions);
+    return !whereConditionsString.isEmpty() ? (" WHERE " + whereConditionsString) : "";
   }
 
-  public static String camelToSnake(String camelCase) {
+  private static String camelToSnake(String camelCase) {
     Matcher matcher = CAMEL_CASE_PATTERN.matcher(camelCase);
-    StringBuffer sb = new StringBuffer();
+    StringBuilder sb = new StringBuilder();
     while (matcher.find()) {
       matcher.appendReplacement(sb, "_" + matcher.group(0).toLowerCase(Locale.ROOT));
     }
@@ -252,13 +223,14 @@ public class JdbcCrudQueryGenerator {
   }
 
   private static String getTableName(Class<?> entityClass) {
-    String tableName = "entities";
+    String tableName = "ENTITIES";
     if (entityClass.equals(ModelGrantRecord.class)) {
-      tableName = "grant_records";
+      tableName = "GRANT_RECORDS";
     } else if (entityClass.equals(ModelPrincipalAuthenticationData.class)) {
-      tableName = "principal_authentication_data";
+      tableName = "PRINCIPAL_AUTHENTICATION_DATA";
     }
-    tableName = "polaris_schema." + tableName;
+    // TODO: check if we want to make schema name configurable.
+    tableName = "POLARIS_SCHEMA." + tableName;
 
     return tableName;
   }

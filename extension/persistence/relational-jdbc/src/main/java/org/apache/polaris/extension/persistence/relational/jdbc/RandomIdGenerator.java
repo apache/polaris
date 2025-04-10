@@ -27,7 +27,7 @@ public class RandomIdGenerator {
 
   public long nextId() {
     // Make sure this is a positive number.
-    // conflicting ids is enforced by the table in postgres
+    // conflicting ids don't get in is enforced by the table in Postgres.
     return UUID.randomUUID().getLeastSignificantBits() & MAX_ID;
   }
 }

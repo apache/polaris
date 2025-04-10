@@ -17,35 +17,28 @@
 -- under the License.
 --
 
--- Note: Database and schema creation is not included in this script. Please create the database and
--- schema before running this script. for example in psql:
--- CREATE DATABASE polaris_db;
--- \c polaris_db
--- CREATE SCHEMA polaris_schema;
--- set search_path to polaris_schema;
-
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
 DROP TABLE IF EXISTS entities;
 CREATE TABLE IF NOT EXISTS entities (
-                                        catalog_id BIGINT NOT NULL,
-                                        id BIGINT NOT NULL,
-                                        parent_id BIGINT NOT NULL,
-                                        name TEXT NOT NULL,
-                                        entity_version INT NOT NULL,
-                                        type_code INT NOT NULL,
-                                        sub_type_code INT NOT NULL,
-                                        create_timestamp BIGINT NOT NULL,
-                                        drop_timestamp BIGINT NOT NULL,
-                                        purge_timestamp BIGINT NOT NULL,
-                                        to_purge_timestamp BIGINT NOT NULL,
-                                        last_update_timestamp BIGINT NOT NULL,
-                                        properties TEXT not null default '{}',
-                                        internal_properties TEXT not null default '{}',
-                                        grant_records_version INT NOT NULL,
-                                        PRIMARY KEY (id),
+    catalog_id BIGINT NOT NULL,
+    id BIGINT NOT NULL,
+    parent_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    entity_version INT NOT NULL,
+    type_code INT NOT NULL,
+    sub_type_code INT NOT NULL,
+    create_timestamp BIGINT NOT NULL,
+    drop_timestamp BIGINT NOT NULL,
+    purge_timestamp BIGINT NOT NULL,
+    to_purge_timestamp BIGINT NOT NULL,
+    last_update_timestamp BIGINT NOT NULL,
+    properties TEXT NOT NULL DEFAULT '{}',
+    internal_properties TEXT NOT NULL DEFAULT '{}',
+    grant_records_version INT NOT NULL,
+    PRIMARY KEY (id),
     CONSTRAINT constraint_name UNIQUE (catalog_id, parent_id, type_code, name)
-    );
+);
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (catalog_id, id);
@@ -69,16 +62,15 @@ COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant record
 
 DROP TABLE IF EXISTS grant_records;
 CREATE TABLE IF NOT EXISTS grant_records (
-                                             securable_catalog_id BIGINT NOT NULL,
-                                             securable_id BIGINT NOT NULL,
-                                             grantee_catalog_id BIGINT NOT NULL,
-                                             grantee_id BIGINT NOT NULL,
-                                             privilege_code INTEGER,
-                                             PRIMARY KEY (securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
-    );
+    securable_catalog_id BIGINT NOT NULL,
+    securable_id BIGINT NOT NULL,
+    grantee_catalog_id BIGINT NOT NULL,
+    grantee_id BIGINT NOT NULL,
+    privilege_code INTEGER,
+    PRIMARY KEY (securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
+);
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
-
 COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
 COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
@@ -87,12 +79,12 @@ COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
 DROP TABLE IF EXISTS principal_authentication_data;
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
-                                                             principal_id BIGINT NOT NULL,
-                                                             principal_client_id VARCHAR(255) NOT NULL,
+    principal_id BIGINT NOT NULL,
+    principal_client_id VARCHAR(255) NOT NULL,
     main_secret_hash VARCHAR(255) NOT NULL,
     secondary_secret_hash VARCHAR(255) NOT NULL,
     secret_salt VARCHAR(255) NOT NULL,
     PRIMARY KEY (principal_client_id)
-    );
+);
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';

@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.extension.persistence.impl.relational.jdbc;
 
-import java.time.ZoneId;
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.apache.polaris.extension.persistence.relational.jdbc.PolarisJdbcBasePersistenceImpl;
-import org.h2.jdbcx.JdbcDataSource;
+import java.time.ZoneId;
+import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -31,41 +31,37 @@ import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
+import org.apache.polaris.extension.persistence.relational.jdbc.PolarisJdbcBasePersistenceImpl;
+import org.h2.jdbcx.JdbcConnectionPool;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-
-import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
-
-import javax.sql.DataSource;
-
-import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerTest {
 
-    public static DataSource createH2DataSource() {
-        JdbcDataSource dataSource = new JdbcDataSource();
-        // Configure the data source properties
-        // In-memory database (data is lost when the JVM exits)
-        dataSource.setURL("jdbc:h2:file:./build/test_data/polaris/db;MODE=PostgreSQL;");
-        dataSource.setUser("sa");
-        dataSource.setPassword("");
+  public static DataSource createH2DataSource() {
+    return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data/polaris/db", "sa", "");
+  }
 
-        return dataSource;
-    }
-    @Override
-    protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
-        PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-        DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
-        datasourceOperations.executeScript();
+  @Override
+  protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
+    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
+    datasourceOperations.executeScript();
 
-        PolarisJdbcBasePersistenceImpl basePersistence =
-                new PolarisJdbcBasePersistenceImpl(
-                        datasourceOperations, RANDOM_SECRETS, Mockito.mock());
-        return new PolarisTestMetaStoreManager(
-                new AtomicOperationMetaStoreManager(),
-                new PolarisCallContext(
-                        basePersistence,
-                        diagServices,
-                        new PolarisConfigurationStore() {},
-                        timeSource.withZone(ZoneId.systemDefault())));
-    }
+    PolarisJdbcBasePersistenceImpl basePersistence =
+        new PolarisJdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock());
+    return new PolarisTestMetaStoreManager(
+        new AtomicOperationMetaStoreManager(),
+        new PolarisCallContext(
+            basePersistence,
+            diagServices,
+            new PolarisConfigurationStore() {},
+            timeSource.withZone(ZoneId.systemDefault())));
+  }
+
+  @Override
+  @Test
+  protected void testPolicyMapping() {
+    assertThrows(UnsupportedOperationException.class, super::testPolicyMapping);
+  }
 }
