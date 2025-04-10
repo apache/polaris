@@ -44,6 +44,15 @@ services:
       timeout: 10s
       retries: 10
 
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
+
   spark-sql:
     image: apache/spark:3.5.5-java17-python3
     stdin_open: true
