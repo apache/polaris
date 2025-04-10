@@ -467,18 +467,11 @@ public class PolarisAdminService {
         catalogRoleName);
     ResolverStatus status = resolutionManifest.resolveAll();
 
-    final PolarisEntitySubType searchSubtype;
-    if (subTypes.size() > 1) {
-      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
-    } else {
-      searchSubtype = subTypes.getFirst();
-    }
-
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
+        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
@@ -486,9 +479,9 @@ public class PolarisAdminService {
 
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, searchSubtype, true);
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
     if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
 
     PolarisResolvedPathWrapper catalogRoleWrapper =
@@ -1738,18 +1731,11 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    final PolarisEntitySubType searchSubtype;
-    if (subTypes.size() > 1) {
-      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
-    } else {
-      searchSubtype = subTypes.getFirst();
-    }
-
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1780,17 +1766,11 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    final PolarisEntitySubType searchSubtype;
-    if (subTypes.size() > 1) {
-      searchSubtype = PolarisEntitySubType.ANY_SUBTYPE;
-    } else {
-      searchSubtype = subTypes.getFirst();
-    }
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, searchSubtype);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, searchSubtype);
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
