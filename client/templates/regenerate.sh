@@ -76,7 +76,7 @@ prepend_header() {
   mv "$tmpfile" "$file"
 }
 
-# List of paths to exclude (.../client)
+# List of paths to exclude (from .../client)
 EXCLUDE_PATHS=(
   "python/.gitignore"
   "python/.openapi-generator/"
