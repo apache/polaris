@@ -554,8 +554,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots, EnumSet<AccessDelegationMode> accessDelegationModes) {
-    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots, accessDelegationModes).get();
+      TableIdentifier tableIdentifier, String snapshots, EnumSet<AccessDelegationMode> accessDelegationModes, String decodedCredentialsPath) {
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots, accessDelegationModes, decodedCredentialsPath).get();
   }
 
   /**
@@ -653,7 +653,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 tableIdentifier, tableMetadata, actionsRequested));
         if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
           responseBuilder.addAllConfig(
-              credentialDelegation.getVendedCredentialConfig(tableIdentifier));
+              credentialDelegation.getVendedCredentialConfig(tableIdentifier, decodedCredentialPath));
         }
       }
 

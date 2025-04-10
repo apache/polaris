@@ -555,7 +555,7 @@ public class IcebergCatalogAdapter
         catalog -> {
           LoadTableResponse loadTableResponse =
               catalog.loadTableWithAccessDelegation(
-                  tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class));
+                  tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class), null);
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
