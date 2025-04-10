@@ -92,7 +92,10 @@ your H2 configuration using the persistence unit template below:
 To build Polaris with the necessary H2 dependency and start the Polaris service, run the following:
 
 ```shell
-./gradlew clean :polaris-quarkus-server:assemble -PeclipseLinkDeps=com.h2database:h2:2.3.232
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -PeclipseLinkDeps=com.h2database:h2:2.3.232
 java -Dpolaris.persistence.type=eclipse-link \
      -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
      -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
@@ -130,7 +133,10 @@ The following shows a sample configuration for integrating Polaris with Postgres
 To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
 
 ```shell
-./gradlew clean :polaris-quarkus-server:assemble -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
 java -Dpolaris.persistence.type=eclipse-link \
      -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
      -Dpolaris.persistence.eclipselink.persistence-unit=polaris \

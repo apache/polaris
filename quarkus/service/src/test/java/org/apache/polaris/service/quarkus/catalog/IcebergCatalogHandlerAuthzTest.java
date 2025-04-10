@@ -66,11 +66,12 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerWrapper;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -80,8 +81,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(IcebergCatalogHandlerWrapperAuthzTest.Profile.class)
-public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
+@TestProfile(IcebergCatalogHandlerAuthzTest.Profile.class)
+public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   public static class Profile extends PolarisAuthzTestBase.Profile {
 
@@ -95,19 +96,19 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     }
   }
 
-  private IcebergCatalogHandlerWrapper newWrapper() {
+  private IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
 
-  private IcebergCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
+  private IcebergCatalogHandler newWrapper(Set<String> activatedPrincipalRoles) {
     return newWrapper(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
   }
 
-  private IcebergCatalogHandlerWrapper newWrapper(
+  private IcebergCatalogHandler newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
-    return new IcebergCatalogHandlerWrapper(
+    return new IcebergCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,
@@ -244,8 +245,8 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(newPrincipal.getPrincipal()),
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-    IcebergCatalogHandlerWrapper wrapper =
-        new IcebergCatalogHandlerWrapper(
+    IcebergCatalogHandler wrapper =
+        new IcebergCatalogHandler(
             callContext,
             entityManager,
             metaStoreManager,
@@ -276,8 +277,8 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-    IcebergCatalogHandlerWrapper refreshedWrapper =
-        new IcebergCatalogHandlerWrapper(
+    IcebergCatalogHandler refreshedWrapper =
+        new IcebergCatalogHandler(
             callContext,
             entityManager,
             metaStoreManager,
@@ -868,6 +869,35 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   @Test
+  public void testLoadTableIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper().loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+  }
+
+  @Test
   public void testLoadTableWithReadAccessDelegationSufficientPrivileges() {
     doTestSufficientPrivileges(
         List.of(
@@ -932,6 +962,73 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             newWrapper()
                 .loadTableWithAccessDelegation(
                     TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
+  }
+
+  @Test
+  public void testLoadTableWithReadAccessDelegationIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithReadAccessDelegationIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+  }
+
+  @Test
+  public void testLoadTableWithWriteAccessDelegationIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            // TODO: Once we give different creds for read/write privilege, move this
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // to receive a read-only credential.
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithWriteAccessDelegationIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
   }
 
   @Test
@@ -1735,7 +1832,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
-                    .addSchema(SCHEMA, SCHEMA.highestFieldId())
+                    .addSchema(SCHEMA)
                     .setLocation(
                         String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation))
                     .addPartitionSpec(PartitionSpec.unpartitioned())

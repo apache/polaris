@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -60,6 +61,7 @@ import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
 import org.apache.polaris.jpa.models.ModelGrantRecord;
+import org.apache.polaris.jpa.models.ModelPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +79,12 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   private static final ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
       new ConcurrentHashMap<>();
   private final EntityManagerFactory emf;
+
+  // TODO this has to be refactored, see https://github.com/apache/polaris/issues/463 and
+  //  https://errorprone.info/bugpattern/ThreadLocalUsage
+  @SuppressWarnings("ThreadLocalUsage")
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
+
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
@@ -662,6 +669,88 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+
+    this.store.writeToPolicyMappingRecords(localSession.get(), record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFromPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.store.deleteFromPolicyMappingRecords(localSession.get(), record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    this.store.deleteAllEntityPolicyMappingRecords(localSession.get(), entity);
+  }
+
+  /** {@inheritDoc} */
+  @Nullable
+  @Override
+  public PolarisPolicyMappingRecord lookupPolicyMappingRecordInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return ModelPolicyMappingRecord.toPolicyMappingRecord(
+        this.store.lookupPolicyMappingRecord(
+            localSession.get(),
+            targetCatalogId,
+            targetId,
+            policyTypeCode,
+            policyCatalogId,
+            policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByTypeInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    return this.store
+        .loadPoliciesOnTargetByType(localSession.get(), targetCatalogId, targetId, policyTypeCode)
+        .stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
+        .toList();
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTargetInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.store
+        .loadAllPoliciesOnTarget(localSession.get(), targetCatalogId, targetId)
+        .stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
+        .toList();
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    return this.store.loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId).stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
+        .toList();
   }
 
   @Override

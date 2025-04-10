@@ -78,7 +78,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
-    LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
+    LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
     PolarisEntityManager entityManager =
         entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
@@ -98,7 +98,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getDefaultBaseLocation();
-    LOGGER.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
+    LOGGER.debug(
+        "Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
     catalogProperties.put(
         CatalogProperties.WAREHOUSE_LOCATION,
         Objects.requireNonNullElseGet(

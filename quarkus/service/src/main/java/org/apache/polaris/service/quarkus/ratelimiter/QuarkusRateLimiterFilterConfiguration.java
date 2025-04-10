@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.ratelimiter;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.rate-limiter.filter")
 public interface QuarkusRateLimiterFilterConfiguration {
 
