@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
@@ -31,7 +30,6 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
