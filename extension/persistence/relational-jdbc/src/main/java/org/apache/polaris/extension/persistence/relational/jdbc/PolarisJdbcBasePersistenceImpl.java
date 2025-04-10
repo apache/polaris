@@ -39,14 +39,17 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final JdbcCrudQueryGenerator jdbcCrudQueryGenerator;
 
   public PolarisJdbcBasePersistenceImpl(
+      String realmIdentifier,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
+    this.jdbcCrudQueryGenerator = new JdbcCrudQueryGenerator(realmIdentifier);
   }
 
   @Override
@@ -63,13 +66,13 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     String query;
     if (originalEntity == null) {
-      query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, ModelEntity.class);
+      query = jdbcCrudQueryGenerator.generateInsertQuery(modelEntity, ModelEntity.class);
     } else {
       Map<String, Object> params = new HashMap<>();
       params.put("id", originalEntity.getId());
       params.put("catalog_id", originalEntity.getCatalogId());
       params.put("entity_version", originalEntity.getEntityVersion());
-      query = JdbcCrudQueryGenerator.generateUpdateQuery(modelEntity, params, ModelEntity.class);
+      query = jdbcCrudQueryGenerator.generateUpdateQuery(modelEntity, params, ModelEntity.class);
     }
     int rowsUpdated = datasourceOperations.executeUpdate(query);
     if (rowsUpdated == 0) {
@@ -119,7 +122,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
               }
               String query;
               if (originalEntities == null || originalEntities.get(i) == null) {
-                query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, ModelEntity.class);
+                query = jdbcCrudQueryGenerator.generateInsertQuery(modelEntity, ModelEntity.class);
               } else {
                 // CAS
                 Map<String, Object> params = new HashMap<>();
@@ -127,7 +130,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
                 params.put("catalog_id", originalEntities.get(i).getCatalogId());
                 params.put("entity_version", originalEntities.get(i).getEntityVersion());
                 query =
-                    JdbcCrudQueryGenerator.generateUpdateQuery(
+                    jdbcCrudQueryGenerator.generateUpdateQuery(
                         modelEntity, params, ModelEntity.class);
               }
               int rowsUpdated = datasourceOperations.executeUpdate(query, statement);
@@ -153,7 +156,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   public void writeToGrantRecords(PolarisCallContext callCtx, PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     String query =
-        JdbcCrudQueryGenerator.generateInsertQuery(modelGrantRecord, ModelGrantRecord.class);
+        jdbcCrudQueryGenerator.generateInsertQuery(modelGrantRecord, ModelGrantRecord.class);
     datasourceOperations.executeUpdate(query);
   }
 
@@ -164,14 +167,14 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("id", modelEntity.getId());
     params.put("catalog_id", modelEntity.getCatalogId());
     datasourceOperations.executeUpdate(
-        JdbcCrudQueryGenerator.generateDeleteQuery(params, ModelEntity.class));
+        jdbcCrudQueryGenerator.generateDeleteQuery(params, ModelEntity.class));
   }
 
   @Override
   public void deleteFromGrantRecords(PolarisCallContext callCtx, PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     String query =
-        JdbcCrudQueryGenerator.generateDeleteQuery(modelGrantRecord, ModelGrantRecord.class);
+        jdbcCrudQueryGenerator.generateDeleteQuery(modelGrantRecord, ModelGrantRecord.class);
     datasourceOperations.executeUpdate(query);
   }
 
@@ -202,15 +205,15 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
     String whereClause = " WHERE " + granteeCondition + " OR " + securableCondition;
     datasourceOperations.executeUpdate(
-        JdbcCrudQueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause));
+        jdbcCrudQueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause));
   }
 
   @Override
   public void deleteAll(PolarisCallContext callCtx) {
-    datasourceOperations.executeUpdate(JdbcCrudQueryGenerator.generateDeleteAll(ModelEntity.class));
+    datasourceOperations.executeUpdate(jdbcCrudQueryGenerator.generateDeleteAll(ModelEntity.class));
     datasourceOperations.executeUpdate(
-        JdbcCrudQueryGenerator.generateDeleteAll(ModelGrantRecord.class));
-    datasourceOperations.executeUpdate(JdbcCrudQueryGenerator.generateDeleteAll(ModelEntity.class));
+        jdbcCrudQueryGenerator.generateDeleteAll(ModelGrantRecord.class));
+    datasourceOperations.executeUpdate(jdbcCrudQueryGenerator.generateDeleteAll(ModelEntity.class));
   }
 
   @Override
@@ -221,7 +224,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("id", entityId);
     params.put("type_code", typeCode);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class, params, null, null, "last_update_timestamp");
     return getPolarisBaseEntity(query);
   }
@@ -238,7 +241,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
       params.put("name", name);
     }
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class, params, 1, null, "last_update_timestamp");
     return getPolarisBaseEntity(query);
   }
@@ -264,7 +267,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     condition.deleteCharAt(condition.length() - 1);
     condition.append(")");
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class,
             entityIds.isEmpty() ? "" : String.valueOf(condition),
             null,
@@ -348,7 +351,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class, params, null, null, "last_update_timestamp");
     List<ModelEntity> results = datasourceOperations.executeSelect(query, ModelEntity.class);
     return results == null
@@ -369,7 +372,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("catalog_id", catalogId);
     params.put("id", entityId);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class, params, null, null, "last_update_timestamp");
     PolarisBaseEntity b = getPolarisBaseEntity(query);
     return b == null ? 0 : b.getGrantRecordsVersion();
@@ -390,7 +393,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("grantee_id", granteeId);
     params.put("privilege_code", privilegeCode);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelGrantRecord.class, params, null, null, null);
     List<ModelGrantRecord> results =
         datasourceOperations.executeSelect(query, ModelGrantRecord.class);
@@ -405,7 +408,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("securable_catalog_id", securableCatalogId);
     params.put("securable_id", securableId);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelGrantRecord.class, params, null, null, null);
     List<ModelGrantRecord> results =
         datasourceOperations.executeSelect(query, ModelGrantRecord.class);
@@ -422,7 +425,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("grantee_catalog_id", granteeCatalogId);
     params.put("grantee_id", granteeId);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelGrantRecord.class, params, null, null, null);
     List<ModelGrantRecord> results =
         datasourceOperations.executeSelect(query, ModelGrantRecord.class);
@@ -444,7 +447,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
       params.put("type_code", optionalEntityType.getCode());
     }
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelEntity.class, params, null, null, "last_update_timestamp");
     List<ModelEntity> results = datasourceOperations.executeSelect(query, ModelEntity.class);
 
@@ -458,7 +461,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     Map<String, Object> params = new HashMap<>();
     params.put("principal_client_id", clientId);
     String query =
-        JdbcCrudQueryGenerator.generateSelectQuery(
+        jdbcCrudQueryGenerator.generateSelectQuery(
             ModelPrincipalAuthenticationData.class, params, null, null, null);
     List<ModelPrincipalAuthenticationData> results =
         datasourceOperations.executeSelect(query, ModelPrincipalAuthenticationData.class);
@@ -492,7 +495,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
     // write new principal secrets
     String query =
-        JdbcCrudQueryGenerator.generateInsertQuery(
+        jdbcCrudQueryGenerator.generateInsertQuery(
             lookupPrincipalSecrets, ModelPrincipalAuthenticationData.class);
     datasourceOperations.executeUpdate(query);
 
@@ -542,7 +545,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     // write back new secrets
     // write new principal secrets
     String query =
-        JdbcCrudQueryGenerator.generateUpdateQuery(
+        jdbcCrudQueryGenerator.generateUpdateQuery(
             ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets),
             params,
             ModelPrincipalAuthenticationData.class);
@@ -559,7 +562,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
     params.put("principal_client_id", clientId);
     params.put("principal_id", principalId);
     String query =
-        JdbcCrudQueryGenerator.generateDeleteQuery(params, ModelPrincipalAuthenticationData.class);
+        jdbcCrudQueryGenerator.generateDeleteQuery(params, ModelPrincipalAuthenticationData.class);
     datasourceOperations.executeUpdate(query);
   }
 

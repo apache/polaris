@@ -39,7 +39,7 @@ import org.mockito.Mockito;
 public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerTest {
 
   public static DataSource createH2DataSource() {
-    return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data/polaris/db", "sa", "");
+    return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data", "sa", "");
   }
 
   @Override
@@ -49,7 +49,8 @@ public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerT
     datasourceOperations.executeScript();
 
     PolarisJdbcBasePersistenceImpl basePersistence =
-        new PolarisJdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock());
+        new PolarisJdbcBasePersistenceImpl(
+            "realm", datasourceOperations, RANDOM_SECRETS, Mockito.mock());
     return new PolarisTestMetaStoreManager(
         new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(

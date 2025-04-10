@@ -32,8 +32,13 @@ public class JdbcCrudQueryGenerator {
 
   private static final Pattern CAMEL_CASE_PATTERN =
       Pattern.compile("(?<=[a-z0-9])[A-Z]|(?<=[A-Z])[A-Z](?=[a-z])");
+  private final String realm;
 
-  public static String generateSelectQuery(
+  public JdbcCrudQueryGenerator(String realm) {
+    this.realm = realm;
+  }
+
+  public String generateSelectQuery(
       Class<?> entityClass, String filter, Integer limit, Integer offset, String orderBy) {
     String tableName = getTableName(entityClass);
     List<String> fields = new ArrayList<>();
@@ -51,7 +56,7 @@ public class JdbcCrudQueryGenerator {
     return query.toString();
   }
 
-  public static String generateSelectQuery(
+  public String generateSelectQuery(
       Class<?> entityClass,
       Map<String, Object> whereClause,
       Integer limit,
@@ -87,7 +92,7 @@ public class JdbcCrudQueryGenerator {
     return query.toString();
   }
 
-  public static String generateInsertQuery(Object object, Class<?> entityClass) {
+  public String generateInsertQuery(Object object, Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     if (object == null || tableName.isEmpty()) {
       return null; // Or throw an exception
@@ -121,7 +126,7 @@ public class JdbcCrudQueryGenerator {
     return "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + valuesString + ")";
   }
 
-  public static String generateUpdateQuery(
+  public String generateUpdateQuery(
       Object object, Map<String, Object> whereClause, Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     List<String> setClauses = new ArrayList<>();
@@ -152,21 +157,21 @@ public class JdbcCrudQueryGenerator {
     return "UPDATE " + tableName + " SET " + setClausesString + generateWhereClause(whereClause);
   }
 
-  public static String generateDeleteQuery(Map<String, Object> whereClause, Class<?> entityClass) {
+  public String generateDeleteQuery(Map<String, Object> whereClause, Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     return "DELETE FROM " + tableName + (generateWhereClause(whereClause));
   }
 
-  public static String generateDeleteQuery(Class<?> entityClass, String whereClause) {
+  public String generateDeleteQuery(Class<?> entityClass, String whereClause) {
     return "DELETE FROM " + getTableName(entityClass) + whereClause;
   }
 
-  public static String generateDeleteAll(Class<?> entityClass) {
+  public String generateDeleteAll(Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     return "DELETE FROM " + tableName + " WHERE 1 = 1";
   }
 
-  public static String generateDeleteQuery(Object obj, Class<?> entityClass) {
+  public String generateDeleteQuery(Object obj, Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     List<String> whereConditions = new ArrayList<>();
 
@@ -197,7 +202,7 @@ public class JdbcCrudQueryGenerator {
     return "DELETE FROM " + tableName + whereConditionsString;
   }
 
-  private static String generateWhereClause(Map<String, Object> whereClause) {
+  private String generateWhereClause(Map<String, Object> whereClause) {
     List<String> whereConditions = new ArrayList<>();
 
     if (whereClause != null && !whereClause.isEmpty()) {
@@ -216,7 +221,7 @@ public class JdbcCrudQueryGenerator {
     return !whereConditionsString.isEmpty() ? (" WHERE " + whereConditionsString) : "";
   }
 
-  private static String camelToSnake(String camelCase) {
+  private String camelToSnake(String camelCase) {
     Matcher matcher = CAMEL_CASE_PATTERN.matcher(camelCase);
     StringBuilder sb = new StringBuilder();
     while (matcher.find()) {
@@ -226,7 +231,7 @@ public class JdbcCrudQueryGenerator {
     return sb.toString().toLowerCase(Locale.ROOT);
   }
 
-  private static String getTableName(Class<?> entityClass) {
+  private String getTableName(Class<?> entityClass) {
     String tableName = "ENTITIES";
     if (entityClass.equals(ModelGrantRecord.class)) {
       tableName = "GRANT_RECORDS";

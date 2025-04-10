@@ -152,6 +152,8 @@ public class DatasourceOperations {
   }
 
   Connection borrowConnection() throws SQLException {
-    return datasource.getConnection();
+    Connection c = datasource.getConnection();
+    c.setSchema("polaris_schema");
+    return c;
   }
 }

@@ -18,12 +18,25 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import io.quarkus.arc.All;
+import io.quarkus.arc.InjectableInstance;
+import io.quarkus.arc.InstanceHandle;
+import io.smallrye.common.annotation.Identifier;
 import io.smallrye.common.constraint.Nullable;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.Initialized;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.util.AnnotationLiteral;
+import jakarta.inject.Inject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
+
+import jakarta.inject.Named;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -45,6 +58,8 @@ import org.slf4j.LoggerFactory;
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
  * using a JDBC backed by SQL metastore.
  */
+@ApplicationScoped
+@Identifier("relational-jdbc")
 public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
@@ -55,10 +70,54 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
-  DataSource ds;
-  private final PolarisDiagnostics diagnostics;
-  PolarisStorageIntegrationProvider storageIntegrationProvider;
+  protected JdbcMetaStoreManagerFactory() {
+    this(null);
+  }
 
+//  @Inject
+//  @Any
+//  InjectableInstance<DataSource> allDataSources;
+//
+//  @Inject
+//  @All
+//  @SuppressWarnings("CdiInjectionPointsInspection")
+//  List<InstanceHandle<DataSource>> dataSources;
+
+  @Inject
+  @io.quarkus.agroal.DataSource("postgresql1")
+  DataSource dataSource;
+
+//  public boolean doesDatasourceExist(String datasourceName) {
+//    try {
+//      // Attempt to inject a datasource with the given name
+//      Instance<DataSource> namedDataSource = allDataSources.select(DataSource.class, new NamedLiteral(datasourceName));
+//      return !namedDataSource.isUnsatisfied();
+//    } catch (Exception e) {
+//      // Handle any potential exceptions during lookup
+//      return false;
+//    }
+//  }
+//
+//  // Helper class to create a @Named qualifier instance
+//  private static class NamedLiteral extends jakarta.enterprise.util.AnnotationLiteral<Named> implements Named {
+//    private final String value;
+//
+//    public NamedLiteral(String value) {
+//      this.value = value;
+//    }
+//
+//    @Override
+//    public String value() {
+//      return value;
+//    }
+//  }
+
+  private final Map<String, DataSource> dataSourceMap = new HashMap<>();
+
+  private final PolarisDiagnostics diagnostics;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+
+  @Inject
   protected JdbcMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
   }
@@ -73,14 +132,28 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(ds);
+//    System.out.println("DS exists - 1 " + doesDatasourceExist("\"primary\""));
+//    System.out.println("DS exists - 2 " + findDataSourceByName("\"primary\""));
+//    System.out.println("DS exists - 3" + findDataSourceByName("postgresql"));
+//    // find the relevant datasource
+//    DataSource defaultDataSource = dataSourceMap.get(realmContext.getRealmIdentifier());
+//    defaultDataSource = defaultDataSource != null ? defaultDataSource : dataSourceMap.get("unknown");
+
+//    allDataSources.handles().iterator().forEachRemaining(dataSource -> {
+//      System.out.println(" " + dataSource);
+//    });
+//    List<DataSource> l = allDataSources.stream().toList();
+//    DataSource ds = allDataSources.select(DataSource.class).get();
+
+    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource);
     // TODO: see if we need to take script from Quarkus or can we just
     // use the script committed repo.
-    databaseOperations.executeScript();
+    // databaseOperations.executeScript();
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
             new PolarisJdbcBasePersistenceImpl(
+                realmContext.getRealmIdentifier(),
                 databaseOperations,
                 secretsGenerator(realmContext, rootCredentialsSet),
                 storageIntegrationProvider));
@@ -274,4 +347,22 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       return PrincipalSecretsGenerator.RANDOM_SECRETS;
     }
   }
+
+//  private DataSource findDataSourceByName(String dataSourceName) {
+//    for (InstanceHandle<DataSource> handle : dataSources) {
+//      String name = handle.getBean().getName();
+//      System.out.println("Name of the datatosuce configure " + name + " " + handle.getBean().getIdentifier());
+//      name = name == null ? "primary" : unquoteDataSourceName(name);
+//      if (name.equals(dataSourceName)) {
+//        return handle.get();
+//      }
+//    }
+//    return null;
+//  }
+//  public static String unquoteDataSourceName(String dataSourceName) {
+//    if (dataSourceName.startsWith("\"") && dataSourceName.endsWith("\"")) {
+//      dataSourceName = dataSourceName.substring(1, dataSourceName.length() - 1);
+//    }
+//    return dataSourceName;
+//  }
 }

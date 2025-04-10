@@ -43,12 +43,16 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
 
   runtimeOnly(project(":polaris-eclipselink"))
+  runtimeOnly(project(":polaris-relational-jdbc"))
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
+  implementation("io.quarkus:quarkus-jdbc-postgresql")
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
+  implementation("io.quarkus:quarkus-arc")
+
 
   testFixturesApi(project(":polaris-core"))
 
@@ -59,7 +63,6 @@ dependencies {
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")
 
-  testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
 
   runScript(project(":polaris-quarkus-run-script", "runScript"))

@@ -60,7 +60,7 @@ public class PostgresTestResourceLifecycleManager
     if (initScript != null) {
       postgres.withInitScript(initScript);
     }
-    context.containerNetworkId().ifPresent(postgres::withNetworkMode);
+    // context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
     return Map.of(
         "polaris.persistence.eclipselink.configuration-file", createPersistenceXml().toString());
