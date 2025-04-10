@@ -73,4 +73,6 @@ sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
+
+
 docker compose -f getting-started/eclipselink/docker-compose.yml up

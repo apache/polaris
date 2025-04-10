@@ -44,32 +44,6 @@ services:
       timeout: 10s
       retries: 10
 
-  postgres:
-    image: postgres:17.4
-    ports:
-      - "5432:5432"
-    # set shared memory limit when using docker-compose
-    shm_size: 128mb
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: POLARIS
-      POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
-    volumes:
-      # Bind local conf file to a convenient location in the container
-      - type: bind
-        source: ./postgresql.conf
-        target: /etc/postgresql/postgresql.conf
-    command:
-      - "postgres"
-      - "-c"
-      - "config_file=/etc/postgresql/postgresql.conf"
-    healthcheck:
-      test: "pg_isready -U postgres"
-      interval: 5s
-      timeout: 2s
-      retries: 15
-
   spark-sql:
     image: apache/spark:3.5.5-java17-python3
     depends_on:
@@ -100,9 +74,6 @@ services:
 
   trino:
     image: trinodb/trino:latest
-    depends_on:
-      polaris-setup:
-        condition: service_completed_successfully
     stdin_open: true
     tty: true
     ports:
