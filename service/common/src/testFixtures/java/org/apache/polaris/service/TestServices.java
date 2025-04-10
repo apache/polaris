@@ -159,11 +159,6 @@ public record TestServices(
             public Map<String, Object> contextVariables() {
               return new HashMap<>();
             }
-
-            @Override
-            public URI getBaseUri() {
-              return null;
-            }
           };
 
       FileIOFactory fileIOFactory =

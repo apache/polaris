@@ -66,11 +66,6 @@ public class JWTSymmetricKeyGeneratorTest {
           public Map<String, Object> contextVariables() {
             return Map.of();
           }
-
-          @Override
-          public URI getBaseUri() {
-            return null;
-          }
         });
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "test_secret";

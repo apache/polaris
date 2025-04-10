@@ -150,11 +150,6 @@ public class FileIOFactoryTest {
           public Map<String, Object> contextVariables() {
             return new HashMap<>();
           }
-
-          @Override
-          public URI getBaseUri() {
-            return null;
-          }
         };
   }
 
