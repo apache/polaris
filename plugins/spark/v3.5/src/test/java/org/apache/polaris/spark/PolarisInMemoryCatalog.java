@@ -19,7 +19,9 @@
 package org.apache.polaris.spark;
 
 import com.google.common.collect.Maps;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
@@ -58,13 +60,7 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
 
   @Override
   public boolean dropGenericTable(TableIdentifier identifier) {
-    synchronized (this) {
-      if (null == this.genericTables.remove(identifier)) {
-        return false;
-      }
-    }
-
-    return true;
+    return null != this.genericTables.remove(identifier);
   }
 
   @Override
