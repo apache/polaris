@@ -20,14 +20,26 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import java.util.UUID;
 
-public class RandomIdGenerator {
-  public static final RandomIdGenerator INSTANCE = new RandomIdGenerator();
+public class IdGenerator {
+  private IdGenerator() {}
 
-  public static final long MAX_ID = 0x7fffffffffffffffL;
+  private static volatile IdGenerator idGenerator;
+
+  public static IdGenerator getInstance() {
+    if (idGenerator != null) return idGenerator;
+    synchronized (IdGenerator.class) {
+      if (idGenerator == null) {
+        idGenerator = new IdGenerator();
+      }
+    }
+    return idGenerator;
+  }
+
+  public static final long LONG_MAX_ID = 0x7fffffffffffffffL;
 
   public long nextId() {
     // Make sure this is a positive number.
-    // conflicting ids don't get in is enforced by the table in Postgres.
-    return UUID.randomUUID().getLeastSignificantBits() & MAX_ID;
+    // conflicting ids don't gets accepted and is enforced by table constraints.
+    return UUID.randomUUID().getLeastSignificantBits() & LONG_MAX_ID;
   }
 }

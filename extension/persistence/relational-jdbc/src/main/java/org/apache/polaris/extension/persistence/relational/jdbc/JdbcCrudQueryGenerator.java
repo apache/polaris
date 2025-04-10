@@ -157,6 +157,10 @@ public class JdbcCrudQueryGenerator {
     return "DELETE FROM " + tableName + (generateWhereClause(whereClause));
   }
 
+  public static String generateDeleteQuery(Class<?> entityClass, String whereClause) {
+    return "DELETE FROM " + getTableName(entityClass) + whereClause;
+  }
+
   public static String generateDeleteAll(Class<?> entityClass) {
     String tableName = getTableName(entityClass);
     return "DELETE FROM " + tableName + " WHERE 1 = 1";
