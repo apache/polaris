@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
+
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
@@ -28,8 +30,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
-import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -43,8 +43,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-
-import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
