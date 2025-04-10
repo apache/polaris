@@ -40,8 +40,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -95,6 +93,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -454,7 +453,7 @@ public class PolarisAdminService {
   private void authorizeGrantOnTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op,
       String catalogName,
-      PolarisEntitySubType subType,
+      List<PolarisEntitySubType> subTypes,
       TableIdentifier identifier,
       String catalogRoleName) {
     resolutionManifest =
@@ -472,18 +471,19 @@ public class PolarisAdminService {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-          throw new NoSuchTableException("Table does not exist: %s", identifier);
-        } else {
-          throw new NoSuchViewException("View does not exist: %s", identifier);
-        }
+        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
     }
 
     PolarisResolvedPathWrapper tableLikeWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
+    if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+    }
+
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
@@ -1495,10 +1495,18 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
+        op,
+        catalogName,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier,
+        catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        privilege);
   }
 
   public boolean revokePrivilegeOnTableFromRole(
@@ -1510,10 +1518,18 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_TABLE, identifier, catalogRoleName);
+        op,
+        catalogName,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier,
+        catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_TABLE, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        privilege);
   }
 
   public boolean grantPrivilegeOnViewToRole(
@@ -1524,10 +1540,14 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
+        op, catalogName, List.of(PolarisEntitySubType.ICEBERG_VIEW), identifier, catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        privilege);
   }
 
   public boolean revokePrivilegeOnViewFromRole(
@@ -1539,10 +1559,14 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
+        op, catalogName, List.of(PolarisEntitySubType.ICEBERG_VIEW), identifier, catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
+        catalogName,
+        catalogRoleName,
+        identifier,
+        List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        privilege);
   }
 
   public List<PolarisEntity> listAssigneePrincipalRolesForCatalogRole(
@@ -1606,7 +1630,8 @@ public class PolarisAdminService {
             }
           case TABLE_LIKE:
             {
-              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE) {
+              if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+                  || baseEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                 TableIdentifier identifier =
                     IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
@@ -1616,7 +1641,7 @@ public class PolarisAdminService {
                         TablePrivilege.valueOf(privilege.toString()),
                         GrantResource.TypeEnum.TABLE);
                 tableGrants.add(grant);
-              } else {
+              } else if (baseEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
                 TableIdentifier identifier =
                     IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 ViewGrant grant =
@@ -1626,6 +1651,9 @@ public class PolarisAdminService {
                         ViewPrivilege.valueOf(privilege.toString()),
                         GrantResource.TypeEnum.VIEW);
                 viewGrants.add(grant);
+              } else {
+                throw new IllegalStateException(
+                    "Unrecognized entity subtype " + baseEntity.getSubType());
               }
               break;
             }
@@ -1694,7 +1722,7 @@ public class PolarisAdminService {
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
-      PolarisEntitySubType subType,
+      List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
     if (findCatalogByName(catalogName).isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
@@ -1704,13 +1732,11 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
-    if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NotFoundException("View %s not found", identifier);
-      } else {
-        throw new NotFoundException("Table %s not found", identifier);
-      }
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedPathWrapper == null
+        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1732,7 +1758,7 @@ public class PolarisAdminService {
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
-      PolarisEntitySubType subType,
+      List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
     if (findCatalogByName(catalogName).isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
@@ -1742,13 +1768,11 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
-    if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
-        throw new NotFoundException("View %s not found", identifier);
-      } else {
-        throw new NotFoundException("Table %s not found", identifier);
-      }
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedPathWrapper == null
+        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
