@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.auth;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.authentication")
 public interface QuarkusAuthenticationConfiguration extends AuthenticationConfiguration {
 

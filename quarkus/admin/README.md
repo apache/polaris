@@ -47,7 +47,10 @@ java -jar polaris-quarkus-admin-<version>-runner.jar
 To also build the Docker image, you can use the following command:
 
 ```shell
-./gradlew clean :polaris-quarkus-admin:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+  :polaris-quarkus-admin:assemble \
+  :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 ```
 
 ## Running the Admin Tool

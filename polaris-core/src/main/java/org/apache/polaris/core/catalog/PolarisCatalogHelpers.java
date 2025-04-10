@@ -36,10 +36,14 @@ public class PolarisCatalogHelpers {
   private PolarisCatalogHelpers() {}
 
   public static List<String> tableIdentifierToList(TableIdentifier identifier) {
+    return identifierToList(identifier.namespace(), identifier.name());
+  }
+
+  public static List<String> identifierToList(Namespace namespace, String name) {
     ImmutableList.Builder<String> fullList =
-        ImmutableList.builderWithExpectedSize(identifier.namespace().length() + 1);
-    fullList.addAll(Arrays.asList(identifier.namespace().levels()));
-    fullList.add(identifier.name());
+        ImmutableList.builderWithExpectedSize(namespace.length() + 1);
+    fullList.addAll(Arrays.asList(namespace.levels()));
+    fullList.add(name);
     return fullList.build();
   }
 

@@ -26,6 +26,7 @@ import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyCo
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.SnapshotRetentionPolicyContent;
+import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.validator.maintenance.BaseMaintenancePolicyValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +101,14 @@ public class PolicyValidators {
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
         return false;
+    }
+  }
+
+  public static void validateAttach(PolicyEntity policy, PolarisEntity targetEntity) {
+    if (!canAttach(policy, targetEntity)) {
+      throw new PolicyAttachException(
+          "Cannot attach policy '%s' to target entity '%s'",
+          policy.getName(), targetEntity.getName());
     }
   }
 }
