@@ -134,9 +134,5 @@ done
 
 echo "Regeneration complete"
 
-../gradlew format > /dev/null
-
-echo "Formatting complete"
-
 popd > /dev/null
 
