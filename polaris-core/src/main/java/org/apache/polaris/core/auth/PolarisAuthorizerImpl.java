@@ -508,9 +508,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
-        featureConfig.getConfiguration(
-            CallContext.getCurrentContext().getPolarisCallContext(),
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+        featureConfig
+            .getConfiguration(
+                CallContext.getCurrentContext().getPolarisCallContext(),
+                FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING)
+            .get();
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal
             .getPrincipalEntity()

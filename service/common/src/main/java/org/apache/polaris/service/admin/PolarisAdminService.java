@@ -528,7 +528,8 @@ public class PolarisAdminService {
         getCurrentPolarisContext()
             .getConfigurationStore()
             .getConfiguration(
-                getCurrentPolarisContext(), FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
+                getCurrentPolarisContext(), FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS)
+            .get();
 
     if (allowOverlappingCatalogUrls) {
       return false;
@@ -598,7 +599,8 @@ public class PolarisAdminService {
     boolean cleanup =
         polarisCallContext
             .getConfigurationStore()
-            .getConfiguration(polarisCallContext, FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
+            .getConfiguration(polarisCallContext, FeatureConfiguration.CLEANUP_ON_CATALOG_DROP)
+            .get();
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);

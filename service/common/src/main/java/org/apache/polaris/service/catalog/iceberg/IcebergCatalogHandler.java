@@ -602,10 +602,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
-            catalogEntity,
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+        && !configurationStore
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                catalogEntity,
+                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)
+            .get()) {
       throw new ForbiddenException(
           "Access Delegation is not enabled for this catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
@@ -843,7 +845,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                                   .getConfigurationStore()
                                   .getConfiguration(
                                       callContext.getPolarisCallContext(),
-                                      FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                                      FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)
+                                  .get()) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",

@@ -33,7 +33,7 @@ import java.util.Optional;
 public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
 
   protected BehaviorChangeConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+      String key, String description, Optional<T> defaultValue, Optional<String> catalogConfig) {
     super(key, description, defaultValue, catalogConfig);
   }
 

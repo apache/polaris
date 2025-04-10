@@ -137,7 +137,8 @@ public class PolarisServiceImpl
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                polarisCallContext, FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+            .get();
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
