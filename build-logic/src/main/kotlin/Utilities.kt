@@ -20,6 +20,11 @@
 import org.gradle.api.Project
 import org.gradle.process.JavaForkOptions
 
+/**
+ * Extract the scala version from polaris spark project, and points the build directory to a sub-dir
+ * that uses scala version as name. The polaris spark project name is in format of
+ * <project>-<sparkVersion>_<scalaVersion>, for example: polaris-spark-3.5_2.12.
+ */
 fun Project.getAndUseScalaVersionForProject(): String {
   val sparkScala = project.name.split("-").last().split("_")
 
