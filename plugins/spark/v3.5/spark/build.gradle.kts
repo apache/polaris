@@ -24,17 +24,6 @@ plugins {
   alias(libs.plugins.jandex)
 }
 
-fun getAndUseScalaVersionForProject(): String {
-  val sparkScala = project.name.split("-").last().split("_")
-
-  val scalaVersion = sparkScala[1]
-
-  // direct the build to build/<scalaVersion> to avoid potential collision problem
-  project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
-
-  return scalaVersion
-}
-
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
@@ -87,6 +76,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   dependencies { exclude("META-INF/**") }
 
   // pack both the source code and dependencies
+
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 

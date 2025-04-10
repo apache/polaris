@@ -57,6 +57,7 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
+val ideActive = System.getProperty("idea.active").toBoolean()
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
 val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
@@ -67,8 +68,18 @@ for (sparkVersion in sparkVersions) {
   for (scalaVersion in scalaVersions) {
     polarisProject(
       "polaris-spark-${sparkVersion}_${scalaVersion}",
-      file("${polarisSparkDir}/v${sparkVersion}"),
+      file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
+    polarisProject(
+      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}/integration"),
+    )
+    // skip all duplicated spark client projects in IDE to avoid problems
+    // during Intelij dependency analysis and sync. For example:
+    // "Multiple projects in this build have project directory".
+    if (ideActive) {
+      break
+    }
   }
 }
 

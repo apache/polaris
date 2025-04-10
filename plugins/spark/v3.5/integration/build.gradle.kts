@@ -23,8 +23,19 @@ plugins {
   id("polaris-quarkus")
 }
 
-dependencies {
+// get version information
+val sparkMajorVersion = "3.5"
+val scalaVersion = getAndUseScalaVersionForProject()
+val icebergVersion = pluginlibs.versions.iceberg.get()
+val spark35Version = pluginlibs.versions.spark35.get()
+val scalaLibraryVersion =
+  if (scalaVersion == "2.12") {
+    pluginlibs.versions.scala212.get()
+  } else {
+    pluginlibs.versions.scala213.get()
+  }
 
+dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
     exclude(group = "org.antlr", module = "antlr4-runtime")
@@ -33,8 +44,26 @@ dependencies {
   }
 
   implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-api-management-model"))
+  implementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
-  testImplementation(project(":polaris-tests"))
+  implementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
+    // exclude log4j dependencies
+    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+    exclude("org.apache.logging.log4j", "log4j-api")
+    exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.slf4j", "jul-to-slf4j")
+  }
+
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  implementation(
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+  )
+
   testImplementation(testFixtures(project(":polaris-quarkus-service")))
 
   testImplementation(platform(libs.quarkus.bom))
@@ -52,8 +81,8 @@ dependencies {
   testImplementation(libs.s3mock.testcontainers)
 
   // Required for Spark integration tests
-  testImplementation(enforcedPlatform(libs.scala212.lang.library))
-  testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
+  testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
+  testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
   testImplementation(libs.antlr4.runtime)
 }
