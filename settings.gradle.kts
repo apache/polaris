@@ -74,6 +74,9 @@ for (sparkVersion in sparkVersions) {
       "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/integration"),
     )
+    // skip all duplicated spark client projects in IDE to avoid problems
+    // during Intelij dependency analysis and sync. For example:
+    // "Multiple projects in this build have project directory".
     if (ideActive) {
       break
     }
