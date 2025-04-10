@@ -54,7 +54,7 @@ public class PolarisConfigurationStoreTest {
               PolarisCallContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
-                return Optional.ofNullable((T) String.valueOf(c.defaultValue));
+                return c.defaultValue.map(v -> (T) String.valueOf(v));
               }
             }
 
