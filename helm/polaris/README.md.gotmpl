@@ -87,10 +87,13 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 ```bash
 eval $(minikube -p minikube docker-env)
 
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew \
+    :polaris-quarkus-server:assemble \
+    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    :polaris-quarkus-admin:assemble \
+    :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
-    --no-build-cache
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
 ```
 
 ### Installing the chart locally

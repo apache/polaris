@@ -29,7 +29,7 @@ public class TokenBucket {
   private final long maxTokens;
   private final InstantSource instantSource;
 
-  private double tokens;
+  private long tokens;
   private long lastTokenGenerationMillis;
 
   public TokenBucket(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
@@ -51,7 +51,7 @@ public class TokenBucket {
     long t = instantSource.millis();
     long millisPassed = Math.subtractExact(t, lastTokenGenerationMillis);
     lastTokenGenerationMillis = t;
-    tokens = Math.min(maxTokens, tokens + (millisPassed * tokensPerMilli));
+    tokens = Math.min(maxTokens, tokens + ((long) (millisPassed * tokensPerMilli)));
 
     // Take a token if they have one available
     if (tokens >= 1) {

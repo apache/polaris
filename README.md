@@ -76,8 +76,13 @@ select * from db1.table1;
 
 #### Running in Docker
 
-- `./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache` - To 
-  build the image locally.
+- To build the image locally:
+  ```bash
+  ./gradlew \
+    :polaris-quarkus-server:assemble \
+    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    -Dquarkus.container-image.build=true
+  ```
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 The Polaris codebase contains some docker compose examples to quickly get started with Polaris,

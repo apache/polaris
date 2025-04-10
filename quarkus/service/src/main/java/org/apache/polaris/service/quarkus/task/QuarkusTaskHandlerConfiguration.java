@@ -18,12 +18,10 @@
  */
 package org.apache.polaris.service.quarkus.task;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.tasks")
 public interface QuarkusTaskHandlerConfiguration extends TaskHandlerConfiguration {
 

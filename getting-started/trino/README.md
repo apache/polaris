@@ -24,7 +24,10 @@ This getting started guide provides a `docker-compose` file to set up [Trino](ht
 ## Build Polaris Image
 Build Polaris Image while Docker is running
 ```
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+    :polaris-quarkus-server:assemble \
+    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    -Dquarkus.container-image.build=true
 ```
 
 ## Run the `docker-compose` file
