@@ -47,26 +47,6 @@ public class GenericTableApi extends RestApi {
     super(client, endpoints, authToken, uri);
   }
 
-  public String obtainToken(ClientCredentials credentials) {
-    try (Response response =
-        request("v1/oauth/tokens")
-            .post(
-                Entity.form(
-                    new MultivaluedHashMap<>(
-                        Map.of(
-                            "grant_type",
-                            "client_credentials",
-                            "scope",
-                            "PRINCIPAL_ROLE:ALL",
-                            "client_id",
-                            credentials.clientId(),
-                            "client_secret",
-                            credentials.clientSecret()))))) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      return response.readEntity(OAuthTokenResponse.class).token();
-    }
-  }
-
   public void purge(String catalog, Namespace ns) {
     listGenericTables(catalog, ns).forEach(t -> dropGenericTable(catalog, t));
   }

@@ -63,8 +63,7 @@ public class GenericTableCatalogAdapter
 
   private GenericTableCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
