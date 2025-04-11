@@ -22,6 +22,7 @@ plugins { id("polaris-server") }
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-model"))
+  implementation(project(":polaris-api-catalog-service"))
 
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.guava)

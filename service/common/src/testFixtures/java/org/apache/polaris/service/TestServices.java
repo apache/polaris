@@ -162,6 +162,11 @@ public record TestServices(
               return new HashMap<>();
             }
           };
+      CallContext.setCurrentContext(callContext);
+      PolarisEntityManager entityManager =
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
