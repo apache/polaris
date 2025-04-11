@@ -123,11 +123,11 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -164,6 +164,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
+  private static final String VIEW_QUERY = "select * from ns1.layer1_table";
   public static final String CATALOG_NAME = "polaris-catalog";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
@@ -386,18 +387,48 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
-  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1272 */
-  @Override
   @Test
-  @Disabled(
-      """
-      Disabled because the behavior is not applicable to Polaris.
-      To unblock:
-      1) Align Polaris behavior with the superclass by handling empty namespaces the same way, or
-      2) Modify this test to expect an exception and add a Polaris-specific version.
-      """)
-  public void listNamespacesWithEmptyNamespace() {
-    super.listNamespacesWithEmptyNamespace();
+  public void testEmptyNamespace() {
+    IcebergCatalog catalog = catalog();
+    TableIdentifier tableInRootNs = TableIdentifier.of("table");
+    String expectedMessage = "Namespace does not exist: ''";
+
+    ThrowingCallable createEmptyNamespace = () -> catalog.createNamespace(Namespace.empty());
+    Assertions.assertThatThrownBy(createEmptyNamespace)
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessage("Cannot create root namespace, as it already exists implicitly.");
+
+    ThrowingCallable dropEmptyNamespace = () -> catalog.dropNamespace(Namespace.empty());
+    Assertions.assertThatThrownBy(dropEmptyNamespace)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot drop root namespace");
+
+    ThrowingCallable createTable = () -> catalog.createTable(tableInRootNs, SCHEMA);
+    Assertions.assertThatThrownBy(createTable)
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessageContaining(expectedMessage);
+
+    ThrowingCallable createView =
+        () ->
+            catalog
+                .buildView(tableInRootNs)
+                .withSchema(SCHEMA)
+                .withDefaultNamespace(Namespace.empty())
+                .withQuery("spark", VIEW_QUERY)
+                .create();
+    Assertions.assertThatThrownBy(createView)
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessageContaining(expectedMessage);
+
+    ThrowingCallable listTables = () -> catalog.listTables(Namespace.empty());
+    Assertions.assertThatThrownBy(listTables)
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessageContaining(expectedMessage);
+
+    ThrowingCallable listViews = () -> catalog.listViews(Namespace.empty());
+    Assertions.assertThatThrownBy(listViews)
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessageContaining(expectedMessage);
   }
 
   @Test
