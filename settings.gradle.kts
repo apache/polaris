@@ -79,8 +79,8 @@ for (sparkVersion in sparkVersions) {
       noSourceChecksProjects.add(":$artifactId")
     }
     // Skip all duplicated spark client projects while using Intelij IDE.
-    // This is to avoid problems during Intelij dependency analysis and sync,
-    // like "Multiple projects in this build have project directory".
+    // This is to avoid problems during dependency analysis and sync when
+    // using Intelij, like "Multiple projects in this build have project directory".
     if (ideaActive) {
       break
     }
