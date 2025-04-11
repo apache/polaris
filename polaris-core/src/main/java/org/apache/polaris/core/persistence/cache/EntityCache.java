@@ -162,8 +162,8 @@ public class EntityCache {
     // Either cache miss, dropped entity or stale entity. In either case, invalidate and reload it.
     // Do the refresh in a critical section based on the entity ID to avoid race conditions.
     Lock lock = this.locks.get(entityId);
+    lock.lock();
     try {
-      lock.lock();
 
       // Lookup the cache again in case another thread has already invalidated it.
       existingCacheEntry = this.getEntityById(entityId);
