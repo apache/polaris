@@ -23,8 +23,6 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Util;
@@ -41,12 +39,6 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 public class PolarisCatalogUtils {
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
-
-  public static void checkIdentifierIsValid(TableIdentifier tableIdentifier) {
-    if (tableIdentifier.namespace().isEmpty()) {
-      throw new NoSuchTableException("Invalid table identifier: %s", tableIdentifier);
-    }
-  }
 
   /** Check whether the table provider is iceberg. */
   public static boolean useIceberg(String provider) {

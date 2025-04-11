@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.iceberg.spark.source.SparkTable;
@@ -133,6 +134,27 @@ public class SparkCatalogTest {
       catalog.initialize(catalogName, new CaseInsensitiveStringMap(catalogConfig));
     }
     catalog.createNamespace(defaultNS, Maps.newHashMap());
+  }
+
+  @Test
+  void testInvalidCatalogOptions() {
+    Map<String, String> catalogConfigWithImpl = Maps.newHashMap();
+    catalogConfigWithImpl.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
+    catalogConfigWithImpl.put("cache-enabled", "false");
+    SparkCatalog testCatalog = new SparkCatalog();
+    assertThatThrownBy(
+            () ->
+                testCatalog.initialize("test", new CaseInsensitiveStringMap(catalogConfigWithImpl)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Customized catalog implementation is not supported and not needed");
+
+    Map<String, String> catalogConfigInvalidType = Maps.newHashMap();
+    catalogConfigInvalidType.put(CatalogUtil.ICEBERG_CATALOG_TYPE, "hive");
+    assertThatThrownBy(
+            () ->
+                testCatalog.initialize(
+                    "test", new CaseInsensitiveStringMap(catalogConfigInvalidType)))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test

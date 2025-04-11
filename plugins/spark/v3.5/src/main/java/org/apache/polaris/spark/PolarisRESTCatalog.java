@@ -40,25 +40,25 @@ import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
-import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
-import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 
+/**
+ * [[PolarisRESTCatalog]] talks to Polaris REST APIs, and implements the PolarisCatalog interfaces,
+ * which are generic table related APIs at this moment. This class doesn't interact with any Spark
+ * objects.
+ */
 public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
-  public static final String REST_PAGE_SIZE = "rest-page-size";
-
   private final Function<Map<String, String>, RESTClient> clientBuilder;
 
   private RESTClient restClient = null;
   private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
   private OAuth2Util.AuthSession catalogAuth = null;
-  private PolarisResourcePaths paths = null;
-  private Integer pageSize = null;
+  private PolarisResourcePaths pathGenerator = null;
 
   // the default endpoints to config if server doesn't specify the 'endpoints' configuration.
   private static final Set<Endpoint> DEFAULT_ENDPOINTS = PolarisEndpoints.GENERIC_TABLE_ENDPOINTS;
@@ -74,7 +74,10 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   public void initialize(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
     Preconditions.checkArgument(unresolved != null, "Invalid configuration: null");
 
-    // resolve any configuration that is supplied by environment variables
+    // Resolve any configuration that is supplied by environment variables.
+    // For example: if we have an entity ("key", "env:envVar") in the unresolved,
+    // and envVar is configured to envValue in system env. After resolve, we got
+    // entity ("key", "envValue").
     Map<String, String> props = EnvironmentUtil.resolveAll(unresolved);
 
     // TODO: switch to use authManager once iceberg dependency is updated to 1.9.0
@@ -95,14 +98,8 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
       this.endpoints = ImmutableSet.copyOf(config.endpoints());
     }
 
-    this.paths = PolarisResourcePaths.forCatalogProperties(mergedProps);
+    this.pathGenerator = PolarisResourcePaths.forCatalogProperties(mergedProps);
     this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
-
-    this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
-    if (pageSize != null) {
-      Preconditions.checkArgument(
-          pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
-    }
 
     this.closeables = new CloseableGroup();
     this.closeables.addCloseable(this.restClient);
@@ -160,7 +157,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
         restClient
             .withAuthSession(this.catalogAuth)
             .post(
-                paths.genericTables(identifier.namespace()),
+                pathGenerator.genericTables(identifier.namespace()),
                 request,
                 LoadGenericTableRESTResponse.class,
                 Map.of(),
@@ -172,12 +169,11 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   @Override
   public GenericTable loadGenericTable(TableIdentifier identifier) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
-    PolarisCatalogUtils.checkIdentifierIsValid(identifier);
     LoadGenericTableRESTResponse response =
         restClient
             .withAuthSession(this.catalogAuth)
             .get(
-                paths.genericTable(identifier),
+                pathGenerator.genericTable(identifier),
                 null,
                 LoadGenericTableRESTResponse.class,
                 Map.of(),

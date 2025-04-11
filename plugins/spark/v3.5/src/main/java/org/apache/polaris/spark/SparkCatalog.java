@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.spark;
 
+import com.google.common.collect.Maps;
 import java.util.Map;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.rest.auth.OAuth2Util;
@@ -63,11 +65,10 @@ public class SparkCatalog
         SupportsReplaceView {
   private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
-  protected String catalogName = null;
-  protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
-  protected PolarisSparkCatalog polarisSparkCatalog = null;
-
-  protected DeltaHelper deltaHelper = null;
+  @VisibleForTesting protected String catalogName = null;
+  @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
+  @VisibleForTesting protected PolarisSparkCatalog polarisSparkCatalog = null;
+  @VisibleForTesting protected DeltaHelper deltaHelper = null;
 
   @Override
   public String name() {
@@ -75,28 +76,49 @@ public class SparkCatalog
   }
 
   /**
-   * Initialize REST Catalog for Iceberg and Polaris, this is the only catalog type supported by
-   * Polaris at this moment.
+   * Check whether invalid catalog configuration is provided, and return an option map with catalog
+   * type configured correctly. This function mainly validates two parts: 1) No customized catalog
+   * implementation is provided. 2) No non-rest catalog type is configured.
    */
-  private void initRESTCatalog(String name, CaseInsensitiveStringMap options) {
-    // TODO: relax this in the future
+  private CaseInsensitiveStringMap validateAndResolveCatalogOptions(
+      CaseInsensitiveStringMap options) {
     String catalogType =
         PropertyUtil.propertyAsString(
             options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
-    if (!catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST)) {
-      throw new UnsupportedOperationException(
-          "Only rest catalog type is supported, but got catalog type: " + catalogType);
+    if (catalogType != null && !catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST)) {
+      throw new IllegalStateException(
+          "Only rest catalog type is allowed, but got catalog type: "
+              + catalogType
+              + ". Either configure the type to rest or remove the config");
     }
 
     String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
     if (catalogImpl != null) {
-      throw new UnsupportedOperationException(
-          "Customized catalog implementation is currently not supported!");
+      throw new IllegalStateException(
+          "Customized catalog implementation is not supported and not needed, please remove the configuration!");
     }
+
+    Map<String, String> resolvedOptions = Maps.newHashMap();
+    resolvedOptions.putAll(options);
+    if (catalogType == null) {
+      // if no catalog type is provided, set the catalog type to rest to ensure iceberg
+      // spark Catalog can be started correctly.
+      resolvedOptions.put(CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
+    }
+
+    return new CaseInsensitiveStringMap(resolvedOptions);
+  }
+
+  /**
+   * Initialize REST Catalog for Iceberg and Polaris, this is the only catalog type supported by
+   * Polaris at this moment.
+   */
+  private void initRESTCatalog(String name, CaseInsensitiveStringMap options) {
+    CaseInsensitiveStringMap resolvedOptions = validateAndResolveCatalogOptions(options);
 
     // initialize the icebergSparkCatalog
     this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
-    this.icebergsSparkCatalog.initialize(name, options);
+    this.icebergsSparkCatalog.initialize(name, resolvedOptions);
 
     // initialize the polaris spark catalog
     OAuth2Util.AuthSession catalogAuth =
@@ -104,7 +126,7 @@ public class SparkCatalog
     PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
     restCatalog.initialize(options, catalogAuth);
     this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
-    this.polarisSparkCatalog.initialize(name, options);
+    this.polarisSparkCatalog.initialize(name, resolvedOptions);
   }
 
   @Override
