@@ -24,7 +24,6 @@ dependencies {
   implementation(libs.slf4j.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  implementation(platform(libs.quarkus.bom))
 
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)

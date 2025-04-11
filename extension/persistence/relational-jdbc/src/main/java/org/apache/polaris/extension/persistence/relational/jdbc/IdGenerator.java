@@ -23,19 +23,9 @@ import java.util.UUID;
 public class IdGenerator {
   private IdGenerator() {}
 
-  private static volatile IdGenerator idGenerator;
+  public static final IdGenerator idGenerator = new IdGenerator();
 
-  public static IdGenerator getInstance() {
-    if (idGenerator != null) return idGenerator;
-    synchronized (IdGenerator.class) {
-      if (idGenerator == null) {
-        idGenerator = new IdGenerator();
-      }
-    }
-    return idGenerator;
-  }
-
-  public static final long LONG_MAX_ID = 0x7fffffffffffffffL;
+  private static final long LONG_MAX_ID = 0x7fffffffffffffffL;
 
   public long nextId() {
     // Make sure this is a positive number.
