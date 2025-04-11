@@ -33,7 +33,7 @@ echo
 echo "Obtained access token: ${token}"
 
 echo
-echo Creating a catalog named polaris_demo...
+echo Creating a catalog named quickstart_catalog...
 
 curl -s -H "Authorization: Bearer ${token}" \
    -H 'Accept: application/json' \
@@ -45,7 +45,7 @@ curl -s -H "Authorization: Bearer ${token}" \
        "type": "INTERNAL",
        "readOnly": false,
        "properties": {
-         "default-base-location": "file:///tmp/quickstart_catalog/"
+         "default-base-location": "file:///var/tmp/quickstart_catalog/"
        },
        "storageConfigInfo": {
          "storageType": "FILE",

@@ -173,6 +173,15 @@ Finally, note that we include the `hadoop-aws` package here. If your table is us
 
 #### Using Spark SQL from a Docker container
 
+Replace the credentials used in the Docker container using the following code:
+
+```shell
+USER_CLIENT_ID="XXXX"
+USER_CLIENT_SECRET="YYYY"
+sed -i "s/^\(.*spark\.sql\.catalog\.polaris\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
+docker compose -f getting-started/eclipselink/docker-compose.yml up -d
+```
+
 Attach to the running spark-sql container:
 
 ```shell
@@ -221,17 +230,27 @@ If at any time access is revoked...
 Spark will lose access to the table:
 
 ```
-spark.sql("SELECT * FROM quickstart_table").show(false)
+SELECT * FROM quickstart_table;
 
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
 
 ### Connecting with Trino
 
+Replace the credentials used in the Docker container using the following code:
+
+```shell
+USER_CLIENT_ID="XXXX"
+USER_CLIENT_SECRET="YYYY"
+sed -i "s/^\(iceberg\.rest-catalog\.oauth2\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}/" getting-started/eclipselink/trino-config/catalog/iceberg.properties
+docker compose -f getting-started/eclipselink/docker-compose.yml down trino
+docker compose -f getting-started/eclipselink/docker-compose.yml up -d
+```
+
 Attach to the running Trino container:
 
 ```shell
-docker exec -it trino-trino-1 trino
+docker exec -it eclipselink-trino-1 trino
 ```
 
 You may not see Trino's prompt immediately, type ENTER to see it. A few commands that you can try:
@@ -261,7 +280,7 @@ If at any time access is revoked...
 Trino will lose access to the table:
 
 ```sql
-SELECT * FROM quickstart_table;
+SELECT * FROM iceberg.quickstart_schema.quickstart_table;
 
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
