@@ -19,7 +19,6 @@
 package org.apache.polaris.spark;
 
 import static org.apache.iceberg.CatalogProperties.CATALOG_IMPL;
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -28,32 +27,85 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.Schema;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.spark.SparkUtil;
-import org.apache.iceberg.types.Types;
+import org.apache.iceberg.spark.source.SparkTable;
+import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
-import org.apache.spark.sql.connector.catalog.*;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.NamespaceChange;
+import org.apache.spark.sql.connector.catalog.Table;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.catalog.TableProvider;
+import org.apache.spark.sql.connector.catalog.V1Table;
+import org.apache.spark.sql.connector.catalog.View;
+import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
+import org.apache.spark.sql.execution.datasources.DataSource;
+import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.internal.SQLConf;
+import org.apache.spark.sql.internal.SessionState;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import scala.Option;
 
 public class SparkCatalogTest {
-  private SparkCatalog catalog;
+  private static class InMemoryIcebergSparkCatalog extends org.apache.iceberg.spark.SparkCatalog {
+    private PolarisInMemoryCatalog inMemoryCatalog = null;
+
+    @Override
+    protected Catalog buildIcebergCatalog(String name, CaseInsensitiveStringMap options) {
+      PolarisInMemoryCatalog inMemoryCatalog = new PolarisInMemoryCatalog();
+      inMemoryCatalog.initialize(name, options);
+
+      this.inMemoryCatalog = inMemoryCatalog;
+
+      return inMemoryCatalog;
+    }
+
+    public PolarisInMemoryCatalog getInMemoryCatalog() {
+      return this.inMemoryCatalog;
+    }
+  }
+
+  /**
+   * And SparkCatalog implementation that uses InMemory catalog implementation for both Iceberg and
+   * Polaris
+   */
+  private static class InMemorySparkCatalog extends SparkCatalog {
+    @Override
+    public void initialize(String name, CaseInsensitiveStringMap options) {
+      this.catalogName = name;
+      // initialize the InMemory icebergSparkCatalog
+      this.icebergsSparkCatalog = new InMemoryIcebergSparkCatalog();
+      this.icebergsSparkCatalog.initialize(name, options);
+
+      // initialize the polarisSparkCatalog with PolarisSparkCatalog
+      this.polarisSparkCatalog =
+          new PolarisSparkCatalog(
+              ((InMemoryIcebergSparkCatalog) this.icebergsSparkCatalog).getInMemoryCatalog());
+      this.polarisSparkCatalog.initialize(name, options);
+
+      this.deltaHelper = new DeltaHelper(options);
+    }
+  }
+
+  private InMemorySparkCatalog catalog;
   private String catalogName;
 
   private static final String[] defaultNS = new String[] {"ns"};
-  private static final Schema defaultSchema =
-      new Schema(
-          5,
-          required(3, "id", Types.IntegerType.get(), "unique ID"),
-          required(4, "data", Types.StringType.get()));
 
   @BeforeEach
   public void setup() throws Exception {
@@ -61,8 +113,9 @@ public class SparkCatalogTest {
     Map<String, String> catalogConfig = Maps.newHashMap();
     catalogConfig.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfig.put("cache-enabled", "false");
-
-    catalog = new SparkCatalog();
+    catalogConfig.put(
+        DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
+    catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
             Mockito.mockStatic(SparkSession.class);
@@ -81,6 +134,34 @@ public class SparkCatalogTest {
       catalog.initialize(catalogName, new CaseInsensitiveStringMap(catalogConfig));
     }
     catalog.createNamespace(defaultNS, Maps.newHashMap());
+  }
+
+  @Test
+  void testCatalogValidation() {
+    Map<String, String> catalogConfigWithImpl = Maps.newHashMap();
+    catalogConfigWithImpl.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
+    catalogConfigWithImpl.put("cache-enabled", "false");
+    SparkCatalog testCatalog = new SparkCatalog();
+    assertThatThrownBy(
+            () ->
+                testCatalog.validateAndResolveCatalogOptions(
+                    new CaseInsensitiveStringMap(catalogConfigWithImpl)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Customized catalog implementation is not supported and not needed");
+
+    Map<String, String> catalogConfigInvalidType = Maps.newHashMap();
+    catalogConfigInvalidType.put(CatalogUtil.ICEBERG_CATALOG_TYPE, "hive");
+    assertThatThrownBy(
+            () ->
+                testCatalog.validateAndResolveCatalogOptions(
+                    new CaseInsensitiveStringMap(catalogConfigInvalidType)))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    CaseInsensitiveStringMap resolvedMap =
+        testCatalog.validateAndResolveCatalogOptions(
+            new CaseInsensitiveStringMap(Maps.newHashMap()));
+    assertThat(resolvedMap.get(CatalogUtil.ICEBERG_CATALOG_TYPE))
+        .isEqualTo(CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
   }
 
   @Test
@@ -287,16 +368,86 @@ public class SparkCatalogTest {
   }
 
   @Test
+  void testCreateAndLoadIcebergTable() throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "iceberg-table");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    StructType schema = new StructType().add("boolType", "boolean");
+
+    Table createdTable = catalog.createTable(identifier, schema, new Transform[0], properties);
+    assertThat(createdTable).isInstanceOf(SparkTable.class);
+
+    // load the table
+    Table table = catalog.loadTable(identifier);
+    // verify iceberg SparkTable is loaded
+    assertThat(table).isInstanceOf(SparkTable.class);
+
+    // verify create table with the same identifier fails with spark TableAlreadyExistsException
+    StructType newSchema = new StructType().add("LongType", "Long");
+    Map<String, String> newProperties = Maps.newHashMap();
+    newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
+    newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    assertThatThrownBy(
+            () -> catalog.createTable(identifier, newSchema, new Transform[0], newProperties))
+        .isInstanceOf(TableAlreadyExistsException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"delta", "csv"})
+  void testCreateAndLoadGenericTable(String format) throws Exception {
+    Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, format);
+    properties.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/");
+    StructType schema = new StructType().add("boolType", "boolean");
+
+    SQLConf conf = new SQLConf();
+    try (MockedStatic<SparkSession> mockedStaticSparkSession =
+            Mockito.mockStatic(SparkSession.class);
+        MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
+        MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
+            Mockito.mockStatic(DataSourceV2Utils.class)) {
+      SparkSession mockedSession = Mockito.mock(SparkSession.class);
+      mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
+      SessionState mockedState = Mockito.mock(SessionState.class);
+      Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
+      Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      TableProvider provider = Mockito.mock(TableProvider.class);
+      mockedStaticDS
+          .when(() -> DataSource.lookupDataSourceV2(Mockito.eq(format), Mockito.any()))
+          .thenReturn(Option.apply(provider));
+      V1Table table = Mockito.mock(V1Table.class);
+      mockedStaticDSV2
+          .when(
+              () ->
+                  DataSourceV2Utils.getTableFromProvider(
+                      Mockito.eq(provider), Mockito.any(), Mockito.any()))
+          .thenReturn(table);
+      Table createdTable = catalog.createTable(identifier, schema, new Transform[0], properties);
+      assertThat(createdTable).isInstanceOf(V1Table.class);
+
+      // load the table
+      Table loadedTable = catalog.loadTable(identifier);
+      assertThat(loadedTable).isInstanceOf(V1Table.class);
+    }
+
+    StructType newSchema = new StructType().add("LongType", "Long");
+    Map<String, String> newProperties = Maps.newHashMap();
+    newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "parquet");
+    newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+    assertThatThrownBy(
+            () -> catalog.createTable(identifier, newSchema, new Transform[0], newProperties))
+        .isInstanceOf(TableAlreadyExistsException.class);
+  }
+
+  @Test
   public void testUnsupportedOperations() {
     String[] namespace = new String[] {"ns1"};
     Identifier identifier = Identifier.of(namespace, "table1");
     Identifier new_identifier = Identifier.of(namespace, "table2");
     // table methods
-    assertThatThrownBy(() -> catalog.loadTable(identifier))
-        .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(
-            () -> catalog.createTable(identifier, Mockito.mock(StructType.class), null, null))
-        .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.alterTable(identifier))
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> catalog.dropTable(identifier))
