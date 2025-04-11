@@ -166,7 +166,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier,
-                            List.of(snapshot.manifestListLocation(), statisticsFile.path())),
+                            List.of(snapshot.manifestListLocation(), statisticsFile.path()),
+                            BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
@@ -293,7 +294,9 @@ class TableCleanupTaskHandlerTest {
                     .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                            tableIdentifier, List.of(snapshot.manifestListLocation())),
+                            tableIdentifier,
+                            List.of(snapshot.manifestListLocation()),
+                            BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)),
@@ -304,7 +307,9 @@ class TableCleanupTaskHandlerTest {
                     .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                            tableIdentifier, List.of(snapshot.manifestListLocation())),
+                            tableIdentifier,
+                            List.of(snapshot.manifestListLocation()),
+                            BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)),
@@ -436,7 +441,8 @@ class TableCleanupTaskHandlerTest {
                                 snapshot.manifestListLocation(),
                                 snapshot2.manifestListLocation(),
                                 statisticsFile1.path(),
-                                statisticsFile2.path())),
+                                statisticsFile2.path()),
+                            BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
@@ -596,7 +602,8 @@ class TableCleanupTaskHandlerTest {
                                 snapshot.manifestListLocation(),
                                 snapshot2.manifestListLocation(),
                                 statisticsFile1.path(),
-                                statisticsFile2.path())),
+                                statisticsFile2.path()),
+                            BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
