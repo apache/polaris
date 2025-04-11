@@ -50,7 +50,7 @@ curl -s -H "Authorization: Bearer ${token}" \
        "storageConfigInfo": {
          "storageType": "FILE",
          "allowedLocations": [
-           "file:///tmp"
+           "file:///var/tmp"
          ]
        }
      }
