@@ -26,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -82,6 +84,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
@@ -552,8 +555,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes,
+      String decodedCredentialsPath) {
+    return loadTableWithAccessDelegationIfStale(
+            tableIdentifier, null, snapshots, accessDelegationModes, decodedCredentialsPath)
+        .get();
   }
 
   /**
@@ -567,7 +575,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    *     load table response, otherwise
    */
   public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
+      TableIdentifier tableIdentifier,
+      IfNoneMatch ifNoneMatch,
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes,
+      String decodedCredentialPath) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -649,6 +661,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         responseBuilder.addAllConfig(
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
+        if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
+          responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+          responseBuilder.addConfig(
+              AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, decodedCredentialPath);
+        }
       }
 
       return Optional.of(responseBuilder.build());

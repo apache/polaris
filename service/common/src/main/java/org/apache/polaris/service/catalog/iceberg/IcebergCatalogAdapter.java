@@ -392,9 +392,18 @@ public class IcebergCatalogAdapter
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
+            String credentialsEndpoint =
+                String.format(
+                    "/v1/%s/namespaces/%s/tables/%s/credentials",
+                    prefix, tableIdentifier.namespace().toString(), tableIdentifier.name());
             response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .loadTableWithAccessDelegationIfStale(
+                        tableIdentifier,
+                        ifNoneMatch,
+                        snapshots,
+                        delegationModes,
+                        RESTUtil.decodeString(credentialsEndpoint))
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
@@ -542,7 +551,8 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+              catalog.loadTableWithAccessDelegation(
+                  tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class), null);
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
