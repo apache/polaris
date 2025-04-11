@@ -212,7 +212,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(polarisContext), createEntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(polarisContext),
+            createEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -261,7 +263,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
                 .build());
 
     RealmEntityManagerFactory realmEntityManagerFactory =
@@ -1505,7 +1507,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addProperty(
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation, polarisContext)
             .build());
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

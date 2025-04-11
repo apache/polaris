@@ -186,7 +186,9 @@ public class PolicyCatalogTest {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(polarisContext), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(polarisContext),
+            new EntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 

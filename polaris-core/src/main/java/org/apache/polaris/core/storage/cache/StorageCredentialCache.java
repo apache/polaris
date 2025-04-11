@@ -23,14 +23,11 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-
-import jakarta.inject.Inject;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -42,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Storage subscoped credential cache. */
-@ApplicationScoped
 public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
@@ -53,7 +49,6 @@ public class StorageCredentialCache {
   private final long maxCacheDurationMs;
 
   /** Initialize the creds cache */
-  @Inject
   public StorageCredentialCache(PolarisCallContext polarisCallContext) {
     this.maxCacheDurationMs = maxCacheDurationMs(polarisCallContext);
     cache =

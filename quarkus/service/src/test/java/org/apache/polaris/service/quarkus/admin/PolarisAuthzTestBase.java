@@ -223,7 +223,8 @@ public abstract class PolarisAuthzTestBase {
               }
             },
             clock);
-    this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+    this.entityManager =
+        realmEntityManagerFactory.getOrCreateEntityManager(realmContext, polarisContext);
 
     callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -262,7 +263,7 @@ public abstract class PolarisAuthzTestBase {
                 .setName(CATALOG_NAME)
                 .setCatalogType("INTERNAL")
                 .setDefaultBaseLocation(storageLocation)
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
                 .build());
 
     initBaseCatalog();
