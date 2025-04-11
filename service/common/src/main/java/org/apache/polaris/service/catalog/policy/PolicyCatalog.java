@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -213,7 +214,8 @@ public class PolicyCatalog {
               currentPolicyVersion, policyVersion));
     }
 
-    if (newDescription.equals(policy.getDescription()) && newContent.equals(policy.getContent())) {
+    if (Objects.equals(newDescription, policy.getDescription())
+        && Objects.equals(newContent, policy.getContent())) {
       // No need to update the policy if the new description and content are the same as the current
       return constructPolicy(policy);
     }

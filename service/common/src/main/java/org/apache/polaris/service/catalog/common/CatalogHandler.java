@@ -54,9 +54,9 @@ public abstract class CatalogHandler {
   // Initialized in the authorize methods.
   protected PolarisResolutionManifest resolutionManifest = null;
 
-  private final PolarisEntityManager entityManager;
-  private final String catalogName;
-  private final PolarisAuthorizer authorizer;
+  protected final PolarisEntityManager entityManager;
+  protected final String catalogName;
+  protected final PolarisAuthorizer authorizer;
 
   protected final CallContext callContext;
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
