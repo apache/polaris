@@ -33,11 +33,13 @@ apply<PublishingHelperPlugin>()
 
 apply<CopiedCodeCheckerPlugin>()
 
-spotless {
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
+if (!project.extra.has("duplicated-project-sources")) {
+  spotless {
+    kotlinGradle {
+      ktfmt().googleStyle()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+      target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
+    }
   }
 }
 

@@ -37,6 +37,11 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
+if (project.extra.has("duplicated-project-sources")) {
+  // skip the style check for duplicated projects
+  tasks.withType<Checkstyle>().configureEach { enabled = false }
+}
+
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
