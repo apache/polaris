@@ -77,17 +77,20 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -139,6 +142,9 @@ public abstract class PolarisAuthzTestBase {
   protected static final TableIdentifier TABLE_NS1_1_GENERIC =
       TableIdentifier.of(NS1, "layer1_table_generic");
 
+  // A policy directly under ns1
+  protected static final PolicyIdentifier POLICY_NS1_1 = new PolicyIdentifier(NS1, "layer1_policy");
+
   // Two tables under ns1a
   protected static final TableIdentifier TABLE_NS1A_1 = TableIdentifier.of(NS1A, "table1");
   protected static final TableIdentifier TABLE_NS1A_2 = TableIdentifier.of(NS1A, "table2");
@@ -185,6 +191,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected IcebergCatalog baseCatalog;
   protected GenericTableCatalog genericTableCatalog;
+  protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
@@ -320,6 +327,12 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
     genericTableCatalog.createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
+
+    policyCatalog.createPolicy(
+        POLICY_NS1_1,
+        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+        "test_policy",
+        "{\"enable\": false}");
 
     baseCatalog
         .buildView(VIEW_NS1_1)
@@ -463,6 +476,7 @@ public abstract class PolarisAuthzTestBase {
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
         new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }
 
   @Alternative
