@@ -40,6 +40,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -47,7 +50,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -60,6 +64,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.mockito.Mockito;
+import org.threeten.extra.MutableClock;
 
 public class AzureCredentialStorageIntegrationTest {
 
@@ -349,7 +355,11 @@ public class AzureCredentialStorageIntegrationTest {
         new AzureCredentialsStorageIntegration();
     EnumMap<PolarisCredentialProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            new PolarisCallContext(
+                Mockito.mock(),
+                Mockito.mock(),
+                new PolarisConfigurationStore() {},
+                MutableClock.of(Instant.now(), ZoneOffset.UTC).withZone(ZoneId.systemDefault())),
             azureConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

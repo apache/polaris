@@ -23,6 +23,7 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.inject.spi.CDI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +32,7 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -72,11 +73,21 @@ public class StorageCredentialCache {
 
   /** How long credentials should remain in the cache. */
   private static long maxCacheDurationMs() {
-    var cacheDurationSeconds =
-        PolarisConfiguration.loadConfig(
-            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
-    var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+    CallContext callContext = CDI.current().select(CallContext.class).get();
+    int cacheDurationSeconds =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+    int credentialDurationSeconds =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(

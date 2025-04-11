@@ -23,7 +23,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -55,7 +55,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @return An enum map including the scoped credentials
    */
   public abstract EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisCallContext callContext,
       @Nonnull T storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
