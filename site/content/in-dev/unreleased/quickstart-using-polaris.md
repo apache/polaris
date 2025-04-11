@@ -230,7 +230,7 @@ If at any time access is revoked...
 Spark will lose access to the table:
 
 ```
-SELECT * FROM quickstart_table;
+INSERT INTO quickstart_table VALUES (1, 'some data');
 
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
@@ -301,7 +301,7 @@ Then, use the access token in the Authorization header when accessing Polaris:
 
 ```shell
 curl -v http://127.0.0.1:8181/api/management/v1/principal-roles -H "Authorization: Bearer $POLARIS_TOKEN"
-curl -v http://127.0.0.1:8181/api/management/v1/catalogs/polaris_demo -H "Authorization: Bearer $POLARIS_TOKEN"
+curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "Authorization: Bearer $POLARIS_TOKEN"
 ```
 
 
