@@ -23,16 +23,17 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.inject.spi.CDI;
+import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+
+import jakarta.inject.Inject;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Storage subscoped credential cache. */
+@ApplicationScoped
 public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
@@ -48,8 +50,12 @@ public class StorageCredentialCache {
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
+  private final long maxCacheDurationMs;
+
   /** Initialize the creds cache */
-  public StorageCredentialCache() {
+  @Inject
+  public StorageCredentialCache(PolarisCallContext polarisCallContext) {
+    this.maxCacheDurationMs = maxCacheDurationMs(polarisCallContext);
     cache =
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
@@ -61,7 +67,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  maxCacheDurationMs()));
+                                  this.maxCacheDurationMs));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -72,22 +78,17 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private static long maxCacheDurationMs() {
-    CallContext callContext = CDI.current().select(CallContext.class).get();
+  private static long maxCacheDurationMs(PolarisCallContext polarisCallContext) {
     int cacheDurationSeconds =
-        callContext
-            .getPolarisCallContext()
+        polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(),
-                FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+                polarisCallContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     int credentialDurationSeconds =
-        callContext
-            .getPolarisCallContext()
+        polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(),
-                FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+                polarisCallContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(

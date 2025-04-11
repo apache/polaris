@@ -81,7 +81,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
     PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
+        entityManagerFactory.getOrCreateEntityManager(
+            context.getRealmContext(), context.getPolarisCallContext());
 
     IcebergCatalog catalogInstance =
         new IcebergCatalog(

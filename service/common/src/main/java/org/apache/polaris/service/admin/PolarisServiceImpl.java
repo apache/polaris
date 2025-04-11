@@ -110,7 +110,8 @@ public class PolarisServiceImpl
     }
 
     PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
+        entityManagerFactory.getOrCreateEntityManager(
+            realmContext, callContext.getPolarisCallContext());
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     return new PolarisAdminService(
@@ -125,7 +126,9 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     Catalog newCatalog =
-        new CatalogEntity(adminService.createCatalog(CatalogEntity.fromCatalog(catalog)))
+        new CatalogEntity(
+                adminService.createCatalog(
+                    CatalogEntity.fromCatalog(catalog, callContext.getPolarisCallContext())))
             .asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();

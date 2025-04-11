@@ -178,10 +178,10 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   @Override
   public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext) {
+      RealmContext realmContext, PolarisCallContext polarisCallContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(), new StorageCredentialCache(polarisCallContext));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());

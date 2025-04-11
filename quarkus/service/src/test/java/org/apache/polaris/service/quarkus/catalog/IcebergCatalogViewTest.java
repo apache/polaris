@@ -139,7 +139,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager, new StorageCredentialCache(polarisContext), new EntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -178,7 +178,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             .setStorageConfigurationInfo(
                 new FileStorageConfigInfo(
                     StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                "file://tmp")
+                "file://tmp",
+                polarisContext)
             .build());
 
     PolarisPassthroughResolutionView passthroughView =

@@ -233,12 +233,16 @@ public class FileIOFactoryTest {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext,
-            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services
+                .entityManagerFactory()
+                .getOrCreateEntityManager(realmContext, callContext.getPolarisCallContext()),
             services.securityContext(),
             CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
-            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services
+                .entityManagerFactory()
+                .getOrCreateEntityManager(realmContext, callContext.getPolarisCallContext()),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
             callContext,
             passthroughView,

@@ -212,7 +212,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
+            metaStoreManager, new StorageCredentialCache(polarisContext), createEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -364,8 +364,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       }
 
       @Override
-      public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+      public StorageCredentialCache getOrCreateStorageCredentialCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new StorageCredentialCache(polarisCallContext);
       }
 
       @Override
