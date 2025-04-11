@@ -42,6 +42,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -661,9 +662,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
         if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
-          responseBuilder.addAllConfig(
-              credentialDelegation.getVendedCredentialConfig(
-                  tableIdentifier, decodedCredentialPath));
+          responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+          responseBuilder.addConfig(
+              AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, decodedCredentialPath);
         }
       }
 
