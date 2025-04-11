@@ -38,7 +38,8 @@ public interface MetaStoreManagerFactory {
   StorageCredentialCache getOrCreateStorageCredentialCache(
       RealmContext realmContext, PolarisCallContext polarisCallContext);
 
-  EntityCache getOrCreateEntityCache(RealmContext realmContext);
+  EntityCache getOrCreateEntityCache(
+      RealmContext realmContext, PolarisCallContext polarisCallContext);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet);

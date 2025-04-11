@@ -141,7 +141,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(polarisContext),
-            new EntityCache(metaStoreManager));
+            new EntityCache(metaStoreManager, polarisContext));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);

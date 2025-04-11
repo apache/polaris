@@ -468,7 +468,7 @@ public abstract class BaseResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new EntityCache(metaStoreManager());
+      this.cache = new EntityCache(metaStoreManager(), callCtx());
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =

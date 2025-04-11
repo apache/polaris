@@ -59,7 +59,7 @@ public class RealmEntityManagerFactory {
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(
                   context, polarisCallContext),
-              metaStoreManagerFactory.getOrCreateEntityCache(context));
+              metaStoreManagerFactory.getOrCreateEntityCache(context, polarisCallContext));
         });
   }
 }

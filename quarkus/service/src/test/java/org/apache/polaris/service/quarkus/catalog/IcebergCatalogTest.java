@@ -193,7 +193,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   @Nullable
-  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+  protected abstract EntityCache createEntityCache(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext);
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -214,7 +215,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(polarisContext),
-            createEntityCache(metaStoreManager));
+            createEntityCache(metaStoreManager, polarisContext));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -372,8 +373,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public EntityCache getOrCreateEntityCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new EntityCache(metaStoreManager, polarisCallContext);
       }
 
       @Override

@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -53,15 +52,21 @@ public class EntityCache {
   // index by name
   private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
 
+  private final PolarisCallContext polarisCallContext;
+
   /**
    * Constructor. Cache can be private or shared
    *
    * @param polarisMetaStoreManager the meta store manager implementation
    */
-  public EntityCache(@Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
+  public EntityCache(
+      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
+      @Nonnull PolarisCallContext polarisCallContext) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
+
+    this.polarisCallContext = polarisCallContext;
 
     // When an entry is removed, we simply remove it from the byName map
     RemovalListener<Long, ResolvedPolarisEntity> removalListener =
@@ -76,7 +81,9 @@ public class EntityCache {
         };
 
     long weigherTarget =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(polarisCallContext, FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
@@ -84,7 +91,12 @@ public class EntityCache {
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
             .removalListener(removalListener); // Set the removal listener
 
-    if (PolarisConfiguration.loadConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES)) {
+    boolean useSoftValues =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
+    if (useSoftValues) {
       byIdBuilder.softValues();
     }
 

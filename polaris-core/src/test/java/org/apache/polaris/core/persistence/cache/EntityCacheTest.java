@@ -103,7 +103,7 @@ public class EntityCacheTest {
    * @return new cache for the entity store
    */
   EntityCache allocateNewCache() {
-    return new EntityCache(this.metaStoreManager);
+    return new EntityCache(this.metaStoreManager, callCtx);
   }
 
   @Test
