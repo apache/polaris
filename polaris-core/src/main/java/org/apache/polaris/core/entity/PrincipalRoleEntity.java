@@ -38,19 +38,19 @@ public class PrincipalRoleEntity extends PolarisEntity {
   public static PrincipalRoleEntity fromPrincipalRole(PrincipalRole principalRole) {
     return new Builder()
         .setName(principalRole.getName())
+        .setFederated(principalRole.getFederated())
         .setProperties(principalRole.getProperties())
         .build();
   }
 
   public PrincipalRole asPrincipalRole() {
-    PrincipalRole principalRole =
-        new PrincipalRole(
-            getName(),
-            getPropertiesAsMap(),
-            getCreateTimestamp(),
-            getLastUpdateTimestamp(),
-            getEntityVersion());
-    return principalRole;
+    return new PrincipalRole(
+        getName(),
+        PolarisEntity.isFederated(this),
+        getPropertiesAsMap(),
+        getCreateTimestamp(),
+        getLastUpdateTimestamp(),
+        getEntityVersion());
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<PrincipalRoleEntity, Builder> {
@@ -63,6 +63,13 @@ public class PrincipalRoleEntity extends PolarisEntity {
 
     public Builder(PrincipalRoleEntity original) {
       super(original);
+    }
+
+    public Builder setFederated(Boolean isFederated) {
+      if (isFederated != null && isFederated) {
+        internalProperties.put(PolarisEntityConstants.FEDERATED_ENTITY, "true");
+      }
+      return this;
     }
 
     @Override
