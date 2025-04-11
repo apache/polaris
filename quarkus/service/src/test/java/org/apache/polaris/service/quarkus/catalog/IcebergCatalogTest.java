@@ -193,7 +193,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   @Nullable
-  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+  protected abstract EntityCache createEntityCache(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext);
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -212,7 +213,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(polarisContext),
+            createEntityCache(metaStoreManager, polarisContext));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -261,7 +264,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
                 .build());
 
     RealmEntityManagerFactory realmEntityManagerFactory =
@@ -364,13 +367,15 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       }
 
       @Override
-      public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+      public StorageCredentialCache getOrCreateStorageCredentialCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new StorageCredentialCache(polarisCallContext);
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public EntityCache getOrCreateEntityCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new EntityCache(metaStoreManager, polarisCallContext);
       }
 
       @Override
@@ -1504,7 +1509,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addProperty(
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation, polarisContext)
             .build());
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

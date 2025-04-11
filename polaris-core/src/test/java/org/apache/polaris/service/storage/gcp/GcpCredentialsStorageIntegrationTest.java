@@ -39,6 +39,8 @@ import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,7 +50,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -58,6 +61,8 @@ import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguratio
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
+import org.threeten.extra.MutableClock;
 
 class GcpCredentialsStorageIntegrationTest {
 
@@ -172,7 +177,11 @@ class GcpCredentialsStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<PolarisCredentialProperty, String> credsMap =
         gcpCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            new PolarisCallContext(
+                Mockito.mock(),
+                Mockito.mock(),
+                new PolarisConfigurationStore() {},
+                MutableClock.of(Instant.now(), ZoneOffset.UTC).withZone(ZoneId.systemDefault())),
             gcpConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

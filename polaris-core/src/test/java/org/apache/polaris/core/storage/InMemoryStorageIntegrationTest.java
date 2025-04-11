@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -208,7 +207,7 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-        @Nonnull PolarisDiagnostics diagnostics,
+        @Nonnull PolarisCallContext callContext,
         @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,

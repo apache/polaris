@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.catalog;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nullable;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 
@@ -30,7 +31,8 @@ public class CatalogNoEntityCacheTest extends IcebergCatalogTest {
 
   @Nullable
   @Override
-  protected EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
+  protected EntityCache createEntityCache(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext) {
     return null;
   }
 }

@@ -186,7 +186,9 @@ public class PolicyCatalogTest {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(polarisContext),
+            new EntityCache(metaStoreManager, polarisContext));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -234,7 +236,7 @@ public class PolicyCatalogTest {
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
                 .build());
 
     PolarisPassthroughResolutionView passthroughView =
@@ -298,13 +300,15 @@ public class PolicyCatalogTest {
       }
 
       @Override
-      public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+      public StorageCredentialCache getOrCreateStorageCredentialCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new StorageCredentialCache(polarisCallContext);
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public EntityCache getOrCreateEntityCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new EntityCache(metaStoreManager, polarisCallContext);
       }
 
       @Override
