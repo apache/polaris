@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.spark;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.util.Map;
 import org.apache.arrow.util.VisibleForTesting;
@@ -80,31 +81,27 @@ public class SparkCatalog
    * type configured correctly. This function mainly validates two parts: 1) No customized catalog
    * implementation is provided. 2) No non-rest catalog type is configured.
    */
-  private CaseInsensitiveStringMap validateAndResolveCatalogOptions(
+  @VisibleForTesting
+  public CaseInsensitiveStringMap validateAndResolveCatalogOptions(
       CaseInsensitiveStringMap options) {
+    Preconditions.checkArgument(
+        options.get(CatalogProperties.CATALOG_IMPL) == null,
+        "Customized catalog implementation is not supported and not needed, please remove the configuration!");
+
     String catalogType =
         PropertyUtil.propertyAsString(
             options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
-    if (catalogType != null && !catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST)) {
-      throw new IllegalStateException(
-          "Only rest catalog type is allowed, but got catalog type: "
-              + catalogType
-              + ". Either configure the type to rest or remove the config");
-    }
-
-    String catalogImpl = options.get(CatalogProperties.CATALOG_IMPL);
-    if (catalogImpl != null) {
-      throw new IllegalStateException(
-          "Customized catalog implementation is not supported and not needed, please remove the configuration!");
-    }
+    Preconditions.checkArgument(
+        catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST),
+        "Only rest catalog type is allowed, but got catalog type: "
+            + catalogType
+            + ". Either configure the type to rest or remove the config");
 
     Map<String, String> resolvedOptions = Maps.newHashMap();
     resolvedOptions.putAll(options);
-    if (catalogType == null) {
-      // if no catalog type is provided, set the catalog type to rest to ensure iceberg
-      // spark Catalog can be started correctly.
-      resolvedOptions.put(CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
-    }
+    // when no catalog type is configured, iceberg uses hive by default. Here, we make sure the
+    // type is set to rest since we only support rest catalog.
+    resolvedOptions.put(CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
 
     return new CaseInsensitiveStringMap(resolvedOptions);
   }

@@ -137,24 +137,31 @@ public class SparkCatalogTest {
   }
 
   @Test
-  void testInvalidCatalogOptions() {
+  void testCatalogValidation() {
     Map<String, String> catalogConfigWithImpl = Maps.newHashMap();
     catalogConfigWithImpl.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfigWithImpl.put("cache-enabled", "false");
     SparkCatalog testCatalog = new SparkCatalog();
     assertThatThrownBy(
             () ->
-                testCatalog.initialize("test", new CaseInsensitiveStringMap(catalogConfigWithImpl)))
-        .isInstanceOf(IllegalStateException.class)
+                testCatalog.validateAndResolveCatalogOptions(
+                    new CaseInsensitiveStringMap(catalogConfigWithImpl)))
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Customized catalog implementation is not supported and not needed");
 
     Map<String, String> catalogConfigInvalidType = Maps.newHashMap();
     catalogConfigInvalidType.put(CatalogUtil.ICEBERG_CATALOG_TYPE, "hive");
     assertThatThrownBy(
             () ->
-                testCatalog.initialize(
-                    "test", new CaseInsensitiveStringMap(catalogConfigInvalidType)))
-        .isInstanceOf(IllegalStateException.class);
+                testCatalog.validateAndResolveCatalogOptions(
+                    new CaseInsensitiveStringMap(catalogConfigInvalidType)))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    CaseInsensitiveStringMap resolvedMap =
+        testCatalog.validateAndResolveCatalogOptions(
+            new CaseInsensitiveStringMap(Maps.newHashMap()));
+    assertThat(resolvedMap.get(CatalogUtil.ICEBERG_CATALOG_TYPE))
+        .isEqualTo(CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
   }
 
   @Test

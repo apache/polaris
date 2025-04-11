@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.spark.utils;
 
-import com.esotericsoftware.minlog.Log;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import org.apache.iceberg.common.DynConstructors;
@@ -87,7 +86,7 @@ public class DeltaHelper {
       // invoke the lazy methods before it is set
       method.invoke(this.deltaCatalog);
     } catch (NoSuchMethodException e) {
-      Log.warn("No lazy compute method found for variable isUnityCatalog");
+      LOG.warn("No lazy compute method found for variable isUnityCatalog");
     } catch (Exception e) {
       throw new RuntimeException("Failed to invoke the lazy compute methods for isUnityCatalog", e);
     }
