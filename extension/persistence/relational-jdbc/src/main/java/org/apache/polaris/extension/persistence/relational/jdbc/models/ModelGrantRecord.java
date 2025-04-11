@@ -21,15 +21,16 @@ package org.apache.polaris.extension.persistence.relational.jdbc.models;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 
 public class ModelGrantRecord {
-  // id of the catalog where the securable entity resides, NULL_ID if this entity is a top-level
+  // id of the catalog where the securable entity resides, NULL_ID i.e 0, if this entity is a
+  // top-level
   // account entity
   private long securableCatalogId;
 
   // id of the securable
   private long securableId;
 
-  // id of the catalog where the grantee entity resides, NULL_ID if this entity is a top-level
-  // account entity
+  // id of the catalog where the grantee entity resides, NULL_ID i.e 0, if this entity is a
+  // top-level account entity.
   private long granteeCatalogId;
 
   // id of the grantee

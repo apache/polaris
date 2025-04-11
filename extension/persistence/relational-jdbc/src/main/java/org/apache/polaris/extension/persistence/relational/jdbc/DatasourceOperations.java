@@ -20,7 +20,9 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,21 +35,27 @@ import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
-  DataSource datasource;
+
+  /** Already exists error * */
+  private static final String ALREADY_EXISTS_SQL_CODE = "42P07";
+
+  /** Integrity constraint * */
+  private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+
+  private final DataSource datasource;
 
   public DatasourceOperations(DataSource datasource) {
     this.datasource = datasource;
   }
 
-  public void executeScript() {
+  public void executeScript(String scriptFilePath) {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(
-                  Objects.requireNonNull(classLoader.getResourceAsStream("h2/schema-v1-h2.sql")),
-                  UTF_8));
+                  Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)), UTF_8));
       StringBuilder sqlBuffer = new StringBuilder();
       String line;
       while ((line = reader.readLine()) != null) {
@@ -61,6 +69,8 @@ public class DatasourceOperations {
               LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
             } catch (SQLException e) {
               LOGGER.error("Error executing query {}", sql, e);
+              // re:throw this as unhandled exception
+              throw new RuntimeException(e);
             }
             sqlBuffer.setLength(0); // Clear the buffer for the next statement
           }
@@ -77,8 +87,8 @@ public class DatasourceOperations {
 
   public <T> List<T> executeSelect(String query, Class<T> targetClass) {
     try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet s = statement.executeQuery(query);
+        Statement statement = connection.createStatement();
+        ResultSet s = statement.executeQuery(query)) {
       List<T> results = ResultSetToObjectConverter.convert(s, targetClass);
       return results.isEmpty() ? null : results;
     } catch (Exception e) {
@@ -93,21 +103,21 @@ public class DatasourceOperations {
       return statement.executeUpdate(query);
     } catch (SQLException e) {
       LOGGER.error("Error executing query {}", query, e);
-      return -1;
+      return handleException(e);
     }
   }
 
-  public int executeUpdate(String query, Statement statement) throws SQLException {
-    System.out.println("Executing query in transaction : " + query);
+  public int executeUpdate(String query, Statement statement) {
+    LOGGER.debug("Executing query {} within transaction", query);
     try {
       return statement.executeUpdate(query);
     } catch (SQLException e) {
       LOGGER.error("Error executing query {}", query, e);
-      return -1;
+      return handleException(e);
     }
   }
 
-  public void runWithinTransaction(TransactionCallback callback) throws Exception {
+  public void runWithinTransaction(TransactionCallback callback) {
     Connection connection = null;
     try {
       connection = borrowConnection();
@@ -124,7 +134,7 @@ public class DatasourceOperations {
         connection.rollback(); // Rollback the transaction if not successful
       }
 
-    } catch (Exception e) {
+    } catch (SQLException e) {
       if (connection != null) {
         try {
           connection.rollback(); // Rollback on exception
@@ -133,7 +143,7 @@ public class DatasourceOperations {
         }
       }
       LOGGER.error("Caught Error while executing transaction", e);
-      throw e;
+      handleException(e);
     } finally {
       if (connection != null) {
         try {
@@ -141,6 +151,7 @@ public class DatasourceOperations {
           connection.close();
         } catch (SQLException e) {
           LOGGER.error("Error closing connection", e);
+          handleException(e);
         }
       }
     }
@@ -151,7 +162,17 @@ public class DatasourceOperations {
     boolean execute(Statement statement) throws SQLException;
   }
 
-  Connection borrowConnection() throws SQLException {
+  private Connection borrowConnection() throws SQLException {
     return datasource.getConnection();
+  }
+
+  private int handleException(SQLException e) {
+    if (CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState())
+        || ALREADY_EXISTS_SQL_CODE.equals(e.getSQLState())) {
+      // This means operation failed due to input.
+      return -1;
+    } else {
+      throw new RuntimeException(e.getMessage());
+    }
   }
 }

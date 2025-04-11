@@ -23,7 +23,8 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 public class ModelEntity {
-  // the id of the catalog associated to that entity. NULL_ID if this entity is top-level like
+  // the id of the catalog associated to that entity. NULL_ID i.e. 0 if this entity is top-level
+  // like
   // a catalog
   private long catalogId;
 
@@ -57,7 +58,7 @@ public class ModelEntity {
   // when should we start purging this entity
   private long toPurgeTimestamp;
 
-  // last time this entity was updated, only for troubleshooting
+  // last time this entity was updated
   private long lastUpdateTimestamp;
 
   // properties, serialized as a JSON string
@@ -245,12 +246,23 @@ public class ModelEntity {
       return null;
     }
 
+    PolarisEntityType entityType = PolarisEntityType.fromCode(model.getTypeCode());
+    PolarisEntitySubType subType = PolarisEntitySubType.fromCode(model.getSubTypeCode());
+
+    if (entityType == null) {
+      throw new IllegalArgumentException("Invalid entity type: " + model.getTypeCode());
+    }
+
+    if (subType == null) {
+      throw new IllegalArgumentException("Invalid entity subtype: " + model.getSubTypeCode());
+    }
+
     var entity =
         new PolarisBaseEntity(
             model.getCatalogId(),
             model.getId(),
-            PolarisEntityType.fromCode(model.getTypeCode()),
-            PolarisEntitySubType.fromCode(model.getSubTypeCode()),
+            entityType,
+            subType,
             model.getParentId(),
             model.getName());
     entity.setEntityVersion(model.getEntityVersion());

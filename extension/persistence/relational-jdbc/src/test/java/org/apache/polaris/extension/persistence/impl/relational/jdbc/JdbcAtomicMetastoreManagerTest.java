@@ -31,7 +31,7 @@ import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
-import org.apache.polaris.extension.persistence.relational.jdbc.PolarisJdbcBasePersistenceImpl;
+import org.apache.polaris.extension.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -46,10 +46,10 @@ public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerT
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
-    datasourceOperations.executeScript();
+    datasourceOperations.executeScript("h2/schema-v1-h2.sql");
 
-    PolarisJdbcBasePersistenceImpl basePersistence =
-        new PolarisJdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock());
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock());
     return new PolarisTestMetaStoreManager(
         new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(

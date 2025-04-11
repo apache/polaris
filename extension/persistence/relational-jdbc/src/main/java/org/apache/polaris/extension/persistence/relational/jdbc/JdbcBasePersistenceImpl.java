@@ -20,27 +20,47 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.*;
-import org.apache.polaris.core.persistence.*;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class PolarisJdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  public PolarisJdbcBasePersistenceImpl(
+  public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider) {
@@ -50,7 +70,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   }
 
   @Override
-  public long generateNewId(PolarisCallContext callCtx) {
+  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
     return IdGenerator.getInstance().nextId();
   }
 
@@ -72,20 +92,19 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
       query = JdbcCrudQueryGenerator.generateUpdateQuery(modelEntity, params, ModelEntity.class);
     }
     int rowsUpdated = datasourceOperations.executeUpdate(query);
-    if (rowsUpdated == 0) {
-      if (originalEntity == null) {
-        // bad interface.
-        throw new EntityAlreadyExistsException(entity);
-      } else {
-        throw new RetryOnConcurrencyException("CAS failed");
-      }
+    if (rowsUpdated == -1 && originalEntity == null) {
+      // constraint validation.
+      throw new EntityAlreadyExistsException(entity);
+    } else if (rowsUpdated == 0 && originalEntity != null) {
+      // concurrently row got updated, as version mismatched.
+      throw new RetryOnConcurrencyException("CAS failed");
     }
   }
 
   @Override
   public void writeEntities(
-      PolarisCallContext callCtx,
-      List<PolarisBaseEntity> entities,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
     try {
       datasourceOperations.runWithinTransaction(
@@ -130,27 +149,26 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
                     JdbcCrudQueryGenerator.generateUpdateQuery(
                         modelEntity, params, ModelEntity.class);
               }
-              int rowsUpdated = datasourceOperations.executeUpdate(query, statement);
-              if (rowsUpdated == 0) {
-                if (originalEntities == null || originalEntities.get(i) == null) {
-                  // bad interface.
-                  throw new EntityAlreadyExistsException(entity);
-                } else {
-                  throw new RetryOnConcurrencyException("CAS failed");
-                }
+              int rowsUpdated = datasourceOperations.executeUpdate(query);
+              boolean isUpdate = (originalEntities != null && originalEntities.get(i) != null);
+              if (rowsUpdated == -1 && !isUpdate) {
+                // constrain validation exception.
+                throw new EntityAlreadyExistsException(entity);
+              } else if (rowsUpdated == 0 && isUpdate) {
+                throw new RetryOnConcurrencyException("CAS failed");
               }
             }
             return true;
           });
     } catch (Exception e) {
-      if (e instanceof EntityAlreadyExistsException) {
-        throw (EntityAlreadyExistsException) e;
-      }
+      LOGGER.error("Error executing transaction {}", e.getMessage());
+      throw e;
     }
   }
 
   @Override
-  public void writeToGrantRecords(PolarisCallContext callCtx, PolarisGrantRecord grantRec) {
+  public void writeToGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     String query =
         JdbcCrudQueryGenerator.generateInsertQuery(modelGrantRecord, ModelGrantRecord.class);
@@ -158,7 +176,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   }
 
   @Override
-  public void deleteEntity(PolarisCallContext callCtx, PolarisBaseEntity entity) {
+  public void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     Map<String, Object> params = new HashMap<>();
     params.put("id", modelEntity.getId());
@@ -168,7 +186,8 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   }
 
   @Override
-  public void deleteFromGrantRecords(PolarisCallContext callCtx, PolarisGrantRecord grantRec) {
+  public void deleteFromGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     String query =
         JdbcCrudQueryGenerator.generateDeleteQuery(modelGrantRecord, ModelGrantRecord.class);
@@ -177,10 +196,10 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public void deleteAllEntityGrantRecords(
-      PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       PolarisEntityCore entity,
-      List<PolarisGrantRecord> grantsOnGrantee,
-      List<PolarisGrantRecord> grantsOnSecurable) {
+      @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
+      @Nonnull List<PolarisGrantRecord> grantsOnSecurable) {
     // generate where clause
     StringBuilder granteeCondition = new StringBuilder("(grantee_id, grantee_catalog_id) IN (");
     granteeCondition.append("(" + entity.getId() + ", " + entity.getCatalogId() + ")");
@@ -206,7 +225,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   }
 
   @Override
-  public void deleteAll(PolarisCallContext callCtx) {
+  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     datasourceOperations.executeUpdate(JdbcCrudQueryGenerator.generateDeleteAll(ModelEntity.class));
     datasourceOperations.executeUpdate(
         JdbcCrudQueryGenerator.generateDeleteAll(ModelGrantRecord.class));
@@ -215,7 +234,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public PolarisBaseEntity lookupEntity(
-      PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     Map<String, Object> params = new HashMap<>();
     params.put("catalog_id", catalogId);
     params.put("id", entityId);
@@ -228,7 +247,11 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public PolarisBaseEntity lookupEntityByName(
-      PolarisCallContext callCtx, long catalogId, long parentId, int typeCode, String name) {
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      String name) {
     Map<String, Object> params = new HashMap<>();
     params.put("catalog_id", catalogId);
     params.put("parent_id", parentId);
@@ -252,7 +275,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<PolarisBaseEntity> lookupEntities(
-      PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     StringBuilder condition = new StringBuilder("(catalog_id, id) IN (");
     for (int i = 0; i < entityIds.size(); i++) {
@@ -279,7 +302,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         lookupEntities(callCtx, entityIds).stream()
             .collect(
@@ -301,7 +324,10 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<EntityNameLookupRecord> listEntities(
-      PolarisCallContext callCtx, long catalogId, long parentId, PolarisEntityType entityType) {
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType) {
     return listEntities(
         callCtx,
         catalogId,
@@ -315,11 +341,11 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<EntityNameLookupRecord> listEntities(
-      PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      PolarisEntityType entityType,
-      Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     return listEntities(
         callCtx,
         catalogId,
@@ -333,13 +359,13 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public <T> List<T> listEntities(
-      PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       PolarisEntityType entityType,
       int limit,
-      Predicate<PolarisBaseEntity> entityFilter,
-      Function<PolarisBaseEntity, T> transformer) {
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer) {
     Map<String, Object> params = new HashMap<>();
     params.put("catalog_id", catalogId);
     params.put("parent_id", parentId);
@@ -363,7 +389,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public int lookupEntityGrantRecordsVersion(
-      PolarisCallContext callCtx, long catalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
 
     Map<String, Object> params = new HashMap<>();
     params.put("catalog_id", catalogId);
@@ -377,7 +403,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public PolarisGrantRecord lookupGrantRecord(
-      PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -400,7 +426,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     Map<String, Object> params = new HashMap<>();
     params.put("securable_catalog_id", securableCatalogId);
     params.put("securable_id", securableId);
@@ -417,7 +443,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
   @Nonnull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     Map<String, Object> params = new HashMap<>();
     params.put("grantee_catalog_id", granteeCatalogId);
     params.put("grantee_id", granteeId);
@@ -433,7 +459,7 @@ public class PolarisJdbcBasePersistenceImpl implements BasePersistence, Integrat
 
   @Override
   public boolean hasChildren(
-      PolarisCallContext callContext,
+      @Nonnull PolarisCallContext callContext,
       PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {

@@ -23,9 +23,8 @@ dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.slf4j.api)
 
+  compileOnly(libs.jakarta.annotation.api)
   implementation(platform(libs.quarkus.bom))
-  compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
-  compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
 
   runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)

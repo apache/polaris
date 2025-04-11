@@ -18,8 +18,12 @@
  */
 package org.apache.polaris.extension.persistence.impl.relational.jdbc;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -69,7 +73,7 @@ public class DatasourceOperationsTest {
   @Test
   void testExecuteUpdate_failure() throws Exception {
     String query = "INVALID SQL";
-    when(mockStatement.executeUpdate(query)).thenThrow(new SQLException());
+    when(mockStatement.executeUpdate(query)).thenThrow(new SQLException("demo", "42P07"));
 
     int result = datasourceOperations.executeUpdate(query);
 
@@ -132,7 +136,7 @@ public class DatasourceOperationsTest {
           throw new SQLException("Boom");
         };
 
-    assertThrows(SQLException.class, () -> datasourceOperations.runWithinTransaction(callback));
+    assertThrows(RuntimeException.class, () -> datasourceOperations.runWithinTransaction(callback));
 
     verify(mockConnection).rollback();
   }

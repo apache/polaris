@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import io.smallrye.common.constraint.Nullable;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -47,13 +47,12 @@ import org.slf4j.LoggerFactory;
  */
 public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
   DataSource ds;
   private final PolarisDiagnostics diagnostics;
@@ -76,11 +75,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     DatasourceOperations databaseOperations = new DatasourceOperations(ds);
     // TODO: see if we need to take script from Quarkus or can we just
     // use the script committed repo.
-    databaseOperations.executeScript();
+    databaseOperations.executeScript("scripts/postgres/schema-v1-postgres.sql");
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
-            new PolarisJdbcBasePersistenceImpl(
+            new JdbcBasePersistenceImpl(
                 databaseOperations,
                 secretsGenerator(realmContext, rootCredentialsSet),
                 storageIntegrationProvider));
