@@ -17,39 +17,6 @@
 # under the License.
 #
 
-#EC2_INSTANCE_ID=$(cat /var/lib/cloud/data/instance-id)
-#
-#DESCRIBE_INSTANCE=$(aws ec2 describe-instances \
-#    --instance-ids $EC2_INSTANCE_ID \
-#    --query 'Reservations[*].Instances[*].{Instance:InstanceId,VPC:VpcId,AZ:Placement.AvailabilityZone}' \
-#    --output json)
-#
-#CURRENT_VPC=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."VPC")
-#
-#CURRENT_REGION=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."AZ" | sed 's/.$//')
-#
-#ALL_SUBNETS=$(aws ec2 describe-subnets \
-#  --region $CURRENT_REGION \
-#  --query 'Subnets[*].{SubnetId:SubnetId}' \
-#  --output json \
-#  | jq -r '[.[]["SubnetId"]] | join(" ")')
-#
-#
-#aws rds create-db-subnet-group \
-#  --db-subnet-group-name polaris-db-subnet-group-$RANDOM_SUFFIX \
-#  --db-subnet-group-description "Apache Polaris Quickstart DB Subnet Group" \
-#  --subnet-ids $ALL_SUBNETS
-#
-#DB_INSTANCE_INFO=$(aws rds create-db-instance \
-#  --db-instance-identifier polaris-backend-test-$RANDOM_SUFFIX \
-#  --db-instance-class db.t3.micro \
-#  --engine postgres \
-#  --master-username postgres \
-#  --master-user-password postgres \
-#  --db-name POLARIS \
-#  --db-subnet-group-name polaris-db-subnet-group-$RANDOM_SUFFIX \
-#  --allocated-storage 10)
-
 CURRENT_REGION=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.location')
 CURRENT_RESOURCE_GROUP=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.resourceGroupName')
 RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 8)

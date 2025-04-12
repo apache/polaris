@@ -30,8 +30,8 @@ The requirements to run the script below are:
 * You must be logged into the AZ CLI. Please run `az account show` to ensure that you are logged in prior to running this script.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-aws.sh
-./getting-started/assets/cloud_providers/deploy-aws.sh
+chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
+./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
 
 Also, set the following static credentials for interacting with the Polaris server in the following exercises: 
