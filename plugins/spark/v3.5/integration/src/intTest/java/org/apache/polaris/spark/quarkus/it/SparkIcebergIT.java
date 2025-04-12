@@ -26,7 +26,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusIntegrationTest
-public class SparkIcebergCatalogIT extends SparkIntegrationBase {
+public class SparkIcebergIT extends SparkIntegrationBase {
   @Test
   public void testNamespaces() {
     List<Object[]> namespaces = sql("SHOW NAMESPACES");
@@ -99,11 +99,12 @@ public class SparkIcebergCatalogIT extends SparkIntegrationBase {
     String renamedView = "renamedView";
     sql("CREATE VIEW %s AS SELECT 1 AS id", viewName);
     List<Object[]> views = sql("SHOW VIEWS");
+    assertThat(views.size()).isEqualTo(1);
     assertThat(views).contains(new Object[] {"ns", viewName, false});
 
-    // TODO: update this test once table related operations are supported
-    //    spark view rename triggers a loadTable underneath
-    assertThatThrownBy(() -> sql("ALTER VIEW %s RENAME TO %s", viewName, renamedView))
-        .isInstanceOf(UnsupportedOperationException.class);
+    sql("ALTER VIEW %s RENAME TO %s", viewName, renamedView);
+    views = sql("SHOW VIEWS");
+    assertThat(views.size()).isEqualTo(1);
+    assertThat(views).contains(new Object[] {"ns", renamedView, false});
   }
 }

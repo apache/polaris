@@ -38,6 +38,9 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.polaris.spark.SparkCatalog")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
