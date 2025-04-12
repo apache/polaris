@@ -43,6 +43,7 @@ services:
       interval: 2s
       timeout: 10s
       retries: 10
+      start_period: 10s
 
   polaris-setup:
     image: alpine/curl
