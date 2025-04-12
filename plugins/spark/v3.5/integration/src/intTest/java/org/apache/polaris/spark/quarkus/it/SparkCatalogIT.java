@@ -37,12 +37,13 @@ import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.Test;
 
 /**
- * This integration directly performs operations using the SparkCatalog instance, instead of going
- * through Spark SQL interface. Some operations don't have an easy way to trigger through the
- * SparkSQL, for example, list nested namespaces.
+ * This integration directly performs operations using the Polaris SparkCatalog instance, instead of
+ * going through Spark SQL interface. This provides a more direct testing capability against the
+ * Polaris SparkCatalog operations, some operations like listNamespaces under a namespace can not be
+ * triggered through a SQL interface directly with Spark.
  */
 @QuarkusIntegrationTest
-public class PolarisSparkCatalogIT extends SparkIntegrationBase {
+public class SparkCatalogIT extends SparkIntegrationBase {
   private static StructType schema = new StructType().add("id", "long").add("name", "string");
 
   @Test
