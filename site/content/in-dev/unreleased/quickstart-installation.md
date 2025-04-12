@@ -111,6 +111,8 @@ jenv add $(brew --prefix openjdk@21)
 jenv local 21
 ```
 
+Ensure that `java --version` and `javac` both return non-zero responses.
+
 #### jq
 
 Most Polaris Quickstart scripts require `jq`. Follow the instructions from the [jq](https://jqlang.org/download/) website to download this tool.
