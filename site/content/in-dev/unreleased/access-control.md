@@ -124,6 +124,17 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
 
+### Generic table privileges
+| Privilege | Description |
+| TABLE_CREATE | Enables registering a table with the catalog. |
+| TABLE_DROP | Enables dropping a generic table from the catalog. |
+| TABLE_LIST | Enables listing any generic tables in the catalog. |
+| TABLE_READ_PROPERTIES | Enables reading properties of the generic table. |
+| TABLE_WRITE_PROPERTIES | Enables configuring properties for the generic table. |
+| TABLE_READ_DATA | Enables reading data from the generic table by receiving short-lived read-only storage credentials from the catalog. |
+| TABLE_WRITE_DATA | Enables writing data to the generic table by receiving short-lived read+write storage credentials from the catalog. |
+| TABLE_FULL_METADATA | Grants all generic table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
+
 ### View privileges
 
 | Privilege | Description |

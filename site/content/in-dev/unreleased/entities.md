@@ -53,6 +53,10 @@ Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the API docs]({{% github-polaris "client/python/docs/CreateTableRequest.md" %}}).
 
+## Generic Table
+
+Generic tables are entities that map to non-Iceberg tables like [Delta tables](https://docs.databricks.com/aws/en/delta/table-properties) or [Hudi tables](https://hudi.apache.org/docs/next/configurations#TABLE_CONFIG)
+
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
@@ -86,6 +90,7 @@ A privilege can be scoped to any entity inside a catalog, including the catalog 
 
 For a list of supported privileges for each privilege class, see the API docs:
 * [Table Privileges]({{% github-polaris "client/python/docs/TablePrivilege.md" %}})
+
 * [View Privileges]({{% github-polaris "client/python/docs/ViewPrivilege.md" %}})
 * [Namespace Privileges]({{% github-polaris "client/python/docs/NamespacePrivilege.md" %}})
 * [Catalog Privileges]({{% github-polaris "client/python/docs/CatalogPrivilege.md" %}})
