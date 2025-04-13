@@ -25,11 +25,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app.kubernetes.io/name: postgres
   template:
     metadata:
       labels:
-        app: postgres
+        app.kubernetes.io/name: postgres
     spec:
       containers:
         - name: postgres
@@ -65,8 +65,8 @@ metadata:
   name: postgres
 spec:
   selector:
-      app: postgres
+    app.kubernetes.io/name: postgres
   ports:
-      - protocol: TCP
-        port: 5432
-        targetPort: 5432
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432

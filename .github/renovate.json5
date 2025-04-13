@@ -65,6 +65,18 @@
       extends: ["schedule:weekly"],
     },
 
+    // Quarkus platform + plugin together
+    {
+      groupName: "Quarkus Platform and Group",
+      matchManagers: ["gradle"],
+      matchPackageNames: [
+        "io.quarkus.platform:quarkus-bom",
+        "io.quarkus.platform:quarkus-amazon-services-bom",
+        "io.quarkus.platform:quarkus-google-cloud-services-bom",
+        "io.quarkus:io.quarkus.gradle.plugin",
+      ],
+    },
+
     // Turn off major & minor version updates on version-branches
     {
       matchBaseBranches: ["/^release/.*/"],

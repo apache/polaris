@@ -31,7 +31,7 @@ if [ -z "${SPARK_HOME}" ]; then
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
-ICEBERG_VERSION="1.7.1"
+ICEBERG_VERSION="1.8.1"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
@@ -44,19 +44,30 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
     if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
       fi
     fi
   else
     echo 'Found existing Spark tarball'
   fi
+  # check if the download was successful
+  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
+    echo 'Failed to download Spark distribution. Please check the logs.'
+    exit 1
+  fi
   tar xzvf ~/${SPARK_DISTRIBUTION}.tgz -C ~
-  echo 'Done!'
+  if [ $? -ne 0 ]; then
+    echo 'Failed to extract Spark distribution. Please check the logs.'
+    exit 1
+  else
+    echo 'Extracted Spark distribution.'
+    rm ~/${SPARK_DISTRIBUTION}.tgz
+  fi
   SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
   SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 else

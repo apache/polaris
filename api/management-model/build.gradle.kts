@@ -29,6 +29,11 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.swagger.annotations)
+
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(platform(libs.jackson.bom))
+  testImplementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
 openApiGenerate {
@@ -63,3 +68,5 @@ sourceSets {
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("processResources") { dependsOn("openApiGenerate") }

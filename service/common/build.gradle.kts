@@ -28,6 +28,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-catalog-service"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -101,6 +102,7 @@ dependencies {
   testFixturesImplementation(project(":polaris-api-management-model"))
   testFixturesImplementation(project(":polaris-api-management-service"))
   testFixturesImplementation(project(":polaris-api-iceberg-service"))
+  testFixturesImplementation(project(":polaris-api-catalog-service"))
 
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testFixturesImplementation(libs.jakarta.annotation.api)

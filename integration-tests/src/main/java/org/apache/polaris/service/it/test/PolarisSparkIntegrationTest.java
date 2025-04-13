@@ -64,9 +64,10 @@ import org.slf4j.LoggerFactory;
  * @implSpec This test expects the server to be configured with the following features enabled:
  *     <ul>
  *       <li>{@link
- *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
  *           {@code true}
- *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link
+ *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *     </ul>
  */
@@ -172,7 +173,6 @@ public class PolarisSparkIntegrationTest {
             .setName(externalCatalogName)
             .setProperties(externalProps)
             .setStorageConfigInfo(awsConfigModel)
-            .setRemoteUrl("http://dummy_url")
             .build();
 
     managementApi.createCatalog(externalCatalog);

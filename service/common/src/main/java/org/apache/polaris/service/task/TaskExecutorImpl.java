@@ -29,7 +29,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -64,6 +63,9 @@ public class TaskExecutorImpl implements TaskExecutor {
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+    addTaskHandler(
+        new BatchFileCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
   }
 
   /**
@@ -80,6 +82,7 @@ public class TaskExecutorImpl implements TaskExecutor {
    * asynchronously with a clone of the provided {@link CallContext}.
    */
   @Override
+  @SuppressWarnings("FutureReturnValueIgnored") // it _should_ be okay in this particular case
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
     // Unfortunately CallContext is a request-scoped bean and must be cloned now,
     // because its usage inside the TaskExecutor thread pool will outlive its
@@ -114,7 +117,9 @@ public class TaskExecutorImpl implements TaskExecutor {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
     PolarisBaseEntity taskEntity =
-        metaStoreManager.loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId).getEntity();
+        metaStoreManager
+            .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
+            .getEntity();
     if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
       throw new IllegalArgumentException("Provided taskId must be a task entity type");
     }
@@ -138,7 +143,7 @@ public class TaskExecutorImpl implements TaskExecutor {
           .addKeyValue("handlerClass", handler.getClass())
           .log("Task successfully handled");
       metaStoreManager.dropEntityIfExists(
-          ctx.getPolarisCallContext(), null, PolarisEntity.toCore(taskEntity), Map.of(), false);
+          ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
     } else {
       LOGGER
           .atWarn()

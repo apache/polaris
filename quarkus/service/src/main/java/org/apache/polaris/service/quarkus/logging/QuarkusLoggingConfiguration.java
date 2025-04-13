@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.logging;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import java.util.Map;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.log")
 public interface QuarkusLoggingConfiguration {
 

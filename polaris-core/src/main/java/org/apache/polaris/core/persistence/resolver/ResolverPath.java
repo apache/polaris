@@ -29,7 +29,7 @@ public class ResolverPath {
   // catalog
   private final List<String> entityNames;
 
-  // all entities in a path are namespaces except the last one which can be  a table_like entity
+  // all entities in a path are namespaces except the last one which can be a table_like entity
   // versus a namespace
   private final PolarisEntityType lastEntityType;
 
@@ -39,9 +39,17 @@ public class ResolverPath {
   /**
    * Constructor for an optional path
    *
-   * @param entityNames set of entity names, all are namespaces except the last one which is either
-   *     a namespace or a table_like entity
-   * @param lastEntityType type of the last entity, either namespace or table_like
+   * @param entityNames set of entity names, all are namespaces except the last one a namespa
+   */
+  public ResolverPath(List<String> entityNames) {
+    this(entityNames, null, false);
+  }
+
+  /**
+   * Constructor for an optional path
+   *
+   * @param entityNames set of entity names, all are namespaces except the last one
+   * @param lastEntityType type of the last entity
    */
   public ResolverPath(List<String> entityNames, PolarisEntityType lastEntityType) {
     this(entityNames, lastEntityType, false);
@@ -50,9 +58,8 @@ public class ResolverPath {
   /**
    * Constructor for an optional path
    *
-   * @param entityNames set of entity names, all are namespaces except the last one which is either
-   *     a namespace or a table_like entity
-   * @param lastEntityType type of the last entity, either namespace or table_like
+   * @param entityNames set of entity names, all are namespaces except the last one
+   * @param lastEntityType type of the last entity
    * @param isOptional true if optional
    */
   public ResolverPath(

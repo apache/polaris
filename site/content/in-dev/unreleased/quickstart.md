@@ -105,7 +105,10 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
@@ -125,7 +128,9 @@ The easiest way to run Polaris locally is to start the Polaris server from the
 ```shell
 cd ~/polaris
 # Build the server
-./gradlew clean :polaris-quarkus-server:assemble
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun
 # Start the server
 java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
@@ -280,7 +285,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-shell \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \

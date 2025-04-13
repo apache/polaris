@@ -36,14 +36,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -168,7 +168,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getConfiguration(
                           CallContext.getCurrentContext().getPolarisCallContext(),
                           catalog,
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                          FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {
@@ -198,8 +198,8 @@ public abstract class PolarisStorageConfigurationInfo {
         .map(
             p ->
                 Stream.of(
-                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList()))
         .orElse(List.of());
@@ -227,14 +227,6 @@ public abstract class PolarisStorageConfigurationInfo {
           String.format(
               "Location prefix not allowed: '%s', expected prefixes: '%s'",
               loc, String.join(",", storageType.prefixes)));
-    }
-  }
-
-  /** Validate the number of allowed locations not exceeding the max value. */
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
-      throw new IllegalArgumentException(
-          "Number of allowed locations exceeds " + maxAllowedLocations);
     }
   }
 

@@ -29,21 +29,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentials;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.service.context.RealmContextConfiguration;
 
 @ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
@@ -59,22 +59,18 @@ public class InMemoryPolarisMetaStoreManagerFactory
     this.storageIntegration = storageIntegration;
   }
 
-  public void onStartup(RealmContextConfiguration realmContextConfiguration) {
-    bootstrapRealmsAndPrintCredentials(realmContextConfiguration.realms());
-  }
-
   @Override
-  protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapStore(diagnostics);
+  protected TreeMapMetaStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
+    return new TreeMapMetaStore(diagnostics);
   }
 
   @Override
   protected TransactionalPersistence createMetaStoreSession(
-      @Nonnull PolarisTreeMapStore store,
+      @Nonnull TreeMapMetaStore store,
       @Nonnull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapMetaStoreSessionImpl(
+    return new TreeMapTransactionalPersistenceImpl(
         store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
   }
 
@@ -100,11 +96,26 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
     RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
-    Map<String, PrincipalSecretsResult> results = this.bootstrapRealms(realms, rootCredentialsSet);
-    bootstrappedRealms.addAll(realms);
+    this.bootstrapRealms(realms, rootCredentialsSet);
+  }
 
+  @Override
+  public Map<String, PrincipalSecretsResult> bootstrapRealms(
+      Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
+    Map<String, PrincipalSecretsResult> results = super.bootstrapRealms(realms, rootCredentialsSet);
+    bootstrappedRealms.addAll(results.keySet());
+
+    Map<String, RootCredentials> presetCredentials = rootCredentialsSet.credentials();
     for (String realmId : realms) {
+      if (presetCredentials.containsKey(realmId)) {
+        // Credentials provided in the runtime env... no need to print
+        continue;
+      }
+
       PrincipalSecretsResult principalSecrets = results.get(realmId);
+      if (principalSecrets == null) {
+        continue; // already bootstrapped (possible benign race)
+      }
 
       String msg =
           String.format(
@@ -114,5 +125,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
               principalSecrets.getPrincipalSecrets().getMainSecret());
       System.out.println(msg);
     }
+
+    return results;
   }
 }

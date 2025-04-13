@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.service.auth.OAuthTokenErrorResponse.Error;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,7 @@ public abstract class JWTBroker implements TokenBroker {
       String grantType,
       String scope,
       TokenType requestedTokenType) {
-    if (!TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
+    if (requestedTokenType != null && !TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
     if (!TokenType.ACCESS_TOKEN.equals(subjectTokenType)) {
@@ -109,12 +110,18 @@ public abstract class JWTBroker implements TokenBroker {
     if (StringUtils.isBlank(subjectToken)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
-    DecodedToken decodedToken = verify(subjectToken);
+    DecodedToken decodedToken;
+    try {
+      decodedToken = verify(subjectToken);
+    } catch (NotAuthorizedException e) {
+      return new TokenResponse(Error.invalid_client);
+    }
     EntityResult principalLookup =
         metaStoreManager.loadEntity(
             CallContext.getCurrentContext().getPolarisCallContext(),
             0L,
-            decodedToken.getPrincipalId());
+            decodedToken.getPrincipalId(),
+            PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);

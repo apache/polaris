@@ -86,29 +86,28 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 ```bash
 eval $(minikube -p minikube docker-env)
 
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew \ 
+    :polaris-quarkus-server:assemble \
+    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    :polaris-quarkus-admin:assemble \
+    :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
-    --no-build-cache
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
 ```
 
 ### Installing the chart locally
 
 The below instructions assume a local Kubernetes cluster is running and Helm is installed.
 
+#### Common setup
+
 Create and populate the target namespace:
 
 ```bash
 kubectl create namespace polaris
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
-```
 
-Finally, install the chart. From Polaris repo root:
-
-```bash
-helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-   polaris helm/polaris
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
 The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
@@ -121,10 +120,69 @@ ct lint --charts helm/polaris
 ct install --namespace polaris --debug --charts ./helm/polaris
 ```
 
-### Uninstalling the chart
+Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
+
+#### Non-persistent backend
+
+Install the chart with a non-persistent backend. From Polaris repo root:
+
+```bash
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/simple-values.yaml \
+   polaris helm/polaris
+```
+
+#### Persistent backend
+
+> [!WARNING]
+> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+
+Install the chart with a persistent backend. From Polaris repo root:
+
+```bash
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/persistence-values.yaml \
+  polaris helm/polaris
+
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
+```
+
+After deploying the chart with a persistent backend, the `persistence.xml` file, originally loaded into the Kubernetes pod via a secret, can be accessed locally if needed. This file contains the persistence configuration required for the next steps. Use the following command to retrieve it:
+
+```bash
+kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- cat /deployments/config/persistence.xml > persistence.xml
+```
+
+The `persistence.xml` file references the Postgres hostname as postgres. Update it to localhost to enable local connections:
+
+```bash
+sed -i .bak 's/postgres:/localhost:/g' persistence.xml
+```
+
+To access Polaris and Postgres locally, set up port forwarding for both services:
+```bash
+kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181
+
+kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=postgres -o jsonpath='{.items[0].metadata.name}') 5432:5432
+```
+
+Run the catalog bootstrap using the Polaris admin tool. This step initializes the catalog with the required configuration:
+
+```bash
+java -Dpolaris.persistence.eclipselink.configuration-file=./persistence.xml \
+  -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
+  -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar \
+  bootstrap -c POLARIS,root,pass -r POLARIS
+```
+
+### Uninstalling
 
 ```bash
 helm uninstall --namespace polaris polaris
+
+kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/
+
+kubectl delete namespace polaris
 ```
 
 ## Values
@@ -155,7 +213,7 @@ helm uninstall --namespace polaris polaris
 | cors.accessControlMaxAge | string | `nil` | The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration. |
 | cors.allowedHeaders | list | `[]` | HTTP headers allowed for CORS, ex: X-Custom, Content-Disposition. If this is not set or empty, all requested headers are considered allowed. |
 | cors.allowedMethods | list | `[]` | HTTP methods allowed for CORS, ex: GET, PUT, POST. If this is not set or empty, all requested methods are considered allowed. |
-| cors.allowedOrigins | list | `[]` | Origins allowed for CORS, e.g. http://polaris.io, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression. |
+| cors.allowedOrigins | list | `[]` | Origins allowed for CORS, e.g. http://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression. |
 | cors.exposedHeaders | list | `[]` | HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list. |
 | extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core This can be useful to get configuration values from Kubernetes secrets or config maps. |
 | extraInitContainers | list | `[]` | Add additional init containers to the polaris pod(s) See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/. |

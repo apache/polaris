@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.JWTSymmetricKeyBroker;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
@@ -71,7 +72,7 @@ public class JWTSymmetricKeyGeneratorTest {
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
-        .thenReturn(new PolarisMetaStoreManager.PrincipalSecretsResult(principalSecrets));
+        .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
             0L,
@@ -80,7 +81,8 @@ public class JWTSymmetricKeyGeneratorTest {
             PolarisEntitySubType.NULL_SUBTYPE,
             0L,
             "principal");
-    Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
+    Mockito.when(
+            metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
         .thenReturn(new EntityResult(principal));
     TokenBroker generator = new JWTSymmetricKeyBroker(metastoreManager, 666, () -> "polaris");
     TokenResponse token =

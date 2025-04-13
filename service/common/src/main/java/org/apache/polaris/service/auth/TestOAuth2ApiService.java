@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -36,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -91,7 +91,10 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
       LOGGER.debug("Found principal secrets for client id {}", clientId);
       EntityResult principalResult =
           metaStoreManager.loadEntity(
-              polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
+              polarisCallContext,
+              0L,
+              secretsResult.getPrincipalSecrets().getPrincipalId(),
+              PolarisEntityType.PRINCIPAL);
       if (!principalResult.isSuccess()) {
         throw new NotAuthorizedException("Failed to load principal entity");
       }

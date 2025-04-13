@@ -39,7 +39,10 @@ Tests can be run with docker-compose using the provided `./regtests/docker-compo
 follows:
 
 ```shell
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
@@ -181,14 +184,14 @@ docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
-  -o /local/regtests/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
+  -o /local/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
 
 # generate the iceberg rest client
 docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-catalog-service.yaml \
   -g python \
-  -o /local/regtests/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
+  -o /local/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
 ```
 
 Tests rely on Python 3.8 or higher. `pyenv` can be used to install a current version and mapped to the local directory

@@ -99,7 +99,11 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: |
           eval $(minikube -p minikube docker-env)
-          ./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+          ./gradlew \
+            :polaris-quarkus-server:assemble \
+            :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+            :polaris-quarkus-admin:assemble \
+            :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
           minikube image ls

@@ -30,8 +30,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -51,7 +51,7 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, CallContext, F
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
-    TableLikeEntity tableEntity = TableLikeEntity.of(task);
+    IcebergTableLikeEntity tableEntity = IcebergTableLikeEntity.of(task);
     TableIdentifier identifier = tableEntity.getTableIdentifier();
     String location = properties.get(PolarisTaskConstants.STORAGE_LOCATION);
     Set<String> locations = Set.of(location);

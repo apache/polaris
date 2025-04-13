@@ -90,10 +90,11 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link
+ *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *       <li>{@link
- *           org.apache.polaris.core.PolarisConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
+ *           org.apache.polaris.core.config.FeatureConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
  *           {@code true}
  *     </ul>
  */
@@ -465,12 +466,10 @@ public class PolarisManagementServiceIntegrationTest {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
     String catalogName = client.newEntityName("my-external-catalog");
-    String remoteUrl = "http://localhost:8080";
     Catalog catalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(catalogName)
-            .setRemoteUrl(remoteUrl)
             .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
             .setStorageConfigInfo(awsConfigModel)
             .build();
@@ -483,7 +482,6 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .isInstanceOf(ExternalCatalog.class)
           .asInstanceOf(InstanceOfAssertFactories.type(ExternalCatalog.class))
-          .returns(remoteUrl, ExternalCatalog::getRemoteUrl)
           .extracting(ExternalCatalog::getStorageConfigInfo)
           .isNotNull()
           .isInstanceOf(AwsStorageConfigInfo.class)

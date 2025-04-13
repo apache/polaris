@@ -24,12 +24,12 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
@@ -42,6 +42,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -50,8 +52,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * client.
  *
  * @implSpec This test expects the server to be configured with {@link
- *     org.apache.polaris.core.PolarisConfiguration#SUPPORTED_CATALOG_STORAGE_TYPES} set to the
- *     appropriate storage type.
+ *     org.apache.polaris.core.config.FeatureConfiguration#SUPPORTED_CATALOG_STORAGE_TYPES} set to
+ *     the appropriate storage type.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
@@ -99,9 +101,9 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
         CatalogProperties.builder(defaultBaseLocation)
             .addProperty(
                 CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:")
-            .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(
-                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build();
     Catalog catalog =
         PolarisCatalog.builder()
@@ -113,7 +115,16 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     managementApi.createCatalog(principalRoleName, catalog);
 
     restCatalog =
-        IcebergHelper.restCatalog(client, endpoints, principalCredentials, catalogName, Map.of());
+        IcebergHelper.restCatalog(
+            client,
+            endpoints,
+            principalCredentials,
+            catalogName,
+            Map.of(
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+                "catalog-default-key1",
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+                "catalog-default-key2"));
   }
 
   @AfterEach
@@ -155,5 +166,17 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1273 */
+  @Override
+  @Test
+  @Disabled(
+      """
+      Disabled because the behavior is not applicable to Polaris.
+      To unblock, update this to expect an exception and add a Polaris-specific test.
+      """)
+  public void createViewWithCustomMetadataLocation() {
+    super.createViewWithCustomMetadataLocation();
   }
 }

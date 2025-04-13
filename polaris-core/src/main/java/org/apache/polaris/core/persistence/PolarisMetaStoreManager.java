@@ -42,6 +42,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
 /**
@@ -49,7 +50,10 @@ import org.apache.polaris.core.storage.PolarisCredentialVendor;
  * authorization. It uses the underlying persistent metastore to store and retrieve Polaris metadata
  */
 public interface PolarisMetaStoreManager
-    extends PolarisSecretsManager, PolarisGrantManager, PolarisCredentialVendor {
+    extends PolarisSecretsManager,
+        PolarisGrantManager,
+        PolarisCredentialVendor,
+        PolarisPolicyMappingManager {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
@@ -252,7 +256,7 @@ public interface PolarisMetaStoreManager
   EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity);
 
@@ -272,7 +276,7 @@ public interface PolarisMetaStoreManager
   DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 
@@ -285,7 +289,11 @@ public interface PolarisMetaStoreManager
    * @param entityId the id of the entity to load
    */
   @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  EntityResult loadEntity(
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      @Nonnull PolarisEntityType entityType);
 
   /**
    * Fetch a list of tasks to be completed. Tasks
@@ -327,7 +335,10 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      PolarisEntityType entityType);
 
   /**
    * Load a resolved entity, i.e. an entity definition and associated grant records, from the
@@ -376,4 +387,14 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Indicates whether this metastore manager implementation requires entities to be reloaded via
+   * {@link #loadEntitiesChangeTracking} in order to ensure the most recent versions are obtained.
+   *
+   * <p>Generally this flag is {@code true} when entity caching is used.
+   */
+  default boolean requiresEntityReload() {
+    return true;
+  }
 }

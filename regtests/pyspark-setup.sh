@@ -18,14 +18,15 @@
 # under the License.
 #
 
-if [ ! -d ~/polaris-venv ]; then
-  python3 -m venv ~/polaris-venv
+if [ ! -d ~/polaris/polaris-venv ]; then
+  python3 -m venv ~/polaris/polaris-venv
 fi
 
-. ~/polaris-venv/bin/activate
+. ~/polaris/polaris-venv/bin/activate
 
 pip install -r requirements.txt
 
-cd client/python
+cd ../client/python
 python3 -m poetry install --with test
+
 deactivate
