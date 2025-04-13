@@ -45,7 +45,7 @@ bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
-commons-text = { module = "org.apache.commons:commons-text", version = "1.13.0" }
+commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.6" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.37.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.50.0" }
@@ -70,7 +70,7 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-junit-bom = { module = "org.junit:junit-bom", version = "5.12.1" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.12.2" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.5" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.17.0" }
