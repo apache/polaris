@@ -20,16 +20,22 @@ package org.apache.polaris.spark.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
-
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.service.types.GenericTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +45,23 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class DeserializationTest {
   private ObjectMapper mapper;
+  private static final JsonFactory FACTORY =
+      new JsonFactoryBuilder()
+          .configure(JsonFactory.Feature.INTERN_FIELD_NAMES, false)
+          .configure(JsonFactory.Feature.FAIL_ON_SYMBOL_HASH_OVERFLOW, false)
+          .build();
 
   @BeforeEach
   public void setUp() {
-    mapper = new ObjectMapper();
+    // NOTE: This is the same setting as iceberg RESTObjectMapper.java. However,
+    // RESTObjectMapper is not a public class, therefore, we duplicate the
+    // setting here for serialization and deserialization tests.
+    mapper = new ObjectMapper(FACTORY);
+    mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+    mapper.setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.ANY);
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    mapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
+    RESTSerializers.registerAll(mapper);
   }
 
   @ParameterizedTest
@@ -84,24 +103,31 @@ public class DeserializationTest {
   @Test
   public void testListGenericTablesRESTResponse() throws JsonProcessingException {
     Namespace namespace = Namespace.of("test-ns");
-    Set<TableIdentifier> idents = ImmutableSet.of(
-        TableIdentifier.of(namespace, "table1"),
-        TableIdentifier.of(namespace, "table2"),
-        TableIdentifier.of(namespace, "table3")
-    );
+    Set<TableIdentifier> idents =
+        ImmutableSet.of(
+            TableIdentifier.of(namespace, "table1"),
+            TableIdentifier.of(namespace, "table2"),
+            TableIdentifier.of(namespace, "table3"));
 
     // page token is null
-    // ListGenericTablesRESTResponse response = new ListGenericTablesRESTResponse(null, idents);
-    // String json = mapper.writeValueAsString(response);
-    String json = "{\"next-page-token\":\"null\",\"identifiers\":[\"test-ns\", \"table1\"]}";
-    ListGenericTablesRESTResponse deserializedResponse = mapper.readValue(json, ListGenericTablesRESTResponse.class);
+    ListGenericTablesRESTResponse response = new ListGenericTablesRESTResponse(null, idents);
+    String json = mapper.writeValueAsString(response);
+    ListGenericTablesRESTResponse deserializedResponse =
+        mapper.readValue(json, ListGenericTablesRESTResponse.class);
     assertThat(deserializedResponse.getNextPageToken()).isNull();
-    /* assertThat(deserializedResponse.getIdentifiers().size()).isEqualTo(idents.size());
-    for (TableIdentifier identifier: idents) {
+    assertThat(deserializedResponse.getIdentifiers().size()).isEqualTo(idents.size());
+    for (TableIdentifier identifier : idents) {
       assertThat(deserializedResponse.getIdentifiers()).contains(identifier);
-    } */
+    }
 
-
+    // page token is not null
+    response = new ListGenericTablesRESTResponse("page-token", idents);
+    json = mapper.writeValueAsString(response);
+    deserializedResponse = mapper.readValue(json, ListGenericTablesRESTResponse.class);
+    assertThat(deserializedResponse.getNextPageToken()).isEqualTo("page-token");
+    for (TableIdentifier identifier : idents) {
+      assertThat(deserializedResponse.getIdentifiers()).contains(identifier);
+    }
   }
 
   private static Stream<Arguments> genericTableTestCases() {
