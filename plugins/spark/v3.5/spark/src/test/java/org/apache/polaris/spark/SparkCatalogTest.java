@@ -456,10 +456,13 @@ public class SparkCatalogTest {
   void testAlterAndRenameTable() throws Exception {
     String icebergTableName = "iceberg-table";
     String deltaTableName = "delta-table";
+    String csvTableName = "csv-table";
     Identifier icebergIdent = Identifier.of(defaultNS, icebergTableName);
     Identifier deltaIdent = Identifier.of(defaultNS, deltaTableName);
+    Identifier csvIdent = Identifier.of(defaultNS, csvTableName);
     createAndValidateGenericTableWithLoad(catalog, icebergIdent, defaultSchema, "iceberg");
     createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
+    createAndValidateGenericTableWithLoad(catalog, csvIdent, defaultSchema, "csv");
 
     // verify alter iceberg table
     Table newIcebergTable =
@@ -475,7 +478,7 @@ public class SparkCatalogTest {
     Table icebergTable = catalog.loadTable(newIcebergIdent);
     assertThat(icebergTable).isInstanceOf(SparkTable.class);
 
-    // verify alter delta table is a no-op
+    // verify alter delta table is a no-op, and alter csv table throws an exception
     SQLConf conf = new SQLConf();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
             Mockito.mockStatic(SparkSession.class);
@@ -488,25 +491,51 @@ public class SparkCatalogTest {
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
 
-      TableProvider provider = Mockito.mock(TableProvider.class);
+      TableProvider deltaProvider = Mockito.mock(TableProvider.class);
       mockedStaticDS
           .when(() -> DataSource.lookupDataSourceV2(Mockito.eq("delta"), Mockito.any()))
-          .thenReturn(Option.apply(provider));
-      V1Table table = Mockito.mock(V1Table.class);
+          .thenReturn(Option.apply(deltaProvider));
+      V1Table deltaTable = Mockito.mock(V1Table.class);
+      Map<String, String> deltaProps = Maps.newHashMap();
+      deltaProps.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "delta");
+      deltaProps.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/test-delta/");
+      Mockito.when(deltaTable.properties()).thenReturn(deltaProps);
       mockedStaticDSV2
           .when(
               () ->
                   DataSourceV2Utils.getTableFromProvider(
-                      Mockito.eq(provider), Mockito.any(), Mockito.any()))
-          .thenReturn(table);
-      Table deltaTable =
+                      Mockito.eq(deltaProvider), Mockito.any(), Mockito.any()))
+          .thenReturn(deltaTable);
+
+      Table delta =
           catalog.alterTable(deltaIdent, TableChange.setProperty("delta_key", "delta_value"));
-      assertThat(deltaTable).isInstanceOf(V1Table.class);
+      assertThat(delta).isInstanceOf(V1Table.class);
+
+      TableProvider csvProvider = Mockito.mock(TableProvider.class);
+      mockedStaticDS
+          .when(() -> DataSource.lookupDataSourceV2(Mockito.eq("csv"), Mockito.any()))
+          .thenReturn(Option.apply(csvProvider));
+      Map<String, String> csvProps = Maps.newHashMap();
+      csvProps.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "csv");
+      V1Table csvTable = Mockito.mock(V1Table.class);
+      Mockito.when(csvTable.properties()).thenReturn(csvProps);
+      mockedStaticDSV2
+          .when(
+              () ->
+                  DataSourceV2Utils.getTableFromProvider(
+                      Mockito.eq(csvProvider), Mockito.any(), Mockito.any()))
+          .thenReturn(csvTable);
+      assertThatThrownBy(
+              () -> catalog.alterTable(csvIdent, TableChange.setProperty("csv_key", "scv_value")))
+          .isInstanceOf(UnsupportedOperationException.class);
     }
 
-    // verify rename delta table is not supported
-    Identifier newDeltaIdent = Identifier.of(defaultNS, "new-delta-table");
-    assertThatThrownBy(() -> catalog.renameTable(deltaIdent, newDeltaIdent))
+    // verify rename non-iceberg table is not supported
+    assertThatThrownBy(
+            () -> catalog.renameTable(deltaIdent, Identifier.of(defaultNS, "new-delta-table")))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(
+            () -> catalog.renameTable(csvIdent, Identifier.of(defaultNS, "new-csv-table")))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 

@@ -166,6 +166,14 @@ public class SparkCatalog
     try {
       return this.icebergsSparkCatalog.alterTable(ident, changes);
     } catch (NoSuchTableException e) {
+      Table table = this.polarisSparkCatalog.loadTable(ident);
+      String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+      if (PolarisCatalogUtils.useDelta(provider)) {
+        // For delta table, most of the alter operations is a delta log manipulation,
+        // we load the delta catalog to help handling the alter table operation
+        TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
+        return deltaCatalog.alterTable(ident, changes);
+      }
       return this.polarisSparkCatalog.alterTable(ident);
     }
   }
