@@ -18,33 +18,30 @@
  */
 package org.apache.polaris.service.auth;
 
-import java.util.Arrays;
+import jakarta.annotation.Nullable;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * A specialized {@link PrincipalCredential} used for internal authentication, when Polaris is the
- * identity provider.
+ * Principal information extracted from authentication data (typically, an access token) by the
+ * configured authentication mechanism. Used to determine the principal id, name, and roles while
+ * authenticating a request.
+ *
+ * @see DefaultAuthenticator
  */
-public interface DecodedToken extends PrincipalCredential {
+public interface PrincipalCredential {
 
-  String getClientId();
+  /** The principal id, or null if unknown. Used for principal lookups by id. */
+  @Nullable
+  Long getPrincipalId();
 
-  String getSub();
+  /** The principal name, or null if unknown. Used for principal lookups by name. */
+  @Nullable
+  String getPrincipalName();
 
-  String getScope();
-
-  @Override
-  default String getPrincipalName() {
-    // Polaris stores the principal ID in the "sub" claim as a string,
-    // and in the "principal_id" claim as a numeric value. It doesn't store
-    // the principal name in the token, so we return null here.
-    return null;
-  }
-
-  @Override
-  default Set<String> getPrincipalRoles() {
-    // Polaris stores the principal roles in the "scope" claim
-    return Arrays.stream(getScope().split(" ")).collect(Collectors.toSet());
-  }
+  /**
+   * The principal roles present in the token. The special {@link
+   * DefaultAuthenticator#PRINCIPAL_ROLE_ALL} can be used to denote a request for all principal
+   * roles that the principal has access to.
+   */
+  Set<String> getPrincipalRoles();
 }

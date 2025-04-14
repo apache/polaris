@@ -16,26 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.quarkus.auth.external.tenant;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.quarkus.security.identity.SecurityIdentity;
+import org.apache.polaris.service.quarkus.auth.external.OidcTenantConfiguration;
 
-dependencies {
+/** Resolves the Polaris OIDC tenant to use for the given {@link SecurityIdentity}. */
+public interface OidcTenantResolver {
 
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+  OidcTenantConfiguration resolveConfig(SecurityIdentity identity);
 }
