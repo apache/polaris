@@ -128,7 +128,7 @@ public class PolarisServiceImpl
     Catalog newCatalog =
         new CatalogEntity(
                 adminService.createCatalog(
-                    CatalogEntity.fromCatalog(catalog, callContext.getPolarisCallContext())))
+                    CatalogEntity.fromCatalog(callContext.getPolarisCallContext(), catalog)))
             .asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();

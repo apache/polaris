@@ -78,7 +78,7 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public static CatalogEntity fromCatalog(Catalog catalog, PolarisCallContext callContext) {
+  public static CatalogEntity fromCatalog(PolarisCallContext callContext, Catalog catalog) {
 
     Builder builder =
         new Builder()

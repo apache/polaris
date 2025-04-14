@@ -72,7 +72,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog, polarisCallContext))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -93,7 +93,7 @@ public class CatalogEntityTest {
                 new CatalogProperties("abfs://container@storageaccount.blob.windows.net/path"))
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(azureCatalog, polarisCallContext))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, azureCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid azure location uri unsupportPrefix://mybucket/path");
 
@@ -110,7 +110,7 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties("gs://externally-owned-bucket"))
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(gcpCatalog, polarisCallContext))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, gcpCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -142,7 +142,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog, polarisCallContext))
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(polarisCallContext, awsCatalog))
         .doesNotThrowAnyException();
   }
 
@@ -167,7 +167,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog, polarisCallContext));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, awsCatalog));
 
     basedLocation = "abfs://container@storageaccount.blob.windows.net/path";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -185,7 +185,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(azureCatalog, polarisCallContext));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, azureCatalog));
 
     basedLocation = "gs://externally-owned-bucket";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -202,7 +202,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(gcpCatalog, polarisCallContext));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, gcpCatalog));
   }
 
   @ParameterizedTest
@@ -237,7 +237,7 @@ public class CatalogEntityTest {
         expectedMessage = "Invalid role ARN format";
     }
     ;
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog, polarisCallContext))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(polarisCallContext, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
