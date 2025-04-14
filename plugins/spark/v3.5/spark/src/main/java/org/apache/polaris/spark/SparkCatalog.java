@@ -20,7 +20,9 @@ package org.apache.polaris.spark;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -161,33 +163,49 @@ public class SparkCatalog
 
   @Override
   public Table alterTable(Identifier ident, TableChange... changes) throws NoSuchTableException {
-    throw new UnsupportedOperationException("alterTable");
+    try {
+      return this.icebergsSparkCatalog.alterTable(ident, changes);
+    } catch (NoSuchTableException e) {
+      return this.polarisSparkCatalog.alterTable(ident);
+    }
   }
 
   @Override
   public boolean dropTable(Identifier ident) {
-    throw new UnsupportedOperationException("dropTable");
+    return this.icebergsSparkCatalog.dropTable(ident) || this.polarisSparkCatalog.dropTable(ident);
   }
 
   @Override
   public void renameTable(Identifier from, Identifier to)
       throws NoSuchTableException, TableAlreadyExistsException {
-    throw new UnsupportedOperationException("renameTable");
+    try {
+      this.icebergsSparkCatalog.renameTable(from, to);
+    } catch (NoSuchTableException e) {
+      this.polarisSparkCatalog.renameTable(from, to);
+    }
   }
 
   @Override
   public void invalidateTable(Identifier ident) {
-    throw new UnsupportedOperationException("invalidateTable");
+    this.icebergsSparkCatalog.invalidateTable(ident);
   }
 
   @Override
   public boolean purgeTable(Identifier ident) {
-    throw new UnsupportedOperationException("purgeTable");
+    if (this.icebergsSparkCatalog.purgeTable(ident)) {
+      return true;
+    } else {
+      return this.polarisSparkCatalog.purgeTable(ident);
+    }
   }
 
   @Override
   public Identifier[] listTables(String[] namespace) {
-    throw new UnsupportedOperationException("listTables");
+    Identifier[] icebergIdents = this.icebergsSparkCatalog.listTables(namespace);
+    Identifier[] genericTableIdents = this.polarisSparkCatalog.listTables(namespace);
+
+    return Stream.concat(Arrays.stream(icebergIdents), Arrays.stream(genericTableIdents))
+        .toArray(Identifier[]::new);
   }
 
   @Override

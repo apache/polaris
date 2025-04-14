@@ -19,6 +19,7 @@
 package org.apache.polaris.spark;
 
 import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.spark.Spark3Util;
 import org.apache.polaris.service.types.GenericTable;
@@ -90,12 +91,19 @@ public class PolarisSparkCatalog implements TableCatalog {
   @Override
   public Table alterTable(Identifier identifier, TableChange... changes)
       throws NoSuchTableException {
-    throw new NoSuchTableException(identifier);
+    // alterTable is a no-op operation for generic table
+    return loadTable(identifier);
+  }
+
+  @Override
+  public boolean purgeTable(Identifier ident) {
+    // purgeTable for generic table will only do a drop without purge
+    return dropTable(ident);
   }
 
   @Override
   public boolean dropTable(Identifier identifier) {
-    return false;
+    return this.polarisCatalog.dropGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
   }
 
   @Override
@@ -106,6 +114,8 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public Identifier[] listTables(String[] namespace) {
-    throw new UnsupportedOperationException("listTables operation is not supported");
+    return this.polarisCatalog.listGenericTables(Namespace.of(namespace)).stream()
+        .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
+        .toArray(Identifier[]::new);
   }
 }
