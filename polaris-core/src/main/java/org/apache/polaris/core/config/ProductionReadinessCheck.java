@@ -32,6 +32,10 @@ public interface ProductionReadinessCheck {
     return ImmutableProductionReadinessCheck.builder().addErrors(errors).build();
   }
 
+  static ProductionReadinessCheck of(Iterable<? extends Error> errors) {
+    return ImmutableProductionReadinessCheck.builder().addAllErrors(errors).build();
+  }
+
   default boolean ready() {
     return getErrors().isEmpty();
   }

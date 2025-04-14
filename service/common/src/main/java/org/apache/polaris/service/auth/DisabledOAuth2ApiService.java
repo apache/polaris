@@ -16,26 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.auth;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
-dependencies {
-
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
-}
+@ApplicationScoped
+@Identifier("disabled")
+public class DisabledOAuth2ApiService implements IcebergRestOAuth2ApiService {}

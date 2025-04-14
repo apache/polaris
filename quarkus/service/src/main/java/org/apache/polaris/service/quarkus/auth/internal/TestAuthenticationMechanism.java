@@ -16,27 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.quarkus.auth.internal;
+
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX;
 
 import com.google.common.base.Splitter;
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.RequestScoped;
+import io.vertx.ext.web.RoutingContext;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.DecodedToken;
+import org.apache.polaris.service.auth.TokenInfoExchangeResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link Authenticator} that parses a token as a sequence of key/value pairs. Specifically, we
+ * Authentication mechanism that parses a token as a sequence of key/value pairs. Specifically, we
  * expect to find
  *
  * <ul>
@@ -46,25 +49,28 @@ import org.slf4j.LoggerFactory;
  *
  * This class does not expect a client to be either present or correct. Lookup is delegated to the
  * {@link PolarisMetaStoreManager} for the current realm.
+ *
+ * <p>This mechanism is meant to be used for test purposes only. It is not intended to be used in
+ * production.
+ *
+ * <p>Note: this mechanism expects the token broker and the token service to be of the "test" type
+ * as well. This is a requirement for this mechanism to work.
  */
-@RequestScoped
-@Identifier("test")
-public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthenticator {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(TestInlineBearerTokenPolarisAuthenticator.class);
+@ApplicationScoped
+public class TestAuthenticationMechanism extends InternalAuthenticationMechanism {
 
-  public TestInlineBearerTokenPolarisAuthenticator() {
-    this(null, null);
-  }
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestAuthenticationMechanism.class);
 
-  @Inject
-  public TestInlineBearerTokenPolarisAuthenticator(
-      MetaStoreManagerFactory metaStoreManagerFactory, CallContext callContext) {
-    super(metaStoreManagerFactory, callContext);
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject CallContext callContext;
+
+  @Override
+  protected boolean shouldProcess(RoutingContext context) {
+    return configuration.type() == AuthenticationType.TEST;
   }
 
   @Override
-  public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
+  protected DecodedToken decodeToken(String credentials) {
     Map<String, String> properties = extractPrincipal(credentials);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
@@ -94,7 +100,7 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
       tokenInfo.setIntegrationId(secrets.getPrincipalId());
     }
 
-    return getPrincipal(tokenInfo);
+    return tokenInfo;
   }
 
   private static Map<String, String> extractPrincipal(String credentials) {

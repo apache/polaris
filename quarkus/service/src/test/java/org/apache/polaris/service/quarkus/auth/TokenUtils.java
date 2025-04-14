@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.auth;
 
-import static org.apache.polaris.service.auth.BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL;
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 

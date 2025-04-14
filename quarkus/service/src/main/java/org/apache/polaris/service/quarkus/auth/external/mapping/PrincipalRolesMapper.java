@@ -16,26 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.quarkus.auth.external.mapping;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.quarkus.security.identity.SecurityIdentity;
+import java.util.Set;
 
-dependencies {
+public interface PrincipalRolesMapper {
 
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+  /**
+   * Converts the role names in the identity to Polaris-specific role names.
+   *
+   * @param identity the {@link SecurityIdentity} of the user
+   * @return the converted role names
+   */
+  Set<String> mapPrincipalRoles(SecurityIdentity identity);
 }

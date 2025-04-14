@@ -74,7 +74,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
             + ";realm:"
             + realmContext.getRealmIdentifier()
             + ";role:"
-            + scope.replaceAll(BasePolarisAuthenticator.PRINCIPAL_ROLE_PREFIX, ""));
+            + scope.replaceAll(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX, ""));
     response.put("token_type", "bearer");
     response.put("expires_in", 3600);
     response.put("scope", Objects.requireNonNullElse(scope, "catalog"));

@@ -28,6 +28,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 public class AuthenticatedPolarisPrincipal implements java.security.Principal {
   private final PolarisEntity principalEntity;
   private final Set<String> activatedPrincipalRoleNames;
+  private final boolean allRoles;
   // only known and set after the above set of principal role names have been resolved. Before
   // this, this list is null
   private List<PrincipalRoleEntity> activatedPrincipalRoles;
@@ -35,8 +36,16 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
   public AuthenticatedPolarisPrincipal(
       @Nonnull PolarisEntity principalEntity, @Nonnull Set<String> activatedPrincipalRoles) {
     this.principalEntity = principalEntity;
-    this.activatedPrincipalRoleNames = activatedPrincipalRoles;
+    this.activatedPrincipalRoleNames = Set.copyOf(activatedPrincipalRoles);
     this.activatedPrincipalRoles = null;
+    this.allRoles = false;
+  }
+
+  public AuthenticatedPolarisPrincipal(@Nonnull PolarisEntity principalEntity) {
+    this.principalEntity = principalEntity;
+    this.activatedPrincipalRoleNames = Set.of();
+    this.activatedPrincipalRoles = null;
+    this.allRoles = true;
   }
 
   @Override
@@ -48,6 +57,13 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
     return principalEntity;
   }
 
+  /**
+   * Returns the set of activated principal role names. Activated role names are the roles that were
+   * explicitly requested by the client when authenticating, through JWT claims or other means.
+   *
+   * <p>By convention, this method returns an empty set when the principal is requesting all
+   * available principal roles.
+   */
   public Set<String> getActivatedPrincipalRoleNames() {
     return activatedPrincipalRoleNames;
   }
@@ -56,8 +72,18 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
     return activatedPrincipalRoles;
   }
 
+  /** FIXME this method makes this class mutable, which seems risky */
   public void setActivatedPrincipalRoles(List<PrincipalRoleEntity> activatedPrincipalRoles) {
     this.activatedPrincipalRoles = activatedPrincipalRoles;
+  }
+
+  /**
+   * Whether all roles should be activated. This is true when the principal is requesting all
+   * available principal roles. When this is true, {@link #getActivatedPrincipalRoleNames()} returns
+   * an empty set.
+   */
+  public boolean allRoles() {
+    return allRoles;
   }
 
   @Override
