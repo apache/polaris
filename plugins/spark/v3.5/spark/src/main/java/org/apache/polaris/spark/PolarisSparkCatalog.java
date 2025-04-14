@@ -91,6 +91,7 @@ public class PolarisSparkCatalog implements TableCatalog {
   @Override
   public Table alterTable(Identifier identifier, TableChange... changes)
       throws NoSuchTableException {
+    // alter table currently is not supported for general table formats
     throw new UnsupportedOperationException("alterTable operation is not supported");
   }
 

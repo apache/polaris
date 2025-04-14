@@ -170,7 +170,9 @@ public class SparkCatalog
       String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
       if (PolarisCatalogUtils.useDelta(provider)) {
         // For delta table, most of the alter operations is a delta log manipulation,
-        // we load the delta catalog to help handling the alter table operation
+        // we load the delta catalog to help handling the alter table operation.
+        // NOTE: This currently doesn't work for changing file location and file format
+        //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.alterTable(ident, changes);
       }
