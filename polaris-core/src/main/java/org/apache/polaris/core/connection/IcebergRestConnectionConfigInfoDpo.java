@@ -29,20 +29,23 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
+/**
+ * The internal persistence-object counterpart to IcebergRestConnectionConfigInfo defined in the API
+ * model.
+ */
 public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     implements IcebergCatalogPropertiesProvider {
 
   private final String remoteCatalogName;
 
   public IcebergRestConnectionConfigInfoDpo(
-      @JsonProperty(value = "connectionType", required = true) @Nonnull
-          ConnectionType connectionType,
+      @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName) {
-    super(connectionType, uri, authenticationParameters);
+    super(connectionTypeCode, uri, authenticationParameters);
     this.remoteCatalogName = remoteCatalogName;
   }
 
@@ -76,8 +79,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("connectionType", getConnectionType())
-        .add("connectionType", getConnectionType().name())
+        .add("connectionTypeCode", getConnectionTypeCode())
         .add("uri", getUri())
         .add("remoteCatalogName", getRemoteCatalogName())
         .add("authenticationParameters", getAuthenticationParameters().toString())

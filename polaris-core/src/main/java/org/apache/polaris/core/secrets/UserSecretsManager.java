@@ -47,7 +47,8 @@ public interface UserSecretsManager {
   UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntity forEntity);
 
   /**
-   * Retrieve a secret using the {@code secretReference}.
+   * Retrieve a secret using the {@code secretReference}. See {@link UserSecretReference} for
+   * details about identifiers and payloads.
    *
    * @param secretReference Identifier and any associated payload used for retrieving the secret
    * @return The stored secret, or null if it no longer exists
@@ -56,7 +57,8 @@ public interface UserSecretsManager {
   String readSecret(@Nonnull UserSecretReference secretReference);
 
   /**
-   * Delete a stored secret
+   * Delete a stored secret. See {@link UserSecretReference} for details about identifiers and
+   * payloads.
    *
    * @param secretReference Identifier and any associated payload used for retrieving the secret
    */

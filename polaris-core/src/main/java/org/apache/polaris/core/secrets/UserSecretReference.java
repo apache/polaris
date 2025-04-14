@@ -54,6 +54,14 @@ public class UserSecretReference {
   @JsonProperty(value = "referencePayload")
   private final Map<String, String> referencePayload;
 
+  /**
+   * @param urn A string which should be self-sufficient to retrieve whatever secret material that
+   *     is stored in the remote secret store.
+   * @param referencePayload Optionally, any additional information that is necessary to fully
+   *     reconstitute the original secret based on what is retrieved by the {@code urn}; this
+   *     payload may include hashes/checksums, encryption key ids, OTP encryption keys, additional
+   *     protocol/version specifiers, etc., which are implementation-specific.
+   */
   public UserSecretReference(
       @JsonProperty(value = "urn", required = true) @Nonnull String urn,
       @JsonProperty(value = "referencePayload") @Nullable Map<String, String> referencePayload) {
@@ -71,7 +79,7 @@ public class UserSecretReference {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(getUrn()) ^ Objects.hashCode(getReferencePayload());
+    return Objects.hash(getUrn(), getReferencePayload());
   }
 
   @Override

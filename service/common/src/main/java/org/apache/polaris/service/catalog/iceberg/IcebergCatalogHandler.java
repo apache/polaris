@@ -76,6 +76,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -181,7 +182,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       Catalog federatedCatalog;
-      switch (connectionConfigInfoDpo.getConnectionType()) {
+      ConnectionType connectionType =
+          ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+      switch (connectionType) {
         case ICEBERG_REST:
           SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
           federatedCatalog =
@@ -197,7 +200,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           break;
         default:
           throw new UnsupportedOperationException(
-              "Connection type not supported: " + connectionConfigInfoDpo.getConnectionType());
+              "Connection type not supported: " + connectionType);
       }
       this.baseCatalog = federatedCatalog;
     } else {

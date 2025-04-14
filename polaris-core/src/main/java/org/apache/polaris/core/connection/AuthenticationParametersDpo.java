@@ -21,34 +21,36 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.secrets.UserSecretReference;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authenticationType", visible = true)
+/**
+ * The internal persistence-object counterpart to AuthenticationParameters defined in the API model.
+ * Important: JsonSubTypes must be kept in sync with {@link AuthenticationType}.
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authenticationTypeCode", visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = OAuthClientCredentialsParametersDpo.class, name = "OAUTH"),
-  @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "BEARER"),
+  @JsonSubTypes.Type(value = OAuthClientCredentialsParametersDpo.class, name = "1"),
+  @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
 })
 public abstract class AuthenticationParametersDpo implements IcebergCatalogPropertiesProvider {
 
   public static final String INLINE_CLIENT_SECRET_REFERENCE_KEY = "inlineClientSecretReference";
   public static final String INLINE_BEARER_TOKEN_REFERENCE_KEY = "inlineBearerTokenReference";
 
-  @JsonProperty(value = "authenticationType")
-  private final AuthenticationType authenticationType;
+  @JsonProperty(value = "authenticationTypeCode")
+  private final int authenticationTypeCode;
 
   public AuthenticationParametersDpo(
-      @JsonProperty(value = "authenticationType", required = true) @Nonnull
-          AuthenticationType authenticationType) {
-    this.authenticationType = authenticationType;
+      @JsonProperty(value = "authenticationTypeCode", required = true) int authenticationTypeCode) {
+    this.authenticationTypeCode = authenticationTypeCode;
   }
 
-  public @Nonnull AuthenticationType getAuthenticationType() {
-    return authenticationType;
+  public int getAuthenticationTypeCode() {
+    return authenticationTypeCode;
   }
 
   public abstract AuthenticationParameters asAuthenticationParametersModel();
@@ -56,14 +58,14 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
   public static AuthenticationParametersDpo fromAuthenticationParametersModelWithSecrets(
       AuthenticationParameters authenticationParameters,
       Map<String, UserSecretReference> secretReferences) {
-    AuthenticationParametersDpo config = null;
+    final AuthenticationParametersDpo config;
     switch (authenticationParameters.getAuthenticationType()) {
       case OAUTH:
         OAuthClientCredentialsParameters oauthClientCredentialsModel =
             (OAuthClientCredentialsParameters) authenticationParameters;
         config =
             new OAuthClientCredentialsParametersDpo(
-                AuthenticationType.OAUTH,
+                AuthenticationType.OAUTH.getCode(),
                 oauthClientCredentialsModel.getTokenUri(),
                 oauthClientCredentialsModel.getClientId(),
                 secretReferences.get(INLINE_CLIENT_SECRET_REFERENCE_KEY),
@@ -74,7 +76,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
             (BearerAuthenticationParameters) authenticationParameters;
         config =
             new BearerAuthenticationParametersDpo(
-                AuthenticationType.BEARER, secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
+                AuthenticationType.BEARER.getCode(),
+                secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
         break;
       default:
         throw new IllegalStateException(

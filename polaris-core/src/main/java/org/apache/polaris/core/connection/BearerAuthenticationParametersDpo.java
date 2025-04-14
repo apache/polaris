@@ -28,17 +28,20 @@ import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
+/**
+ * The internal persistence-object counterpart to BearerAuthenticationParameters defined in the API
+ * model.
+ */
 public class BearerAuthenticationParametersDpo extends AuthenticationParametersDpo {
 
   @JsonProperty(value = "bearerTokenReference")
   private final UserSecretReference bearerTokenReference;
 
   public BearerAuthenticationParametersDpo(
-      @JsonProperty(value = "authenticationType", required = true) @Nonnull
-          AuthenticationType authenticationType,
+      @JsonProperty(value = "authenticationTypeCode", required = true) int authenticationTypeCode,
       @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull
           UserSecretReference bearerTokenReference) {
-    super(authenticationType);
+    super(authenticationTypeCode);
     this.bearerTokenReference = bearerTokenReference;
   }
 
@@ -63,7 +66,7 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("authenticationType", getAuthenticationType())
+        .add("authenticationTypeCode", getAuthenticationTypeCode())
         .add("bearerTokenReference", getBearerTokenReference())
         .toString();
   }

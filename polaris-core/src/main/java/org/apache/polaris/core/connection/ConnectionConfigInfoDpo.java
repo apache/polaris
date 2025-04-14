@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -37,15 +38,19 @@ import org.apache.polaris.core.secrets.UserSecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "connectionType", visible = true)
+/**
+ * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
+ * Important: JsonSubTypes must be kept in sync with {@link ConnectionType}.
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "connectionTypeCode", visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "ICEBERG_REST"),
+  @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
 
   // The type of the connection
-  private final ConnectionType connectionType;
+  private final int connectionTypeCode;
 
   // The URI of the remote catalog
   private final String uri;
@@ -54,20 +59,19 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   private final AuthenticationParametersDpo authenticationParameters;
 
   public ConnectionConfigInfoDpo(
-      @JsonProperty(value = "connectionType", required = true) @Nonnull
-          ConnectionType connectionType,
+      @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters) {
-    this(connectionType, uri, authenticationParameters, true);
+    this(connectionTypeCode, uri, authenticationParameters, true);
   }
 
   protected ConnectionConfigInfoDpo(
-      @Nonnull ConnectionType connectionType,
+      int connectionTypeCode,
       @Nonnull String uri,
       @Nonnull AuthenticationParametersDpo authenticationParameters,
       boolean validateUri) {
-    this.connectionType = connectionType;
+    this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
     if (validateUri) {
@@ -75,8 +79,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public ConnectionType getConnectionType() {
-    return connectionType;
+  public int getConnectionTypeCode() {
+    return connectionTypeCode;
   }
 
   public String getUri() {
@@ -103,7 +107,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public static ConnectionConfigInfoDpo deserialize(
+  public static @Nullable ConnectionConfigInfoDpo deserialize(
       @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
@@ -124,6 +128,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
+  /**
+   * Converts from the API-model ConnectionConfigInfo by merging basic carryover fields with
+   * expected associated secretReference(s) that have been previously scrubbed or resolved from
+   * inline secret fields of the API request.
+   */
   public static ConnectionConfigInfoDpo fromConnectionConfigInfoModelWithSecrets(
       ConnectionConfigInfo connectionConfigurationModel,
       Map<String, UserSecretReference> secretReferences) {
@@ -137,7 +146,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
         config =
             new IcebergRestConnectionConfigInfoDpo(
-                ConnectionType.ICEBERG_REST,
+                ConnectionType.ICEBERG_REST.getCode(),
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
                 icebergRestConfigModel.getRemoteCatalogName());
@@ -149,5 +158,10 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return config;
   }
 
+  /**
+   * Produces the correponding API-model ConnectionConfigInfo for this persistence object; many
+   * fields are one-to-one direct mappings, but some fields, such as secretReferences, might only be
+   * applicable/present in the persistence object, but not the API model object.
+   */
   public abstract ConnectionConfigInfo asConnectionConfigInfoModel();
 }

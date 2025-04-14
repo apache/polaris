@@ -38,6 +38,10 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
+/**
+ * The internal persistence-object counterpart to OAuthClientCredentialsParameters defined in the
+ * API model.
+ */
 public class OAuthClientCredentialsParametersDpo extends AuthenticationParametersDpo {
 
   private static final Joiner COLON_JOINER = Joiner.on(":");
@@ -55,14 +59,13 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   private final List<String> scopes;
 
   public OAuthClientCredentialsParametersDpo(
-      @JsonProperty(value = "authenticationType", required = true) @Nonnull
-          AuthenticationType authenticationType,
+      @JsonProperty(value = "authenticationTypeCode", required = true) int authenticationTypeCode,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
       @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
       @JsonProperty(value = "clientSecretReference", required = true) @Nonnull
           UserSecretReference clientSecretReference,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
-    super(authenticationType);
+    super(authenticationTypeCode);
 
     this.tokenUri = tokenUri;
     this.clientId = clientId;
@@ -139,6 +142,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
+        .add("authenticationTypeCode", getAuthenticationTypeCode())
         .add("tokenUri", getTokenUri())
         .add("clientId", getClientId())
         .add("clientSecretReference", getClientSecretReference())

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -32,14 +33,15 @@ public class ConnectionConfigInfoDpoTest {
 
   @Test
   void testOAuthClientCredentialsParameters() throws JsonProcessingException {
+    // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
             + "{"
-            + "  \"connectionType\": \"ICEBERG_REST\","
+            + "  \"connectionTypeCode\": 1,"
             + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
             + "  \"remoteCatalogName\": \"my-catalog\","
             + "  \"authenticationParameters\": {"
-            + "    \"authenticationType\": \"OAUTH\","
+            + "    \"authenticationTypeCode\": 1,"
             + "    \"tokenUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens\","
             + "    \"clientId\": \"client-id\","
             + "    \"clientSecretReference\": {"
@@ -55,22 +57,42 @@ public class ConnectionConfigInfoDpoTest {
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
     Assertions.assertNotNull(connectionConfigInfoDpo);
-    System.out.println(connectionConfigInfoDpo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);
     JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
     Assertions.assertEquals(tree1, tree2);
-  }
 
-  @Test
-  void testBearerAuthenticationParameters() throws JsonProcessingException {
-    String json =
+    // Test conversion into API model JSON.
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+    String expectedApiModelJson =
         ""
             + "{"
             + "  \"connectionType\": \"ICEBERG_REST\","
             + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
             + "  \"remoteCatalogName\": \"my-catalog\","
             + "  \"authenticationParameters\": {"
-            + "    \"authenticationType\": \"BEARER\","
+            + "    \"authenticationType\": \"OAUTH\","
+            + "    \"tokenUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens\","
+            + "    \"clientId\": \"client-id\","
+            + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
+            + "  }"
+            + "}";
+    Assertions.assertEquals(
+        objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
+        connectionConfigInfoApiModel);
+  }
+
+  @Test
+  void testBearerAuthenticationParameters() throws JsonProcessingException {
+    // Test deserialization and reserialization of the persistence JSON.
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 1,"
+            + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
+            + "  \"remoteCatalogName\": \"my-catalog\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 2,"
             + "    \"bearerTokenReference\": {"
             + "      \"urn\": \"urn:polaris-secret:keystore-id-12345\","
             + "      \"referencePayload\": {"
@@ -83,9 +105,25 @@ public class ConnectionConfigInfoDpoTest {
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
     Assertions.assertNotNull(connectionConfigInfoDpo);
-    System.out.println(connectionConfigInfoDpo.serialize());
     JsonNode tree1 = objectMapper.readTree(json);
     JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
     Assertions.assertEquals(tree1, tree2);
+
+    // Test conversion into API model JSON.
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+    String expectedApiModelJson =
+        ""
+            + "{"
+            + "  \"connectionType\": \"ICEBERG_REST\","
+            + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
+            + "  \"remoteCatalogName\": \"my-catalog\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationType\": \"BEARER\""
+            + "  }"
+            + "}";
+    Assertions.assertEquals(
+        objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
+        connectionConfigInfoApiModel);
   }
 }
