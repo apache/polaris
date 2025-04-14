@@ -30,8 +30,6 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
@@ -73,6 +71,7 @@ import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -89,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 @RequestScoped
 public class IcebergCatalogAdapter
-    implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
+    implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService, CatalogAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
@@ -220,8 +219,7 @@ public class IcebergCatalogAdapter
       String parent,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Optional<Namespace> namespaceOptional =
-        Optional.ofNullable(parent).map(IcebergCatalogAdapter::decodeNamespace);
+    Optional<Namespace> namespaceOptional = Optional.ofNullable(parent).map(this::decodeNamespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -235,10 +233,6 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.loadNamespaceMetadata(ns)).build());
-  }
-
-  private static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
   }
 
   /**

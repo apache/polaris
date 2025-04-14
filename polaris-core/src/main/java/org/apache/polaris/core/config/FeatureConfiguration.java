@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -205,7 +206,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
           .description("If true, the generic-tables endpoints are enabled")
-          .defaultValue(false)
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
+      PolarisConfiguration.<Long>builder()
+          .key("ENTITY_CACHE_WEIGHER_TARGET")
+          .description(
+              "The maximum weight for the entity cache. This is a heuristic value without any particular"
+                  + " unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning"
+                  + " requires experimentation in the specific deployment environment")
+          .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_CATALOG_FEDERATION =

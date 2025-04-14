@@ -25,37 +25,40 @@ import org.gradle.api.GradleException
 
 plugins { id("com.diffplug.spotless") }
 
-spotless {
-  java {
-    target("src/*/java/**/*.java")
-    googleJavaFormat()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
-    endWithNewline()
-    custom(
-      "disallowWildcardImports",
-      object : Serializable, FormatterFunc {
-        override fun apply(text: String): String {
-          val regex = "~/import .*\\.\\*;/".toRegex()
-          if (regex.matches(text)) {
-            throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+// skip spotless check for duplicated projects
+if (!project.extra.has("duplicated-project-sources")) {
+  spotless {
+    java {
+      target("src/*/java/**/*.java")
+      googleJavaFormat()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+      endWithNewline()
+      custom(
+        "disallowWildcardImports",
+        object : Serializable, FormatterFunc {
+          override fun apply(text: String): String {
+            val regex = "~/import .*\\.\\*;/".toRegex()
+            if (regex.matches(text)) {
+              throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+            }
+            return text
           }
-          return text
-        }
-      },
-    )
-    toggleOffOn()
-  }
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts")
-  }
-  format("xml") {
-    target("src/**/*.xml", "src/**/*.xsd")
-    targetExclude("codestyle/copyright-header.xml")
-    eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-      .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
-    // getting the license-header delimiter right is a bit tricky.
-    // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+        },
+      )
+      toggleOffOn()
+    }
+    kotlinGradle {
+      ktfmt().googleStyle()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+      target("*.gradle.kts")
+    }
+    format("xml") {
+      target("src/**/*.xml", "src/**/*.xsd")
+      targetExclude("codestyle/copyright-header.xml")
+      eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
+        .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
+      // getting the license-header delimiter right is a bit tricky.
+      // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+    }
   }
 }

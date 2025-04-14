@@ -41,18 +41,34 @@ val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
 
+val scalaLibraryVersion =
+  if (scalaVersion == "2.12") {
+    pluginlibs.versions.scala212.get()
+  } else {
+    pluginlibs.versions.scala213.get()
+  }
+
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
-    // exclude the iceberg and jackson dependencies, use the
-    // dependencies packed in the iceberg-spark dependency
+    // exclude the iceberg dependencies, use the ones pulled
+    // by iceberg-core
     exclude("org.apache.iceberg", "*")
-    exclude("com.fasterxml.jackson.core", "*")
   }
+  implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
+
+  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
+  ) {
+    // exclude the iceberg rest dependencies, use the ones pulled
+    // with iceberg-core dependency
+    exclude("org.apache.iceberg", "iceberg-core")
+  }
 
+  compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
+  compileOnly("org.scala-lang:scala-reflect:${scalaLibraryVersion}")
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -78,24 +94,65 @@ dependencies {
   }
 }
 
+// TODO: replace the check using gradlew checkstyle plugin
+tasks.register("checkNoDisallowedImports") {
+  doLast {
+    // List of disallowed imports. Right now, we disallow usage of shaded or
+    // relocated libraries in the iceberg spark runtime jar.
+    val disallowedImports =
+      listOf("import org.apache.iceberg.shaded.", "org.apache.iceberg.relocated.")
+
+    // Directory to scan for Java files
+    val sourceDirs = listOf(file("src/main/java"), file("src/test/java"))
+
+    val violations = mutableListOf<String>()
+    // Scan Java files in each directory
+    sourceDirs.forEach { sourceDir ->
+      fileTree(sourceDir)
+        .matching {
+          include("**/*.java") // Only include Java files
+        }
+        .forEach { file ->
+          val content = file.readText()
+          disallowedImports.forEach { importStatement ->
+            if (content.contains(importStatement)) {
+              violations.add(
+                "Disallowed import found in ${file.relativeTo(projectDir)}: $importStatement"
+              )
+            }
+          }
+        }
+    }
+
+    if (violations.isNotEmpty()) {
+      throw GradleException("Disallowed imports found! $violations")
+    }
+  }
+}
+
+tasks.named("check") { dependsOn("checkNoDisallowedImports") }
+
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   archiveBaseName =
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
 
-  dependencies { exclude("META-INF/**") }
+  mergeServiceFiles()
 
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  mergeServiceFiles()
-
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
   // therefore excluded from the optimization.
-  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
+  minimize {
+    exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
+    exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
+  }
+
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
