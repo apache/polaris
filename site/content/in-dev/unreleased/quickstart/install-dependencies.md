@@ -17,18 +17,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Quick Start
+Title: Installing Dependencies
 type: docs
 weight: 100
 ---
 
 This guide serves as an introduction to several key entities that can be managed with Apache Polaris (Incubating), describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.
 
-## Prerequisites
+# Prerequisites
 
 This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.
 
-### Git
+## Git
 
 To get the latest Polaris code, you'll need to clone the repository using [git](https://git-scm.com/). You can install git using [homebrew](https://brew.sh/) on MacOS:
 
@@ -45,13 +45,13 @@ cd ~
 git clone https://github.com/apache/polaris.git
 ```
 
-### Docker
+## Docker
 
 It is recommended to deploy Polaris inside [Docker](https://www.docker.com/) for the Quick Start workflow. Instructions for deploying the Quick Start workflow on the supported Cloud Providers (AWS, Azure, GCP) will be provided only with Docker. However, non-Docker deployment instructions for local deployments can also be followed on Cloud Providers.
 
 Instructions to install Docker can be found on the [Docker website](https://docs.docker.com/engine/install/). Ensure that Docker and the Docker Compose plugin are both installed.
 
-#### Docker on MacOS
+### Docker on MacOS
 Docker can be installed using [homebrew](https://brew.sh/):
 
 ```shell
@@ -66,7 +66,7 @@ docker run --security-opt seccomp=unconfined apache/polaris:latest
 
 Note: Setting the seccomp profile to "unconfined" disables the default system call filtering, which may pose security risks. Use this configuration with caution, especially in production environments.
 
-#### Docker on Amazon Linux
+### Docker on Amazon Linux
 Docker can be installed using a modification to the CentOS instructions. For example:
 
 ```shell
@@ -83,7 +83,7 @@ sudo sed -i 's/$releasever/9/g' /etc/yum.repos.d/docker-ce.repo
 sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-#### Confirm Docker Installation
+### Confirm Docker Installation
 
 Once installed, make sure that both Docker and the Docker Compose plugin are installed:
 
@@ -98,7 +98,7 @@ Also make sure Docker is running and is able to run a sample Docker container:
 docker run hello-world
 ```
 
-#### Java
+## Java
 
 If you plan to build Polaris from source yourself or using this tutorial's instructions on a Cloud Provider, you will need to satisfy a few prerequisites first.
 
@@ -113,6 +113,6 @@ jenv local 21
 
 Ensure that `java --version` and `javac` both return non-zero responses.
 
-#### jq
+## jq
 
 Most Polaris Quickstart scripts require `jq`. Follow the instructions from the [jq](https://jqlang.org/download/) website to download this tool.

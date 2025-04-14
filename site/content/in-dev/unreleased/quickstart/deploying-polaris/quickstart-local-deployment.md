@@ -66,7 +66,7 @@ cd ~/polaris
 # Build the server
 ./gradlew clean :polaris-quarkus-server:assemble
 # Start the server
-java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+./gradlew run
 ```
 
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
@@ -80,7 +80,7 @@ INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 
 At this point, Polaris is running.
 
-For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% ref "configuring-polaris-for-production" %}}).
+For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../../configuring-polaris-for-production" %}}).
 
 When Polaris is launched using an in-memory metastore, the root principal credentials can be found
 in stdout on initial startup. Look for a line that resembles the following:
@@ -100,7 +100,7 @@ export CLIENT_SECRET=<client-secret>
 
 #### Apache Spark
 
-If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "quickstart-installation#Prerequisites" %}}), make sure [git](https://git-scm.com/) is installed first.
+If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "_index#git" %}}), make sure [git](https://git-scm.com/) is installed first.
 
 Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
@@ -112,7 +112,7 @@ git checkout branch-3.5
 ```
 
 #### Trino
-If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up Trino using Docker. As in the [prerequisites]({{% ref "quickstart-installation#Prerequisites" %}}), make sure [Docker](https://www.docker.com/) is installed first
+If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up Trino using Docker. As in the [prerequisites]({{% ref "_index#docker" %}}), make sure [Docker](https://www.docker.com/) is installed first
 
 ```shell
 docker run --name trino -d -p 8080:8080 trinodb/trino

@@ -19,7 +19,7 @@
 #
 Title: Using Polaris
 type: docs
-weight: 120
+weight: 300
 ---
 
 ### Connecting to Polaris
@@ -28,7 +28,7 @@ Polaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) cli
 
 ## Defining a Catalog
 
-In Polaris, the [catalog]({{% ref "entities#catalog" %}}) is the top-level entity that objects like [tables]({{% ref "entities#table" %}}) and [views]({{% ref "entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
+In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
 
 ```shell
 cd ~/polaris
@@ -48,14 +48,14 @@ This will create a new catalog called **quickstart_catalog**.
 
 The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
 
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs]({{% ref "entities#storage-type" %}}).
+If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs]({{% relref "../entities#storage-type" %}}).
 
-Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% ref "command-line-interface" %}}).
+Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% relref "../command-line-interface" %}}).
 
 
 ### Creating a Principal and Assigning it Privileges
 
-With a catalog created, we can create a [principal]({{% ref "entities#principal" %}}) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs]({{% ref "command-line-interface" %}}).
+With a catalog created, we can create a [principal]({{% relref "../entities#principal" %}}) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs]({{% relref "../command-line-interface" %}}).
 
 ```shell
 ./polaris \
@@ -90,7 +90,7 @@ When the `principals create` command completes successfully, it will return the 
 {"clientId": "XXXX", "clientSecret": "YYYY"}
 ```
 
-Now, we grant the principal the [principal role]({{% ref "entities#principal-role" %}}) we created, and grant the [catalog role]({{% ref "entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
+Now, we grant the principal the [principal role]({{% relref "../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```shell
 ./polaris \
@@ -115,7 +115,7 @@ Now, we’ve linked our principal to the catalog via roles like so:
 
 ![Principal to Catalog](/img/quickstart/privilege-illustration-1.png "Principal to Catalog")
 
-In order to give this principal the ability to interact with the catalog, we must assign some [privileges]({{% ref "entities#privilege" %}}). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
+In order to give this principal the ability to interact with the catalog, we must assign some [privileges]({{% relref "../entities#privilege" %}}). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
 
 ```shell
 ./polaris \
@@ -129,7 +129,7 @@ In order to give this principal the ability to interact with the catalog, we mus
   CATALOG_MANAGE_CONTENT
 ```
 
-This grants the [catalog privileges]({{% ref "entities#privilege" %}}) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
+This grants the [catalog privileges]({{% relref "../entities#privilege" %}}) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
 
 ![Principal to Catalog with Catalog Role](/img/quickstart/privilege-illustration-2.png "Principal to Catalog with Catalog Role")
 

@@ -17,25 +17,21 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on AWS
+Title: Deploying Polaris on Azure
 type: docs
 weight: 112
 ---
 
-Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Amazon RDS for PostgreSQL])(https://aws.amazon.com/rds/postgresql/) instance, which will be used as the backend Postgres instance holding all Polaris data.
+Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.
 Additionally, Polaris will be bootstrapped to use this database and Docker containers will be spun up for Spark SQL and Trino.
 
 The requirements to run the script below are:
-* There must be at least two subnets created in the VPC and region in which your EC2 instance reside. The span of subnets MUST include at least 2 availability zones (AZs) within the same region. 
-* The AWS identity that you will use to run this script must have the following AWS permissions:
-  * "ec2:DescribeInstances"
-  * "rds:CreateDBInstance"
-  * "rds:DescribeDBInstances"
-  * "rds:CreateDBSubnetGroup"
+* Install the AZ CLI, if it is not already installed on the Azure VM. Instructions to download the AZ CLI can be found [here](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+* You must be logged into the AZ CLI. Please run `az account show` to ensure that you are logged in prior to running this script.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-aws.sh
-./getting-started/assets/cloud_providers/deploy-aws.sh
+chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
+./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
 
 Also, set the following static credentials for interacting with the Polaris server in the following exercises: 
