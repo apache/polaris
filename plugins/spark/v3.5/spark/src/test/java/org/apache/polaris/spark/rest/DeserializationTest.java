@@ -22,11 +22,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
+
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.types.GenericTable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -73,6 +79,29 @@ public class DeserializationTest {
     assertThat(deserializedRequest.getFormat()).isEqualTo("delta");
     assertThat(deserializedRequest.getDoc()).isEqualTo(doc);
     assertThat(deserializedRequest.getProperties().size()).isEqualTo(properties.size());
+  }
+
+  @Test
+  public void testListGenericTablesRESTResponse() throws JsonProcessingException {
+    Namespace namespace = Namespace.of("test-ns");
+    Set<TableIdentifier> idents = ImmutableSet.of(
+        TableIdentifier.of(namespace, "table1"),
+        TableIdentifier.of(namespace, "table2"),
+        TableIdentifier.of(namespace, "table3")
+    );
+
+    // page token is null
+    // ListGenericTablesRESTResponse response = new ListGenericTablesRESTResponse(null, idents);
+    // String json = mapper.writeValueAsString(response);
+    String json = "{\"next-page-token\":\"null\",\"identifiers\":[\"test-ns\", \"table1\"]}";
+    ListGenericTablesRESTResponse deserializedResponse = mapper.readValue(json, ListGenericTablesRESTResponse.class);
+    assertThat(deserializedResponse.getNextPageToken()).isNull();
+    /* assertThat(deserializedResponse.getIdentifiers().size()).isEqualTo(idents.size());
+    for (TableIdentifier identifier: idents) {
+      assertThat(deserializedResponse.getIdentifiers()).contains(identifier);
+    } */
+
+
   }
 
   private static Stream<Arguments> genericTableTestCases() {
