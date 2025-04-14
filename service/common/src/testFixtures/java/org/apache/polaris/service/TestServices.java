@@ -46,7 +46,7 @@ import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
-import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
@@ -64,6 +64,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 public record TestServices(
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
+    IcebergRestConfigurationApi restConfigurationApi,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
@@ -132,10 +133,6 @@ public record TestServices(
       RealmEntityManagerFactory realmEntityManagerFactory =
           new RealmEntityManagerFactory(metaStoreManagerFactory) {};
 
-      PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
-      PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       TransactionalPersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
       CallContext callContext =
@@ -159,6 +156,11 @@ public record TestServices(
               return new HashMap<>();
             }
           };
+      CallContext.setCurrentContext(callContext);
+      PolarisEntityManager entityManager =
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
@@ -170,7 +172,7 @@ public record TestServices(
           new PolarisCallContextCatalogFactory(
               realmEntityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
 
-      IcebergRestCatalogApiService service =
+      IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(
               realmContext,
               callContext,
@@ -181,6 +183,7 @@ public record TestServices(
               new DefaultCatalogPrefixParser());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
+      IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -225,6 +228,7 @@ public record TestServices(
       return new TestServices(
           catalogsApi,
           restApi,
+          restConfigurationApi,
           configurationStore,
           polarisDiagnostics,
           realmEntityManagerFactory,

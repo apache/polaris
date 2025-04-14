@@ -41,6 +41,8 @@ github:
     main:
       required_pull_request_reviews:
         require_code_owner_reviews: false
+        dismiss_stale_reviews: true
+        require_last_push_approval: false
         required_approving_review_count: 1
 
       required_linear_history: true
@@ -70,6 +72,7 @@ github:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
     - renovate-bot
     - singhpk234
+    - gh-yzou
 
 notifications:
   commits:      commits@polaris.apache.org

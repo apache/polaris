@@ -18,24 +18,29 @@
  */
 package org.apache.polaris.service.it.test;
 
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -56,6 +61,8 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -76,23 +83,25 @@ import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.GenericTable;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -105,7 +114,7 @@ import org.junit.jupiter.api.io.TempDir;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link PolarisConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
+ *       <li>{@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
@@ -118,16 +127,17 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static URI externalCatalogBase;
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
-  private static String principalRoleName;
   private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
-  private static CatalogApi catalogApi;
 
+  private PrincipalWithCredentials principalCredentials;
+  private CatalogApi catalogApi;
+  private GenericTableApi genericTableApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
+  private Map<String, String> restCatalogConfig;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -159,10 +169,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = client.newEntityName("snowman-rest");
-    principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
-    catalogApi = client.catalogApi(principalCredentials);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
@@ -175,12 +181,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    String principalName = "snowman-rest-" + UUID.randomUUID();
-    principalRoleName = "rest-admin-" + UUID.randomUUID();
-    PrincipalWithCredentials principalCredentials =
-        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    String principalName = client.newEntityName("snowman-rest");
+    String principalRoleName = client.newEntityName("rest-admin");
+    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
+    genericTableApi = client.genericTableApi(principalCredentials);
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
@@ -219,29 +225,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
+    restCatalogConfig =
         testInfo
             .getTestMethod()
-            .flatMap(
-                m ->
-                    Optional.ofNullable(
-                        m.getAnnotation(
-                            PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
-    ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
-    restCatalogConfig.ifPresent(
-        config -> {
-          for (int i = 0; i < config.value().length; i += 2) {
-            extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
-          }
-        });
+            .map(m -> m.getAnnotation(RestCatalogConfig.class))
+            .map(RestCatalogConfig::value)
+            .map(
+                values -> {
+                  if (values.length % 2 != 0) {
+                    throw new IllegalArgumentException(
+                        String.format("Missing value for config '%s'", values[values.length - 1]));
+                  }
+                  Map<String, String> config = new HashMap<>();
+                  for (int i = 0; i < values.length; i += 2) {
+                    config.put(values[i], values[i + 1]);
+                  }
+                  return config;
+                })
+            .orElse(ImmutableMap.of());
 
-    restCatalog =
-        IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
+    restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
 
   @AfterEach
@@ -252,6 +255,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
+  }
+
+  /**
+   * Initialize a RESTCatalog for testing.
+   *
+   * @param catalogName this parameter is currently unused.
+   * @param additionalProperties additional properties to apply on top of the default test settings
+   * @return a configured instance of RESTCatalog
+   */
+  @Override
+  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
+    ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
+    extraPropertiesBuilder.putAll(restCatalogConfig);
+    extraPropertiesBuilder.putAll(additionalProperties);
+    return IcebergHelper.restCatalog(
+        client,
+        endpoints,
+        principalCredentials,
+        currentCatalogName,
+        extraPropertiesBuilder.buildKeepingLast());
   }
 
   @Override
@@ -629,6 +652,154 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
         restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Register a table. Then, invoke an initial loadTable request to fetch and ensure ETag is
+   * present. Then, invoke a second loadTable to ensure that ETag is matched.
+   */
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testLoadTableTwiceWithETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
+      Invocation invocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
+              .build("GET");
+      try (Response initialLoadTable = invocation.invoke()) {
+        assertThat(initialLoadTable.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = initialLoadTable.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Invoke an initial registerTable request to fetch and ensure ETag is present. Then, invoke a
+   * second loadTable to ensure that ETag is matched.
+   */
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testRegisterAndLoadTableWithReturnedETag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      Invocation registerInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of("name", "my_etagged_table", "metadata-location", fileLocation)));
+      try (Response registerResponse = registerInvocation.invoke()) {
+        assertThat(registerResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = registerResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
+
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  @Test
+  @Disabled("Enable once ETag support is available in the API for loadTable.")
+  public void testCreateAndLoadTableWithReturnedEtag() {
+    // TODO: Re-enable test once spec is up to date with ETag change for loadTable in Iceberg
+
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      Invocation createInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/tables")
+              .buildPost(
+                  Entity.json(
+                      CreateTableRequest.builder()
+                          .withName("my_etagged_table")
+                          .withLocation(tableMetadata.location())
+                          .withPartitionSpec(tableMetadata.spec())
+                          .withSchema(tableMetadata.schema())
+                          .withWriteOrder(tableMetadata.sortOrder())
+                          .build()));
+      try (Response createResponse = createInvocation.invoke()) {
+        assertThat(createResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
+        String etag = createResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+
+        Invocation etaggedInvocation =
+            catalogApi
+                .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
+                .build("GET");
+
+        try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+        }
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
@@ -1031,5 +1202,144 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .head()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
+  }
+
+  @Test
+  public void testCreateGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    GenericTable createResponse =
+        genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+    Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testLoadGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    GenericTable loadResponse =
+        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+    Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testListGenericTables() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
+    TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
+
+    List<TableIdentifier> identifiers =
+        genericTableApi.listGenericTables(currentCatalogName, namespace);
+
+    Assertions.assertThat(identifiers).hasSize(2);
+    Assertions.assertThat(identifiers)
+        .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testDropGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    GenericTable loadResponse =
+        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+    Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+
+    genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
+
+    Assertions.assertThatCode(
+            () -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+        .isInstanceOf(ProcessingException.class);
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testGrantsOnGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+
+    Stream<TableGrant> tableGrants =
+        Arrays.stream(TablePrivilege.values())
+            .map(
+                p -> {
+                  return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                });
+
+    tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testGrantsOnNonExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+
+    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+
+    Stream<TableGrant> tableGrants =
+        Arrays.stream(TablePrivilege.values())
+            .map(
+                p -> {
+                  return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                });
+
+    tableGrants.forEach(
+        g -> {
+          try (Response response =
+              managementApi
+                  .request(
+                      "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                      Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                  .put(Entity.json(g))) {
+
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+          }
+        });
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testDropNonExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    try (Response res =
+        genericTableApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
+            .delete()) {
+      assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+    }
+
+    genericTableApi.purge(currentCatalogName, namespace);
   }
 }

@@ -30,11 +30,13 @@ To start using Polaris in Docker, build and launch Polaris, which is packaged wi
 
 ```shell
 cd ~/polaris
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
-       -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
-       -Dquarkus.container-image.tag=postgres-latest \
-       -Dquarkus.container-image.build=true \
-       --no-build-cache
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild \
+  :polaris-quarkus-admin:assemble --rerun \
+  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
+  -Dquarkus.container-image.tag=postgres-latest \
+  -Dquarkus.container-image.build=true
 docker compose -f getting-started/eclipselink/docker-compose.yml up
 ```
 
@@ -64,7 +66,7 @@ The easiest way to run Polaris locally is to start the Polaris server from the
 ```shell
 cd ~/polaris
 # Build the server
-./gradlew clean :polaris-quarkus-server:assemble
+./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-server:quarkusAppPartsBuild --rerun
 # Start the server
 ./gradlew run
 ```

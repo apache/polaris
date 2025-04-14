@@ -52,10 +52,12 @@ sh ./kind-registry.sh
 
 # Build and deploy the server image
 echo "Building polaris image..."
-./gradlew clean :polaris-quarkus-server:build $ECLIPSE_LINK_DEPS \
+./gradlew \
+  :polaris-quarkus-server:build \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  $ECLIPSE_LINK_DEPS \
   -Dquarkus.container-image.build=true \
-  -Dquarkus.container-image.registry=localhost:5001 \
-  --no-build-cache
+  -Dquarkus.container-image.registry=localhost:5001
 
 echo "Pushing polaris image..."
 docker push localhost:5001/apache/polaris

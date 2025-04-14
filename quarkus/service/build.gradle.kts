@@ -23,10 +23,17 @@ plugins {
   id("polaris-quarkus")
 }
 
+configurations.all {
+  // exclude junit4 dependency for this module
+  exclude(group = "junit", module = "junit")
+}
+
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-catalog-service"))
+
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-defaults"))
 
