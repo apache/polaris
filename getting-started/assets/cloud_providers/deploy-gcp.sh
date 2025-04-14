@@ -17,16 +17,23 @@
 # under the License.
 #
 
-CURRENT_REGION=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.location')
-CURRENT_RESOURCE_GROUP=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.resourceGroupName')
+CURRENT_REGION=$(curl -H "Metadata-Flavor: Google" \
+                 "http://169.254.169.254/computeMetadata/v1/instance/zone" \
+                 | awk -F/ '{print $NF}' | sed 's/-[a-z]$//')
 RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
 INSTANCE_NAME="polaris-backend-test-$RANDOM_SUFFIX"
 
-CREATE_DB_RESPONSE=$(az postgres flexible-server create -l $CURRENT_REGION -g $CURRENT_RESOURCE_GROUP -n $INSTANCE_NAME -u postgres -p postgres -y)
+gcloud sql instances create $INSTANCE_NAME \
+  --database-version=POSTGRES_17 \
+  --region=$CURRENT_REGION \
+  --tier=db-perf-optimized-N-4 \
+  --edition=ENTERPRISE_PLUS \
+  --root-password=postgres
 
-az postgres flexible-server db create -g $CURRENT_RESOURCE_GROUP -s $INSTANCE_NAME -d POLARIS
 
-POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
+gcloud sql databases create POLARIS --instance=$INSTANCE_NAME
+
+POSTGRES_ADDR=$(gcloud sql instances describe $INSTANCE_NAME --format="get(ipAddresses[0].ipAddress)")
 
 FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"

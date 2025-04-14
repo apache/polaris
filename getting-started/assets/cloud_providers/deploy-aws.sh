@@ -35,20 +35,22 @@ ALL_SUBNETS=$(aws ec2 describe-subnets \
   | jq -r '[.[]["SubnetId"]] | join(" ")')
 
 RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 8)
+SUBNET_GROUP_NAME="polaris-db-subnet-group-$RANDOM_SUFFIX"
+INSTANCE_NAME="polaris-backend-test-$RANDOM_SUFFIX"
 
 aws rds create-db-subnet-group \
-  --db-subnet-group-name polaris-db-subnet-group-$RANDOM_SUFFIX \
+  --db-subnet-group-name $SUBNET_GROUP_NAME \
   --db-subnet-group-description "Apache Polaris Quickstart DB Subnet Group" \
   --subnet-ids $ALL_SUBNETS
 
 DB_INSTANCE_INFO=$(aws rds create-db-instance \
-  --db-instance-identifier polaris-backend-test-$RANDOM_SUFFIX \
+  --db-instance-identifier $INSTANCE_NAME \
   --db-instance-class db.t3.micro \
   --engine postgres \
   --master-username postgres \
   --master-user-password postgres \
   --db-name POLARIS \
-  --db-subnet-group-name polaris-db-subnet-group-$RANDOM_SUFFIX \
+  --db-subnet-group-name $SUBNET_GROUP_NAME \
   --allocated-storage 10)
 
 DB_ARN=$(echo $DB_INSTANCE_INFO | jq -r '.["DBInstance"]["DBInstanceArn"]')
