@@ -125,7 +125,9 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
 
 ### Generic table privileges
+
 | Privilege | Description |
+| --------- | ----------- |
 | TABLE_CREATE | Enables registering a table with the catalog. |
 | TABLE_DROP | Enables dropping a generic table from the catalog. |
 | TABLE_LIST | Enables listing any generic tables in the catalog. |
