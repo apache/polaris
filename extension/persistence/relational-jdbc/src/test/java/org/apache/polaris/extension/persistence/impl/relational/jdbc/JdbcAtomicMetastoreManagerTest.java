@@ -54,7 +54,7 @@ public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerT
     }
 
     JdbcBasePersistenceImpl basePersistence =
-        new JdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock());
+        new JdbcBasePersistenceImpl(datasourceOperations, RANDOM_SECRETS, Mockito.mock(), "REALM");
     return new PolarisTestMetaStoreManager(
         new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(

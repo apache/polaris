@@ -109,7 +109,8 @@ public class ModelPrincipalAuthenticationData {
         .build();
   }
 
-  public static PolarisPrincipalSecrets toPrincipalSecrets(ModelPrincipalAuthenticationData model) {
+  public static PolarisPrincipalSecrets toPrincipalAuthenticationData(
+      ModelPrincipalAuthenticationData model) {
     if (model == null) return null;
 
     return new PolarisPrincipalSecrets(

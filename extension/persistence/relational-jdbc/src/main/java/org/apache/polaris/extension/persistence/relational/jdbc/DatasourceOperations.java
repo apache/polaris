@@ -20,6 +20,7 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,6 +30,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,12 +85,17 @@ public class DatasourceOperations {
     }
   }
 
-  public <T> List<T> executeSelect(String query, Class<T> targetClass) throws SQLException {
+  public <T, R> List<R> executeSelect(
+      @Nonnull String query,
+      @Nonnull Class<T> targetClass,
+      @Nonnull Function<T, R> transformer,
+      Predicate<R> entityFilter,
+      int limit)
+      throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement();
         ResultSet s = statement.executeQuery(query)) {
-      List<T> results = ResultSetToObjectConverter.convert(s, targetClass);
-      return results.isEmpty() ? null : results;
+      return ResultSetToObjectConverter.collect(s, targetClass, transformer, entityFilter, limit);
     } catch (SQLException e) {
       LOGGER.error("Error executing query {}", query, e);
       throw e;

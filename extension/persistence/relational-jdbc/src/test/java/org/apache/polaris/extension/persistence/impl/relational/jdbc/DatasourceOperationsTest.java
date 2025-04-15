@@ -18,18 +18,15 @@
  */
 package org.apache.polaris.extension.persistence.impl.relational.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.function.Function;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.ResultSetToObjectConverter;
@@ -88,10 +85,15 @@ public class DatasourceOperationsTest {
     try (MockedStatic<ResultSetToObjectConverter> mockedConverter =
         mockStatic(ResultSetToObjectConverter.class)) {
       mockedConverter
-          .when(() -> ResultSetToObjectConverter.convert(mockResultSet, Object.class))
+          .when(
+              () ->
+                  ResultSetToObjectConverter.collect(
+                      mockResultSet, Object.class, Function.identity(), null, Integer.MAX_VALUE))
           .thenReturn(dummyResult);
 
-      List<Object> result = datasourceOperations.executeSelect(query, Object.class);
+      List<Object> result =
+          datasourceOperations.executeSelect(
+              query, Object.class, Function.identity(), null, Integer.MAX_VALUE);
       assertNotNull(result);
       assertEquals(1, result.size());
     }
@@ -102,7 +104,11 @@ public class DatasourceOperationsTest {
     String query = "SELECT * FROM users";
     when(mockStatement.executeQuery(query)).thenThrow(new SQLException());
 
-    assertThrows(SQLException.class, () -> datasourceOperations.executeSelect(query, Object.class));
+    assertThrows(
+        SQLException.class,
+        () ->
+            datasourceOperations.executeSelect(
+                query, Object.class, Function.identity(), null, Integer.MAX_VALUE));
   }
 
   @Test
