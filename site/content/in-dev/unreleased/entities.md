@@ -90,7 +90,6 @@ A privilege can be scoped to any entity inside a catalog, including the catalog 
 
 For a list of supported privileges for each privilege class, see the API docs:
 * [Table Privileges]({{% github-polaris "client/python/docs/TablePrivilege.md" %}})
-
 * [View Privileges]({{% github-polaris "client/python/docs/ViewPrivilege.md" %}})
 * [Namespace Privileges]({{% github-polaris "client/python/docs/NamespacePrivilege.md" %}})
 * [Catalog Privileges]({{% github-polaris "client/python/docs/CatalogPrivilege.md" %}})
