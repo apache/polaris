@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -402,19 +403,32 @@ public class IcebergCatalogAdapter
                 String.format(
                     "/v1/%s/namespaces/%s/tables/%s/credentials",
                     prefix, tableIdentifier.namespace().toString(), tableIdentifier.name());
-            response =
+            LoadTableResponse originalResponse =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(
-                        tableIdentifier,
-                        ifNoneMatch,
-                        snapshots,
-                        delegationModes,
-                        RESTUtil.decodeString(credentialsEndpoint))
+                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+            if (delegationModes.contains(VENDED_CREDENTIALS)) {
+              response =
+                  injectRefreshVendedCredentialProperties(originalResponse, credentialsEndpoint);
+            } else {
+              response = originalResponse;
+            }
           }
 
           return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
+  }
+
+  private LoadTableResponse injectRefreshVendedCredentialProperties(
+      LoadTableResponse originalResponse, String credentialsEndpoint) {
+    LoadTableResponse.Builder loadResponseBuilder =
+        LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
+    loadResponseBuilder.addAllConfig(originalResponse.config());
+    loadResponseBuilder.addAllCredentials(originalResponse.credentials());
+    loadResponseBuilder.addConfig(
+        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
+    loadResponseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+    return loadResponseBuilder.build();
   }
 
   @Override
@@ -557,8 +571,7 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(
-                  tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class), null);
+              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
