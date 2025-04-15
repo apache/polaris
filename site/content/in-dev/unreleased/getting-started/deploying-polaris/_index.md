@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris
+Title: Deploying Polaris on Cloud Providers
 type: docs
-weight: 110
+weight: 300
 ---
 
 In this Quick Start flow, we will demonstrate how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).

@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Quick Start'
+title: 'Getting Started'
 type: docs
-weight: 100
+weight: 101
 build:
   render: never
 ---

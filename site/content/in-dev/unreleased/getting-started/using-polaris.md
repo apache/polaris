@@ -19,12 +19,8 @@
 #
 Title: Using Polaris
 type: docs
-weight: 300
+weight: 400
 ---
-
-### Connecting to Polaris
-
-Polaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) client that supports the REST API. Depending on the client you plan to use, refer to the prerequisites below.
 
 ## Defining a Catalog
 
@@ -44,7 +40,7 @@ cd ~/polaris
   quickstart_catalog
 ```
 
-This will create a new catalog called **quickstart_catalog**.
+This will create a new catalog called **quickstart_catalog**. If you are using one of the Getting Started locally-built Docker images, we have already created a catalog named `quickstart_catalog` for you.
 
 The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
 
@@ -137,7 +133,7 @@ This grants the [catalog privileges]({{% relref "../entities#privilege" %}}) `CA
 
 ## Using Iceberg & Polaris
 
-At this point, we’ve created a principal and granted it the ability to manage a catalog. We can now use an external engine to assume that principal, access our catalog, and store data in that catalog using [Apache Iceberg](https://iceberg.apache.org/).
+At this point, we’ve created a principal and granted it the ability to manage a catalog. We can now use an external engine to assume that principal, access our catalog, and store data in that catalog using [Apache Iceberg](https://iceberg.apache.org/). Polaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) client that supports the REST API. Depending on the client you plan to use, refer to the respective examples below.
 
 ### Connecting with Spark
 
