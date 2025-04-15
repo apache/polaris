@@ -1,0 +1,24 @@
+---
+name: Polaris
+image_config:
+  type: docker_file
+  image: polaris
+  docker_file: ./Dockerfile
+  workdir: ./
+build:
+  polaris_gar_us:
+    registry: us-docker.pkg.dev
+    repository: build-286712/prod-docker-us
+deployment:
+  type: command
+  namespace: polaris
+  command: |
+    echo "no deploy action"
+environments:
+  staging:
+    targets:
+      - null
+    build: donkey
+    notify_slack: false
+    notify_pr_bot: false
+  
