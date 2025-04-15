@@ -46,11 +46,12 @@ public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerT
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(createH2DataSource(), "REALM");
     try {
       datasourceOperations.executeScript("h2/schema-v1-h2.sql");
     } catch (SQLException e) {
-      throw new RuntimeException(String.format("Error executing h2 script: %s", e.getMessage()), e);
+      throw new RuntimeException(String.format("Error executing h2 script: %s", e.getMessage()));
     }
 
     JdbcBasePersistenceImpl basePersistence =

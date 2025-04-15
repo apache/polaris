@@ -19,15 +19,16 @@
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.*;
-import org.apache.polaris.core.persistence.*;
+import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
+import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
@@ -45,14 +46,15 @@ public class JdbcMetaStoreManagerFactory extends LocalPolarisMetaStoreManagerFac
 
   // TODO: Pending discussion of if we should have one Database per realm or 1 schema per realm
   // or realm should be a primary key on all the tables.
-  @Inject DataSource dataSource;
+  @Inject Instance<DataSource> dataSource;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   protected JdbcMetaStoreManagerFactory() {
     this(null);
   }
 
-  protected JdbcMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
+  @Inject
+  protected JdbcMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
     super(diagnostics);
   }
 
@@ -68,11 +70,12 @@ public class JdbcMetaStoreManagerFactory extends LocalPolarisMetaStoreManagerFac
   @Override
   protected void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource);
+    DatasourceOperations databaseOperations =
+        new DatasourceOperations(dataSource.get(), realmContext.getRealmIdentifier());
     // TODO: see if we need to take script from Quarkus or can we just
     // use the script committed in the repo.
     try {
-      databaseOperations.executeScript("scripts/postgres/schema-v1-postgres.sql");
+      databaseOperations.executeScript("postgres/schema-v1-postgresql.sql");
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Error executing sql script: %s", e.getMessage()), e);

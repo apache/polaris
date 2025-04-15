@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
@@ -40,15 +41,21 @@ public class DatasourceOperations {
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
   private final DataSource datasource;
+  private final String realm;
 
-  public DatasourceOperations(DataSource datasource) {
+  public DatasourceOperations(DataSource datasource, String realm) {
     this.datasource = datasource;
+    this.realm = realm.toUpperCase(Locale.ROOT);
   }
 
   public void executeScript(String scriptFilePath) throws SQLException {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    try (Connection connection = borrowConnection();
+    Statement realmSchemaStatement = null;
+    try (Connection connection = datasource.getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute(String.format("CREATE SCHEMA IF NOT EXISTS %s", realm));
+      statement.close();
+      realmSchemaStatement = borrowConnection().createStatement();
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(
@@ -62,7 +69,7 @@ public class DatasourceOperations {
           if (line.endsWith(";")) { // Execute statement when semicolon is found
             String sql = sqlBuffer.toString().trim();
             try {
-              int rowsUpdated = statement.executeUpdate(sql);
+              int rowsUpdated = realmSchemaStatement.executeUpdate(sql);
               LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
             } catch (SQLException e) {
               LOGGER.error("Error executing query {}", sql, e);
@@ -79,6 +86,10 @@ public class DatasourceOperations {
     } catch (SQLException e) {
       LOGGER.error("Error executing the script file", e);
       throw e;
+    } finally {
+      if (realmSchemaStatement != null) {
+        realmSchemaStatement.close();
+      }
     }
   }
 
@@ -151,7 +162,6 @@ public class DatasourceOperations {
           connection.close();
         } catch (SQLException e) {
           LOGGER.error("Error closing connection", e);
-          throw e;
         }
       }
     }
@@ -171,6 +181,20 @@ public class DatasourceOperations {
   }
 
   private Connection borrowConnection() throws SQLException {
-    return datasource.getConnection();
+    Connection connection = datasource.getConnection();
+    if (connection
+        .getMetaData()
+        .getDatabaseProductName()
+        .toLowerCase(Locale.ROOT)
+        .equals("postgresql")) {
+      // connection.setSchema() doesn't work hence work this around.
+      Statement s = connection.createStatement();
+      s.execute("SET search_path TO " + realm);
+      s.close();
+    } else {
+      connection.setSchema(realm);
+    }
+
+    return connection;
   }
 }

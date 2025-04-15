@@ -285,9 +285,6 @@ public class JdbcCrudQueryGenerator {
       throw new IllegalArgumentException("Unsupported entity class: " + entityClass.getName());
     }
 
-    // TODO: check if we want to make schema name configurable.
-    tableName = "POLARIS_SCHEMA." + tableName;
-
     return tableName;
   }
 }

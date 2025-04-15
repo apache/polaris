@@ -17,22 +17,9 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
-}
+CREATE SCHEMA IF NOT EXISTS REALM1;
+CREATE SCHEMA IF NOT EXISTS REALM2;
+CREATE SCHEMA IF NOT EXISTS REALM3;

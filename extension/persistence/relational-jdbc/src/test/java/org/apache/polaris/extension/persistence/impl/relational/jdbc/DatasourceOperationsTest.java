@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -50,13 +51,17 @@ public class DatasourceOperationsTest {
 
   @Mock private ResultSet mockResultSet;
 
+  @Mock private DatabaseMetaData mockDatabaseMetaData;
+
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
   void setUp() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.getMetaData()).thenReturn(mockDatabaseMetaData);
+    when(mockDatabaseMetaData.getDatabaseProductName()).thenReturn("H2");
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    datasourceOperations = new DatasourceOperations(mockDataSource);
+    datasourceOperations = new DatasourceOperations(mockDataSource, "realm");
   }
 
   @Test
