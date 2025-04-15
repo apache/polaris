@@ -1,0 +1,6 @@
+steps:
+  - label: "Build and validate Polaris"
+    key: "polaris-build"
+    agents:
+      queue: "default"
+    commands: .buildkite/scripts/build-polaris.sh
