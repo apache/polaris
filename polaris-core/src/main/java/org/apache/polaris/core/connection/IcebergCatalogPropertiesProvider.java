@@ -22,6 +22,12 @@ import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
+/**
+ * Configuration wrappers which ultimately translate their contents into Iceberg properties and
+ * which may hold other nested configuration wrapper objects implement this interface to allow
+ * delegating type-specific configuration translation logic to subclasses instead of needing to
+ * expose the internals of deeply nested configuration objects to a visitor class.
+ */
 public interface IcebergCatalogPropertiesProvider {
   @Nonnull
   Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager);
