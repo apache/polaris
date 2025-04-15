@@ -128,7 +128,7 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 
 | Privilege | Description |
 | --------- | ----------- |
-| TABLE_CREATE | Enables registering a table with the catalog. |
+| TABLE_CREATE | Enables registering a generic table with the catalog. |
 | TABLE_DROP | Enables dropping a generic table from the catalog. |
 | TABLE_LIST | Enables listing any generic tables in the catalog. |
 | TABLE_READ_PROPERTIES | Enables reading properties of the generic table. |
