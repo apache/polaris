@@ -26,7 +26,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusIntegrationTest
-public class SparkIcebergIT extends SparkIntegrationBase {
+public class SparkIT extends SparkIntegrationBase {
   @Test
   public void testNamespaces() {
     List<Object[]> namespaces = sql("SHOW NAMESPACES");

@@ -18,17 +18,14 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
-import org.apache.polaris.spark.SparkCatalog;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 
 public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
 
@@ -110,14 +107,5 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
               }
             })
         .toArray(Object[]::new);
-  }
-
-  protected SparkCatalog loadSparkCatalog() {
-    Preconditions.checkArgument(spark != null, "No active spark found");
-    Preconditions.checkArgument(catalogName != null, "No catalogName found");
-    CatalogPlugin catalogPlugin = spark.sessionState().catalogManager().catalog(catalogName);
-    Preconditions.checkArgument(
-        catalogPlugin instanceof SparkCatalog, "The Spark Catalog is not a Polaris SparkCatalog");
-    return (SparkCatalog) catalogPlugin;
   }
 }
