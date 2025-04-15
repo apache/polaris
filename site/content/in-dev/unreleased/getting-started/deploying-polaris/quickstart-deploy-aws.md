@@ -19,7 +19,7 @@
 #
 Title: Deploying Polaris on Amazon Web Services (AWS)
 type: docs
-weight: 112
+weight: 310
 ---
 
 Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Amazon RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/) instance, which will be used as the backend Postgres instance holding all Polaris data.
@@ -45,7 +45,7 @@ export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
 
-To take down the Polaris server, run the following commands:
+To shut down the Polaris server, run the following commands:
 
 ```shell
 docker compose -f getting-started/eclipselink/docker-compose.yml down

@@ -19,7 +19,7 @@
 #
 Title: Deploying Polaris on Azure
 type: docs
-weight: 112
+weight: 320
 ---
 
 Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.
@@ -41,7 +41,7 @@ export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
 
-To take down the Polaris server, run the following commands:
+To shut down the Polaris server, run the following commands:
 
 ```shell
 docker compose -f getting-started/eclipselink/docker-compose.yml down

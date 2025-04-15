@@ -19,7 +19,7 @@
 #
 Title: Deploying Polaris on Google Cloud Platform (GCP)
 type: docs
-weight: 112
+weight: 330
 ---
 
 Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start a [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres) instance, which will be used as the backend Postgres instance holding all Polaris data.
@@ -41,7 +41,7 @@ export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
 
-To take down the Polaris server, run the following commands:
+To shut down the Polaris server, run the following commands:
 
 ```shell
 docker compose -f getting-started/eclipselink/docker-compose.yml down

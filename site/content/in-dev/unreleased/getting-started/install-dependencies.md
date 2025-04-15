@@ -47,7 +47,7 @@ git clone https://github.com/apache/polaris.git
 
 ## Docker
 
-It is recommended to deploy Polaris inside [Docker](https://www.docker.com/) for the Quick Start workflow. Instructions for deploying the Quick Start workflow on the supported Cloud Providers (AWS, Azure, GCP) will be provided only with Docker. However, non-Docker deployment instructions for local deployments can also be followed on Cloud Providers.
+It is recommended to deploy Polaris inside [Docker](https://www.docker.com/) for the Quickstart workflow. Instructions for deploying the Quickstart workflow on the supported Cloud Providers (AWS, Azure, GCP) will be provided only with Docker. However, non-Docker deployment instructions for local deployments can also be followed on Cloud Providers.
 
 Instructions to install Docker can be found on the [Docker website](https://docs.docker.com/engine/install/). Ensure that Docker and the Docker Compose plugin are both installed.
 
