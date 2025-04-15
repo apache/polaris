@@ -21,6 +21,7 @@ CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
 DROP TABLE IF EXISTS entities;
 CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
@@ -36,8 +37,8 @@ CREATE TABLE IF NOT EXISTS entities (
     properties TEXT NOT NULL DEFAULT '{}',
     internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT constraint_name UNIQUE (catalog_id, parent_id, type_code, name)
+    PRIMARY KEY (realm_id, id),
+    CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
 -- TODO: create indexes based on all query pattern.
@@ -62,12 +63,13 @@ COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant record
 
 DROP TABLE IF EXISTS grant_records;
 CREATE TABLE IF NOT EXISTS grant_records (
+    realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
     grantee_id BIGINT NOT NULL,
     privilege_code INTEGER,
-    PRIMARY KEY (securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
+    PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
 );
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
@@ -79,12 +81,13 @@ COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
 DROP TABLE IF EXISTS principal_authentication_data;
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
+    realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
     principal_client_id VARCHAR(255) NOT NULL,
     main_secret_hash VARCHAR(255) NOT NULL,
     secondary_secret_hash VARCHAR(255) NOT NULL,
     secret_salt VARCHAR(255) NOT NULL,
-    PRIMARY KEY (principal_client_id)
+    PRIMARY KEY (realm_id, principal_client_id)
 );
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';

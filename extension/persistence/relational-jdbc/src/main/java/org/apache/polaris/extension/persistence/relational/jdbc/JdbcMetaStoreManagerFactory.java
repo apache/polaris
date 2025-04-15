@@ -83,7 +83,8 @@ public class JdbcMetaStoreManagerFactory extends LocalPolarisMetaStoreManagerFac
             new JdbcBasePersistenceImpl(
                 databaseOperations,
                 secretsGenerator(realmContext, rootCredentialsSet),
-                storageIntegrationProvider));
+                storageIntegrationProvider,
+                realmContext.getRealmIdentifier()));
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);

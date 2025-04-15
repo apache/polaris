@@ -51,6 +51,7 @@ public class JdbcCrudQueryGenerator {
     if (filter != null && !filter.isEmpty()) {
       query.append(" WHERE ").append(String.join(" AND ", filter));
     }
+
     return query.toString();
   }
 
@@ -90,7 +91,8 @@ public class JdbcCrudQueryGenerator {
     return query.toString();
   }
 
-  public static String generateDeleteQueryForEntityGrantRecords(PolarisEntityCore entity) {
+  public static String generateDeleteQueryForEntityGrantRecords(
+      PolarisEntityCore entity, String realmId) {
     // generate where clause
     StringBuilder granteeCondition = new StringBuilder("(grantee_id, grantee_catalog_id) IN (");
     granteeCondition
@@ -115,11 +117,19 @@ public class JdbcCrudQueryGenerator {
     securableCondition.deleteCharAt(securableCondition.length() - 1);
     securableCondition.append(")");
 
-    String whereClause = " WHERE " + granteeCondition + " OR " + securableCondition;
+    String whereClause =
+        " WHERE ("
+            + granteeCondition
+            + " OR "
+            + securableCondition
+            + ") AND realm_id = '"
+            + realmId
+            + "'";
     return JdbcCrudQueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause);
   }
 
-  public static String generateSelectQueryForMultipleEntities(List<PolarisEntityId> entityIds) {
+  public static String generateSelectQueryForMultipleEntities(
+      String realmId, List<PolarisEntityId> entityIds) {
     StringBuilder condition = new StringBuilder("(catalog_id, id) IN (");
     for (PolarisEntityId entityId : entityIds) {
       String in = "(" + entityId.getCatalogId() + ", " + entityId.getId() + ")";
@@ -129,11 +139,12 @@ public class JdbcCrudQueryGenerator {
     // extra , removed
     condition.deleteCharAt(condition.length() - 1);
     condition.append(")");
+    condition.append(" AND realm_id = '").append(realmId).append("'");
     return JdbcCrudQueryGenerator.generateSelectQuery(
         ModelEntity.class, entityIds.isEmpty() ? "" : String.valueOf(condition), null, null, null);
   }
 
-  public static String generateInsertQuery(Object object) {
+  public static String generateInsertQuery(Object object, String realmId) {
     if (object == null) {
       return null;
     }
@@ -144,6 +155,8 @@ public class JdbcCrudQueryGenerator {
     Field[] fields = objectClass.getDeclaredFields();
     List<String> columnNames = new ArrayList<>();
     List<String> values = new ArrayList<>();
+    columnNames.add("realm_id");
+    values.add("'" + realmId + "'");
 
     for (Field field : fields) {
       field.setAccessible(true); // Allow access to private fields
@@ -208,12 +221,12 @@ public class JdbcCrudQueryGenerator {
     return "DELETE FROM " + getTableName(entityClass) + whereClause;
   }
 
-  public static String generateDeleteAll(Class<?> entityClass) {
+  public static String generateDeleteAll(Class<?> entityClass, String realmId) {
     String tableName = getTableName(entityClass);
-    return "DELETE FROM " + tableName + " WHERE 1 = 1";
+    return "DELETE FROM " + tableName + " WHERE 1 = 1 AND realm_id = '" + realmId + "'";
   }
 
-  public static String generateDeleteQuery(Object obj, Class<?> entityClass) {
+  public static String generateDeleteQuery(Object obj, Class<?> entityClass, String realmId) {
     String tableName = getTableName(entityClass);
     List<String> whereConditions = new ArrayList<>();
 
@@ -238,7 +251,8 @@ public class JdbcCrudQueryGenerator {
 
     String whereConditionsString = "";
     if (!whereConditions.isEmpty()) {
-      whereConditionsString = " WHERE " + String.join(" AND ", whereConditions);
+      whereConditionsString =
+          " WHERE " + String.join(" AND ", whereConditions) + "AND realm_id = '" + realmId + "'";
     }
 
     return "DELETE FROM " + tableName + whereConditionsString;

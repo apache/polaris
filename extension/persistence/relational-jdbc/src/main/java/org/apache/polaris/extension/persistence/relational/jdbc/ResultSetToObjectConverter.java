@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import jakarta.annotation.Nonnull;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -25,12 +26,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class ResultSetToObjectConverter {
 
-  public static <T> List<T> convert(ResultSet resultSet, Class<T> targetClass)
+  public static <T, R> List<R> collect(
+      @Nonnull ResultSet resultSet,
+      @Nonnull Class<T> targetClass,
+      @Nonnull Function<T, R> transformer,
+      Predicate<R> entityFilter,
+      int limit)
       throws ReflectiveOperationException, SQLException {
-    List<T> resultList = new ArrayList<>();
+    List<R> resultList = new ArrayList<>();
     ResultSetMetaData metaData = resultSet.getMetaData();
     int columnCount = metaData.getColumnCount();
     String[] columnNames = new String[columnCount + 1]; // 1-based indexing
@@ -42,7 +50,7 @@ public class ResultSetToObjectConverter {
               .toLowerCase(Locale.ROOT); // or getColumnName(), lowercase to match field names
     }
 
-    while (resultSet.next()) {
+    while (resultSet.next() && resultList.size() < limit) {
       T object = targetClass.getDeclaredConstructor().newInstance(); // Create a new instance
       for (int i = 1; i <= columnCount; i++) {
         String columnName = columnNames[i];
@@ -71,7 +79,10 @@ public class ResultSetToObjectConverter {
           }
         }
       }
-      resultList.add(object);
+      R entity = transformer.apply(object);
+      if (entityFilter == null || entityFilter.test(entity)) {
+        resultList.add(entity);
+      }
     }
     return resultList;
   }
