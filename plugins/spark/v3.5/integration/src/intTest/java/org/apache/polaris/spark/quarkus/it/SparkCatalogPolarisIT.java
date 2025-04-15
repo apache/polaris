@@ -20,11 +20,5 @@ package org.apache.polaris.spark.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
-/**
- * This integration directly performs operations using the Polaris SparkCatalog instance, instead of
- * going through Spark SQL interface. This provides a more direct testing capability against the
- * Polaris SparkCatalog operations, some operations like listNamespaces under a namespace can not be
- * triggered through a SQL interface directly with Spark.
- */
 @QuarkusIntegrationTest
 public class SparkCatalogPolarisIT extends SparkCatalogBaseIT {}

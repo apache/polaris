@@ -36,9 +36,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * This integration directly performs operations using the Polaris SparkCatalog instance, instead of
- * going through Spark SQL interface. This provides a more direct testing capability against the
- * Polaris SparkCatalog operations, some operations like listNamespaces under a namespace can not be
+ * This integration directly performs operations using the SparkCatalog instance, instead of going
+ * through Spark SQL interface. This provides a more direct testing capability against the Polaris
+ * SparkCatalog operations, some operations like listNamespaces under a namespace can not be
  * triggered through a SQL interface directly with Spark.
  */
 @QuarkusIntegrationTest
