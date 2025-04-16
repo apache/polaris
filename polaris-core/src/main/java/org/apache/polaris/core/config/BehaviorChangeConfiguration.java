@@ -64,8 +64,9 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("TABLE_OPERATIONS_COMMIT_UPDATE_METADATA")
           .description(
-              "If true, BasePolarisTableOperations should cache metadata that has been committed"
-                  + " which can reduce File IO")
+              "If true, BasePolarisTableOperations should update the metadata that is passed into" +
+                  " `commit`, which means that future calls to `refresh` may be able to skip a trip to" +
+                  " object storage")
           .defaultValue(true)
           .buildBehaviorChangeConfiguration();
 }
