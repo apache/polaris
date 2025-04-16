@@ -187,7 +187,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Principal"
+                oneOf:
+                  - $ref: "#/components/schemas/Principal"
+                  - $ref: "#/components/schemas/FederatedPrincipal"
         403:
           description: "The caller does not have permission to get principal details"
         404:
@@ -443,7 +445,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Principals"
+                oneOf:
+                  - $ref: "#/components/schemas/Principal"
+                  - $ref: "#/components/schemas/FederatedPrincipal"
         403:
           description: "The caller does not have permission to list principals"
         404:
@@ -1057,7 +1061,7 @@ components:
         principals:
           type: array
           items:
-            $ref: "#/components/schemas/Principal"
+            $ref: "#/components/schemas/BasePrincipal"
       required:
         - principals
 
@@ -1089,8 +1093,7 @@ components:
           type: boolean
           description: If true, the initial credentials can only be used to call rotateCredentials
 
-    Principal:
-      description: A Polaris principal.
+    BasePrincipal:
       type: object
       properties:
         name:
@@ -1098,13 +1101,6 @@ components:
           minLength: 1
           maxLength: 256
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
-        clientId:
-          type: string
-          description: The output-only OAuth clientId associated with this principal if applicable
-        federated:
-          type: boolean
-          description: Whether the principal is a federated identity (that is, managed by an external identity provider)
-          default: false
         properties:
           type: object
           additionalProperties:
@@ -1120,6 +1116,30 @@ components:
           description: The version of the principal object used to determine if the principal metadata has changed
       required:
         - name
+
+    Principal:
+      description: A Polaris principal.
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/BasePrincipal'
+        - type: object
+          properties:
+            clientId:
+              type: string
+              description: The output-only OAuth clientId associated with this principal if applicable
+
+    FederatedPrincipal:
+      description: A federated Polaris principal.
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/BasePrincipal'
+        - type: object
+          properties:
+            federated:
+              type: boolean
+              description: Whether the principal is a federated identity (that is, managed by an external identity provider)
+              enum:
+                - true
 
     UpdatePrincipalRequest:
       description: Updates to apply to a Principal

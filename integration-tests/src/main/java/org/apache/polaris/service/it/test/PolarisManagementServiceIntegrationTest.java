@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
@@ -28,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -57,6 +57,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.FederatedPrincipal;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
@@ -875,17 +876,22 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
-  public void testCreateFederatedPrincipalFails() {
+  public void testCreateFederatedPrincipalFails() throws JsonProcessingException {
     // Create a federated Principal
-    Principal federatedPrincipal =
-        new Principal(client.newEntityName("federatedPrincipal"), "abc", true, Map.of(), 0L, 0L, 1);
+    FederatedPrincipal federatedPrincipal =
+        new FederatedPrincipal(
+            true, client.newEntityName("federatedPrincipal"), Map.of(), 0L, 0L, 1);
 
     // Attempt to create the federated Principal using the managementApi
     try (Response createPResponse =
         managementApi
             .request("v1/principals")
-            .post(Entity.json(new CreatePrincipalRequest(federatedPrincipal, false)))) {
-      assertThat(createPResponse).returns(BAD_REQUEST.getStatusCode(), Response::getStatus);
+            .post(
+                Entity.json(
+                    "{\"principal\":"
+                        + new ObjectMapper().writeValueAsString(federatedPrincipal)
+                        + "}"))) {
+      assertThat(createPResponse).returns(CREATED.getStatusCode(), Response::getStatus);
     }
   }
 

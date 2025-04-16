@@ -29,6 +29,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
+import org.apache.polaris.core.admin.model.BasePrincipal;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -44,7 +45,6 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
-import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
@@ -270,7 +270,7 @@ public class PolarisServiceImpl
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    return Response.ok(adminService.getPrincipal(principalName).asPrincipal()).build();
+    return Response.ok(adminService.getPrincipal(principalName).asBasePrincipal()).build();
   }
 
   /** From PolarisPrincipalsApiService */
@@ -297,10 +297,10 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<Principal> principalList =
+    List<BasePrincipal> principalList =
         adminService.listPrincipals().stream()
             .map(PrincipalEntity::new)
-            .map(PrincipalEntity::asPrincipal)
+            .map(PrincipalEntity::asBasePrincipal)
             .toList();
     Principals principals = new Principals(principalList);
     LOGGER.debug("listPrincipals returning: {}", principals);
@@ -534,10 +534,10 @@ public class PolarisServiceImpl
   public Response listAssigneePrincipalsForPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<Principal> principalList =
+    List<BasePrincipal> principalList =
         adminService.listAssigneePrincipalsForPrincipalRole(principalRoleName).stream()
             .map(PrincipalEntity::new)
-            .map(PrincipalEntity::asPrincipal)
+            .map(PrincipalEntity::asBasePrincipal)
             .toList();
     Principals principals = new Principals(principalList);
     LOGGER.debug("listAssigneePrincipalsForPrincipalRole returning: {}", principals);

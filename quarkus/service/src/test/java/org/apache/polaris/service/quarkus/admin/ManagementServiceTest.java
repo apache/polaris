@@ -53,6 +53,8 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 public class ManagementServiceTest {
@@ -248,75 +250,37 @@ public class ManagementServiceTest {
         .build();
   }
 
-  @Test
-  public void testCannotAddFederatedPrincipalToNonFederatedRole() {
-    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
-
-    PrincipalEntity federatedPrincipal =
-        createPrincipal(metaStoreManager, callContext, "federated_id", true);
-    metaStoreManager.createPrincipal(callContext, federatedPrincipal);
-
-    PrincipalRoleEntity nonFederatedRole =
-        createRole(metaStoreManager, callContext, "non_federated_role", false);
-    EntityResult result =
-        metaStoreManager.createEntityIfNotExists(callContext, null, nonFederatedRole);
-    assertThat(result.isSuccess()).isTrue();
-
-    assertThatThrownBy(
-            () ->
-                polarisAdminService.assignPrincipalRole(
-                    federatedPrincipal.getName(), nonFederatedRole.getName()))
-        .isInstanceOf(ValidationException.class);
+  public static Object[][] federatedIdentityArugments() {
+    return new Object[][] {
+      {true, false},
+      {false, true},
+      {true, true},
+    };
   }
 
-  @Test
-  public void testCannotAddNonFederatedPrincipalToFederatedRole() {
+  @ParameterizedTest
+  @MethodSource("federatedIdentityArugments")
+  public void testCannotAssignFederatedEntities(
+      boolean isFederatedPrincipal, boolean isFederatedRole) {
     PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
     PolarisCallContext callContext = setupCallContext(metaStoreManager);
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
-    PrincipalEntity nonFederatedPrincipal =
-        createPrincipal(metaStoreManager, callContext, "non_federated_id", false);
-    metaStoreManager.createPrincipal(callContext, nonFederatedPrincipal);
+    String principalPrefix = isFederatedPrincipal ? "federated_" : "";
+    PrincipalEntity principal =
+        createPrincipal(
+            metaStoreManager, callContext, principalPrefix + "principal_id", isFederatedPrincipal);
+    metaStoreManager.createPrincipal(callContext, principal);
 
-    PrincipalRoleEntity federatedRole =
-        createRole(metaStoreManager, callContext, "federated_role", true);
-    EntityResult result =
-        metaStoreManager.createEntityIfNotExists(callContext, null, federatedRole);
+    String rolePrefix = isFederatedRole ? "federated_" : "";
+    PrincipalRoleEntity role =
+        createRole(metaStoreManager, callContext, rolePrefix + "role_id", isFederatedRole);
+    EntityResult result = metaStoreManager.createEntityIfNotExists(callContext, null, role);
     assertThat(result.isSuccess()).isTrue();
 
     assertThatThrownBy(
-            () ->
-                polarisAdminService.assignPrincipalRole(
-                    nonFederatedPrincipal.getName(), federatedRole.getName()))
-        .isInstanceOf(ValidationException.class);
-  }
-
-  @Test
-  public void testCannotAddFederatedPrincipalToFederatedRole() {
-    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
-
-    PrincipalEntity federatedPrincipal =
-        createPrincipal(metaStoreManager, callContext, "federated_principal", true);
-    metaStoreManager.createPrincipal(callContext, federatedPrincipal);
-
-    PrincipalRoleEntity federatedRole =
-        createRole(metaStoreManager, callContext, "federated_role", true);
-    EntityResult result =
-        metaStoreManager.createEntityIfNotExists(callContext, null, federatedRole);
-    assertThat(result.isSuccess()).isTrue();
-
-    assertThatThrownBy(
-            () ->
-                polarisAdminService.assignPrincipalRole(
-                    federatedPrincipal.getName(), federatedRole.getName()))
+            () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
         .isInstanceOf(ValidationException.class);
   }
 }

@@ -18,7 +18,10 @@
  */
 package org.apache.polaris.core.entity;
 
+import org.apache.polaris.core.admin.model.BasePrincipal;
+import org.apache.polaris.core.admin.model.FederatedPrincipal;
 import org.apache.polaris.core.admin.model.Principal;
+import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 
 /** Wrapper for translating between the REST Principal object and the base PolarisEntity type. */
 public class PrincipalEntity extends PolarisEntity {
@@ -36,17 +39,29 @@ public class PrincipalEntity extends PolarisEntity {
   public static PrincipalEntity fromPrincipal(Principal principal) {
     return new Builder()
         .setName(principal.getName())
-        .setFederated(principal.getFederated())
         .setProperties(principal.getProperties())
         .setClientId(principal.getClientId())
         .build();
   }
 
+  public BasePrincipal asBasePrincipal() {
+    if (FederatedEntities.isFederated(this)) {
+      return new FederatedPrincipal(
+          true,
+          getName(),
+          getPropertiesAsMap(),
+          getCreateTimestamp(),
+          getLastUpdateTimestamp(),
+          getEntityVersion());
+    } else {
+      return asPrincipal();
+    }
+  }
+
   public Principal asPrincipal() {
     return new Principal(
-        getName(),
         getClientId(),
-        PolarisEntity.isFederated(this),
+        getName(),
         getPropertiesAsMap(),
         getCreateTimestamp(),
         getLastUpdateTimestamp(),
@@ -82,7 +97,7 @@ public class PrincipalEntity extends PolarisEntity {
 
     public Builder setFederated(Boolean isFederated) {
       if (isFederated != null && isFederated) {
-        internalProperties.put(PolarisEntityConstants.FEDERATED_ENTITY, "true");
+        internalProperties.put(FederatedEntities.FEDERATED_ENTITY, "true");
       }
       return this;
     }
