@@ -31,16 +31,12 @@ import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import java.util.Collections;
 import java.util.Set;
 
 /** A custom {@link HttpAuthenticationMechanism} that handles Polaris token authentication. */
 @ApplicationScoped
-@Alternative
-@Priority(1)
 public class PolarisAuthenticationMechanism implements HttpAuthenticationMechanism {
 
   private static final String BEARER = "Bearer";
