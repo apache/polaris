@@ -464,7 +464,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
         List.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE, CATALOG_MANAGE_ACCESS));
 
-    // Policy
+    // Policy privileges
     SUPER_PRIVILEGES.putAll(
         POLICY_CREATE,
         List.of(
@@ -490,6 +490,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             POLICY_LIST,
             POLICY_CREATE,
+            POLICY_READ,
+            POLICY_WRITE,
             POLICY_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));

@@ -145,6 +145,8 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         List.of(
             PolarisPrivilege.POLICY_LIST,
             PolarisPrivilege.POLICY_CREATE,
+            PolarisPrivilege.POLICY_WRITE,
+            PolarisPrivilege.POLICY_READ,
             PolarisPrivilege.POLICY_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> newWrapper().listPolicies(NS1, null),
@@ -154,11 +156,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testListPoliciesInsufficientPrivileges() {
     doTestInsufficientPrivileges(
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.POLICY_READ,
-            PolarisPrivilege.POLICY_DROP,
-            PolarisPrivilege.POLICY_WRITE),
+        List.of(PolarisPrivilege.NAMESPACE_FULL_METADATA, PolarisPrivilege.POLICY_DROP),
         () -> newWrapper().listPolicies(NS1, null));
   }
 
