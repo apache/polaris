@@ -76,5 +76,5 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          docker image tag apache/polaris:0.10.0-beta-incubating-SNAPSHOT $TAG
-          docker push $TAG
+          docker image tag apache/polaris:0.10.0-beta-incubating-SNAPSHOT ${{ steps.meta.outputs.tags }}
+          docker push ${{ steps.meta.outputs.tags }}
