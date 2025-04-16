@@ -76,7 +76,5 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          LOCAL_TAG=$(echo "${{ steps.meta.outputs.tags }}" | sed -E 's|^[^:/]+|apache|')
-          echo "$LOCAL_TAG"
-          docker image tag $LOCAL_TAG $TAG
+          docker image tag apache/polaris:0.10.0-beta-incubating-SNAPSHOT $TAG
           docker push $TAG
