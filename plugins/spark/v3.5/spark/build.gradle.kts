@@ -18,6 +18,7 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.github.jengelman.gradle.plugins.shadow.transformers.ServiceFileTransformer
 
 plugins {
   id("polaris-client")
@@ -122,12 +123,11 @@ tasks.register("checkNoDisallowedImports") {
 tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
+
   archiveClassifier = null
   archiveBaseName =
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
   isZip64 = true
-
-  mergeServiceFiles()
 
   // pack both the source code and dependencies
 
@@ -143,6 +143,9 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   }
 
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+
+  mergeServiceFiles()
+  exclude("META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.SF")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
