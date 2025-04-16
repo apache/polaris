@@ -98,6 +98,9 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -169,6 +172,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
+  private final PageToken.PageTokenBuilder<?> pageTokenBuilder;
 
   /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
@@ -197,6 +201,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
+    this.pageTokenBuilder = callContext.getPolarisCallContext().getMetaStore().pageTokenBuilder();
   }
 
   @Override
@@ -460,14 +465,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return true;
   }
 
+  /** Check whether pagination is enabled for list operations */
+  private boolean paginationEnabled() {
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            FeatureConfiguration.LIST_PAGINATION_ENABLED);
+  }
+
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
+    return listTables(namespace, ReadEverythingPageToken.get()).data;
+  }
+
+  public PolarisPage<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace) && !namespace.isEmpty()) {
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: %s", namespace);
     }
+    if (!paginationEnabled()) {
+      pageToken = ReadEverythingPageToken.get();
+    }
 
-    return listTableLike(PolarisEntitySubType.ICEBERG_TABLE, namespace);
+    return listTableLike(PolarisEntitySubType.ICEBERG_TABLE, namespace, pageToken);
   }
 
   @Override
@@ -771,22 +794,40 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
+    return listNamespaces(namespace, ReadEverythingPageToken.get()).data;
+  }
+
+  public PolarisPage<Namespace> listNamespaces(PageToken pageToken)
+      throws NoSuchNamespaceException {
+    return listNamespaces(Namespace.empty(), pageToken);
+  }
+
+  public PolarisPage<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
+      throws NoSuchNamespaceException {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
+    if (!paginationEnabled()) {
+      pageToken = ReadEverythingPageToken.get();
+    }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    ListEntitiesResult listResult =
+        getMetaStoreManager()
+            .listEntities(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.NAMESPACE,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                pageToken);
     List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            getMetaStoreManager()
-                .listEntities(
-                    getCurrentPolarisContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.NAMESPACE,
-                    PolarisEntitySubType.NULL_SUBTYPE)
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToNamespaces(catalogPath, entities);
+        PolarisEntity.toNameAndIdList(listResult.getEntities());
+    List<Namespace> namespaces = PolarisCatalogHelpers.nameAndIdToNamespaces(catalogPath, entities);
+    return listResult
+        .getPageToken()
+        .map(token -> new PolarisPage<>(token, namespaces))
+        .orElseGet(() -> PolarisPage.fromData(namespaces));
   }
 
   @Override
@@ -798,12 +839,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
+    return listViews(namespace, ReadEverythingPageToken.get()).data;
+  }
+
+  public PolarisPage<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace) && !namespace.isEmpty()) {
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: %s", namespace);
     }
+    if (!paginationEnabled()) {
+      pageToken = ReadEverythingPageToken.get();
+    }
 
-    return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace);
+    return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace, pageToken);
   }
 
   @Override
@@ -1049,7 +1097,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 callContext.getPolarisCallContext(),
                 parentPath.stream().map(PolarisEntity::toCore).collect(Collectors.toList()),
                 PolarisEntityType.NAMESPACE,
-                PolarisEntitySubType.ANY_SUBTYPE);
+                PolarisEntitySubType.ANY_SUBTYPE,
+                ReadEverythingPageToken.get());
     if (!siblingNamespacesResult.isSuccess()) {
       throw new IllegalStateException(
           "Unable to resolve siblings entities to validate location - could not list namespaces");
@@ -1074,7 +1123,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                                   .map(PolarisEntity::toCore)
                                   .collect(Collectors.toList()),
                               PolarisEntityType.TABLE_LIKE,
-                              PolarisEntitySubType.ANY_SUBTYPE);
+                              PolarisEntitySubType.ANY_SUBTYPE,
+                              ReadEverythingPageToken.get());
                   if (!siblingTablesResult.isSuccess()) {
                     throw new IllegalStateException(
                         "Unable to resolve siblings entities to validate location - could not list tables");
@@ -2055,7 +2105,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private List<TableIdentifier> listTableLike(PolarisEntitySubType subType, Namespace namespace) {
+  private PolarisPage<TableIdentifier> listTableLike(
+      PolarisEntitySubType subType, Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
@@ -2064,16 +2115,23 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    ListEntitiesResult listResult =
+        getMetaStoreManager()
+            .listEntities(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.TABLE_LIKE,
+                subType,
+                pageToken);
     List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            getMetaStoreManager()
-                .listEntities(
-                    getCurrentPolarisContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.TABLE_LIKE,
-                    subType)
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+        PolarisEntity.toNameAndIdList(listResult.getEntities());
+    List<TableIdentifier> identifiers =
+        PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+
+    return listResult
+        .getPageToken()
+        .map(token -> new PolarisPage<>(token, identifiers))
+        .orElseGet(() -> PolarisPage.fromData(identifiers));
   }
 
   /**

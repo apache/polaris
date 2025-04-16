@@ -42,6 +42,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
@@ -120,7 +121,8 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType);
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken);
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
@@ -300,11 +302,12 @@ public interface PolarisMetaStoreManager
    *
    * @param callCtx call context
    * @param executorId executor id
-   * @param limit limit
+   * @param pageToken page token to start after
    * @return list of tasks to be completed
    */
   @Nonnull
-  EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
+  EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each
