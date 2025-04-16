@@ -59,6 +59,9 @@ jobs:
         with:
           images: adnanhemani821/polaris
 
+      - name: List all Docker images
+        run: docker images
+
       - name: Docker Image build
         run: |
           ./gradlew \
