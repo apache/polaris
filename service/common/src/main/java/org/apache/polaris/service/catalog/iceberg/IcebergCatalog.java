@@ -30,6 +30,7 @@ import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -349,9 +350,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return new PolarisIcebergCatalogViewBuilder(identifier);
   }
 
+  @VisibleForTesting
+  public TableOperations newTableOps(TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
+    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, updateMetadataOnCommit);
+  }
+
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier);
+    boolean updateMetadataOnCommit =
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(),
+                BehaviorChangeConfiguration.TABLE_OPERATIONS_COMMIT_UPDATE_METADATA);
+    return newTableOps(tableIdentifier, updateMetadataOnCommit);
   }
 
   @Override
@@ -1184,16 +1196,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations extends BaseMetastoreTableOperations {
+  public class BasePolarisTableOperations extends BaseMetastoreTableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
+    private final boolean updateMetadataOnCommit;
     private FileIO tableFileIO;
 
-    BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
+    BasePolarisTableOperations(
+        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+      this.updateMetadataOnCommit = updateMetadataOnCommit;
     }
 
     @Override
@@ -1327,6 +1342,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       String newLocation = writeNewMetadataIfRequired(base == null, metadata);
       String oldLocation = base == null ? null : base.metadataFileLocation();
+
+      // TODO: we should not need to do this hack, but there's no other way to modify
+      // metadataFileLocation / currentMetadataLocation
+      if (updateMetadataOnCommit) {
+        try {
+          Field tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
+          tableMetadataField.setAccessible(true);
+          tableMetadataField.set(metadata, newLocation);
+
+          Field currentMetadataField =
+              BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
+          currentMetadataField.setAccessible(true);
+          currentMetadataField.set(this, newLocation);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+          LOGGER.error(
+              "Encountered an unexpected error while attempting to modify TableMetadata.metadataFileLocation",
+              e);
+        }
+      }
 
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
       // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification

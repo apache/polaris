@@ -59,4 +59,13 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
           .description("Whether or not to use soft values in the entity cache")
           .defaultValue(false)
           .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Boolean> TABLE_OPERATIONS_COMMIT_UPDATE_METADATA =
+      PolarisConfiguration.<Boolean>builder()
+          .key("TABLE_OPERATIONS_COMMIT_UPDATE_METADATA")
+          .description(
+              "If true, BasePolarisTableOperations should cache metadata that has been committed"
+                  + " which can reduce File IO")
+          .defaultValue(true)
+          .buildBehaviorChangeConfiguration();
 }
