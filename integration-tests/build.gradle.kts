@@ -68,3 +68,16 @@ dependencies {
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
 }
+
+copiedCodeChecks {
+  addDefaultContentTypes()
+
+  licenseFile = project.layout.projectDirectory.file("src/main/resources/META-INF/LICENSE")
+
+  scanDirectories {
+    register("integration-tests") {
+      srcDir(".")
+      include("*")
+    }
+  }
+}
