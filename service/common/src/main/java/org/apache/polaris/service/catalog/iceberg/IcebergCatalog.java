@@ -1345,17 +1345,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
       // TODO: we should not need to do this hack, but there's no other way to modify
-      // metadataFileLocation / currentMetadataLocation
+      // currentMetadata / currentMetadataLocation
       if (updateMetadataOnCommit) {
         try {
           Field tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
           tableMetadataField.setAccessible(true);
           tableMetadataField.set(metadata, newLocation);
 
-          Field currentMetadataField =
+          Field currentMetadataLocationField =
               BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
+          currentMetadataLocationField.setAccessible(true);
+          currentMetadataLocationField.set(this, newLocation);
+
+          Field currentMetadataField =
+              BaseMetastoreTableOperations.class.getDeclaredField("currentMetadata");
           currentMetadataField.setAccessible(true);
-          currentMetadataField.set(this, newLocation);
+          currentMetadataField.set(this, metadata);
         } catch (IllegalAccessException | NoSuchFieldException e) {
           LOGGER.error(
               "Encountered an unexpected error while attempting to modify TableMetadata.metadataFileLocation",

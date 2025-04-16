@@ -1647,8 +1647,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     table.updateProperties().set("foo", "bar").commit();
     Assertions.assertThat(measured.getInputBytes())
-        .as("A table was read and written")
-        .isGreaterThan(0);
+        .as("A table was read and written, but no trip to storage was made")
+        .isEqualTo(0);
 
     Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
     TaskEntity taskEntity =
