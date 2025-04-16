@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.catalog.io;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.azure.core.exception.AzureException;
@@ -40,6 +41,7 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -117,6 +119,24 @@ public class FileIOExceptionsTest {
     res.close();
   }
 
+  private static void requestDropTable() {
+    Response res =
+        services
+            .restApi()
+            .dropTable(
+                catalog, "ns1", "t1", false, services.realmContext(), services.securityContext());
+    res.close();
+  }
+
+  private static void requestLoadTable() {
+    Response res =
+        services
+            .restApi()
+            .loadTable(
+                catalog, "ns1", "t1", null, "ALL", services.realmContext(), services.securityContext());
+    res.close();
+  }
+
   static Stream<RuntimeException> exceptions() {
     return Stream.of(
         new AzureException("Forbidden"),
@@ -135,7 +155,9 @@ public class FileIOExceptionsTest {
   @MethodSource("exceptions")
   void testNewInputFileExceptionPropagation(RuntimeException ex) {
     ioFactory.newInputFileExceptionSupplier = Optional.of(() -> ex);
-    assertThatThrownBy(FileIOExceptionsTest::requestCreateTable).isSameAs(ex);
+    assertThatCode(FileIOExceptionsTest::requestCreateTable).doesNotThrowAnyException();
+    assertThatThrownBy(FileIOExceptionsTest::requestLoadTable).isSameAs(ex);
+    assertThatCode(FileIOExceptionsTest::requestDropTable).doesNotThrowAnyException();
   }
 
   @ParameterizedTest
