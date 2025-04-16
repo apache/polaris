@@ -71,4 +71,4 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          docker push adnanhemani821/polaris:${{ steps.meta.outputs.tags }}
+          docker push ${{ steps.meta.outputs.tags }}
