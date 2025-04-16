@@ -119,6 +119,7 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.Unsafe;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class IcebergCatalog extends BaseMetastoreViewCatalog
@@ -1354,16 +1355,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           tableMetadataField.setAccessible(true);
           tableMetadataField.set(metadata, newLocation);
 
-          Field tableMetadataChanges = TableMetadata.class.getDeclaredField("changes");
-
-          Field modifiersField = Field.class.getDeclaredField("modifiers");
-          modifiersField.setAccessible(true);
-          modifiersField.setInt(
-              tableMetadataChanges,
-              tableMetadataChanges.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
-
-          tableMetadataField.setAccessible(true);
-          tableMetadataField.set(metadata, new ArrayList<MetadataUpdate>());
+          Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+          unsafeField.setAccessible(true);
+          Unsafe unsafe = (Unsafe) unsafeField.get(null);
+          Field changesField = TableMetadata.class.getDeclaredField("changes");
+          changesField.setAccessible(true);
+          long offset = unsafe.objectFieldOffset(changesField);
+          unsafe.putObject(metadata, offset, new ArrayList<MetadataUpdate>());
 
           Field currentMetadataLocationField =
               BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
