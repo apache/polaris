@@ -41,7 +41,6 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -133,7 +132,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .loadTable(
-                catalog, "ns1", "t1", null, "ALL", services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                "t1",
+                null,
+                "ALL",
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
