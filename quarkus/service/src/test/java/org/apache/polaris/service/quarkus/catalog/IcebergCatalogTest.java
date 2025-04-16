@@ -1797,7 +1797,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .hasMessageContaining("conflict_table");
   }
 
-
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   public void testTableOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
@@ -1808,34 +1807,43 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     catalog.buildTable(TABLE, SCHEMA).create();
 
     IcebergCatalog.BasePolarisTableOperations realOps =
-        (IcebergCatalog.BasePolarisTableOperations) catalog.newTableOps(TABLE, updateMetadataOnCommit);
+        (IcebergCatalog.BasePolarisTableOperations)
+            catalog.newTableOps(TABLE, updateMetadataOnCommit);
     IcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
 
     try (MockedStatic<TableMetadataParser> mocked =
-             Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
+        Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
       TableMetadata base1 = ops.current();
-      mocked.verify(() -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
 
       TableMetadata base2 = ops.refresh();
-      mocked.verify(() -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
 
       Assertions.assertThat(base1.metadataFileLocation()).isEqualTo(base2.metadataFileLocation());
       Assertions.assertThat(base1).isEqualTo(base2);
 
-      Schema newSchema = new Schema(Types.NestedField.optional(100, "new_col", Types.LongType.get()));
+      Schema newSchema =
+          new Schema(Types.NestedField.optional(100, "new_col", Types.LongType.get()));
       TableMetadata newMetadata =
           TableMetadata.buildFrom(base1).setCurrentSchema(newSchema, 100).build();
       ops.commit(base2, newMetadata);
-      mocked.verify(() -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
 
       ops.current();
       int expectedReads = 2;
       if (updateMetadataOnCommit) {
         expectedReads = 1;
       }
-      mocked.verify(() -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(expectedReads));
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          Mockito.times(expectedReads));
       ops.refresh();
-      mocked.verify(() -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(expectedReads));
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
     }

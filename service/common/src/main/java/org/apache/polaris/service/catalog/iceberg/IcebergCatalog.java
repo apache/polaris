@@ -351,7 +351,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  public TableOperations newTableOps(TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
+  public TableOperations newTableOps(
+      TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
     return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, updateMetadataOnCommit);
   }
 
