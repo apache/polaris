@@ -51,7 +51,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
-          images: apache/polaris
+          images: adnanhemani821/polaris
 
       - name: Docker Image build
         run: |
@@ -65,4 +65,4 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          docker push apache/polaris:${{ steps.meta.outputs.tags }}
+          docker push adnanhemani821/polaris:${{ steps.meta.outputs.tags }}
