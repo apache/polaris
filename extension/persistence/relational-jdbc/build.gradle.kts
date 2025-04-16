@@ -29,7 +29,6 @@ dependencies {
 
   implementation(libs.smallrye.common.annotation) // @Identifier
 
-  runtimeOnly(libs.postgresql)
   testImplementation(libs.mockito.junit.jupiter)
 
   testImplementation(libs.h2)

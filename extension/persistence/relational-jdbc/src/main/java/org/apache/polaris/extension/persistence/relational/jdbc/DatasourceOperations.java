@@ -33,6 +33,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
+import javax.swing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +53,8 @@ public class DatasourceOperations {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
+      boolean autoCommit = connection.getAutoCommit();
+      connection.setAutoCommit(true);
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(
@@ -76,6 +79,7 @@ public class DatasourceOperations {
           }
         }
       }
+      connection.setAutoCommit(autoCommit);
     } catch (IOException e) {
       LOGGER.error("Error reading the script file", e);
       throw new RuntimeException(e);
@@ -107,7 +111,11 @@ public class DatasourceOperations {
   public int executeUpdate(String query) throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
-      return statement.executeUpdate(query);
+      boolean autoCommit = connection.getAutoCommit();
+      connection.setAutoCommit(true);
+      int result = statement.executeUpdate(query);
+      connection.setAutoCommit(autoCommit);
+      return result;
     } catch (SQLException e) {
       LOGGER.error("Error executing query {}", query, e);
       throw e;
@@ -125,43 +133,25 @@ public class DatasourceOperations {
   }
 
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
-    Connection connection = null;
-    try {
-      connection = borrowConnection();
-      connection.setAutoCommit(false); // Disable auto-commit to start a transaction
-
-      boolean result;
-      try (Statement statement = connection.createStatement()) {
-        result = callback.execute(statement);
-      }
-
-      if (result) {
-        connection.commit(); // Commit the transaction if successful
-      } else {
-        connection.rollback(); // Rollback the transaction if not successful
-      }
-
-    } catch (SQLException e) {
-      if (connection != null) {
-        try {
-          connection.rollback(); // Rollback on exception
-        } catch (SQLException ex) {
-          LOGGER.error("Error rolling back transaction", ex);
-          throw e;
+    try (Connection connection = borrowConnection()) {
+      boolean autoCommit = connection.getAutoCommit();
+      connection.setAutoCommit(false);
+      boolean success = false;
+      try {
+        try (Statement statement = connection.createStatement()) {
+          success = callback.execute(statement);
         }
+      } finally {
+        if (success) {
+          connection.commit();
+        } else {
+          connection.rollback();
+        }
+        connection.setAutoCommit(autoCommit);
       }
+    } catch (SQLException e) {
       LOGGER.error("Caught Error while executing transaction", e);
       throw e;
-    } finally {
-      if (connection != null) {
-        try {
-          connection.setAutoCommit(true); // Restore auto-commit
-          connection.close();
-        } catch (SQLException e) {
-          LOGGER.error("Error closing connection", e);
-          throw e;
-        }
-      }
     }
   }
 

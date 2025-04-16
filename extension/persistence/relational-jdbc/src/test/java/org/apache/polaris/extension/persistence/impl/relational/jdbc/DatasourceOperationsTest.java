@@ -114,9 +114,9 @@ public class DatasourceOperationsTest {
   @Test
   void testRunWithinTransaction_commit() throws Exception {
     DatasourceOperations.TransactionCallback callback = statement -> true;
-
+    when(mockConnection.getAutoCommit()).thenReturn(true);
     datasourceOperations.runWithinTransaction(callback);
-
+    verify(mockConnection).setAutoCommit(true);
     verify(mockConnection).setAutoCommit(false);
     verify(mockConnection).commit();
     verify(mockConnection).setAutoCommit(true);
