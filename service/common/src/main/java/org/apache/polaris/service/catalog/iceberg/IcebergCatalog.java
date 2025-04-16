@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +48,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -1351,6 +1353,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           Field tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
           tableMetadataField.setAccessible(true);
           tableMetadataField.set(metadata, newLocation);
+
+          Field tableMetadataChanges = TableMetadata.class.getDeclaredField("changes");
+
+          Field modifiersField = Field.class.getDeclaredField("modifiers");
+          modifiersField.setAccessible(true);
+          modifiersField.setInt(tableMetadataChanges, tableMetadataChanges.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+
+          tableMetadataField.setAccessible(true);
+          tableMetadataField.set(metadata, new ArrayList<MetadataUpdate>());
 
           Field currentMetadataLocationField =
               BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
