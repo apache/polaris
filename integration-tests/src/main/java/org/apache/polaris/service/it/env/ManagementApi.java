@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.admin.model.BasePrincipal;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -222,7 +223,7 @@ public class ManagementApi extends RestApi {
     }
   }
 
-  public List<Principal> listPrincipals() {
+  public List<BasePrincipal> listPrincipals() {
     try (Response response = request("v1/principals").get()) {
       assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
       return response.readEntity(Principals.class).getPrincipals();

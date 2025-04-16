@@ -28,12 +28,14 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
+import org.apache.polaris.core.admin.model.BasePrincipal;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
+import org.apache.polaris.core.admin.model.FederatedPrincipal;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
@@ -58,6 +60,25 @@ public final class Serializers {
         GrantCatalogRoleRequest.class, new GrantCatalogRoleRequestDeserializer());
     module.addDeserializer(AddGrantRequest.class, new AddGrantRequestDeserializer());
     module.addDeserializer(RevokeGrantRequest.class, new RevokeGrantRequestDeserializer());
+    module.addDeserializer(
+        BasePrincipal.class,
+        new JsonDeserializer<BasePrincipal>() {
+          @Override
+          public BasePrincipal deserialize(
+              JsonParser jsonParser, DeserializationContext deserializationContext)
+              throws IOException {
+            TreeNode jsonNode = jsonParser.readValueAsTree();
+
+            if (jsonNode.isObject()
+                && jsonNode.get("federated") != null
+                && ((ObjectNode) jsonNode).get("federated").asBoolean()) {
+              return deserializationContext.readTreeAsValue(
+                  (JsonNode) jsonNode, FederatedPrincipal.class);
+            } else {
+              return deserializationContext.readTreeAsValue((JsonNode) jsonNode, Principal.class);
+            }
+          }
+        });
     mapper.registerModule(module);
   }
 

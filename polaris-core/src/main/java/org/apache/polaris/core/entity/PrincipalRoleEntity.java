@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity;
 
 import org.apache.polaris.core.admin.model.PrincipalRole;
+import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 
 /**
  * Wrapper for translating between the REST PrincipalRole object and the base PolarisEntity type.
@@ -46,7 +47,7 @@ public class PrincipalRoleEntity extends PolarisEntity {
   public PrincipalRole asPrincipalRole() {
     return new PrincipalRole(
         getName(),
-        PolarisEntity.isFederated(this),
+        FederatedEntities.isFederated(this),
         getPropertiesAsMap(),
         getCreateTimestamp(),
         getLastUpdateTimestamp(),
@@ -67,7 +68,7 @@ public class PrincipalRoleEntity extends PolarisEntity {
 
     public Builder setFederated(Boolean isFederated) {
       if (isFederated != null && isFederated) {
-        internalProperties.put(PolarisEntityConstants.FEDERATED_ENTITY, "true");
+        internalProperties.put(FederatedEntities.FEDERATED_ENTITY, "true");
       }
       return this;
     }

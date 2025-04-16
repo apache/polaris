@@ -182,12 +182,6 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public static boolean isFederated(PolarisBaseEntity entity) {
-    return Optional.ofNullable(entity.getInternalPropertiesAsMap())
-        .map(map -> Boolean.parseBoolean(map.get(PolarisEntityConstants.FEDERATED_ENTITY)))
-        .orElse(false);
-  }
-
   public PolarisEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(
         sourceEntity.getCatalogId(),
