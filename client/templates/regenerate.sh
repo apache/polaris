@@ -83,7 +83,7 @@ EXCLUDE_PATHS=(
   "python/.openapi-generator-ignore"
   "python/pyproject.toml"
   "python/cli/"
-  "client/test/"
+  "python/test/"
 )
 
 EXCLUDE_EXTENSIONS=(
