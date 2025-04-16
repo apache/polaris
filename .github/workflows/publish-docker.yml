@@ -74,7 +74,8 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          for TAG in ${{ steps.meta.outputs.tags }}; do
+          IFS=$'\n' read -rd '' -a TAGS <<< "$(echo -e "${{ steps.meta.outputs.tags }}")"
+          for TAG in ${TAGS[@]}; do
             # Replace everything before the first "/" or ":" with "abcd"
             LOCAL_TAG=$(echo "$TAG" | sed -E 's|^[^:/]+|apache|')
             echo "$LOCAL_TAG"
