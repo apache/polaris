@@ -1358,7 +1358,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
           Field modifiersField = Field.class.getDeclaredField("modifiers");
           modifiersField.setAccessible(true);
-          modifiersField.setInt(tableMetadataChanges, tableMetadataChanges.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+          modifiersField.setInt(
+              tableMetadataChanges,
+              tableMetadataChanges.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
 
           tableMetadataField.setAccessible(true);
           tableMetadataField.set(metadata, new ArrayList<MetadataUpdate>());
