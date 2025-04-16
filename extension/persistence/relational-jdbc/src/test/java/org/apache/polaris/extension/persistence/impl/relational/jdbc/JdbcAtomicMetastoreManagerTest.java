@@ -67,6 +67,7 @@ public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerT
   @Override
   @Test
   protected void testPolicyMapping() {
+    // TODO: add Policy support.
     assertThrows(UnsupportedOperationException.class, super::testPolicyMapping);
   }
 }

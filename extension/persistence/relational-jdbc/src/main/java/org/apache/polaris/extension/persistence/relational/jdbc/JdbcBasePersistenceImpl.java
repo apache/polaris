@@ -87,7 +87,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     String query;
     if (originalEntity == null) {
-      query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, realmId);
+      try {
+        query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, realmId);
+        datasourceOperations.executeUpdate(query);
+      } catch (SQLException e) {
+        if ((datasourceOperations.isConstraintViolation(e)
+            || datasourceOperations.isAlreadyExistsException(e))) {
+          throw new EntityAlreadyExistsException(entity);
+        } else {
+          throw new RuntimeException(
+              String.format("Failed to write entity due to %s", e.getMessage()));
+        }
+      }
     } else {
       Map<String, Object> params =
           Map.of(
@@ -100,22 +111,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "realm_id",
               realmId);
       query = JdbcCrudQueryGenerator.generateUpdateQuery(modelEntity, params, ModelEntity.class);
-    }
-    try {
-      int rowsUpdated = datasourceOperations.executeUpdate(query);
-      if (rowsUpdated == 0 && originalEntity != null) {
-        throw new RetryOnConcurrencyException(
-            "Entity '%s' id '%s' concurrently modified; expected version %s",
-            entity.getName(), entity.getId(), originalEntity.getEntityVersion());
-      }
-    } catch (SQLException e) {
-      if (originalEntity == null
-          && (datasourceOperations.isConstraintViolation(e)
-              || datasourceOperations.isAlreadyExistsException(e))) {
-        throw new EntityAlreadyExistsException(entity);
-      } else {
+      try {
+        int rowsUpdated = datasourceOperations.executeUpdate(query);
+        if (rowsUpdated == 0) {
+          throw new RetryOnConcurrencyException(
+              "Entity '%s' id '%s' concurrently modified; expected version %s",
+              entity.getName(), entity.getId(), originalEntity.getEntityVersion());
+        }
+      } catch (SQLException e) {
         throw new RuntimeException(
-            String.format("Failed to write the entities due to %s", e.getMessage()));
+            String.format("Failed to write entity due to %s", e.getMessage()));
       }
     }
   }
@@ -156,7 +161,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               }
               String query;
               if (originalEntities == null || originalEntities.get(i) == null) {
-                query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, realmId);
+                try {
+                  query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, realmId);
+                  datasourceOperations.executeUpdate(query, statement);
+                } catch (SQLException e) {
+                  if ((datasourceOperations.isConstraintViolation(e)
+                      || datasourceOperations.isAlreadyExistsException(e))) {
+                    throw new EntityAlreadyExistsException(entity);
+                  } else {
+                    throw new RuntimeException(
+                        String.format("Failed to write entity due to %s", e.getMessage()));
+                  }
+                }
               } else {
                 Map<String, Object> params =
                     Map.of(
@@ -171,21 +187,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 query =
                     JdbcCrudQueryGenerator.generateUpdateQuery(
                         modelEntity, params, ModelEntity.class);
-              }
-              boolean isUpdate = (originalEntities != null && originalEntities.get(i) != null);
-              try {
-                int rowsUpdated = datasourceOperations.executeUpdate(query, statement);
-                if (rowsUpdated == 0 && isUpdate) {
-                  throw new RetryOnConcurrencyException(
-                      "Entity '%s' id '%s' concurrently modified; expected version %s",
-                      entity.getName(), entity.getId(), originalEntities.get(i).getEntityVersion());
-                }
-              } catch (SQLException e) {
-                if (!isUpdate
-                    && (datasourceOperations.isConstraintViolation(e)
-                        || datasourceOperations.isAlreadyExistsException(e))) {
-                  throw new EntityAlreadyExistsException(entity);
-                } else {
+                try {
+                  int rowsUpdated = datasourceOperations.executeUpdate(query, statement);
+                  if (rowsUpdated == 0) {
+                    throw new RetryOnConcurrencyException(
+                        "Entity '%s' id '%s' concurrently modified; expected version %s",
+                        entity.getName(),
+                        entity.getId(),
+                        originalEntities.get(i).getEntityVersion());
+                  }
+                } catch (SQLException e) {
                   throw new RuntimeException(
                       String.format("Failed to write entity due to %s", e.getMessage()));
                 }

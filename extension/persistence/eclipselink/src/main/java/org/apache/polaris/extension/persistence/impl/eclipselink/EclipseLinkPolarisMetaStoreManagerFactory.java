@@ -26,7 +26,7 @@ import jakarta.inject.Inject;
 import java.nio.file.Path;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerBackedByStoreFactory;
+import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -40,7 +40,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 @ApplicationScoped
 @Identifier("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerBackedByStoreFactory<PolarisEclipseLinkStore> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
   @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
