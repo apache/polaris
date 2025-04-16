@@ -59,9 +59,6 @@ jobs:
         with:
           images: adnanhemani821/polaris
 
-      - name: List all Docker images
-        run: docker images
-
       - name: Docker Image build
         run: |
           ./gradlew \
@@ -71,6 +68,9 @@ jobs:
             :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+
+      - name: List all Docker images
+        run: docker images
 
       - name: Push Docker image to Docker Hub
         run: |
