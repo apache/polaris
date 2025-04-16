@@ -18,43 +18,145 @@
  */
 package org.apache.polaris.spark;
 
-import com.google.common.collect.ImmutableSet;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import java.util.Map;
-import java.util.Set;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.spark.sql.catalyst.analysis.*;
-import org.apache.spark.sql.connector.catalog.*;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.iceberg.spark.SupportsReplaceView;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
+import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.catalyst.analysis.ViewAlreadyExistsException;
+import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.NamespaceChange;
+import org.apache.spark.sql.connector.catalog.StagedTable;
+import org.apache.spark.sql.connector.catalog.StagingTableCatalog;
+import org.apache.spark.sql.connector.catalog.SupportsNamespaces;
+import org.apache.spark.sql.connector.catalog.Table;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.catalog.TableChange;
+import org.apache.spark.sql.connector.catalog.View;
+import org.apache.spark.sql.connector.catalog.ViewCatalog;
+import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatalog {
-  private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
-  private String catalogName = null;
-  private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
+/**
+ * SparkCatalog Implementation that is able to interact with both Iceberg SparkCatalog and Polaris
+ * SparkCatalog. All namespaces and view related operations continue goes through the Iceberg
+ * SparkCatalog. For table operations, depends on the table format, the operation can be achieved
+ * with interaction with both Iceberg and Polaris SparkCatalog.
+ */
+public class SparkCatalog
+    implements StagingTableCatalog,
+        TableCatalog,
+        SupportsNamespaces,
+        ViewCatalog,
+        SupportsReplaceView {
+  private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
-  // TODO: Add Polaris Specific REST Catalog
+  @VisibleForTesting protected String catalogName = null;
+  @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
+  @VisibleForTesting protected PolarisSparkCatalog polarisSparkCatalog = null;
+  @VisibleForTesting protected DeltaHelper deltaHelper = null;
 
   @Override
   public String name() {
     return catalogName;
   }
 
+  /**
+   * Check whether invalid catalog configuration is provided, and return an option map with catalog
+   * type configured correctly. This function mainly validates two parts: 1) No customized catalog
+   * implementation is provided. 2) No non-rest catalog type is configured.
+   */
+  @VisibleForTesting
+  public CaseInsensitiveStringMap validateAndResolveCatalogOptions(
+      CaseInsensitiveStringMap options) {
+    Preconditions.checkArgument(
+        options.get(CatalogProperties.CATALOG_IMPL) == null,
+        "Customized catalog implementation is not supported and not needed, please remove the configuration!");
+
+    String catalogType =
+        PropertyUtil.propertyAsString(
+            options, CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
+    Preconditions.checkArgument(
+        catalogType.equals(CatalogUtil.ICEBERG_CATALOG_TYPE_REST),
+        "Only rest catalog type is allowed, but got catalog type: "
+            + catalogType
+            + ". Either configure the type to rest or remove the config");
+
+    Map<String, String> resolvedOptions = Maps.newHashMap();
+    resolvedOptions.putAll(options);
+    // when no catalog type is configured, iceberg uses hive by default. Here, we make sure the
+    // type is set to rest since we only support rest catalog.
+    resolvedOptions.put(CatalogUtil.ICEBERG_CATALOG_TYPE, CatalogUtil.ICEBERG_CATALOG_TYPE_REST);
+
+    return new CaseInsensitiveStringMap(resolvedOptions);
+  }
+
+  /**
+   * Initialize REST Catalog for Iceberg and Polaris, this is the only catalog type supported by
+   * Polaris at this moment.
+   */
+  private void initRESTCatalog(String name, CaseInsensitiveStringMap options) {
+    CaseInsensitiveStringMap resolvedOptions = validateAndResolveCatalogOptions(options);
+
+    // initialize the icebergSparkCatalog
+    this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
+    this.icebergsSparkCatalog.initialize(name, resolvedOptions);
+
+    // initialize the polaris spark catalog
+    OAuth2Util.AuthSession catalogAuth =
+        PolarisCatalogUtils.getAuthSession(this.icebergsSparkCatalog);
+    PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
+    restCatalog.initialize(options, catalogAuth);
+    this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
+    this.polarisSparkCatalog.initialize(name, resolvedOptions);
+  }
+
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
     this.catalogName = name;
+    initRESTCatalog(name, options);
+    this.deltaHelper = new DeltaHelper(options);
   }
 
   @Override
   public Table loadTable(Identifier ident) throws NoSuchTableException {
-    throw new UnsupportedOperationException("loadTable");
+    try {
+      return this.icebergsSparkCatalog.loadTable(ident);
+    } catch (NoSuchTableException e) {
+      return this.polarisSparkCatalog.loadTable(ident);
+    }
   }
 
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
-      throws TableAlreadyExistsException {
-    throw new UnsupportedOperationException("createTable");
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
+    String provider = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+    if (PolarisCatalogUtils.useIceberg(provider)) {
+      return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
+    } else if (PolarisCatalogUtils.useDelta(provider)) {
+      // For delta table, we load the delta catalog to help dealing with the
+      // delta log creation.
+      TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
+      return deltaCatalog.createTable(ident, schema, transforms, properties);
+    } else {
+      return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
+    }
   }
 
   @Override
@@ -74,57 +176,87 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
   }
 
   @Override
+  public void invalidateTable(Identifier ident) {
+    throw new UnsupportedOperationException("invalidateTable");
+  }
+
+  @Override
+  public boolean purgeTable(Identifier ident) {
+    throw new UnsupportedOperationException("purgeTable");
+  }
+
+  @Override
   public Identifier[] listTables(String[] namespace) {
     throw new UnsupportedOperationException("listTables");
   }
 
   @Override
+  public StagedTable stageCreate(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
+      throws TableAlreadyExistsException {
+    return this.icebergsSparkCatalog.stageCreate(ident, schema, transforms, properties);
+  }
+
+  @Override
+  public StagedTable stageReplace(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
+      throws NoSuchTableException {
+    return this.icebergsSparkCatalog.stageReplace(ident, schema, transforms, properties);
+  }
+
+  @Override
+  public StagedTable stageCreateOrReplace(
+      Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties) {
+    return this.icebergsSparkCatalog.stageCreateOrReplace(ident, schema, transforms, properties);
+  }
+
+  @Override
   public String[] defaultNamespace() {
-    throw new UnsupportedOperationException("defaultNamespace");
+    return this.icebergsSparkCatalog.defaultNamespace();
   }
 
   @Override
   public String[][] listNamespaces() {
-    throw new UnsupportedOperationException("listNamespaces");
+    return this.icebergsSparkCatalog.listNamespaces();
   }
 
   @Override
   public String[][] listNamespaces(String[] namespace) throws NoSuchNamespaceException {
-    throw new UnsupportedOperationException("listNamespaces");
+    return this.icebergsSparkCatalog.listNamespaces(namespace);
   }
 
   @Override
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
-    throw new UnsupportedOperationException("loadNamespaceMetadata");
+    return this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
   }
 
   @Override
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
-    throw new UnsupportedOperationException("createNamespace");
+    this.icebergsSparkCatalog.createNamespace(namespace, metadata);
   }
 
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
-    throw new UnsupportedOperationException("alterNamespace");
+    this.icebergsSparkCatalog.alterNamespace(namespace, changes);
   }
 
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
-    throw new UnsupportedOperationException("dropNamespace");
+    return this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
   }
 
   @Override
   public Identifier[] listViews(String... namespace) {
-    throw new UnsupportedOperationException("listViews");
+    return this.icebergsSparkCatalog.listViews(namespace);
   }
 
   @Override
   public View loadView(Identifier ident) throws NoSuchViewException {
-    throw new UnsupportedOperationException("loadView");
+    return this.icebergsSparkCatalog.loadView(ident);
   }
 
   @Override
@@ -139,23 +271,56 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatal
       String[] columnComments,
       Map<String, String> properties)
       throws ViewAlreadyExistsException, NoSuchNamespaceException {
-    throw new UnsupportedOperationException("createView");
+    return this.icebergsSparkCatalog.createView(
+        ident,
+        sql,
+        currentCatalog,
+        currentNamespace,
+        schema,
+        queryColumnNames,
+        columnAliases,
+        columnComments,
+        properties);
   }
 
   @Override
   public View alterView(Identifier ident, ViewChange... changes)
       throws NoSuchViewException, IllegalArgumentException {
-    throw new UnsupportedOperationException("alterView");
+    return this.icebergsSparkCatalog.alterView(ident, changes);
   }
 
   @Override
   public boolean dropView(Identifier ident) {
-    throw new UnsupportedOperationException("dropView");
+    return this.icebergsSparkCatalog.dropView(ident);
   }
 
   @Override
   public void renameView(Identifier fromIdentifier, Identifier toIdentifier)
       throws NoSuchViewException, ViewAlreadyExistsException {
-    throw new UnsupportedOperationException("renameView");
+    this.icebergsSparkCatalog.renameView(fromIdentifier, toIdentifier);
+  }
+
+  @Override
+  public View replaceView(
+      Identifier ident,
+      String sql,
+      String currentCatalog,
+      String[] currentNamespace,
+      StructType schema,
+      String[] queryColumnNames,
+      String[] columnAliases,
+      String[] columnComments,
+      Map<String, String> properties)
+      throws NoSuchNamespaceException, NoSuchViewException {
+    return this.icebergsSparkCatalog.replaceView(
+        ident,
+        sql,
+        currentCatalog,
+        currentNamespace,
+        schema,
+        queryColumnNames,
+        columnAliases,
+        columnComments,
+        properties);
   }
 }

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
+
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
@@ -220,13 +222,7 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
+      throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
@@ -260,11 +256,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier =
           PolarisCatalogHelpers.listToTableIdentifier(
               status.getFailedToResolvePath().getEntityNames());
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
+      throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
 
     List<PolarisResolvedPathWrapper> targets =
@@ -276,7 +268,7 @@ public abstract class CatalogHandler {
                                 identifier, PolarisEntityType.TABLE_LIKE, subType, true))
                         .orElseThrow(
                             () ->
-                                subType == PolarisEntitySubType.ICEBERG_TABLE
+                                subType == ICEBERG_TABLE
                                     ? new NoSuchTableException(
                                         "Table does not exist: %s", identifier)
                                     : new NoSuchViewException(
@@ -319,11 +311,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
     } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", src);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", src);
-      }
+      throwNotFoundExceptionForTableLikeEntity(dst, List.of(subType));
     }
 
     // Normally, since we added the dst as an optional path, we'd expect it to only get resolved
@@ -334,13 +322,20 @@ public abstract class CatalogHandler {
     // TODO: Possibly modify the exception thrown depending on whether the caller has privileges
     // on the parent namespace.
     PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dst);
-    if (dstLeafSubType == PolarisEntitySubType.ICEBERG_TABLE) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.GENERIC_TABLE) {
-      throw new AlreadyExistsException(
-          "Cannot rename %s to %s. Generic table already exists", src, dst);
+
+    switch (dstLeafSubType) {
+      case ICEBERG_TABLE:
+        throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
+
+      case PolarisEntitySubType.ICEBERG_VIEW:
+        throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
+
+      case PolarisEntitySubType.GENERIC_TABLE:
+        throw new AlreadyExistsException(
+            "Cannot rename %s to %s. Generic table already exists", src, dst);
+
+      default:
+        break;
     }
 
     PolarisResolvedPathWrapper target =
@@ -355,5 +350,33 @@ public abstract class CatalogHandler {
         secondary);
 
     initializeCatalog();
+  }
+
+  /**
+   * Helper function for when a TABLE_LIKE entity is not found so we want to throw the appropriate
+   * exception. Used in Iceberg APIs, so the Iceberg messages cannot be changed.
+   *
+   * @param subTypes The subtypes of the entity that the exception should report doesn't exist
+   */
+  public static void throwNotFoundExceptionForTableLikeEntity(
+      TableIdentifier identifier, List<PolarisEntitySubType> subTypes) {
+
+    // In this case, we assume it's a table
+    if (subTypes.size() > 1) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    } else {
+      PolarisEntitySubType subType = subTypes.getFirst();
+      switch (subType) {
+        case ICEBERG_TABLE:
+          throw new NoSuchTableException("Table does not exist: %s", identifier);
+        case ICEBERG_VIEW:
+          throw new NoSuchViewException("View does not exist: %s", identifier);
+        case GENERIC_TABLE:
+          throw new NoSuchTableException("Generic table does not exist: %s", identifier);
+        default:
+          // Assume it's a table
+          throw new NoSuchTableException("Table does not exist: %s", identifier);
+      }
+    }
   }
 }

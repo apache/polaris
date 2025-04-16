@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.ratelimiter;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.rate-limiter.token-bucket")
 public interface QuarkusTokenBucketConfiguration extends TokenBucketConfiguration {
 

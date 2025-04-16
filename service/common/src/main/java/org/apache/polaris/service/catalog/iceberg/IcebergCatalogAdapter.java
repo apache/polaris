@@ -31,8 +31,6 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
@@ -69,10 +67,12 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
  */
 @RequestScoped
 public class IcebergCatalogAdapter
-    implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
+    implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService, CatalogAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
@@ -234,8 +234,7 @@ public class IcebergCatalogAdapter
       String parent,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Optional<Namespace> namespaceOptional =
-        Optional.ofNullable(parent).map(IcebergCatalogAdapter::decodeNamespace);
+    Optional<Namespace> namespaceOptional = Optional.ofNullable(parent).map(this::decodeNamespace);
     PageToken token = buildPageToken(pageToken, pageSize);
     return withCatalog(
         securityContext,
@@ -253,8 +252,29 @@ public class IcebergCatalogAdapter
         securityContext, prefix, catalog -> Response.ok(catalog.loadNamespaceMetadata(ns)).build());
   }
 
-  private static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
+  /**
+   * For situations where we typically expect a metadataLocation to be present in the response and
+   * so expect to insert an etag header, this helper gracefully falls back to omitting the header if
+   * unable to get metadata location and logs a warning.
+   */
+  private Response.ResponseBuilder tryInsertETagHeader(
+      Response.ResponseBuilder builder,
+      LoadTableResponse response,
+      String namespace,
+      String tableName) {
+    if (response.metadataLocation() != null) {
+      builder =
+          builder.header(
+              HttpHeaders.ETAG,
+              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()));
+    } else {
+      LOGGER
+          .atWarn()
+          .addKeyValue("namespace", namespace)
+          .addKeyValue("tableName", tableName)
+          .log("Response has null metadataLocation; omitting etag");
+    }
+    return builder;
   }
 
   @Override
@@ -334,20 +354,14 @@ public class IcebergCatalogAdapter
             }
           } else if (delegationModes.isEmpty()) {
             LoadTableResponse response = catalog.createTableDirect(ns, createTableRequest);
-            return Response.ok(response)
-                .header(
-                    HttpHeaders.ETAG,
-                    IcebergHttpUtil.generateETagForMetadataFileLocation(
-                        response.metadataLocation()))
+            return tryInsertETagHeader(
+                    Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           } else {
             LoadTableResponse response =
                 catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
-            return Response.ok(response)
-                .header(
-                    HttpHeaders.ETAG,
-                    IcebergHttpUtil.generateETagForMetadataFileLocation(
-                        response.metadataLocation()))
+            return tryInsertETagHeader(
+                    Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           }
         });
@@ -407,11 +421,7 @@ public class IcebergCatalogAdapter
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
-          return Response.ok(response)
-              .header(
-                  HttpHeaders.ETAG,
-                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
-              .build();
+          return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
   }
 
@@ -469,11 +479,8 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
-
-          return Response.ok(response)
-              .header(
-                  HttpHeaders.ETAG,
-                  IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()))
+          return tryInsertETagHeader(
+                  Response.ok(response), response, namespace, registerTableRequest.name())
               .build();
         });
   }
@@ -735,6 +742,7 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
+                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
                         .build())
                 .build())
         .build();

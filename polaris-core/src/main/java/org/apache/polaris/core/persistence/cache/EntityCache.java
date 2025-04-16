@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -72,14 +75,21 @@ public class EntityCache {
           }
         };
 
-    // use a Caffeine cache to purge entries when those have not been used for a long time.
-    // Assuming 1KB per entry, 100K entries is about 100MB.
-    this.byId =
+    long weigherTarget =
+        PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
-            .maximumSize(100_000) // Set maximum size to 100,000 elements
+            .maximumWeight(weigherTarget)
+            .weigher(EntityWeigher.asWeigher())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
-            .removalListener(removalListener) // Set the removal listener
-            .build();
+            .removalListener(removalListener); // Set the removal listener
+
+    if (PolarisConfiguration.loadConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES)) {
+      byIdBuilder.softValues();
+    }
+
+    // use a Caffeine cache to purge entries when those have not been used for a long time.
+    this.byId = byIdBuilder.build();
 
     // remember the meta store manager
     this.polarisMetaStoreManager = polarisMetaStoreManager;

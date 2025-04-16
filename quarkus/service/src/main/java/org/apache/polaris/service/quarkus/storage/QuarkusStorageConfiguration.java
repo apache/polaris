@@ -18,14 +18,12 @@
  */
 package org.apache.polaris.service.quarkus.storage;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import java.time.Duration;
 import java.util.*;
 import org.apache.polaris.service.storage.StorageConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.storage")
 public interface QuarkusStorageConfiguration extends StorageConfiguration {
 

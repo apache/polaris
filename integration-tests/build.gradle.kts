@@ -22,6 +22,7 @@ plugins { id("polaris-server") }
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-model"))
+  implementation(project(":polaris-api-catalog-service"))
 
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.guava)
@@ -66,4 +67,17 @@ dependencies {
   compileOnly("org.junit.jupiter:junit-jupiter-engine")
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
+}
+
+copiedCodeChecks {
+  addDefaultContentTypes()
+
+  licenseFile = project.layout.projectDirectory.file("src/main/resources/META-INF/LICENSE")
+
+  scanDirectories {
+    register("integration-tests") {
+      srcDir(".")
+      include("*")
+    }
+  }
 }

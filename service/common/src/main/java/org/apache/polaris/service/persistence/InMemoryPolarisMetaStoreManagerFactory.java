@@ -32,13 +32,13 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentials;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.service.context.RealmContextConfiguration;
 
 @ApplicationScoped
 @Identifier("in-memory")
@@ -57,10 +57,6 @@ public class InMemoryPolarisMetaStoreManagerFactory
       PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
     super(diagnostics);
     this.storageIntegration = storageIntegration;
-  }
-
-  public void onStartup(RealmContextConfiguration realmContextConfiguration) {
-    bootstrapRealmsAndPrintCredentials(realmContextConfiguration.realms());
   }
 
   @Override
@@ -100,11 +96,26 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
     RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
-    Map<String, PrincipalSecretsResult> results = this.bootstrapRealms(realms, rootCredentialsSet);
-    bootstrappedRealms.addAll(realms);
+    this.bootstrapRealms(realms, rootCredentialsSet);
+  }
 
+  @Override
+  public Map<String, PrincipalSecretsResult> bootstrapRealms(
+      Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
+    Map<String, PrincipalSecretsResult> results = super.bootstrapRealms(realms, rootCredentialsSet);
+    bootstrappedRealms.addAll(results.keySet());
+
+    Map<String, RootCredentials> presetCredentials = rootCredentialsSet.credentials();
     for (String realmId : realms) {
+      if (presetCredentials.containsKey(realmId)) {
+        // Credentials provided in the runtime env... no need to print
+        continue;
+      }
+
       PrincipalSecretsResult principalSecrets = results.get(realmId);
+      if (principalSecrets == null) {
+        continue; // already bootstrapped (possible benign race)
+      }
 
       String msg =
           String.format(
@@ -114,5 +125,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
               principalSecrets.getPrincipalSecrets().getMainSecret());
       System.out.println(msg);
     }
+
+    return results;
   }
 }

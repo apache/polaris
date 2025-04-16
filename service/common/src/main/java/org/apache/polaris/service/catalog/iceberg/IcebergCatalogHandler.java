@@ -52,6 +52,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.CatalogHandlers;
+import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -352,24 +353,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse.Builder responseBuilder =
-          LoadTableResponse.builder().withTableMetadata(tableMetadata);
-      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableLocation", tableMetadata.location())
-            .log("Fetching client credentials for table");
-        responseBuilder.addAllConfig(
-            credentialDelegation.getCredentialConfig(
-                tableIdentifier,
-                tableMetadata,
-                Set.of(
-                    PolarisStorageActions.READ,
-                    PolarisStorageActions.WRITE,
-                    PolarisStorageActions.LIST)));
-      }
-      return responseBuilder.build();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier,
+              tableMetadata,
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST))
+          .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -458,20 +449,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
-    LoadTableResponse.Builder responseBuilder =
-        LoadTableResponse.builder().withTableMetadata(metadata);
-
-    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", ident)
-          .addKeyValue("tableLocation", metadata.location())
-          .log("Fetching client credentials for table");
-      responseBuilder.addAllConfig(
-          credentialDelegation.getCredentialConfig(
-              ident, metadata, Set.of(PolarisStorageActions.ALL)));
-    }
-    return responseBuilder.build();
+    return buildLoadTableResponseWithDelegationCredentials(
+            ident, metadata, Set.of(PolarisStorageActions.ALL))
+        .build();
   }
 
   /**
@@ -534,8 +514,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return the Polaris table entity for the table
    */
   private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
 
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
@@ -560,12 +539,24 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-    String tableEntityTag =
-        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-
-    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
-      return Optional.empty();
+    if (ifNoneMatch != null) {
+      // Perform freshness-aware table loading if caller specified ifNoneMatch.
+      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableEntity", tableEntity)
+            .log("Failed to getMetadataLocation to generate ETag when loading table");
+      } else {
+        // TODO: Refactor null-checking into the helper method once we create a more canonical
+        // interface for associate etags with entities.
+        String tableEntityTag =
+            IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+        if (ifNoneMatch.anyMatch(tableEntityTag)) {
+          return Optional.empty();
+        }
+      }
     }
 
     return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
@@ -619,6 +610,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
     PolarisConfigurationStore configurationStore =
         callContext.getPolarisCallContext().getConfigurationStore();
+    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
+    LOGGER.info(
+        "allow external catalog credential vending: {}",
+        configurationStore.getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
@@ -632,12 +630,24 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
-    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-    String tableETag =
-        IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-
-    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
-      return Optional.empty();
+    if (ifNoneMatch != null) {
+      // Perform freshness-aware table loading if caller specified ifNoneMatch.
+      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableEntity", tableEntity)
+            .log("Failed to getMetadataLocation to generate ETag when loading table");
+      } else {
+        // TODO: Refactor null-checking into the helper method once we create a more canonical
+        // interface for associate etags with entities.
+        String tableETag =
+            IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
+        if (ifNoneMatch.anyMatch(tableETag)) {
+          return Optional.empty();
+        }
+      }
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
@@ -646,26 +656,42 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse.Builder responseBuilder =
-          LoadTableResponse.builder().withTableMetadata(tableMetadata);
-      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableLocation", tableMetadata.location())
-            .log("Fetching client credentials for table");
-        responseBuilder.addAllConfig(
-            credentialDelegation.getCredentialConfig(
-                tableIdentifier, tableMetadata, actionsRequested));
-      }
-
-      return Optional.of(responseBuilder.build());
+      return Optional.of(
+          buildLoadTableResponseWithDelegationCredentials(
+                  tableIdentifier, tableMetadata, actionsRequested)
+              .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
+      TableIdentifier tableIdentifier,
+      TableMetadata tableMetadata,
+      Set<PolarisStorageActions> actions) {
+    LoadTableResponse.Builder responseBuilder =
+        LoadTableResponse.builder().withTableMetadata(tableMetadata);
+    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocation", tableMetadata.location())
+          .log("Fetching client credentials for table");
+      Map<String, String> credentialConfig =
+          credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
+      responseBuilder.addAllConfig(credentialConfig);
+      if (!credentialConfig.isEmpty()) {
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
+      }
+    }
+    return responseBuilder;
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
