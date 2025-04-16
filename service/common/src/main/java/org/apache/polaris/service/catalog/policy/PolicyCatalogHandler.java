@@ -19,10 +19,9 @@
 package org.apache.polaris.service.catalog.policy;
 
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -77,7 +76,9 @@ public class PolicyCatalogHandler extends CatalogHandler {
     PolicyIdentifier identifier =
         PolicyIdentifier.builder().setNamespace(namespace).setName(request.getName()).build();
 
-    authorizeCreatePolicyUnderNamespaceOperationOrThrow(op, identifier);
+    // authorize the creating policy under namespace operation
+    authorizeBasicNamespaceOperationOrThrow(
+        op, identifier.getNamespace(), null, null, List.of(identifier));
 
     return LoadPolicyResponse.builder()
         .setPolicy(
@@ -112,44 +113,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
     authorizeBasicPolicyOperationOrThrow(op, identifier);
 
     return policyCatalog.dropPolicy(identifier, detachAll);
-  }
-
-  private void authorizeCreatePolicyUnderNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op, PolicyIdentifier identifier) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(
-            Arrays.asList(identifier.getNamespace().levels()), PolarisEntityType.NAMESPACE),
-        identifier.getNamespace());
-
-    // When creating an entity under a namespace, the authz target is the namespace, but we must
-    // also
-    // add the actual path that will be created as an "optional" passthrough resolution path to
-    // indicate that the underlying catalog is "allowed" to check the creation path for a
-    // conflicting
-    // entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
-            PolarisEntityType.POLICY,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier.getNamespace(), true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", identifier.getNamespace());
-    }
-
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
   }
 
   private void authorizeBasicPolicyOperationOrThrow(
