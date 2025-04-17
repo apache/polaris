@@ -20,8 +20,9 @@
 
 set -e 
 
-pushd "$(dirname "$0")/.." > /dev/null
-TARGET_DIR="$(dirname "$0")/../python"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+pushd "$SCRIPT_DIR/.." > /dev/null
+TARGET_DIR="$SCRIPT_DIR/../python"
 
 #############################
 # Regenerate Python clients #
@@ -33,7 +34,7 @@ echo "Regenerating python from the spec"
 #   [main] ERROR o.o.codegen.DefaultCodegen - Required var sort-order-id not in properties
 
 docker run --rm \
-  -v "$(dirname "$0")/../..:/local" \
+  -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
@@ -42,7 +43,7 @@ docker run --rm \
   --additional-properties=apiNamePrefix=polaris > /dev/null 
 
 docker run --rm \
-  -v "$(dirname "$0")/../..:/local" \
+  -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-catalog-service.yaml \
   -g python \
@@ -52,7 +53,7 @@ docker run --rm \
   --skip-validate-spec > /dev/null
 
 docker run --rm \
-  -v "$(dirname "$0")/../..:/local" \
+  -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli generate \
   -i /local/spec/iceberg-rest-catalog-open-api.yaml \
   -g python \
@@ -110,7 +111,7 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
       continue
     else
       # Construct the header file path
-      header_file="$(dirname "$0")/header-${ext}.txt"
+      header_file="${SCRIPT_DIR}/header-${ext}.txt"
     
       # Only process if the license file exists
       if [ -f "$header_file" ]; then
