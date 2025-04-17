@@ -1808,7 +1808,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             userSecretsManagerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {})) {
+                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {}),
+            polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,
