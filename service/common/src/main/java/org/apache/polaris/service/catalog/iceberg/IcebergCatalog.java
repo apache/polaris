@@ -1206,6 +1206,42 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     private final boolean updateMetadataOnCommit;
     private FileIO tableFileIO;
 
+    // TODO remove the following if the Iceberg library allows us to do this without reflection
+    // For more details see:
+    // https://github.com/apache/polaris/pull/1378
+    private static final Unsafe unsafe;
+    private static final Field tableMetadataField;
+    private static final long changesFieldOffset;
+    private static final Field currentMetadataLocationField;
+    private static final Field currentMetadataField;
+
+    static {
+      try {
+        tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
+        tableMetadataField.setAccessible(true);
+
+        Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+        unsafeField.setAccessible(true);
+        unsafe = (Unsafe) unsafeField.get(null);
+        Field changesField = TableMetadata.class.getDeclaredField("changes");
+        changesField.setAccessible(true);
+        changesFieldOffset = unsafe.objectFieldOffset(changesField);
+
+        currentMetadataLocationField =
+            BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
+        currentMetadataLocationField.setAccessible(true);
+
+        currentMetadataField =
+            BaseMetastoreTableOperations.class.getDeclaredField("currentMetadata");
+        currentMetadataField.setAccessible(true);
+      } catch (IllegalAccessException | NoSuchFieldException e) {
+        LOGGER.error(
+            "Encountered an unexpected error while attempting to access private fields in TableMetadata",
+            e);
+        throw new RuntimeException(e);
+      }
+    }
+
     BasePolarisTableOperations(
         FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
@@ -1351,30 +1387,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // currentMetadata / currentMetadataLocation
       if (updateMetadataOnCommit) {
         try {
-          Field tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
-          tableMetadataField.setAccessible(true);
           tableMetadataField.set(metadata, newLocation);
-
-          Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-          unsafeField.setAccessible(true);
-          Unsafe unsafe = (Unsafe) unsafeField.get(null);
-          Field changesField = TableMetadata.class.getDeclaredField("changes");
-          changesField.setAccessible(true);
-          long offset = unsafe.objectFieldOffset(changesField);
-          unsafe.putObject(metadata, offset, new ArrayList<MetadataUpdate>());
-
-          Field currentMetadataLocationField =
-              BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
-          currentMetadataLocationField.setAccessible(true);
+          unsafe.putObject(metadata, changesFieldOffset, new ArrayList<MetadataUpdate>());
           currentMetadataLocationField.set(this, newLocation);
-
-          Field currentMetadataField =
-              BaseMetastoreTableOperations.class.getDeclaredField("currentMetadata");
-          currentMetadataField.setAccessible(true);
           currentMetadataField.set(this, metadata);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
+        } catch (IllegalAccessException e) {
           LOGGER.error(
-              "Encountered an unexpected error while attempting to modify TableMetadata.metadataFileLocation",
+              "Encountered an unexpected error while attempting to access private fields in TableMetadata",
               e);
         }
       }
