@@ -135,6 +135,16 @@ public record TestServices(
 
       TransactionalPersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+
+      PolarisCallContext polarisCallContext =
+          new PolarisCallContext(
+              metaStoreSession, polarisDiagnostics, configurationStore, Mockito.mock(Clock.class));
+
+      PolarisEntityManager entityManager =
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext, polarisCallContext);
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+
       CallContext callContext =
           new CallContext() {
             @Override
@@ -144,11 +154,7 @@ public record TestServices(
 
             @Override
             public PolarisCallContext getPolarisCallContext() {
-              return new PolarisCallContext(
-                  metaStoreSession,
-                  polarisDiagnostics,
-                  configurationStore,
-                  Mockito.mock(Clock.class));
+              return polarisCallContext;
             }
 
             @Override
@@ -157,10 +163,6 @@ public record TestServices(
             }
           };
       CallContext.setCurrentContext(callContext);
-      PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
-      PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
