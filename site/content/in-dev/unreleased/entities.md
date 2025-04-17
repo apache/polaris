@@ -49,7 +49,7 @@ For information on managing namespaces with the REST API or for more information
 
 ## Table
 
-Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/).
+Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/), [Delta tables](https://docs.databricks.com/aws/en/delta/table-properties), or [Hudi tables](https://hudi.apache.org/docs/next/configurations#TABLE_CONFIG).
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the API docs]({{% github-polaris "client/python/docs/CreateTableRequest.md" %}}).
 
