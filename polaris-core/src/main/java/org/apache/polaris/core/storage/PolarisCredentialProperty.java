@@ -39,7 +39,7 @@ public enum PolarisCredentialProperty {
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
   // it expects for SAS
   AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token"),
-  AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
+  AZURE_SAS_TOKEN(String.class, "adls.sas-token", "an azure shared access signature token"),
   AZURE_ACCOUNT_HOST(
       String.class,
       "the azure storage account host",
