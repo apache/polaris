@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
  * A minimal in-memory implementation of UserSecretsManager that should only be used for test and
@@ -48,7 +48,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntity forEntity) {
+  public UserSecretReference writeSecret(
+      @Nonnull String secret, @Nonnull PolarisEntityCore forEntity) {
     // For illustrative purposes and to exercise the control flow of requiring both the stored
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.

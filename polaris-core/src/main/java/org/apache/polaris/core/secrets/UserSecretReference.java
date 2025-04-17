@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.secrets;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
@@ -56,7 +58,10 @@ public class UserSecretReference {
 
   /**
    * @param urn A string which should be self-sufficient to retrieve whatever secret material that
-   *     is stored in the remote secret store.
+   *     is stored in the remote secret store and also to identify an implementation of the
+   *     UserSecretsManager which is capable of interpreting this concrete UserSecretReference.
+   *     Should be of the form:
+   *     'urn:polaris-secret:&lt;secret-manager-type&gt;:&lt;type-specific-identifier&gt;
    * @param referencePayload Optionally, any additional information that is necessary to fully
    *     reconstitute the original secret based on what is retrieved by the {@code urn}; this
    *     payload may include hashes/checksums, encryption key ids, OTP encryption keys, additional
@@ -65,8 +70,26 @@ public class UserSecretReference {
   public UserSecretReference(
       @JsonProperty(value = "urn", required = true) @Nonnull String urn,
       @JsonProperty(value = "referencePayload") @Nullable Map<String, String> referencePayload) {
+    // TODO: Add better/standardized parsing and validation of URN syntax
+    Preconditions.checkArgument(
+        urn.startsWith("urn:polaris-secret:") && urn.split(":").length >= 4,
+        "Invalid secret URN '%s'; must be of the form "
+            + "'urn:polaris-secret:<secret-manager-type>:<type-specific-identifier>'",
+        urn);
     this.urn = urn;
     this.referencePayload = Objects.requireNonNullElse(referencePayload, new HashMap<>());
+  }
+
+  /**
+   * Since UserSecretReference objects are specific to UserSecretManager implementations, the
+   * "secret-manager-type" portion of the URN should be used to validate that a URN is valid for a
+   * given implementation and to dispatch to the correct implementation at runtime if multiple
+   * concurrent implementations are possible in a given runtime environment.
+   */
+  @JsonIgnore
+  public String getUserSecretManagerTypeFromUrn() {
+    // TODO: Add better/standardized parsing and validation of URN syntax
+    return urn.split(":")[2];
   }
 
   public @Nonnull String getUrn() {

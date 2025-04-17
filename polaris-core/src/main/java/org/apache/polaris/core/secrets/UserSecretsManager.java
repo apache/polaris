@@ -19,7 +19,7 @@
 package org.apache.polaris.core.secrets;
 
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
  * Manages secrets specified by users of the Polaris API, either directly or as an intermediary
@@ -32,11 +32,11 @@ public interface UserSecretsManager {
   /**
    * Persist the {@code secret} under a new URN {@code secretUrn} and return a {@code
    * UserSecretReference} that can subsequently be used by this same UserSecretsManager to retrieve
-   * the original secret. The {@code forEntity} is provided for an implementation to optionally
-   * extract other identifying metadata such as entity type, name, etc., to store alongside the
-   * remotely stored secret to facilitate operational management of the secrets outside of the core
-   * Polaris service (for example, to perform garbage-collection if the Polaris service fails to
-   * delete managed secrets in the external system when associated entities are deleted.
+   * the original secret. The {@code forEntity} is provided for an implementation to extract other
+   * identifying metadata such as entity type, id, name, etc., to store alongside the remotely
+   * stored secret to facilitate operational management of the secrets outside of the core Polaris
+   * service (for example, to perform garbage-collection if the Polaris service fails to delete
+   * managed secrets in the external system when associated entities are deleted).
    *
    * @param secret The secret to store
    * @param forEntity The PolarisEntity that is associated with the secret
@@ -44,13 +44,13 @@ public interface UserSecretsManager {
    *     its entirety within a persisted PolarisEntity
    */
   @Nonnull
-  UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntity forEntity);
+  UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity);
 
   /**
    * Retrieve a secret using the {@code secretReference}. See {@link UserSecretReference} for
    * details about identifiers and payloads.
    *
-   * @param secretReference Identifier and any associated payload used for retrieving the secret
+   * @param secretReference Reference object for retrieving the original secret
    * @return The stored secret, or null if it no longer exists
    */
   @Nonnull
@@ -60,7 +60,7 @@ public interface UserSecretsManager {
    * Delete a stored secret. See {@link UserSecretReference} for details about identifiers and
    * payloads.
    *
-   * @param secretReference Identifier and any associated payload used for retrieving the secret
+   * @param secretReference Reference object for retrieving the original secret
    */
   void deleteSecret(@Nonnull UserSecretReference secretReference);
 }
