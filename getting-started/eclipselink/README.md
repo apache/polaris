@@ -38,7 +38,7 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    docker compose -f getting-started/eclipselink/docker-compose.yml up
+    docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
     ```
 
 3. Using spark-sql: attach to the running spark-sql container:
@@ -71,5 +71,23 @@ This example requires `jq` to be installed on your machine.
 
     ```shell
     curl -v http://127.0.0.1:8181/api/management/v1/principal-roles -H "Authorization: Bearer $POLARIS_TOKEN"
-    curl -v http://127.0.0.1:8181/api/catalog/v1/config?warehouse=polaris_demo -H "Authorization: Bearer $POLARIS_TOKEN"
+    curl -v http://127.0.0.1:8181/api/management/v1/catalogs/polaris_demo -H "Authorization: Bearer $POLARIS_TOKEN"
     ```
+
+6. Using Trino CLI: To access the Trino CLI, run this command:
+```
+docker exec -it eclipselink-trino-1 trino
+```
+Note, `trino-trino-1` is the name of the Docker container.
+
+Example Trino queries:
+```
+SHOW CATALOGS;
+SHOW SCHEMAS FROM iceberg;
+SHOW TABLES FROM iceberg.information_schema;
+DESCRIBE iceberg.information_schema.tables;
+
+CREATE SCHEMA iceberg.tpch;
+CREATE TABLE iceberg.tpch.test_polaris AS SELECT 1 x;
+SELECT * FROM iceberg.tpch.test_polaris;
+```

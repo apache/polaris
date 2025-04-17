@@ -17,28 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'In Development'
-title: 'Unreleased - current state of the main branch'
+Title: Deploying Polaris on Cloud Providers
 type: docs
-weight: 200
-params:
-  top_hidden: true
-  show_page_toc: false
-cascade:
-  type: docs
-  params:
-    show_page_toc: true
-# This file will NOT be copied into a new release's versioned docs folder.
+weight: 300
 ---
 
-{{< alert title="Warning" color="warning" >}}
-These pages refer to the current state of the main branch, which is still under active development.
+We will now demonstrate how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
 
-Functionalities can be changed, removed or added without prior notice.
-{{< /alert >}}
-
-Check out the [Quickstart]({{% ref "getting-started" %}}) page to get started.
-
-<!--
-Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
--->
+Locally, Polaris can be deployed using both Docker and local build. On the cloud, this tutorial will deploy Polaris using Docker only - but local builds can also be executed.
