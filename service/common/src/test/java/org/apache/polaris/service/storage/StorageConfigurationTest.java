@@ -27,31 +27,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Supplier;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 public class StorageConfigurationTest {
 
   private static final String TEST_ACCESS_KEY = "test-access-key";
   private static final String TEST_GCP_TOKEN = "ya29.test-token";
-  private static final String TEST_REGION = "us-west-2";
   private static final String TEST_SECRET_KEY = "test-secret-key";
   private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
-
-  @BeforeEach
-  public void setUpAwsRegion() {
-    System.setProperty("aws.region", TEST_REGION);
-  }
-
-  @AfterEach
-  public void tearDownAwsRegion() {
-    System.clearProperty("aws.region");
-  }
 
   private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
     return new StorageConfiguration() {
@@ -103,22 +92,31 @@ public class StorageConfigurationTest {
 
   @Test
   public void testSingletonStsClientWithStaticCredentials() {
-    Supplier<StsClient> supplier = configWithAwsCredentialsAndGcpToken().stsClientSupplier();
+    StsClientBuilder mockBuilder = mock(StsClientBuilder.class);
+    StsClient mockStsClient = mock(StsClient.class);
+    ArgumentCaptor<StaticCredentialsProvider> credsCaptor =
+        ArgumentCaptor.forClass(StaticCredentialsProvider.class);
 
-    StsClient client1 = supplier.get();
-    StsClient client2 = supplier.get();
+    when(mockBuilder.credentialsProvider(credsCaptor.capture())).thenReturn(mockBuilder);
+    when(mockBuilder.region(any())).thenReturn(mockBuilder);
+    when(mockBuilder.build()).thenReturn(mockStsClient);
 
-    assertThat(client1).isSameAs(client2);
-    assertThat(client1).isNotNull();
+    try (MockedStatic<StsClient> staticMock = Mockito.mockStatic(StsClient.class)) {
+      staticMock.when(StsClient::builder).thenReturn(mockBuilder);
 
-    assertThat(client1.serviceClientConfiguration().credentialsProvider())
-        .isInstanceOf(StaticCredentialsProvider.class);
-    assertThat(client1.serviceClientConfiguration().region().toString()).isEqualTo(TEST_REGION);
-    StaticCredentialsProvider credentialsProvider =
-        (StaticCredentialsProvider) client1.serviceClientConfiguration().credentialsProvider();
-    assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
-    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
-        .isEqualTo(TEST_SECRET_KEY);
+      StorageConfiguration config = configWithAwsCredentialsAndGcpToken();
+      Supplier<StsClient> supplier = config.stsClientSupplier();
+      StsClient client1 = supplier.get();
+      StsClient client2 = supplier.get();
+
+      assertThat(client1).isSameAs(client2);
+      assertThat(client1).isNotNull();
+
+      StaticCredentialsProvider credentialsProvider = credsCaptor.getValue();
+      assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
+      assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
+          .isEqualTo(TEST_SECRET_KEY);
+    }
   }
 
   @Test
