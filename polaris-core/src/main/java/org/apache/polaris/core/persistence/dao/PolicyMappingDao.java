@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy;
+package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -25,8 +25,10 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
 
-public interface PolarisPolicyMappingManager {
+public interface PolicyMappingDao {
 
   /**
    * Attach a policy to a target entity, for example attach a policy to a table.
