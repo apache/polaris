@@ -16,33 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.util;
 
 import java.util.function.Supplier;
 
 public final class MemoizingSupplier<T> implements Supplier<T> {
-    private final Supplier<T> delegate;
-    private volatile T value;
+  private final Supplier<T> delegate;
+  private volatile T value;
 
-    private MemoizingSupplier(Supplier<T> delegate) {
-        this.delegate = delegate;
-    }
+  private MemoizingSupplier(Supplier<T> delegate) {
+    this.delegate = delegate;
+  }
 
-    public static <T> Supplier<T> memoize(Supplier<T> delegate) {
-        return new MemoizingSupplier<>(delegate);
-    }
+  public static <T> Supplier<T> memoize(Supplier<T> delegate) {
+    return new MemoizingSupplier<>(delegate);
+  }
 
-    @Override
-    public T get() {
+  @Override
+  public T get() {
+    if (value == null) {
+      synchronized (this) {
         if (value == null) {
-            synchronized (this) {
-                if (value == null) {
-                    value = delegate.get();
-                }
-            }
+          value = delegate.get();
         }
-        return value;
+      }
     }
+    return value;
+  }
 }
-

@@ -35,109 +35,108 @@ import software.amazon.awssdk.services.sts.StsClient;
 
 public class StorageConfigurationTest {
 
-    private static final String TEST_ACCESS_KEY = "test-access-key";
-    private static final String TEST_SECRET_KEY = "test-secret-key";
-    private static final String TEST_GCP_TOKEN = "ya29.test-token";
-    private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
+  private static final String TEST_ACCESS_KEY = "test-access-key";
+  private static final String TEST_SECRET_KEY = "test-secret-key";
+  private static final String TEST_GCP_TOKEN = "ya29.test-token";
+  private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
 
-    private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
-        return new StorageConfiguration() {
-            @Override
-            public Optional<String> awsAccessKey() {
-                return Optional.of(TEST_ACCESS_KEY);
-            }
+  private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
+    return new StorageConfiguration() {
+      @Override
+      public Optional<String> awsAccessKey() {
+        return Optional.of(TEST_ACCESS_KEY);
+      }
 
-            @Override
-            public Optional<String> awsSecretKey() {
-                return Optional.of(TEST_SECRET_KEY);
-            }
+      @Override
+      public Optional<String> awsSecretKey() {
+        return Optional.of(TEST_SECRET_KEY);
+      }
 
-            @Override
-            public Optional<String> gcpAccessToken() {
-                return Optional.of(TEST_GCP_TOKEN);
-            }
+      @Override
+      public Optional<String> gcpAccessToken() {
+        return Optional.of(TEST_GCP_TOKEN);
+      }
 
-            @Override
-            public Optional<Duration> gcpAccessTokenLifespan() {
-                return Optional.of(TEST_TOKEN_LIFESPAN);
-            }
-        };
+      @Override
+      public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.of(TEST_TOKEN_LIFESPAN);
+      }
+    };
+  }
+
+  private StorageConfiguration configWithoutGcpToken() {
+    return new StorageConfiguration() {
+      @Override
+      public Optional<String> awsAccessKey() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<String> awsSecretKey() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<String> gcpAccessToken() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.empty();
+      }
+    };
+  }
+
+  @Test
+  public void testSingletonStsClientWithStaticCredentials() {
+    Supplier<StsClient> supplier = configWithAwsCredentialsAndGcpToken().stsClientSupplier();
+
+    StsClient client1 = supplier.get();
+    StsClient client2 = supplier.get();
+
+    assertThat(client1).isSameAs(client2);
+    assertThat(client1).isNotNull();
+
+    assertThat(client1.serviceClientConfiguration().credentialsProvider())
+        .isInstanceOf(StaticCredentialsProvider.class);
+    StaticCredentialsProvider credentialsProvider =
+        (StaticCredentialsProvider) client1.serviceClientConfiguration().credentialsProvider();
+    assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
+    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
+        .isEqualTo(TEST_SECRET_KEY);
+  }
+
+  @Test
+  public void testCreateGcpCredentialsFromStaticToken() {
+    Supplier<GoogleCredentials> supplier =
+        configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier();
+
+    GoogleCredentials credentials = supplier.get();
+    assertThat(credentials).isNotNull();
+
+    AccessToken accessToken = credentials.getAccessToken();
+    assertThat(accessToken).isNotNull();
+    assertThat(accessToken.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
+    long expectedExpiry = Instant.now().plus(Duration.ofMinutes(20)).toEpochMilli();
+    long actualExpiry = accessToken.getExpirationTime().getTime();
+    assertThat(actualExpiry).isBetween(expectedExpiry - 500, expectedExpiry + 500);
+  }
+
+  @Test
+  public void testGcpCredentialsFromDefault() {
+    GoogleCredentials mockDefaultCreds = mock(GoogleCredentials.class);
+
+    try (MockedStatic<GoogleCredentials> mockedStatic =
+        Mockito.mockStatic(GoogleCredentials.class)) {
+
+      mockedStatic.when(GoogleCredentials::getApplicationDefault).thenReturn(mockDefaultCreds);
+
+      Supplier<GoogleCredentials> supplier = configWithoutGcpToken().gcpCredentialsSupplier();
+      GoogleCredentials result = supplier.get();
+
+      assertThat(result).isSameAs(mockDefaultCreds);
+      mockedStatic.verify(GoogleCredentials::getApplicationDefault, times(1));
     }
-
-    private StorageConfiguration configWithoutGcpToken() {
-        return new StorageConfiguration() {
-            @Override
-            public Optional<String> awsAccessKey() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> awsSecretKey() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> gcpAccessToken() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<Duration> gcpAccessTokenLifespan() {
-                return Optional.empty();
-            }
-        };
-    }
-
-    @Test
-    public void testSingletonStsClientWithStaticCredentials() {
-        Supplier<StsClient> supplier = configWithAwsCredentialsAndGcpToken().stsClientSupplier();
-
-        StsClient client1 = supplier.get();
-        StsClient client2 = supplier.get();
-
-        assertThat(client1).isSameAs(client2);
-        assertThat(client1).isNotNull();
-
-        assertThat(client1.serviceClientConfiguration().credentialsProvider())
-            .isInstanceOf(StaticCredentialsProvider.class);
-        StaticCredentialsProvider credentialsProvider =
-            (StaticCredentialsProvider) client1.serviceClientConfiguration().credentialsProvider();
-        assertThat(credentialsProvider.resolveCredentials().accessKeyId())
-            .isEqualTo(TEST_ACCESS_KEY);
-        assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
-            .isEqualTo(TEST_SECRET_KEY);
-    }
-
-    @Test
-    public void testCreateGcpCredentialsFromStaticToken() {
-        Supplier<GoogleCredentials> supplier =
-            configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier();
-
-        GoogleCredentials credentials = supplier.get();
-        assertThat(credentials).isNotNull();
-
-        AccessToken accessToken = credentials.getAccessToken();
-        assertThat(accessToken).isNotNull();
-        assertThat(accessToken.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
-        long expectedExpiry = Instant.now().plus(Duration.ofMinutes(20)).toEpochMilli();
-        long actualExpiry = accessToken.getExpirationTime().getTime();
-        assertThat(actualExpiry).isBetween(expectedExpiry - 500, expectedExpiry + 500);
-    }
-
-    @Test
-    public void testGcpCredentialsFromDefault() {
-        GoogleCredentials mockDefaultCreds = mock(GoogleCredentials.class);
-
-        try (MockedStatic<GoogleCredentials> mockedStatic =
-                     Mockito.mockStatic(GoogleCredentials.class)) {
-
-            mockedStatic.when(GoogleCredentials::getApplicationDefault).thenReturn(mockDefaultCreds);
-
-            Supplier<GoogleCredentials> supplier = configWithoutGcpToken().gcpCredentialsSupplier();
-            GoogleCredentials result = supplier.get();
-
-            assertThat(result).isSameAs(mockDefaultCreds);
-            mockedStatic.verify(GoogleCredentials::getApplicationDefault, times(1));
-        }
-    }
+  }
 }

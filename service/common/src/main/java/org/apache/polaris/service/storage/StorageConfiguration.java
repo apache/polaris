@@ -61,38 +61,40 @@ public interface StorageConfiguration {
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {
-    return MemoizingSupplier.memoize(() -> {
-      StsClientBuilder stsClientBuilder = StsClient.builder();
-      if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
-        LoggerFactory.getLogger(StorageConfiguration.class)
-            .warn("Using hard-coded AWS credentials - this is not recommended for production");
-        StaticCredentialsProvider awsCredentialsProvider =
-            StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
-        stsClientBuilder.credentialsProvider(awsCredentialsProvider);
-      }
-      return stsClientBuilder.build();
-    });
+    return MemoizingSupplier.memoize(
+        () -> {
+          StsClientBuilder stsClientBuilder = StsClient.builder();
+          if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
+            LoggerFactory.getLogger(StorageConfiguration.class)
+                .warn("Using hard-coded AWS credentials - this is not recommended for production");
+            StaticCredentialsProvider awsCredentialsProvider =
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
+            stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+          }
+          return stsClientBuilder.build();
+        });
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier() {
-    return MemoizingSupplier.memoize(() -> {
-      if (gcpAccessToken().isEmpty()) {
-        try {
-          return GoogleCredentials.getApplicationDefault();
-        } catch (IOException e) {
-          throw new RuntimeException("Failed to get GCP credentials", e);
-        }
-      } else {
-        AccessToken accessToken =
-            new AccessToken(
-                gcpAccessToken().get(),
-                new Date(
-                    Instant.now()
-                        .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN))
-                        .toEpochMilli()));
-        return GoogleCredentials.create(accessToken);
-      }
-    });
+    return MemoizingSupplier.memoize(
+        () -> {
+          if (gcpAccessToken().isEmpty()) {
+            try {
+              return GoogleCredentials.getApplicationDefault();
+            } catch (IOException e) {
+              throw new RuntimeException("Failed to get GCP credentials", e);
+            }
+          } else {
+            AccessToken accessToken =
+                new AccessToken(
+                    gcpAccessToken().get(),
+                    new Date(
+                        Instant.now()
+                            .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN))
+                            .toEpochMilli()));
+            return GoogleCredentials.create(accessToken);
+          }
+        });
   }
 }
