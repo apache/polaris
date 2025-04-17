@@ -27,6 +27,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -36,9 +38,20 @@ import software.amazon.awssdk.services.sts.StsClient;
 public class StorageConfigurationTest {
 
   private static final String TEST_ACCESS_KEY = "test-access-key";
-  private static final String TEST_SECRET_KEY = "test-secret-key";
   private static final String TEST_GCP_TOKEN = "ya29.test-token";
+  private static final String TEST_REGION = "us-west-2";
+  private static final String TEST_SECRET_KEY = "test-secret-key";
   private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
+
+  @BeforeEach
+  public void setUpAwsRegion() {
+    System.setProperty("aws.region", TEST_REGION);
+  }
+
+  @AfterEach
+  public void tearDownAwsRegion() {
+    System.clearProperty("aws.region");
+  }
 
   private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
     return new StorageConfiguration() {
@@ -100,6 +113,7 @@ public class StorageConfigurationTest {
 
     assertThat(client1.serviceClientConfiguration().credentialsProvider())
         .isInstanceOf(StaticCredentialsProvider.class);
+    assertThat(client1.serviceClientConfiguration().region().toString()).isEqualTo(TEST_REGION);
     StaticCredentialsProvider credentialsProvider =
         (StaticCredentialsProvider) client1.serviceClientConfiguration().credentialsProvider();
     assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
