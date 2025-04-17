@@ -152,9 +152,10 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
   @Override
   public List<TableIdentifier> listGenericTables(Namespace ns) {
-    if (!endpoints.contains(PolarisEndpoints.V1_LIST_GENERIC_TABLES)) {
-      return ImmutableList.of();
-    }
+    Endpoint.check(endpoints, PolarisEndpoints.V1_LIST_GENERIC_TABLES);
+    // if (!endpoints.contains(PolarisEndpoints.V1_LIST_GENERIC_TABLES)) {
+    //  return ImmutableList.of();
+    // }
 
     Map<String, String> queryParams = Maps.newHashMap();
     ImmutableList.Builder<TableIdentifier> tables = ImmutableList.builder();

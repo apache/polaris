@@ -114,8 +114,12 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public Identifier[] listTables(String[] namespace) {
-    return this.polarisCatalog.listGenericTables(Namespace.of(namespace)).stream()
-        .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
-        .toArray(Identifier[]::new);
+    try {
+      return this.polarisCatalog.listGenericTables(Namespace.of(namespace)).stream()
+          .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
+          .toArray(Identifier[]::new);
+    } catch (UnsupportedOperationException ex) {
+      return new Identifier[0];
+    }
   }
 }
