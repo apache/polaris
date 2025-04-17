@@ -32,7 +32,7 @@ It is recommended to clean the `regtests/output` directory before running tests.
 running:
 
 ```shell
-rm -rf ./regtests/output && mkdir -p ./regtests/output && chmod -R 777 ./regtests/output
+rm -rf ./plugins/spark/regtests/output && mkdir -p ./plugins/spark/regtests/output && chmod -R 777 ./plugins/spark/regtests/output
 ```
 
 ## Run Tests With Docker Compose
