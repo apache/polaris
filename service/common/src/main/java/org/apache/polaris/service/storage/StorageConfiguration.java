@@ -20,12 +20,12 @@ package org.apache.polaris.service.storage;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.common.base.Suppliers;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Supplier;
-import org.apache.polaris.service.util.MemoizingSupplier;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -61,7 +61,7 @@ public interface StorageConfiguration {
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {
-    return MemoizingSupplier.memoize(
+    return Suppliers.memoize(
         () -> {
           StsClientBuilder stsClientBuilder = StsClient.builder();
           if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
@@ -77,7 +77,7 @@ public interface StorageConfiguration {
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier() {
-    return MemoizingSupplier.memoize(
+    return Suppliers.memoize(
         () -> {
           if (gcpAccessToken().isEmpty()) {
             try {
