@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION}"
+echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION} POLARIS_CLIENT_JAR=${POLARIS_CLIENT_JAR}"
 
 if [ "$SCALA_VERSION" == "2.12" ]; then
   SPARK_DISTRIBUTION=spark-${SPARK_VERSION}-bin-hadoop3
@@ -62,14 +62,11 @@ fi
 
 echo "Getting spark distribution ${SPARK_DISTRIBUTION}"
 
-TEST_ROOT_DIR="spark-client-tests"
-mkdir ~/${TEST_ROOT_DIR}
-SPARK_HOME=$(realpath ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION})
+if [ -z "${SPARK_HOME}" ]; then
+  SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
+fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
-echo "SPARK_HOME=${SPARK_HOME}"
-echo "SPARK_CONF=${SPARK_CONF}"
-export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
 echo 'Verifying Spark binaries...'
@@ -79,33 +76,33 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
     echo 'SPARK_VERSION or SPARK_DISTRIBUTION not set. Please set SPARK_VERSION and SPARK_DISTRIBUTION to the desired version.'
     exit 1
   fi
-  if ! [ -f ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz ]; then
+  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
-    if ! [ -f ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz ]; then
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
       fi
     fi
   else
     echo 'Found existing Spark tarball'
   fi
   # check if the download was successful
-  if ! [ -f ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz ]; then
+  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Failed to download Spark distribution. Please check the logs.'
     exit 1
   fi
-  tar xzvf ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz -C ~/${TEST_ROOT_DIR}
+  tar xzvf ~/${SPARK_DISTRIBUTION}.tgz -C ~/${TEST_ROOT_DIR}
   if [ $? -ne 0 ]; then
     echo 'Failed to extract Spark distribution. Please check the logs.'
     exit 1
   else
     echo 'Extracted Spark distribution.'
-    rm ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION}.tgz
+    rm ~/${SPARK_DISTRIBUTION}.tgz
   fi
-  SPARK_HOME=$(realpath ~/${TEST_ROOT_DIR}/${SPARK_DISTRIBUTION})
+  SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
   SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 else
   echo 'Verified Spark distro already installed.'
@@ -126,7 +123,7 @@ cat << EOF >> ${SPARK_CONF}
 
 # POLARIS Spark client test conf
 spark.jars $POLARIS_CLIENT_JAR
-spark.jars.packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_2.12:3.2.1
+spark.jars.packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_${SCALA_VERSION}:3.2.1
 spark.hadoop.fs.s3.impl org.apache.hadoop.fs.s3a.S3AFileSystem
 spark.hadoop.fs.AbstractFileSystem.s3.impl org.apache.hadoop.fs.s3a.S3A
 spark.sql.variable.substitute true
@@ -154,3 +151,5 @@ echo "Launch spark-sql at ${SPARK_HOME}/bin/spark-sql"
 # bootstrap dependencies so that future queries don't need to wait for the downloads.
 # this is mostly useful for building the Docker image with all needed dependencies
 ${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
+
+export SPARK_HOME=$SPARK_HOME

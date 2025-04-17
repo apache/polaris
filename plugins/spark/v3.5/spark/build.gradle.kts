@@ -18,11 +18,10 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import com.github.jengelman.gradle.plugins.shadow.transformers.ServiceFileTransformer
 
 plugins {
   id("polaris-client")
-  alias(libs.plugins.jandex)
+  // alias(libs.plugins.jandex)
 }
 
 // get version information
@@ -39,13 +38,33 @@ val scalaLibraryVersion =
   }
 
 dependencies {
+  // TODO: Extract a polaris-rest module as a thin layer for
+  //  client to depends on.
   implementation(project(":polaris-api-iceberg-service")) {
     // exclude the iceberg dependencies, use the ones pulled
     // by iceberg-core
     exclude("org.apache.iceberg", "*")
+    exclude("com.azure", "*")
+    exclude("software.amazon.awssdk", "*")
+    exclude("io.airlift", "*")
+    exclude("io.smallrye", "*")
+    exclude("io.micrometer", "*")
   }
-  implementation(project(":polaris-api-catalog-service"))
-  implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
+  implementation(project(":polaris-api-catalog-service")) {
+    exclude("org.apache.iceberg", "*")
+    exclude("com.azure", "*")
+    exclude("software.amazon.awssdk", "*")
+    exclude("io.airlift", "*")
+    exclude("io.smallrye", "*")
+    exclude("io.micrometer", "*")
+  }
+  implementation(project(":polaris-core")) {
+    exclude("org.apache.iceberg", "*")
+    exclude("com.azure", "*")
+    exclude("software.amazon.awssdk", "*")
+    exclude("io.airlift", "*")
+    exclude("io.smallrye", "*")
+  }
 
   implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
 
@@ -123,7 +142,6 @@ tasks.register("checkNoDisallowedImports") {
 tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
-
   archiveClassifier = null
   archiveBaseName =
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"

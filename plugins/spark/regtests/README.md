@@ -1,0 +1,89 @@
+<!--
+
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+
+-->
+
+# End-to-end regression tests
+
+regtests provides basic end-to-end tests to customer abo
+
+Regression tests are either run in Docker, using docker-compose to orchestrate the tests, or
+locally.
+
+## Prerequisites
+
+It is recommended to clean the `regtests/output` directory before running tests. This can be done by
+running:
+
+```shell
+rm -rf ./regtests/output && mkdir -p ./regtests/output && chmod -R 777 ./regtests/output
+```
+
+## Run Tests With Docker Compose
+
+Tests can be run with docker-compose using the provided `./regtests/docker-compose.yml` file, as
+follows:
+
+```shell
+./gradlew build
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
+docker compose -f ./plugins/spark/regtests/docker-compose.yml up --build --exit-code-from regtest
+```
+
+In this setup, a Polaris container will be started in a docker-compose group, using the image
+previously built by the Gradle build. Then another container, including a Spark SQL shell, will run
+the tests. The exit code will be the same as the exit code of the Spark container.
+
+This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no
+environmental factors contribute to the outcome of the tests.
+
+**Important**: if you are also using minikube, for example to test the Helm chart, you may need to
+_unset_ the Docker environment that was pointing to the Minikube Docker daemon, otherwise the image
+will be built by the Minikube Docker daemon and will not be available to the local Docker daemon.
+This can be done by running, _before_ building the image and running the tests:
+
+```shell
+eval $(minikube -p minikube docker-env --unset)
+```
+
+## Run Tests Locally
+
+Regression tests can be run locally as well, using the test harness.
+
+In this setup, a Polaris server must be running on localhost:8181 before running tests. The simplest
+way to do this is to run the Polaris server in a separate terminal window:
+
+```shell
+./gradlew run
+```
+
+Note: the regression tests expect Polaris to run with certain options, e.g. with support for `FILE`
+storage, default realm `POLARIS` and root credentials `root:secret`; if you run the above command,
+this will be the case. If you run Polaris in a different way, make sure that Polaris is configured
+appropriately.
+
+Running the test harness will automatically run the idempotent setup script. From the root of the
+project, just run:
+
+```shell
+env POLARIS_HOST=localhost ./regtests/run.sh
+```
