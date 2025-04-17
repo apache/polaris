@@ -17,28 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'In Development'
-title: 'Unreleased - current state of the main branch'
+title: 'Getting Started'
 type: docs
-weight: 200
-params:
-  top_hidden: true
-  show_page_toc: false
-cascade:
-  type: docs
-  params:
-    show_page_toc: true
-# This file will NOT be copied into a new release's versioned docs folder.
+weight: 101
+build:
+  render: never
 ---
-
-{{< alert title="Warning" color="warning" >}}
-These pages refer to the current state of the main branch, which is still under active development.
-
-Functionalities can be changed, removed or added without prior notice.
-{{< /alert >}}
-
-Check out the [Quickstart]({{% ref "getting-started" %}}) page to get started.
-
-<!--
-Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
--->

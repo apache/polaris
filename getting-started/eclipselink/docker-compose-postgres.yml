@@ -17,12 +17,29 @@
 # under the License.
 #
 
-connector.name=iceberg
-iceberg.catalog.type=rest
-iceberg.rest-catalog.uri=http://polaris:8181/api/catalog
-iceberg.rest-catalog.security=OAUTH2
-iceberg.rest-catalog.oauth2.credential=root:s3cr3t
-iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
-iceberg.rest-catalog.warehouse=polaris
-# Required to support local filesystem: https://trino.io/docs/current/object-storage.html#configuration
-fs.hadoop.enabled=true
+services:
+  postgres:
+    image: postgres:17.4
+    ports:
+      - "5432:5432"
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: POLARIS
+      POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
+    volumes:
+      # Bind local conf file to a convenient location in the container
+      - type: bind
+        source: ./postgresql.conf
+        target: /etc/postgresql/postgresql.conf
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: "pg_isready -U postgres"
+      interval: 5s
+      timeout: 2s
+      retries: 15
