@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Supplier;
+import org.apache.polaris.service.util.MemoizingSupplier;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -60,7 +61,7 @@ public interface StorageConfiguration {
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {
-    return () -> {
+    return MemoizingSupplier.memoize(() -> {
       StsClientBuilder stsClientBuilder = StsClient.builder();
       if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
         LoggerFactory.getLogger(StorageConfiguration.class)
@@ -71,11 +72,11 @@ public interface StorageConfiguration {
         stsClientBuilder.credentialsProvider(awsCredentialsProvider);
       }
       return stsClientBuilder.build();
-    };
+    });
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier() {
-    return () -> {
+    return MemoizingSupplier.memoize(() -> {
       if (gcpAccessToken().isEmpty()) {
         try {
           return GoogleCredentials.getApplicationDefault();
@@ -92,6 +93,6 @@ public interface StorageConfiguration {
                         .toEpochMilli()));
         return GoogleCredentials.create(accessToken);
       }
-    };
+    });
   }
 }
