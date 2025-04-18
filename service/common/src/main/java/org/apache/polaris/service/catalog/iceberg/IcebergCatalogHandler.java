@@ -774,23 +774,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return updateTableWithRollback(baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
-  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
-    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
-    Optional<Integer> formatVersion =
-        request.updates().stream()
-            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
-            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
-            .findFirst();
-    TableMetadata.Builder builder =
-        (TableMetadata.Builder)
-            formatVersion
-                .map(TableMetadata::buildFromEmpty)
-                .orElseGet(TableMetadata::buildFromEmpty);
-    request.updates().forEach((update) -> update.applyTo(builder));
-    ops.commit((TableMetadata) null, builder.build());
-    return ops.current();
-  }
-
   // TODO: Clean this up when CatalogHandler become extensible.
   // Copy of CatalogHandler#update
   private static LoadTableResponse updateTableWithRollback(
@@ -820,7 +803,28 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
   }
 
+  // TODO: Clean this up when CatalogHandler become extensible.
+  // Copy of CatalogHandler#create
+  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
+    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
+    Optional<Integer> formatVersion =
+        request.updates().stream()
+            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
+            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
+            .findFirst();
+    TableMetadata.Builder builder =
+        (TableMetadata.Builder)
+            formatVersion
+                .map(TableMetadata::buildFromEmpty)
+                .orElseGet(TableMetadata::buildFromEmpty);
+    request.updates().forEach((update) -> update.applyTo(builder));
+    ops.commit((TableMetadata) null, builder.build());
+    return ops.current();
+  }
+
   @VisibleForTesting
+  // TODO: Clean this up when CatalogHandler become extensible.
+  // Copy of CatalogHandler#commit
   public static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
 
@@ -950,8 +954,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     return ops.current();
   }
-
-
 
   public LoadTableResponse updateTableForStagedCreate(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {

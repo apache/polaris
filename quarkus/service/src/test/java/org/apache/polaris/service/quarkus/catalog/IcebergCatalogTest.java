@@ -668,7 +668,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // We should be able to send the notification without creating the metadata file since it's
     // only validating the ability to send the CREATE/UPDATE notification possibly before actually
     // creating the table at all on the remote catalog.
-    assertThat(catalog.sendNotification(table, request))
+    Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
         .isTrue();
     Assertions.assertThat(catalog.namespaceExists(namespace))
