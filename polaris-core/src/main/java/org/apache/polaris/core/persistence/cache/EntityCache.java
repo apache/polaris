@@ -23,12 +23,10 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.collect.HashBiMap;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.Striped;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Duration;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.jcip.annotations.GuardedBy;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -46,19 +44,15 @@ public class EntityCache {
   private final PolarisMetaStoreManager polarisMetaStoreManager;
 
   // Caffeine cache to keep entries
-  @GuardedBy("locks")
+  @GuardedBy("lock")
   private final Cache<Long, ResolvedPolarisEntity> cache;
 
   // Map of entity names to entity ids
-  @GuardedBy("locks")
+  @GuardedBy("lock")
   private final HashBiMap<Long, EntityCacheByNameKey> nameToIdMap;
 
-  // Locks to ensure that:
-  // - an entity can only be refreshed by one thread at a time when using its ID as accessor
-  // - OR an entity can only be refreshed by one thread at a time when using its Name as accessor
-  private static final int STRIPES = 1024;
-  private static final int UNKNOWN_ID_STRIPE = 0;
-  private final Striped<ReadWriteLock> locks;
+  // Locks to ensure that an entity can only be refreshed by one thread at a time
+  private final ReentrantReadWriteLock lock;
 
   /**
    * Constructor. Cache can be private or shared
@@ -73,7 +67,7 @@ public class EntityCache {
     this.cacheMode = EntityCacheMode.ENABLE;
 
     this.nameToIdMap = HashBiMap.create();
-    this.locks = Striped.readWriteLock(STRIPES);
+    this.lock = new ReentrantReadWriteLock();
 
     // Use a Caffeine cache to purge entries when those have not been used for a long time.
     // Assuming 1KB per entry, 100K entries is about 100MB. Note that each entity is stored twice in
@@ -92,13 +86,12 @@ public class EntityCache {
   }
 
   private void remove(Long id, ResolvedPolarisEntity ignored1, RemovalCause ignored2) {
-    Lock lock = locks.get(id).writeLock();
-    lock.lock();
+    lock.writeLock().lock();
     try {
       cache.invalidate(id);
       nameToIdMap.remove(id);
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
@@ -137,12 +130,11 @@ public class EntityCache {
    * @return the cache entry or null if not found
    */
   public @Nullable ResolvedPolarisEntity getEntityById(long entityId) {
-    Lock lock = locks.get(entityId).readLock();
-    lock.lock();
+    lock.readLock().lock();
     try {
       return cache.getIfPresent(entityId);
     } finally {
-      lock.unlock();
+      lock.readLock().unlock();
     }
   }
 
@@ -155,13 +147,12 @@ public class EntityCache {
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @Nonnull EntityCacheByNameKey entityNameKey) {
-    Lock lock = locks.get(UNKNOWN_ID_STRIPE).readLock();
-    lock.lock();
+    lock.readLock().lock();
     try {
       Long entityId = nameToIdMap.inverse().get(entityNameKey);
       return entityId == null ? null : cache.getIfPresent(entityId);
     } finally {
-      lock.unlock();
+      lock.readLock().unlock();
     }
   }
 
@@ -203,8 +194,7 @@ public class EntityCache {
 
     // Either cache miss, dropped entity or stale entity. In either case, invalidate and reload it.
     // Do the refresh in a critical section based on the entity ID to avoid race conditions.
-    Lock lock = locks.get(entityId).writeLock();
-    lock.lock();
+    lock.writeLock().lock();
     try {
       // Lookup the cache again in case another thread has already invalidated it.
       existingCacheEntry = this.getEntityById(entityId);
@@ -242,7 +232,7 @@ public class EntityCache {
 
       return entity;
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
@@ -279,8 +269,7 @@ public class EntityCache {
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
-    Lock lock = locks.get(entityId).writeLock();
-    lock.lock();
+    lock.writeLock().lock();
     try {
       ResolvedPolarisEntity cachedEntity = getEntityById(entityId);
       if (cachedEntity != null) {
@@ -315,14 +304,13 @@ public class EntityCache {
 
       return new EntityCacheLookupResult(cachedEntity, false);
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
   private void cacheEntity(
       long entityId, EntityCacheByNameKey entityName, ResolvedPolarisEntity cachedEntity) {
-    Lock lock = locks.get(entityId).writeLock();
-    lock.lock();
+    lock.writeLock().lock();
     try {
       Long previouslyAssociatedId = nameToIdMap.inverse().get(entityName);
       if (previouslyAssociatedId != null && previouslyAssociatedId != entityId) {
@@ -333,7 +321,7 @@ public class EntityCache {
       cache.put(entityId, cachedEntity);
       nameToIdMap.put(entityId, entityName);
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
@@ -363,8 +351,7 @@ public class EntityCache {
 
   private EntityCacheLookupResult maybeLoadEntityByName(
       PolarisCallContext callContext, EntityCacheByNameKey entityNameKey) {
-    Lock lock = locks.get(UNKNOWN_ID_STRIPE).writeLock();
-    lock.lock();
+    lock.writeLock().lock();
     try {
       ResolvedPolarisEntity cachedEntity = getEntityByName(entityNameKey);
       if (cachedEntity != null) {
@@ -391,9 +378,8 @@ public class EntityCache {
           .getDiagServices()
           .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
 
-      // Entity found. Delegate the work of adding it to the cache to the cacheEntity method.
-      // It will another write lock, using the entity ID as stripe.  It is the only place where two
-      // locks are acquired in sequence.  This condition is necessary to avoid deadlocks.
+      // Entity found, add it to the cache and update the name-to-id mapping
+      // If the name was already associated with another ID, overwrite the mapping
       cachedEntity =
           new ResolvedPolarisEntity(
               callContext.getDiagServices(),
@@ -404,7 +390,7 @@ public class EntityCache {
 
       return new EntityCacheLookupResult(cachedEntity, false);
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 }
