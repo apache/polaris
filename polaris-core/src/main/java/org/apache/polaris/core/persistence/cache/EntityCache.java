@@ -25,9 +25,6 @@ import com.google.common.collect.HashBiMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.jcip.annotations.GuardedBy;
 import org.apache.polaris.core.PolarisCallContext;
@@ -39,12 +36,6 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
 /** The entity cache, can be private or shared */
 public class EntityCache {
-  public final List<String> state = Collections.synchronizedList(new ArrayList<>());
-
-  private String threadName() {
-    return Thread.currentThread().getName().replace("jcstress-worker-", "T");
-  }
-
   // cache mode
   private EntityCacheMode cacheMode;
 
@@ -91,7 +82,6 @@ public class EntityCache {
   private void remove(Long id, ResolvedPolarisEntity ignored1, RemovalCause ignored2) {
     lock.writeLock().lock();
     try {
-      state.add(threadName() + "-Remove-" + ignored2);
       cache.invalidate(id);
       nameToIdMap.remove(id);
     } finally {
@@ -136,7 +126,6 @@ public class EntityCache {
   public @Nullable ResolvedPolarisEntity getEntityById(long entityId) {
     lock.readLock().lock();
     try {
-      state.add(threadName() + "-Get");
       return cache.getIfPresent(entityId);
     } finally {
       lock.readLock().unlock();
@@ -266,8 +255,6 @@ public class EntityCache {
       return new EntityCacheLookupResult(cachedEntity, true);
     }
 
-    state.add(threadName() + "-Check");
-
     // Cache miss, we may have to load the entity from the metastore
     return maybeLoadEntityById(callContext, entityCatalogId, entityId, entityType);
   }
@@ -285,7 +272,6 @@ public class EntityCache {
         return new EntityCacheLookupResult(cachedEntity, true);
       }
 
-      state.add(threadName() + "-Load");
       ResolvedEntityResult result =
           polarisMetaStoreManager.loadResolvedEntityById(
               callContext, entityCatalogId, entityId, entityType);
@@ -329,7 +315,6 @@ public class EntityCache {
       }
       cache.put(entityId, cachedEntity);
       nameToIdMap.put(entityId, entityName);
-      state.add(threadName() + "-Store");
     } finally {
       lock.writeLock().unlock();
     }
