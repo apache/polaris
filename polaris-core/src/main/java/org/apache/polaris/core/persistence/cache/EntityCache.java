@@ -22,6 +22,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.collect.HashBiMap;
+import com.google.common.util.concurrent.MoreExecutors;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Duration;
@@ -71,11 +72,16 @@ public class EntityCache {
     // Use a Caffeine cache to purge entries when those have not been used for a long time.
     // Assuming 1KB per entry, 100K entries is about 100MB. Note that each entity is stored twice in
     // the cache, once indexed by its identifier and once indexed by its name.
+    //
+    // Add a removal listener so that the name-to-id mapping is also purged after every cache
+    // replacement, invalidation or expiration .  Configure a direct executor so that the removal
+    // listener is invoked by the same thread that is updating the cache.
     this.cache =
         Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofHours(1))
             .maximumSize(100_000)
-            .evictionListener(this::remove)
+            .removalListener(this::remove)
+            .executor(MoreExecutors.directExecutor())
             .build();
   }
 
@@ -204,7 +210,6 @@ public class EntityCache {
 
       // Either confirmed cache miss, or the entity is stale. Invalidate it just in case.
       cache.invalidate(entityId);
-      nameToIdMap.remove(entityId);
 
       // Get the entity from the cache or reload it now that it has been invalidated
       EntityCacheLookupResult cacheLookupResult =
@@ -212,7 +217,7 @@ public class EntityCache {
               callContext, entityToValidate.getCatalogId(), entityId, entityToValidate.getType());
       if (cacheLookupResult == null) {
         // Entity has been purged, and we have already cleaned the cache and the name-to-id mapping,
-        // nothing else to do
+        // nothing else to do.
         return null;
       }
 
@@ -310,9 +315,8 @@ public class EntityCache {
       Long previouslyAssociatedId = nameToIdMap.inverse().get(entityName);
       if (previouslyAssociatedId != null && previouslyAssociatedId != entityId) {
         // That name was already associated with another entity, and the cache is still representing
-        // that state, invalidate it and clear the mapping.
+        // that state, invalidate it.  The name-to-id mapping will be cleared automatically.
         cache.invalidate(previouslyAssociatedId);
-        nameToIdMap.remove(previouslyAssociatedId);
       }
       cache.put(entityId, cachedEntity);
       nameToIdMap.put(entityId, entityName);
