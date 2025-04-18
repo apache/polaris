@@ -1,3 +1,5 @@
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -73,7 +75,10 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
-openApiGenerate {
+tasks.named<GenerateTask>("openApiGenerate") {
+  doFirst {
+    delete(fileTree("$projectDir/build/generated"))
+  }
   inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
@@ -82,10 +87,11 @@ openApiGenerate {
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "CatalogApi,ConfigurationApi,OAuth2Api,PolicyApi,GenericTableApi")
+  globalProperties.put("apis", "true")
   globalProperties.put("models", "true")
   globalProperties.put("apiDocs", "true")
   globalProperties.put("modelTests", "true")
+  globalProperties.put("supportingFiles", "true")
   configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
   configOptions.put("useBeanValidation", "false")
