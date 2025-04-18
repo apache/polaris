@@ -208,7 +208,7 @@ public class EntityCache {
 
       // Get the entity from the cache or reload it now that it has been invalidated
       EntityCacheLookupResult cacheLookupResult =
-          this.loadEntityById(
+          this.maybeLoadEntityById(
               callContext, entityToValidate.getCatalogId(), entityId, entityToValidate.getType());
       if (cacheLookupResult == null) {
         // Entity has been purged, and we have already cleaned the cache and the name-to-id mapping,
@@ -255,18 +255,23 @@ public class EntityCache {
       return new EntityCacheLookupResult(cachedEntity, true);
     }
 
-    // Cache miss, we have to load the entity from the metastore
-    return loadEntityById(callContext, entityCatalogId, entityId, entityType);
+    // Cache miss, we may have to load the entity from the metastore
+    return maybeLoadEntityById(callContext, entityCatalogId, entityId, entityType);
   }
 
-  private EntityCacheLookupResult loadEntityById(
+  private EntityCacheLookupResult maybeLoadEntityById(
       PolarisCallContext callContext,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
-    ResolvedPolarisEntity cachedEntity;
     lock.writeLock().lock();
     try {
+      ResolvedPolarisEntity cachedEntity = getEntityById(entityId);
+      if (cachedEntity != null) {
+        // Cache was populated concurrently, nothing more to do
+        return new EntityCacheLookupResult(cachedEntity, true);
+      }
+
       ResolvedEntityResult result =
           polarisMetaStoreManager.loadResolvedEntityById(
               callContext, entityCatalogId, entityId, entityType);
