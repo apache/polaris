@@ -48,6 +48,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
@@ -74,6 +75,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
@@ -175,6 +178,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
+  @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
@@ -184,6 +188,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
+  protected UserSecretsManager userSecretsManager;
   protected TransactionalPersistence metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
@@ -204,6 +209,7 @@ public abstract class PolarisAuthzTestBase {
   public void before(TestInfo testInfo) {
     RealmContext realmContext = testInfo::getDisplayName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
     Map<String, Object> configMap =
         Map.of(
@@ -247,6 +253,7 @@ public abstract class PolarisAuthzTestBase {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext(authenticatedRoot, Set.of()),
             polarisAuthorizer);
 
@@ -258,12 +265,14 @@ public abstract class PolarisAuthzTestBase {
             .build();
     catalogEntity =
         adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setCatalogType("INTERNAL")
-                .setDefaultBaseLocation(storageLocation)
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .setCatalogType("INTERNAL")
+                    .setDefaultBaseLocation(storageLocation)
+                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .build()
+                    .asCatalog()));
 
     initBaseCatalog();
 
@@ -462,16 +471,22 @@ public abstract class PolarisAuthzTestBase {
       extends PolarisCallContextCatalogFactory {
 
     public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null);
+      super(null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
         RealmEntityManagerFactory entityManagerFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
+        UserSecretsManagerFactory userSecretsManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory) {
-      super(entityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
+      super(
+          entityManagerFactory,
+          metaStoreManagerFactory,
+          userSecretsManagerFactory,
+          taskExecutor,
+          fileIOFactory);
     }
 
     @Override
