@@ -22,9 +22,22 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Optional;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
+import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Base result class for any call to the persistence layer */
 public class BaseResult {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BaseResult.class);
+
   // return code, indicates success or failure
   private final int returnStatusCode;
 
@@ -57,12 +70,88 @@ public class BaseResult {
     return extraInformation;
   }
 
-  public boolean isSuccess() {
+  public final boolean isSuccess() {
     return this.returnStatusCode == ReturnStatus.SUCCESS.getCode();
   }
 
-  public boolean alreadyExists() {
+  public final boolean alreadyExists() {
     return this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode();
+  }
+
+  /**
+   * If this result is not a successful one, this builds an exception from the failed result which
+   * the exception mapper can use to provide the caller some useful information about the failure.
+   * The message relies on `extraInformation`. If {@link
+   * org.apache.polaris.core.config.FeatureConfiguration#DETAILED_PERSISTENCE_EXCEPTIONS} is false,
+   * this should return an empty option.
+   */
+  @SuppressWarnings("FormatStringAnnotation")
+  public Optional<RuntimeException> getException(CallContext callContext) {
+    if (!callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            FeatureConfiguration.DETAILED_PERSISTENCE_EXCEPTIONS)) {
+      return Optional.empty();
+    }
+
+    String message = this.extraInformation;
+    if (this.extraInformation == null) {
+      // TODO this should ideally never be hit but it's hit often.
+      // We should raise the logging level once it's less common
+      LOGGER.debug(
+          "A {} was discovered with status {} but without a detailed message",
+          this.getClass().getName(),
+          ReturnStatus.getStatus(this.returnStatusCode).name());
+      message = "Error reported by the metastore";
+    }
+    // TODO use a switch expression if the Java version here is ever raised
+    if (this.returnStatusCode == ReturnStatus.SUCCESS.getCode()) {
+      return Optional.empty();
+    } else if (this.returnStatusCode == ReturnStatus.UNEXPECTED_ERROR_SIGNALED.getCode()) {
+      return Optional.of(new RuntimeException(message));
+    } else if (this.returnStatusCode == ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED.getCode()) {
+      return Optional.of(new NotFoundException(message));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RESOLVED.getCode()) {
+      return Optional.of(new NotFoundException(message));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(message));
+    } else if (this.returnStatusCode == ReturnStatus.GRANT_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(message));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode()) {
+      return Optional.of(new AlreadyExistsException(message));
+    } else if (this.returnStatusCode == ReturnStatus.NAMESPACE_NOT_EMPTY.getCode()) {
+      return Optional.of(new NamespaceNotEmptyException(message));
+    } else if (this.returnStatusCode == ReturnStatus.CATALOG_NOT_EMPTY.getCode()) {
+      return Optional.of(new BadRequestException(message));
+    } else if (this.returnStatusCode
+        == ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED.getCode()) {
+      return Optional.of(new CommitFailedException(message));
+    } else if (this.returnStatusCode == ReturnStatus.ENTITY_CANNOT_BE_RENAMED.getCode()) {
+      return Optional.of(new BadRequestException(message));
+    } else if (this.returnStatusCode == ReturnStatus.SUBSCOPE_CREDS_ERROR.getCode()) {
+      return Optional.of(new UnprocessableEntityException(message));
+    } else if (this.returnStatusCode == ReturnStatus.POLICY_MAPPING_NOT_FOUND.getCode()) {
+      return Optional.of(new NotFoundException(message));
+    } else if (this.returnStatusCode
+        == ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS.getCode()) {
+      return Optional.of(new AlreadyExistsException(message));
+    } else {
+      return Optional.of(new RuntimeException(message));
+    }
+  }
+
+  /**
+   * If this result is failed, this should throw the appropriate exception which corresponds to the
+   * result status. See {@link BaseResult#getException} for details. If {@link
+   * org.apache.polaris.core.config.FeatureConfiguration#DETAILED_PERSISTENCE_EXCEPTIONS} is false,
+   * nothing should be thrown.
+   */
+  public void maybeThrowException(CallContext callContext) throws RuntimeException {
+    if (this.getException(callContext).isPresent()) {
+      throw this.getException(callContext).get();
+    }
   }
 
   /** Possible return code for the various API calls. */
