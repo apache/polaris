@@ -47,6 +47,12 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST_GRA
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_FULL_METADATA;
@@ -457,6 +463,38 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
         List.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE, CATALOG_MANAGE_ACCESS));
+
+    // Policy privileges
+    SUPER_PRIVILEGES.putAll(
+        POLICY_CREATE,
+        List.of(
+            POLICY_CREATE, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_WRITE,
+        List.of(
+            POLICY_WRITE, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_DROP,
+        List.of(
+            POLICY_DROP, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_READ,
+        List.of(
+            POLICY_READ,
+            POLICY_WRITE,
+            POLICY_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_LIST,
+        List.of(
+            POLICY_LIST,
+            POLICY_CREATE,
+            POLICY_READ,
+            POLICY_WRITE,
+            POLICY_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
   }
 
   private final PolarisConfigurationStore featureConfig;
