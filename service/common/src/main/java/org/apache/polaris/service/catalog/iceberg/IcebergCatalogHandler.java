@@ -20,8 +20,10 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
+import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -36,6 +38,8 @@ import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -117,6 +121,8 @@ import org.slf4j.LoggerFactory;
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
+  private static final Field tableMetadataSnapshotsField;
+
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
@@ -126,6 +132,21 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected Catalog baseCatalog = null;
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
+
+  public static final String SNAPSHOTS_ALL = "all";
+  public static final String SNAPSHOTS_REFS = "refs";
+
+  static {
+    Field snapshotsField;
+    try {
+      snapshotsField = TableMetadata.class.getField("snapshots");
+      snapshotsField.setAccessible(true);
+    } catch (NoSuchFieldException e) {
+      LOGGER.error("Could not load snapshots field for snapshot filtering", e);
+      snapshotsField = null;
+    }
+    tableMetadataSnapshotsField = snapshotsField;
+  }
 
   public IcebergCatalogHandler(
       CallContext callContext,
@@ -380,7 +401,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST))
+                  PolarisStorageActions.LIST),
+              SNAPSHOTS_ALL
+      )
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -471,7 +494,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-            ident, metadata, Set.of(PolarisStorageActions.ALL))
+            ident, metadata, Set.of(PolarisStorageActions.ALL), SNAPSHOTS_ALL)
         .build();
   }
 
@@ -580,7 +603,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+    Table table = baseCatalog.loadTable(tableIdentifier);
+    if (table instanceof BaseMetadataTable) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    } else if (!(table instanceof BaseTable)) {
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    } else {
+      LoadTableResponse rawResponse = LoadTableResponse.builder()
+        .withTableMetadata(((BaseTable) table).operations().current())
+        .build();
+      return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+    }
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -679,7 +712,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableMetadata tableMetadata = baseTable.operations().current();
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested)
+                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
               .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -692,7 +725,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> actions) {
+      Set<PolarisStorageActions> actions,
+      String snapshots) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -1008,6 +1042,38 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new BadRequestException("Cannot rename view on static-facade external catalogs.");
     }
     CatalogHandlers.renameView(viewCatalog, request);
+  }
+
+  private @Nonnull LoadTableResponse filterResponseToSnapshots(
+      LoadTableResponse loadTableResponse, String snapshots) {
+    if (snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return loadTableResponse;
+    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+      if (tableMetadataSnapshotsField == null) {
+        // We should have already logged an error in the static block
+        return loadTableResponse;
+      }
+
+      TableMetadata metadata = loadTableResponse.tableMetadata();
+
+      Set<Long> referencedSnapshotIds = metadata.refs().values().stream()
+          .map(SnapshotRef::snapshotId)
+          .collect(Collectors.toSet());
+
+      List<Snapshot> filterSnapshots = metadata.snapshots().stream()
+          .filter(snapshot -> referencedSnapshotIds.contains(snapshot.snapshotId()))
+          .collect(Collectors.toList());
+
+      try {
+        tableMetadataSnapshotsField.set(metadata, filterSnapshots);
+      } catch (IllegalAccessException e) {
+        LOGGER.error("Error setting filtered snapshots", e);
+      }
+
+      return loadTableResponse;
+    } else {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
   }
 
   @Override

@@ -169,8 +169,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
+    private TableIdentifier identifier;
+    private PolarisEntity entity;
 
-  /**
+    /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
    *     perform mutations on entities.
    * @param callContext the current CallContext
@@ -1768,7 +1770,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * method will fill in the parentId if needed upon resolution.
    */
   private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
-    PolarisResolvedPathWrapper resolvedParent =
+      this.identifier = identifier;
+      this.entity = entity;
+      PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
