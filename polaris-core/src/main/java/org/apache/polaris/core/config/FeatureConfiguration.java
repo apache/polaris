@@ -201,4 +201,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " requires experimentation in the specific deployment environment")
           .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_STREAMING_TABLE_METADATA =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_STREAMING_TABLE_METADATA")
+          .description("If true, enable streaming table metadata without deserializing into memory")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }
