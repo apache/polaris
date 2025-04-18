@@ -692,6 +692,73 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   @Test
+  public void testConcurrentWritesWithRollbackWithNonReplaceSnapshotInBetween() {
+    IcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    Table table =
+        catalog
+            .buildTable(TABLE, SCHEMA)
+            .withPartitionSpec(SPEC)
+            .withProperties(Map.of("rollback.compaction.on-conflicts.enabled", "true"))
+            .create();
+    this.assertNoFiles(table);
+
+    // commit FILE_A
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    this.assertFiles(catalog.loadTable(TABLE), FILE_A);
+    table.refresh();
+
+    long lastSnapshotId = table.currentSnapshot().snapshotId();
+
+    // Apply the deletes based on FILE_A
+    // this should conflict when we try to commit without the change.
+    RowDelta originalRowDelta =
+        table
+            .newRowDelta()
+            .addDeletes(FILE_A_DELETES)
+            .validateFromSnapshot(lastSnapshotId)
+            .validateDataFilesExist(List.of(FILE_A.location()));
+    // Make client ready with updates, don't reach out to IRC server yet
+    Snapshot s = originalRowDelta.apply();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    TableMetadata base = ops.current();
+    TableMetadata.Builder update = TableMetadata.buildFrom(base);
+    update.setBranchSnapshot(s, "main");
+    TableMetadata updatedMetadata = update.build();
+    List<MetadataUpdate> updates = updatedMetadata.changes();
+    List<UpdateRequirement> requirements = UpdateRequirements.forUpdateTable(base, updates);
+    UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
+
+    // replace FILE_A with FILE_B
+    // commit the transaction.
+    catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
+
+    // commit FILE_C
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
+    Assertions.assertThatThrownBy(
+            () ->
+                IcebergCatalogHandler.commit(
+                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("Requirement failed: branch main has changed");
+
+    table.refresh();
+
+    // Assert only 3 snapshots
+    Snapshot currentSnapshot = table.snapshot(table.refs().get("main").snapshotId());
+    int totalSnapshots = 1;
+    while (currentSnapshot.parentId() != null) {
+      currentSnapshot = table.snapshot(currentSnapshot.parentId());
+      totalSnapshots += 1;
+    }
+    assertThat(totalSnapshots).isEqualTo(3);
+    this.assertFiles(catalog.loadTable(TABLE), FILE_B, FILE_C);
+  }
+
+  @Test
   public void testValidateNotificationWhenTableAndNamespacesDontExist() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
