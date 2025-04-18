@@ -21,7 +21,6 @@
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
-# echo "CURRENT SPARK HOME ${SPARK_HOME}"
 CATALOG_NAME="spark_sql_catalog"
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
@@ -75,6 +74,7 @@ drop namespace db1;
 drop namespace db2;
 EOF
 
+# clean up the spark_catalog dir
 rm -rf /tmp/spark_catalog/
 
 curl -i -X DELETE -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \

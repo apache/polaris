@@ -88,7 +88,6 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   # run the spark_sql test
   loginfo "Starting test spark_sql.sh"
 
-  # export SPARK_HOME=/Users/yzou/spark-client-tests/spark-3.5.5-bin-hadoop3
   TEST_FILE="spark_sql.sh"
   TEST_SHORTNAME="spark_sql"
   TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}"

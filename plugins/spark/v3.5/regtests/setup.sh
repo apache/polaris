@@ -153,4 +153,5 @@ echo "Launch spark-sql at ${SPARK_HOME}/bin/spark-sql"
 # this is mostly useful for building the Docker image with all needed dependencies
 ${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
 
+# ensure SPARK_HOME is setup for later tests
 export SPARK_HOME=$SPARK_HOME
