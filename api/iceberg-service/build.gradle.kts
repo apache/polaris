@@ -104,12 +104,6 @@ openApiGenerate {
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
-
-      // GenericTable types
-      "CreateGenericTableRequest" to "org.apache.polaris.service.types.CreateGenericTableRequest",
-      "GenericTable" to "org.apache.polaris.service.types.GenericTable",
-      "ListGenericTablesResponse" to "org.apache.polaris.service.types.ListGenericTablesResponse",
-      "LoadGenericTableResponse" to "org.apache.polaris.service.types.LoadGenericTableResponse",
     )
 }
 
