@@ -506,7 +506,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       extraPassthroughNamespaces.add(nsLevel);
     }
     authorizeBasicNamespaceOperationOrThrow(
-        op, Namespace.empty(), extraPassthroughNamespaces, extraPassthroughTableLikes);
+        op, Namespace.empty(), extraPassthroughNamespaces, extraPassthroughTableLikes, null);
 
     CatalogEntity catalog =
         CatalogEntity.of(
