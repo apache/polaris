@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
+import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -133,6 +135,9 @@ import org.slf4j.LoggerFactory;
  */
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
+
+  private static final String ROLLBACK_REPLACE_ENABLED_PROPERTY =
+      "rollback.compaction.on-conflicts.enabled";
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
@@ -885,7 +890,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
   }
 
-  static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
+  @VisibleForTesting
+  public static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
 
     try {
@@ -897,15 +903,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               (taskOps) -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
                 isRetry.set(true);
-                // My prev pr : https://github.com/apache/iceberg/pull/5888
-                // Taking this feature behind a table property presently.
+                // Prev PR: https://github.com/apache/iceberg/pull/5888
                 boolean rollbackCompaction =
                     PropertyUtil.propertyAsBoolean(
-                        taskOps.current().properties(),
-                        "rollback.compaction.on-conflicts.enabled",
-                        false);
-                // otherwise create a metadataUpdate to remove the snapshots we had
-                // applied our rollback requests first
+                        taskOps.current().properties(), ROLLBACK_REPLACE_ENABLED_PROPERTY, false);
+
                 TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
                 TableMetadata newBase = base;
                 try {
@@ -940,7 +942,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   Long parentSnapshotId = addSnapshot.snapshotId();
                   // so we will first check all the snapshots on the top of
                   // base on which the snapshot we want to commit is of type REPLACE ops.
-                  Long parentToRollbackTo = ops.current().currentSnapshot().snapshotId();
+                  Long parentToRollbackTo = base.currentSnapshot().snapshotId();
                   List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
                   while (!Objects.equals(parentToRollbackTo, parentSnapshotId)) {
                     Snapshot snap = ops.current().snapshot(parentToRollbackTo);
@@ -953,6 +955,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   }
 
                   MetadataUpdate.SetSnapshotRef ref = null;
+                  found = 0;
                   // find the SetRefName snapshot update
                   for (MetadataUpdate update : request.updates()) {
                     if (update instanceof MetadataUpdate.SetSnapshotRef) {
@@ -961,7 +964,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     }
                   }
 
-                  if (found != 1 || (!Objects.equals(parentToRollbackTo, parentSnapshotId))) {
+                  if (found != 1 || !Objects.equals(parentToRollbackTo, parentSnapshotId)) {
                     // nothing can be done as this implies there was a non replace
                     // snapshot in between or there is more than setRef ops, we don't know where
                     // to go.
@@ -980,6 +983,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   updateToRemoveSnapshot.forEach((update -> update.applyTo(metadataBuilder)));
                   // Ref rolled back update correctly to snapshot to be committed parent now.
                   newBase = metadataBuilder.build();
+                  // move the lastSequenceNumber back, to apply snapshot properly.
+                  // Seq number are considered increasing monotonically, snapshot over snapshot, so
+                  // this is important.
+                  Class<?> clazz = newBase.getClass();
+                  try {
+                    Field field = clazz.getDeclaredField("lastSequenceNumber");
+                    field.setAccessible(true);
+                    // this should point to the sequence number that current tip of the
+                    // branch belongs to, as the new commit will be applied on top of this.
+                    field.set(newBase, newBase.currentSnapshot().sequenceNumber());
+                  } catch (NoSuchFieldException | IllegalAccessException ex) {
+                    throw new RuntimeException(ex);
+                  }
                 }
 
                 // double check if the requirements passes now.
@@ -1005,18 +1021,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return ops.current();
   }
 
-  private static class ValidationFailureException extends RuntimeException {
-    private final CommitFailedException wrapped;
 
-    private ValidationFailureException(CommitFailedException cause) {
-      super(cause);
-      this.wrapped = cause;
-    }
-
-    public CommitFailedException wrapped() {
-      return this.wrapped;
-    }
-  }
 
   public LoadTableResponse updateTableForStagedCreate(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
