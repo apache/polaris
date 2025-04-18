@@ -163,6 +163,9 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   }
 
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+
+  mergeServiceFiles()
+  exclude("META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.SF")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
