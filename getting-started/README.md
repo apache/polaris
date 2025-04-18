@@ -33,12 +33,10 @@ this directory. Each example has detailed instructions.
 - [Spark](spark): An example that uses an in-memory metastore, automatically bootstrapped, with
   Apache Spark and a Jupyter notebook.
 
-- [Trino](trino): An example that uses Trino with Polaris.
-
 - [Telemetry](telemetry): An example that includes Prometheus and Jaeger to collect metrics and
   traces from Apache Polaris. This example automatically creates a `polaris_demo` catalog.
 
 - [Eclipselink](eclipselink): An example that uses an Eclipselink metastore and a Postgres
   database. The realm is bootstrapped with the Polaris Admin tool. This example also creates a
-  `polaris_demo` catalog, and offers the ability to run Spark SQL queries. Finally, it shows how to
+  `polaris_quickstart` catalog, and offers the ability to run Spark SQL and Trino queries. Finally, it shows how to
   attach a debugger to the Polaris server.

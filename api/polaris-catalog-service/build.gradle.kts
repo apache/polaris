@@ -36,8 +36,8 @@ val policyManagementModels =
     "CatalogIdentifier",
     "CreatePolicyRequest",
     "LoadPolicyResponse",
-    "PolicyIdentifier",
     "Policy",
+    "ApplicablePolicy",
     "PolicyAttachmentTarget",
     "AttachPolicyRequest",
     "DetachPolicyRequest",
@@ -59,6 +59,7 @@ dependencies {
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
   implementation(libs.swagger.annotations)
+  implementation(libs.guava)
 
   implementation(libs.jakarta.servlet.api)
   implementation(libs.jakarta.ws.rs.api)
@@ -105,6 +106,9 @@ openApiGenerate {
       "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "TableIdentifier" to "org.apache.iceberg.catalog.TableIdentifier",
+
+      // Custom types defined below
+      "PolicyIdentifier" to "org.apache.polaris.service.types.PolicyIdentifier",
     )
 }
 

@@ -37,7 +37,7 @@ These pages refer to the current state of the main branch, which is still under 
 Functionalities can be changed, removed or added without prior notice.
 {{< /alert >}}
 
-Check out the [Quick Start]({{% ref "quickstart" %}}) page to get started.
+Check out the [Quickstart]({{% ref "getting-started" %}}) page to get started.
 
 <!--
 Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}

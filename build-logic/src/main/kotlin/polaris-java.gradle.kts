@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import java.util.Properties
+import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -35,23 +37,33 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
+if (project.extra.has("duplicated-project-sources")) {
+  // skip the style check for duplicated projects
+  tasks.withType<Checkstyle>().configureEach { enabled = false }
+}
+
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
     ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
-  options.errorprone.error(
-    "DefaultCharset",
-    "FallThrough",
-    "MissingCasesInEnumSwitch",
-    "MissingOverride",
-    "ModifiedButNotUsed",
-    "OrphanedFormatString",
-    "PatternMatchingInstanceof",
-    "StringCaseLocaleUsage",
-  )
+  val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
+  inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
+  options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
 }
+
+private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity> =
+  rulesFile.reader().use {
+    val rules = Properties()
+    rules.load(it)
+    rules
+      .mapKeys { e -> (e.key as String).trim() }
+      .mapValues { e -> (e.value as String).trim() }
+      .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
+      .mapValues { e -> CheckSeverity.valueOf(e.value) }
+      .toMap()
+  }
 
 tasks.register("compileAll").configure {
   group = "build"

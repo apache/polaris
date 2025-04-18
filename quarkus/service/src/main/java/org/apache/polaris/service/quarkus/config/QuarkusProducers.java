@@ -45,6 +45,9 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
@@ -55,13 +58,13 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfiguration;
+import org.apache.polaris.service.quarkus.secrets.QuarkusSecretsManagerConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
@@ -150,16 +153,25 @@ public class QuarkusProducers {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
+  @Produces
+  public UserSecretsManagerFactory userSecretsManagerFactory(
+      QuarkusSecretsManagerConfiguration config,
+      @Any Instance<UserSecretsManagerFactory> userSecretsManagerFactories) {
+    return userSecretsManagerFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
   /**
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
    */
-  public void maybeInitializeInMemoryRealm(
+  public void maybeBootstrap(
       @Observes StartupEvent event,
       MetaStoreManagerFactory factory,
+      QuarkusPersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
-    if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
-      ((InMemoryPolarisMetaStoreManagerFactory) factory).onStartup(realmContextConfiguration);
+    if (config.isAutoBootstrap()) {
+      RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
+      factory.bootstrapRealms(realmContextConfiguration.realms(), rootCredentialsSet);
     }
   }
 
@@ -216,6 +228,13 @@ public class QuarkusProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public UserSecretsManager userSecretsManager(
+      RealmContext realmContext, UserSecretsManagerFactory userSecretsManagerFactory) {
+    return userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
   }
 
   @Produces

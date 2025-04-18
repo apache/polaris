@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
@@ -44,7 +45,8 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
  * which can support a runInTransaction semantic, while providing default implementations of some of
  * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
-public interface TransactionalPersistence extends BasePersistence, IntegrationPersistence {
+public interface TransactionalPersistence
+    extends BasePersistence, IntegrationPersistence, TransactionalPolicyMappingPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write

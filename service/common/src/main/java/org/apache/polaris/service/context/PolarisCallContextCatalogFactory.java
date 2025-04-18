@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -53,15 +54,18 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final UserSecretsManagerFactory userSecretsManagerFactory;
 
   @Inject
   public PolarisCallContextCatalogFactory(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      UserSecretsManagerFactory userSecretsManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
   }
@@ -78,7 +82,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
-    LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
+    LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
     PolarisEntityManager entityManager =
         entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
@@ -98,7 +102,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getDefaultBaseLocation();
-    LOGGER.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
+    LOGGER.debug(
+        "Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
     catalogProperties.put(
         CatalogProperties.WAREHOUSE_LOCATION,
         Objects.requireNonNullElseGet(

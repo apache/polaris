@@ -39,7 +39,10 @@ Tests can be run with docker-compose using the provided `./regtests/docker-compo
 follows:
 
 ```shell
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 

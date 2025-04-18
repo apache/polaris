@@ -217,6 +217,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         name,
         this.catalogName);
 
+    // Ensure catalogProperties is assigned before calling metricsReporter() for proper
+    // functionality.
+    catalogProperties = properties;
+
     // Base location from catalogEntity is primary source of truth, otherwise fall through
     // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
@@ -263,7 +267,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
 
-    catalogProperties = properties;
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
 
@@ -459,9 +462,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-    if (!namespaceExists(namespace) && !namespace.isEmpty()) {
+    if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
-          "Cannot list tables for namespace. Namespace does not exist: %s", namespace);
+          "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_TABLE, namespace);
@@ -630,11 +633,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean namespaceExists(Namespace namespace) {
-    return resolvedEntityView.getResolvedPath(namespace) != null;
+    return Optional.ofNullable(namespace)
+        .filter(ns -> !ns.isEmpty())
+        .map(resolvedEntityView::getResolvedPath)
+        .isPresent();
   }
 
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
+    if (namespace.isEmpty()) {
+      throw new IllegalArgumentException("Cannot drop root namespace");
+    }
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       return false;
@@ -795,9 +804,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-    if (!namespaceExists(namespace) && !namespace.isEmpty()) {
+    if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
-          "Cannot list views for namespace. Namespace does not exist: %s", namespace);
+          "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace);
@@ -1248,7 +1257,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
-            "Cannot create table %s. Namespace does not exist: %s",
+            "Cannot create table '%s'. Namespace does not exist: '%s'",
             tableIdentifier, tableIdentifier.namespace());
       }
 
@@ -1489,7 +1498,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
         throw new NoSuchNamespaceException(
-            "Cannot create view %s. Namespace does not exist: %s",
+            "Cannot create view '%s'. Namespace does not exist: '%s'",
             identifier, identifier.namespace());
       }
 

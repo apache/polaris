@@ -29,7 +29,6 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
@@ -51,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
 
-  @Inject RealmContext realmContext;
+  @Inject CallContext callContext;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Override
@@ -60,13 +59,13 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
         loadActivePrincipalRoles(
             principal.getActivatedPrincipalRoleNames(),
             principal.getPrincipalEntity(),
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext));
+            metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()));
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 
   protected List<PrincipalRoleEntity> loadActivePrincipalRoles(
       Set<String> tokenRoles, PolarisEntity principal, PolarisMetaStoreManager metaStoreManager) {
-    PolarisCallContext polarisContext = CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisContext = callContext.getPolarisCallContext();
     LoadGrantsResult principalGrantResults =
         metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
     polarisContext

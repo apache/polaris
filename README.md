@@ -36,6 +36,12 @@ for contribution guidelines.
 
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
+## Polaris Overview
+Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick overview of Polaris.
+
+## Quickstart
+Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
+
 ## Building and Running 
 
 Apache Polaris is organized into the following modules:
@@ -76,8 +82,13 @@ select * from db1.table1;
 
 #### Running in Docker
 
-- `./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache` - To 
-  build the image locally.
+- To build the image locally:
+  ```bash
+  ./gradlew \
+    :polaris-quarkus-server:assemble \
+    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    -Dquarkus.container-image.build=true
+  ```
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 The Polaris codebase contains some docker compose examples to quickly get started with Polaris,

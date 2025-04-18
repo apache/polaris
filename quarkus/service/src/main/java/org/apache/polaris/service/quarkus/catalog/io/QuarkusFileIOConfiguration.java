@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.catalog.io;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.file-io")
 public interface QuarkusFileIOConfiguration {
 

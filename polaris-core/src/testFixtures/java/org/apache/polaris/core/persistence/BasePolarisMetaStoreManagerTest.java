@@ -76,32 +76,32 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** validate that the root catalog was properly constructed */
   @Test
-  void validateBootstrap() {
+  protected void validateBootstrap() {
     // allocate test driver
     polarisTestMetaStoreManager.validateBootstrap();
   }
 
   @Test
-  void testCreateTestCatalog() {
+  protected void testCreateTestCatalog() {
     // allocate test driver
     polarisTestMetaStoreManager.testCreateTestCatalog();
   }
 
   @Test
-  void testCreateTestCatalogWithRetry() {
+  protected void testCreateTestCatalogWithRetry() {
     // allocate test driver
     polarisTestMetaStoreManager.forceRetry();
     polarisTestMetaStoreManager.testCreateTestCatalog();
   }
 
   @Test
-  void testBrowse() {
+  protected void testBrowse() {
     // allocate test driver
     polarisTestMetaStoreManager.testBrowse();
   }
 
   @Test
-  void testCreateEntities() {
+  protected void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -152,7 +152,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testCreateEntitiesAlreadyExisting() {
+  protected void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -196,7 +196,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testCreateEntitiesWithConflict() {
+  protected void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -247,41 +247,47 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** Test that entity updates works well */
   @Test
-  void testUpdateEntities() {
+  protected void testUpdateEntities() {
     // allocate test driver
     polarisTestMetaStoreManager.testUpdateEntities();
   }
 
   /** Test that entity drop works well */
   @Test
-  void testDropEntities() {
+  protected void testDropEntities() {
     // allocate test driver
     polarisTestMetaStoreManager.testDropEntities();
   }
 
   /** Test that granting/revoking privileges works well */
   @Test
-  void testPrivileges() {
+  protected void testPrivileges() {
     // allocate test driver
     polarisTestMetaStoreManager.testPrivileges();
   }
 
   /** test entity rename */
   @Test
-  void testRename() {
+  protected void testRename() {
     // allocate test driver
     polarisTestMetaStoreManager.testRename();
   }
 
   /** Test the set of functions for the entity cache */
   @Test
-  void testEntityCache() {
+  protected void testEntityCache() {
     // allocate test driver
     polarisTestMetaStoreManager.testEntityCache();
   }
 
+  /** Test that attaching/detaching policies works well */
   @Test
-  void testLoadTasks() {
+  protected void testPolicyMapping() {
+    polarisTestMetaStoreManager.testPolicyMapping();
+  }
+
+  @Test
+  protected void testLoadTasks() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
@@ -367,7 +373,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testLoadTasksInParallel() throws Exception {
+  protected void testLoadTasksInParallel() throws Exception {
     for (int i = 0; i < 100; i++) {
       polarisTestMetaStoreManager.createEntity(
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
@@ -427,7 +433,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** Test generateNewEntityId() function that generates unique ids by creating Tasks in parallel */
   @Test
-  void testCreateTasksInParallel() throws Exception {
+  protected void testCreateTasksInParallel() throws Exception {
     List<Future<List<Long>>> futureList = new ArrayList<>();
     Random rand = new Random();
     ExecutorService executorService = Executors.newCachedThreadPool();

@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.List;
 
 /** List of privileges */
 public enum PolarisPrivilege {
@@ -41,21 +42,45 @@ public enum PolarisPrivilege {
   TABLE_CREATE(6, PolarisEntityType.NAMESPACE),
   VIEW_CREATE(7, PolarisEntityType.NAMESPACE),
   NAMESPACE_DROP(8, PolarisEntityType.NAMESPACE),
-  TABLE_DROP(9, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_DROP(
+      9,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_DROP(10, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   NAMESPACE_LIST(11, PolarisEntityType.NAMESPACE),
   TABLE_LIST(12, PolarisEntityType.NAMESPACE),
   VIEW_LIST(13, PolarisEntityType.NAMESPACE),
   NAMESPACE_READ_PROPERTIES(14, PolarisEntityType.NAMESPACE),
-  TABLE_READ_PROPERTIES(15, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_READ_PROPERTIES(
+      15,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_READ_PROPERTIES(16, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   NAMESPACE_WRITE_PROPERTIES(17, PolarisEntityType.NAMESPACE),
-  TABLE_WRITE_PROPERTIES(18, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_WRITE_PROPERTIES(
+      18,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_WRITE_PROPERTIES(19, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
-  TABLE_READ_DATA(20, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
-  TABLE_WRITE_DATA(21, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_READ_DATA(
+      20,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  TABLE_WRITE_DATA(
+      21,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   NAMESPACE_FULL_METADATA(22, PolarisEntityType.NAMESPACE),
-  TABLE_FULL_METADATA(23, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_FULL_METADATA(
+      23,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_FULL_METADATA(24, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   CATALOG_CREATE(25, PolarisEntityType.ROOT),
   CATALOG_DROP(26, PolarisEntityType.CATALOG),
@@ -70,12 +95,19 @@ public enum PolarisPrivilege {
   CATALOG_ROLE_LIST_GRANTS(35, PolarisEntityType.PRINCIPAL),
   CATALOG_LIST_GRANTS(36, PolarisEntityType.CATALOG),
   NAMESPACE_LIST_GRANTS(37, PolarisEntityType.NAMESPACE),
-  TABLE_LIST_GRANTS(38, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  TABLE_LIST_GRANTS(
+      38,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_LIST_GRANTS(39, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   CATALOG_MANAGE_GRANTS_ON_SECURABLE(40, PolarisEntityType.CATALOG),
   NAMESPACE_MANAGE_GRANTS_ON_SECURABLE(41, PolarisEntityType.NAMESPACE),
   TABLE_MANAGE_GRANTS_ON_SECURABLE(
-      42, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+      42,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   VIEW_MANAGE_GRANTS_ON_SECURABLE(
       43, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   PRINCIPAL_CREATE(44, PolarisEntityType.ROOT),
@@ -111,6 +143,25 @@ public enum PolarisPrivilege {
    *
    * @param code internal code associated to this privilege
    * @param securableType securable type
+   * @param securableSubTypes securable subtypes, mostly NULL_SUBTYPE
+   * @param granteeType grantee type, generally a ROLE
+   */
+  PolarisPrivilege(
+      int code,
+      @Nonnull PolarisEntityType securableType,
+      @Nonnull List<PolarisEntitySubType> securableSubTypes,
+      @Nonnull PolarisEntityType granteeType) {
+    this.code = code;
+    this.securableType = securableType;
+    this.securableSubTypes = securableSubTypes;
+    this.granteeType = granteeType;
+  }
+
+  /**
+   * Shorthand for a single securable subtype
+   *
+   * @param code internal code associated to this privilege
+   * @param securableType securable type
    * @param securableSubType securable subtype, mostly NULL_SUBTYPE
    * @param granteeType grantee type, generally a ROLE
    */
@@ -119,10 +170,7 @@ public enum PolarisPrivilege {
       @Nonnull PolarisEntityType securableType,
       @Nonnull PolarisEntitySubType securableSubType,
       @Nonnull PolarisEntityType granteeType) {
-    this.code = code;
-    this.securableType = securableType;
-    this.securableSubType = securableSubType;
-    this.granteeType = granteeType;
+    this(code, securableType, List.of(securableSubType), granteeType);
   }
 
   /**
@@ -132,10 +180,11 @@ public enum PolarisPrivilege {
    * @param securableType securable type
    */
   PolarisPrivilege(int code, @Nonnull PolarisEntityType securableType) {
-    this.code = code;
-    this.securableType = securableType;
-    this.securableSubType = PolarisEntitySubType.NULL_SUBTYPE;
-    this.granteeType = PolarisEntityType.CATALOG_ROLE;
+    this(
+        code,
+        securableType,
+        List.of(PolarisEntitySubType.NULL_SUBTYPE),
+        PolarisEntityType.CATALOG_ROLE);
   }
 
   /**
@@ -149,10 +198,7 @@ public enum PolarisPrivilege {
       int code,
       @Nonnull PolarisEntityType securableType,
       @Nonnull PolarisEntitySubType securableSubType) {
-    this.code = code;
-    this.securableType = securableType;
-    this.securableSubType = securableSubType;
-    this.granteeType = PolarisEntityType.CATALOG_ROLE;
+    this(code, securableType, List.of(securableSubType), PolarisEntityType.CATALOG_ROLE);
   }
 
   // internal code used to represent this privilege
@@ -162,7 +208,7 @@ public enum PolarisPrivilege {
   private final PolarisEntityType securableType;
 
   // the subtype of the securable for this privilege
-  private final PolarisEntitySubType securableSubType;
+  private final List<PolarisEntitySubType> securableSubTypes;
 
   // the type of the securable for this privilege
   private final PolarisEntityType granteeType;

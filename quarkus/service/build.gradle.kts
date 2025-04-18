@@ -23,10 +23,17 @@ plugins {
   id("polaris-quarkus")
 }
 
+configurations.all {
+  // exclude junit4 dependency for this module
+  exclude(group = "junit", module = "junit")
+}
+
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-catalog-service"))
+
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-defaults"))
 
@@ -46,6 +53,7 @@ dependencies {
   implementation("io.quarkus:quarkus-micrometer")
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
   implementation("io.quarkus:quarkus-opentelemetry")
+  implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
 
   implementation(libs.jakarta.enterprise.cdi.api)

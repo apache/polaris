@@ -40,6 +40,7 @@ public interface ProductionReadinessCheck {
   List<Error> getErrors();
 
   @PolarisImmutable
+  @SuppressWarnings("JavaLangClash")
   interface Error {
 
     static Error of(String message, String offendingProperty) {
