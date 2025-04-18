@@ -48,24 +48,34 @@ dependencies {
     // running into problems with signature files.
     exclude("com.azure", "*")
     exclude("software.amazon.awssdk", "*")
+    exclude("com.google.cloud", "*")
     exclude("io.airlift", "*")
     exclude("io.smallrye", "*")
-    exclude("io.micrometer", "*")
+    exclude("io.smallrye.common", "*")
+    exclude("io.swagger", "*")
+    exclude("org.apache.commons", "*")
   }
   implementation(project(":polaris-api-catalog-service")) {
     exclude("org.apache.iceberg", "*")
     exclude("com.azure", "*")
     exclude("software.amazon.awssdk", "*")
+    exclude("com.google.cloud", "*")
     exclude("io.airlift", "*")
     exclude("io.smallrye", "*")
-    exclude("io.micrometer", "*")
+    exclude("io.smallrye.common", "*")
+    exclude("io.swagger", "*")
+    exclude("org.apache.commons", "*")
   }
   implementation(project(":polaris-core")) {
     exclude("org.apache.iceberg", "*")
     exclude("com.azure", "*")
     exclude("software.amazon.awssdk", "*")
+    exclude("com.google.cloud", "*")
     exclude("io.airlift", "*")
     exclude("io.smallrye", "*")
+    exclude("io.smallrye.common", "*")
+    exclude("io.swagger", "*")
+    exclude("org.apache.commons", "*")
   }
 
   implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
@@ -163,9 +173,6 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   }
 
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
-
-  mergeServiceFiles()
-  exclude("META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.SF")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
