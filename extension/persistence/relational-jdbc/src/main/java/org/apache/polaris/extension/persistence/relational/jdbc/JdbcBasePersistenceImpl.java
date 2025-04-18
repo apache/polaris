@@ -75,7 +75,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public long generateNewId(@Nonnull PolarisCallContext callCtx) {
-    return IdGenerator.idGenerator.nextId();
+    return IdGenerator.getIdGenerator().nextId();
   }
 
   @Override
@@ -163,7 +163,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               if (originalEntities == null || originalEntities.get(i) == null) {
                 try {
                   query = JdbcCrudQueryGenerator.generateInsertQuery(modelEntity, realmId);
-                  datasourceOperations.executeUpdate(query, statement);
+                  statement.executeUpdate(query);
                 } catch (SQLException e) {
                   if ((datasourceOperations.isConstraintViolation(e)
                       || datasourceOperations.isAlreadyExistsException(e))) {
@@ -188,7 +188,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     JdbcCrudQueryGenerator.generateUpdateQuery(
                         modelEntity, params, ModelEntity.class);
                 try {
-                  int rowsUpdated = datasourceOperations.executeUpdate(query, statement);
+                  int rowsUpdated = statement.executeUpdate(query);
                   if (rowsUpdated == 0) {
                     throw new RetryOnConcurrencyException(
                         "Entity '%s' id '%s' concurrently modified; expected version %s",

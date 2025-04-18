@@ -90,16 +90,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private void initializeForRealm(
-      RealmContext realmContext, RootCredentialsSet rootCredentialsSet) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource);
-    // TODO: see if we need to take script from Quarkus or can we just
-    // use the script committed in the repo.
-    try {
-      databaseOperations.executeScript("scripts/postgres/schema-v1-postgres.sql");
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Error executing sql script: %s", e.getMessage()), e);
-    }
+      RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -113,6 +105,21 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
+    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource);
+    if (isBootstrap) {
+      // TODO: see if we need to take script from Quarkus or can we just
+      // use the script committed in the repo.
+      try {
+        databaseOperations.executeScript("scripts/postgres/schema-v1-postgres.sql");
+      } catch (SQLException e) {
+        throw new RuntimeException(
+            String.format("Error executing sql script: %s", e.getMessage()), e);
+      }
+    }
+    return databaseOperations;
+  }
+
   @Override
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
@@ -121,7 +128,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-        initializeForRealm(realmContext, rootCredentialsSet);
+        initializeForRealm(realmContext, rootCredentialsSet, true);
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
@@ -161,7 +168,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null);
+      initializeForRealm(realmContext, null, false);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
@@ -172,7 +179,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized Supplier<BasePersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null);
+      initializeForRealm(realmContext, null, false);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     } else {
@@ -206,7 +213,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   /**
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
    * metastore and creates a root service principal. After that we rotate the root principal
-   * credentials and print them to stdout
+   * credentials.
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
