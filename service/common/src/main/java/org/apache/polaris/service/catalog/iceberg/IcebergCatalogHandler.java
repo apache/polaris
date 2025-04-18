@@ -1030,7 +1030,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   private @Nonnull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
-    if (snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
       TableMetadata metadata = loadTableResponse.tableMetadata();

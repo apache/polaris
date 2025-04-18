@@ -154,8 +154,8 @@ public class CatalogApi extends RestApi {
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                Map.of("cat", catalog, "table", id.name()))
-            .header("snapshots", snapshots)
+                Map.of("cat", catalog, "table", id.name()),
+                Map.of("snapshots", snapshots))
             .get()) {
       return res.getStatus();
     }
