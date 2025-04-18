@@ -26,6 +26,9 @@ regtests provides basic end-to-end tests for spark_sql using spark client jars.
 Regression tests are either run in Docker, using docker-compose to orchestrate the tests, or
 locally.
 
+**NOTE** regtests are supposed to be a light-weight testing to ensure jars can be used to start
+spark and run basic SQL commands. Please use integration for detailed testing.
+
 ## Prerequisites
 
 It is recommended to clean the `regtests/output` directory before running tests. This can be done by

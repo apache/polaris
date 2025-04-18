@@ -38,12 +38,14 @@ val scalaLibraryVersion =
   }
 
 dependencies {
-  // TODO: Extract a polaris-rest module as a thin layer for
+  // TODO: extract a polaris-rest module as a thin layer for
   //  client to depends on.
   implementation(project(":polaris-api-iceberg-service")) {
     // exclude the iceberg dependencies, use the ones pulled
     // by iceberg-core
     exclude("org.apache.iceberg", "*")
+    // exclude all cloud and quarkus specific dependencies to avoid
+    // running into problems with signature files.
     exclude("com.azure", "*")
     exclude("software.amazon.awssdk", "*")
     exclude("io.airlift", "*")
