@@ -21,7 +21,12 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import java.security.SecureRandom;
 
 public class IdGenerator {
-  public static final IdGenerator idGenerator = new IdGenerator();
+  private static final IdGenerator idGenerator = new IdGenerator();
+
+  public static IdGenerator getIdGenerator() {
+    return idGenerator;
+  }
+
   private final SecureRandom secureRandom = new SecureRandom();
   private static final long LONG_MAX_ID = 0x7fffffffffffffffL;
 

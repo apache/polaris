@@ -190,6 +190,7 @@ public record TestServices(
               callContextFactory,
               entityManager,
               metaStoreManager,
+              userSecretsManager,
               authorizer,
               new DefaultCatalogPrefixParser());
 

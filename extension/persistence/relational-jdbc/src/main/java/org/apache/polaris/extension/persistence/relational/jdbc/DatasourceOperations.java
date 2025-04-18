@@ -55,31 +55,35 @@ public class DatasourceOperations {
         Statement statement = connection.createStatement()) {
       boolean autoCommit = connection.getAutoCommit();
       connection.setAutoCommit(true);
-      BufferedReader reader =
-          new BufferedReader(
-              new InputStreamReader(
-                  Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)), UTF_8));
-      StringBuilder sqlBuffer = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        line = line.trim();
-        if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
-          sqlBuffer.append(line).append("\n");
-          if (line.endsWith(";")) { // Execute statement when semicolon is found
-            String sql = sqlBuffer.toString().trim();
-            try {
-              int rowsUpdated = statement.executeUpdate(sql);
-              LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
-            } catch (SQLException e) {
-              LOGGER.error("Error executing query {}", sql, e);
-              // re:throw this as unhandled exception
-              throw new RuntimeException(e);
+      try {
+        BufferedReader reader =
+            new BufferedReader(
+                new InputStreamReader(
+                    Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)),
+                    UTF_8));
+        StringBuilder sqlBuffer = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+          line = line.trim();
+          if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
+            sqlBuffer.append(line).append("\n");
+            if (line.endsWith(";")) { // Execute statement when semicolon is found
+              String sql = sqlBuffer.toString().trim();
+              try {
+                int rowsUpdated = statement.executeUpdate(sql);
+                LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
+              } catch (SQLException e) {
+                LOGGER.error("Error executing query {}", sql, e);
+                // re:throw this as unhandled exception
+                throw new RuntimeException(e);
+              }
+              sqlBuffer.setLength(0); // Clear the buffer for the next statement
             }
-            sqlBuffer.setLength(0); // Clear the buffer for the next statement
           }
         }
+      } finally {
+        connection.setAutoCommit(autoCommit);
       }
-      connection.setAutoCommit(autoCommit);
     } catch (IOException e) {
       LOGGER.error("Error reading the script file", e);
       throw new RuntimeException(e);
@@ -113,22 +117,14 @@ public class DatasourceOperations {
         Statement statement = connection.createStatement()) {
       boolean autoCommit = connection.getAutoCommit();
       connection.setAutoCommit(true);
-      int result = statement.executeUpdate(query);
-      connection.setAutoCommit(autoCommit);
-      return result;
-    } catch (SQLException e) {
-      LOGGER.error("Error executing query {}", query, e);
-      throw e;
-    }
-  }
-
-  public int executeUpdate(String query, Statement statement) throws SQLException {
-    LOGGER.debug("Executing query {} within transaction", query);
-    try {
-      return statement.executeUpdate(query);
-    } catch (SQLException e) {
-      LOGGER.error("Error executing query {}", query, e);
-      throw e;
+      try {
+        return statement.executeUpdate(query);
+      } catch (SQLException e) {
+        LOGGER.error("Error executing query {}", query, e);
+        throw e;
+      } finally {
+        connection.setAutoCommit(autoCommit);
+      }
     }
   }
 
@@ -150,7 +146,7 @@ public class DatasourceOperations {
         connection.setAutoCommit(autoCommit);
       }
     } catch (SQLException e) {
-      LOGGER.error("Caught Error while executing transaction", e);
+      LOGGER.debug("Caught Error while executing transaction", e);
       throw e;
     }
   }

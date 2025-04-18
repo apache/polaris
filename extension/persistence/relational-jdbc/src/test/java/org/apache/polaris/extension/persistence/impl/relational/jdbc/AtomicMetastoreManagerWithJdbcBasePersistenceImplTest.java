@@ -37,7 +37,8 @@ import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class JdbcAtomicMetastoreManagerTest extends BasePolarisMetaStoreManagerTest {
+public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
+    extends BasePolarisMetaStoreManagerTest {
 
   public static DataSource createH2DataSource() {
     return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data/polaris/db", "sa", "");
