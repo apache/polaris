@@ -78,6 +78,11 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   JAR_PATH=$(find ${SPARK_DIR} -name "polaris-iceberg-*.*-spark-runtime-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.jar" -print -quit)
   echo "find jar ${JAR_PATH}"
 
+  SPARK_EXISTS="TRUE"
+  if [ -z "${SPARK_HOME}" ]; then
+    SPARK_EXISTS="FALSE"
+  fi
+
   source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --jar ${JAR_PATH}
 
   # run the spark_sql test
@@ -112,8 +117,16 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
     diff ${TEST_STDOUT} ${TEST_REF}
     NUM_FAILURES=$(( NUM_FAILURES + 1 ))
   fi
-  export SPARK_HOME=""
+
+  # clean up
+  if [ "${SPARK_EXISTS}" = "FALSE" ]; then
+    rm -rf ${SPARK_HOME}
+    export SPARK_HOME=""
+  fi
 done
+
+# clean the output dir
+rm -rf ${SCRIPT_DIR}/output
 
 loginfo "Tests completed with ${NUM_FAILURES} failures"
 if (( ${NUM_FAILURES} > 0 )); then

@@ -42,7 +42,7 @@ COPY --chown=spark ./v3.5 /home/spark/polaris/v3.5
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
 USER root
 RUN chmod -R go+rwx /home/spark/polaris
-RUN chmod -R 777 ./spark/regtests
+RUN chmod -R 777 ./v3.5/regtests
 USER spark
 
 ENTRYPOINT ["./v3.5/regtests/run.sh"]

@@ -21,7 +21,7 @@
 
 # End-to-end regression tests
 
-regtests provides basic end-to-end tests to customer abo
+regtests provides basic end-to-end tests for spark_sql using spark client jars.
 
 Regression tests are either run in Docker, using docker-compose to orchestrate the tests, or
 locally.
@@ -32,12 +32,12 @@ It is recommended to clean the `regtests/output` directory before running tests.
 running:
 
 ```shell
-rm -rf ./plugins/spark/regtests/output && mkdir -p ./plugins/spark/regtests/output && chmod -R 777 ./plugins/spark/regtests/output
+rm -rf ./plugins/spark/v3.5/regtests/output && mkdir -p ./plugins/spark/v3.5/regtests/output && chmod -R 777 ./plugins/spark/v3.5/regtests/output
 ```
 
 ## Run Tests With Docker Compose
 
-Tests can be run with docker-compose using the provided `./regtests/docker-compose.yml` file, as
+Tests can be run with docker-compose using the provided `./plugins/spark/v3.5/regtests/docker-compose.yml` file, as
 follows:
 
 ```shell
@@ -46,12 +46,14 @@ follows:
   :polaris-quarkus-server:assemble \
   :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
-docker compose -f ./plugins/spark/regtests/docker-compose.yml up --build --exit-code-from regtest
+docker compose -f ./plugins/spark/v3.5/regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
 In this setup, a Polaris container will be started in a docker-compose group, using the image
 previously built by the Gradle build. Then another container, including a Spark SQL shell, will run
-the tests. The exit code will be the same as the exit code of the Spark container.
+the tests. The exit code will be the same as the exit code of the Spark container. 
+**NOTE** Docker compose only support testing with scala 2.12, because no scala 2.13 image is available
+for spark 3.5. Scala 2.13 will be supported for Spark 4.0.
 
 This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no
 environmental factors contribute to the outcome of the tests.
@@ -67,7 +69,13 @@ eval $(minikube -p minikube docker-env --unset)
 
 ## Run Tests Locally
 
-Regression tests can be run locally as well, using the test harness.
+Regression tests can be run locally as well, using the test harness. For local testing, both
+Scala 2.12 and Scala 2.13 are supported.
+
+Before you run the test, make sure you build the project to generate the Spark client jars.
+```shell
+./gradlew build
+```
 
 In this setup, a Polaris server must be running on localhost:8181 before running tests. The simplest
 way to do this is to run the Polaris server in a separate terminal window:

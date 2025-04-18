@@ -131,6 +131,7 @@ spark.sql.variable.substitute true
 spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
 
 spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension
+spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
 spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog
 spark.sql.catalog.polaris.type=rest
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
