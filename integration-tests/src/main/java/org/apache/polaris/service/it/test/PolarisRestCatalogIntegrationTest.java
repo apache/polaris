@@ -20,6 +20,7 @@ package org.apache.polaris.service.it.test;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -1353,14 +1354,14 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
     restCatalog.createTable(tableIdentifier, SCHEMA);
 
-    //    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
-    //        .isEqualTo(OK.getStatusCode());
-    //    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
-    //        .isEqualTo(OK.getStatusCode());
-    //    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
-    //        .isEqualTo(OK.getStatusCode());
-    //    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
-    //        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
+        .isEqualTo(OK.getStatusCode());
     assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
         .isEqualTo(BAD_REQUEST.getStatusCode());
 
