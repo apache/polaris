@@ -73,6 +73,8 @@ github:
     - renovate-bot
     - singhpk234
     - gh-yzou
+    - nssalian
+    - adnanhemani
 
 notifications:
   commits:      commits@polaris.apache.org

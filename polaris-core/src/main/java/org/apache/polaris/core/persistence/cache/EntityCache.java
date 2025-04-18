@@ -25,10 +25,13 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.util.concurrent.MoreExecutors;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.jcip.annotations.GuardedBy;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -69,20 +72,26 @@ public class EntityCache {
     this.nameToIdMap = HashBiMap.create();
     this.lock = new ReentrantReadWriteLock();
 
-    // Use a Caffeine cache to purge entries when those have not been used for a long time.
-    // Assuming 1KB per entry, 100K entries is about 100MB. Note that each entity is stored twice in
-    // the cache, once indexed by its identifier and once indexed by its name.
-    //
-    // Add a removal listener so that the name-to-id mapping is also purged after every cache
-    // replacement, invalidation or expiration .  Configure a direct executor so that the removal
-    // listener is invoked by the same thread that is updating the cache.
-    this.cache =
+    long weigherTarget =
+        PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    Caffeine<Long, ResolvedPolarisEntity> cacheBuilder =
         Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofHours(1))
-            .maximumSize(100_000)
+            .maximumWeight(weigherTarget)
+            .weigher(EntityWeigher.asWeigher())
+            .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
+            // Add a removal listener so that the name-to-id mapping is also purged after every
+            // cache
+            // replacement, invalidation or expiration .  Configure a direct executor so that the
+            // removal
+            // listener is invoked by the same thread that is updating the cache.
             .removalListener(this::remove)
-            .executor(MoreExecutors.directExecutor())
-            .build();
+            .executor(MoreExecutors.directExecutor());
+
+    if (PolarisConfiguration.loadConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES)) {
+      cacheBuilder.softValues();
+    }
+
+    this.cache = cacheBuilder.build();
   }
 
   private void remove(Long id, ResolvedPolarisEntity ignored1, RemovalCause ignored2) {
