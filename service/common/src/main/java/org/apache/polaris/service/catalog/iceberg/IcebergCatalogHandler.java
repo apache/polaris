@@ -1041,18 +1041,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .map(SnapshotRef::snapshotId)
               .collect(Collectors.toSet());
 
-      List<Snapshot> filteredSnapshots =
-          metadata.snapshots().stream()
-              .filter(snapshot -> referencedSnapshotIds.contains(snapshot.snapshotId()))
-              .collect(Collectors.toList());
-
       TableMetadata filteredMetadata =
-          TableMetadata.buildFrom(metadata)
-              .withMetadataLocation(loadTableResponse.metadataLocation())
-              .setPreviousFileLocation(null)
-              .setSnapshotsSupplier(() -> filteredSnapshots)
-              .discardChanges()
-              .build();
+          metadata.removeSnapshotsIf(s -> referencedSnapshotIds.contains(s.snapshotId()));
 
       return LoadTableResponse.builder()
           .withTableMetadata(filteredMetadata)
