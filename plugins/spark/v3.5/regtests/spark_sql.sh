@@ -45,6 +45,11 @@ show namespaces;
 create namespace db1.schema1;
 show namespaces in db1;
 
+create table db1.schema1.tbl1 (col1 int);
+show tables in db1;
+show tables in db1.schema1;
+
+drop table db1.schema1.tbl1;
 drop namespace db1.schema1;
 drop namespace db1;
 drop namespace db2;

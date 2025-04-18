@@ -44,7 +44,7 @@ services:
   regtest:
     build:
       context: ../..
-      dockerfile: spark/regtests/Dockerfile
+      dockerfile: v3.5/regtests/Dockerfile
       args:
         POLARIS_HOST: polaris
     depends_on:
