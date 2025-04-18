@@ -87,6 +87,12 @@ openApiGenerate {
   globalProperties.put("models", "true")
   globalProperties.put("apiDocs", "true")
   globalProperties.put("modelTests", "true")
+
+  // Old values:
+//  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+//  globalProperties.put("models", models)
+//  globalProperties.put("apiDocs", "false")
+//  globalProperties.put("modelTests", "false")
   // TODO -- end of changes
   configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
