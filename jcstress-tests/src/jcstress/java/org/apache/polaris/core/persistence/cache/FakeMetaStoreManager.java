@@ -310,22 +310,35 @@ public class FakeMetaStoreManager implements PolarisMetaStoreManager {
   }
 
   @Override
-  public PolicyAttachmentResult attachPolicyToEntity(PolarisCallContext callCtx, List<PolarisEntityCore> targetCatalogPath, PolarisEntityCore target, List<PolarisEntityCore> policyCatalogPath, PolicyEntity policy, Map<String, String> parameters) {
+  public PolicyAttachmentResult attachPolicyToEntity(
+      PolarisCallContext callCtx,
+      List<PolarisEntityCore> targetCatalogPath,
+      PolarisEntityCore target,
+      List<PolarisEntityCore> policyCatalogPath,
+      PolicyEntity policy,
+      Map<String, String> parameters) {
     return null;
   }
 
   @Override
-  public PolicyAttachmentResult detachPolicyFromEntity(PolarisCallContext callCtx, List<PolarisEntityCore> catalogPath, PolarisEntityCore target, List<PolarisEntityCore> policyCatalogPath, PolicyEntity policy) {
+  public PolicyAttachmentResult detachPolicyFromEntity(
+      PolarisCallContext callCtx,
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityCore target,
+      List<PolarisEntityCore> policyCatalogPath,
+      PolicyEntity policy) {
     return null;
   }
 
   @Override
-  public LoadPolicyMappingsResult loadPoliciesOnEntity(PolarisCallContext callCtx, PolarisEntityCore target) {
+  public LoadPolicyMappingsResult loadPoliciesOnEntity(
+      PolarisCallContext callCtx, PolarisEntityCore target) {
     return null;
   }
 
   @Override
-  public LoadPolicyMappingsResult loadPoliciesOnEntityByType(PolarisCallContext callCtx, PolarisEntityCore target, PolicyType policyType) {
+  public LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      PolarisCallContext callCtx, PolarisEntityCore target, PolicyType policyType) {
     return null;
   }
 }
