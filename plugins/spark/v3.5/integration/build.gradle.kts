@@ -76,6 +76,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:glue")
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
+  testImplementation("software.amazon.awssdk:s3")
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")

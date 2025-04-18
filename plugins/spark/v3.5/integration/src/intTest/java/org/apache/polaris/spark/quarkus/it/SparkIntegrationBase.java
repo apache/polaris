@@ -20,12 +20,20 @@ package org.apache.polaris.spark.quarkus.it;
 
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
 
@@ -52,26 +60,6 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
-  }
-
-  @Override
-  protected void cleanupCatalog(String catalogName) {
-    onSpark("USE " + catalogName);
-    List<Row> namespaces = onSpark("SHOW NAMESPACES").collectAsList();
-    for (Row namespace : namespaces) {
-      // TODO: once all table operations are supported, remove the override of this function
-      // List<Row> tables = onSpark("SHOW TABLES IN " + namespace.getString(0)).collectAsList();
-      // for (Row table : tables) {
-      // onSpark("DROP TABLE " + namespace.getString(0) + "." + table.getString(1));
-      // }
-      List<Row> views = onSpark("SHOW VIEWS IN " + namespace.getString(0)).collectAsList();
-      for (Row view : views) {
-        onSpark("DROP VIEW " + namespace.getString(0) + "." + view.getString(1));
-      }
-      onSpark("DROP NAMESPACE " + namespace.getString(0));
-    }
-
-    managementApi.deleteCatalog(catalogName);
   }
 
   @FormatMethod
@@ -107,5 +95,23 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
               }
             })
         .toArray(Object[]::new);
+  }
+
+  protected void listDirs() {
+    S3Client s3Client =
+        S3Client.builder()
+            .region(Region.of("us-west-2"))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(AwsBasicCredentials.create("foo", "bar")))
+            .endpointOverride(URI.create(s3Container.getHttpEndpoint()))
+            .build();
+
+    ListObjectsV2Request listRequest =
+        ListObjectsV2Request.builder().bucket("my-bucket").prefix("path/to/data").build();
+    ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
+
+    for (S3Object object : listResponse.contents()) {
+      System.out.println("Found: " + object.key());
+    }
   }
 }
