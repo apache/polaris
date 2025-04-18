@@ -23,7 +23,6 @@ import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
-import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -1051,8 +1050,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(loadTableResponse.metadataLocation())
               .setPreviousFileLocation(null)
-              .setSnapshotsSupplier(
-                  () -> filteredSnapshots)
+              .setSnapshotsSupplier(() -> filteredSnapshots)
               .discardChanges()
               .build();
 
