@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Regression Tests
+name: Spark Client Regression Tests
 on:
   push:
     branches: [ "main" ]
