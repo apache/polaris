@@ -19,8 +19,10 @@
 package org.apache.polaris.spark;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -31,6 +33,7 @@ import java.util.function.Function;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.ErrorHandlers;
@@ -39,7 +42,9 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
+import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.types.GenericTable;
@@ -52,6 +57,8 @@ import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
  * objects.
  */
 public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
+  public static final String REST_PAGE_SIZE = "rest-page-size";
+
   private final Function<Map<String, String>, RESTClient> clientBuilder;
 
   private RESTClient restClient = null;
@@ -59,6 +66,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   private Set<Endpoint> endpoints;
   private OAuth2Util.AuthSession catalogAuth = null;
   private PolarisResourcePaths pathGenerator = null;
+  private Integer pageSize = null;
 
   // the default endpoints to config if server doesn't specify the 'endpoints' configuration.
   private static final Set<Endpoint> DEFAULT_ENDPOINTS = PolarisEndpoints.GENERIC_TABLE_ENDPOINTS;
@@ -101,6 +109,12 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     this.pathGenerator = PolarisResourcePaths.forCatalogProperties(mergedProps);
     this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
 
+    this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
+    if (pageSize != null) {
+      Preconditions.checkArgument(
+          pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
+    }
+
     this.closeables = new CloseableGroup();
     this.closeables.addCloseable(this.restClient);
     this.closeables.setSuppressCloseFailure(true);
@@ -138,12 +152,49 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
   @Override
   public List<TableIdentifier> listGenericTables(Namespace ns) {
-    throw new UnsupportedOperationException("listTables not supported");
+    Endpoint.check(endpoints, PolarisEndpoints.V1_LIST_GENERIC_TABLES);
+
+    Map<String, String> queryParams = Maps.newHashMap();
+    ImmutableList.Builder<TableIdentifier> tables = ImmutableList.builder();
+    String pageToken = "";
+    if (pageSize != null) {
+      queryParams.put("pageSize", String.valueOf(pageSize));
+    }
+
+    do {
+      queryParams.put("pageToken", pageToken);
+      ListTablesResponse response =
+          restClient
+              .withAuthSession(this.catalogAuth)
+              .get(
+                  pathGenerator.genericTables(ns),
+                  queryParams,
+                  ListTablesResponse.class,
+                  Map.of(),
+                  ErrorHandlers.namespaceErrorHandler());
+      pageToken = response.nextPageToken();
+      tables.addAll(response.identifiers());
+    } while (pageToken != null);
+
+    return tables.build();
   }
 
   @Override
   public boolean dropGenericTable(TableIdentifier identifier) {
-    throw new UnsupportedOperationException("dropTable not supported");
+    Endpoint.check(endpoints, PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
+
+    try {
+      restClient
+          .withAuthSession(this.catalogAuth)
+          .delete(
+              pathGenerator.genericTable(identifier),
+              null,
+              Map.of(),
+              ErrorHandlers.tableErrorHandler());
+      return true;
+    } catch (NoSuchTableException e) {
+      return false;
+    }
   }
 
   @Override
