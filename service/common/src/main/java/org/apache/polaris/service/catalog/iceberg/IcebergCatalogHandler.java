@@ -43,9 +43,9 @@ import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -847,23 +847,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return updateTableWithRollback(baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
-  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
-    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
-    Optional<Integer> formatVersion =
-        request.updates().stream()
-            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
-            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
-            .findFirst();
-    TableMetadata.Builder builder =
-        (TableMetadata.Builder)
-            formatVersion
-                .map(TableMetadata::buildFromEmpty)
-                .orElseGet(TableMetadata::buildFromEmpty);
-    request.updates().forEach((update) -> update.applyTo(builder));
-    ops.commit((TableMetadata) null, builder.build());
-    return ops.current();
-  }
-
   // TODO: Clean this up when CatalogHandler become extensible.
   // Copy of CatalogHandler#update
   private static LoadTableResponse updateTableWithRollback(
@@ -893,7 +876,28 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
   }
 
+  // TODO: Clean this up when CatalogHandler become extensible.
+  // Copy of CatalogHandler#create
+  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
+    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
+    Optional<Integer> formatVersion =
+        request.updates().stream()
+            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
+            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
+            .findFirst();
+    TableMetadata.Builder builder =
+        (TableMetadata.Builder)
+            formatVersion
+                .map(TableMetadata::buildFromEmpty)
+                .orElseGet(TableMetadata::buildFromEmpty);
+    request.updates().forEach((update) -> update.applyTo(builder));
+    ops.commit((TableMetadata) null, builder.build());
+    return ops.current();
+  }
+
   @VisibleForTesting
+  // TODO: Clean this up when CatalogHandler become extensible.
+  // Copy of CatalogHandler#commit
   public static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
 
@@ -905,8 +909,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .run(
               (taskOps) -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
-                isRetry.set(true);
-                // Prev PR: https://github.com/apache/iceberg/pull/5888
                 boolean rollbackCompaction =
                     PropertyUtil.propertyAsBoolean(
                         taskOps.current().properties(), ROLLBACK_REPLACE_ENABLED_PROPERTY, false);
@@ -919,76 +921,61 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   if (!rollbackCompaction) {
                     throw new ValidationFailureException(e);
                   }
-                  // Since snapshot has already been created at the client end.
-                  // Nothing much can be done, we can move this
-                  // to writer specific thing, but it would be cool if catalog does this for us.
-                  // Inspect that the requirements states that snapshot
-                  // ref needs to be asserted this usually means in the update section
-                  // it has addSnapshot and setSnapshotRef
-                  UpdateRequirement.AssertRefSnapshotID addSnapshot = null;
-                  int found = 0;
-                  for (UpdateRequirement requirement : request.requirements()) {
-                    // there should be only add snapshot request
-                    if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
-                      ++found;
-                      addSnapshot = (UpdateRequirement.AssertRefSnapshotID) requirement;
-                    }
-                  }
+                  UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
+                      findAssertRefSnapshotID(request);
+                  MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
 
-                  if (found != 1) {
-                    // TODO: handle this case, find min snapshot id, to rollback to give it creates
-                    // lineage
-                    // lets not complicate things rn
+                  if (assertRefSnapshotId == null || setSnapshotRef == null) {
+                    // This implies the request was not trying to add a snapshot.
                     throw new ValidationFailureException(e);
                   }
 
-                  Long parentSnapshotId = addSnapshot.snapshotId();
-                  // so we will first check all the snapshots on the top of
-                  // base on which the snapshot we want to commit is of type REPLACE ops.
-                  Long parentToRollbackTo = base.currentSnapshot().snapshotId();
-                  List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
-                  while (!Objects.equals(parentToRollbackTo, parentSnapshotId)) {
-                    Snapshot snap = ops.current().snapshot(parentToRollbackTo);
-                    if (!DataOperations.REPLACE.equals(snap.operation())) {
-                      break;
-                    }
-                    updateToRemoveSnapshot.add(
-                        new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
-                    parentToRollbackTo = snap.parentId();
-                  }
-
-                  MetadataUpdate.SetSnapshotRef ref = null;
-                  found = 0;
-                  // find the SetRefName snapshot update
-                  for (MetadataUpdate update : request.updates()) {
-                    if (update instanceof MetadataUpdate.SetSnapshotRef) {
-                      ++found;
-                      ref = (MetadataUpdate.SetSnapshotRef) update;
-                    }
-                  }
-
-                  if (found != 1 || !Objects.equals(parentToRollbackTo, parentSnapshotId)) {
-                    // nothing can be done as this implies there was a non replace
-                    // snapshot in between or there is more than setRef ops, we don't know where
-                    // to go.
+                  if (!hasJustMainBranch(base)) {
+                    // There can be cases when the snapshot we want to rollback
+                    // is being referenced by another branch and just checking
+                    // the tip of these branches is not sufficient.
+                    // TODO: handle cases when tables have >1 branches.
                     throw new ValidationFailureException(e);
                   }
 
-                  // first we should also set back the ref we wanted to set, back to the base
-                  // on which the current update is based on.
-                  metadataBuilder.setBranchSnapshot(parentSnapshotId, ref.name());
+                  // snapshot-id the client expects the table current_snapshot_id
+                  long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
+                  // table current_snapshot_id.
+                  long currentSnapshotId = base.currentSnapshot().snapshotId();
+                  List<MetadataUpdate> metadataUpdates =
+                      generateUpdatesToRemoveNoopSnapshot(
+                          ops, currentSnapshotId, expectedCurrentSnapshotId);
+
+                  if (metadataUpdates == null || metadataUpdates.isEmpty()) {
+                    // Nothing can be done as this implies that there were not all
+                    // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
+                    // currentSnapshotId.
+                    // hence re-throw the exception caught.
+                    throw new ValidationFailureException(e);
+                  }
+
+                  // Set back the ref we wanted to set, back to the snapshot-id
+                  // the client is expecting the table to be at.
+                  metadataBuilder.setBranchSnapshot(
+                      expectedCurrentSnapshotId, setSnapshotRef.name());
 
                   // apply the remove snapshots update in the current metadata.
-                  // NOTE: we need to setRef to parent first and then apply remove as the remove
-                  // will drop. The tags / branch which don't have reference.
+                  // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
+                  // remove,
+                  // as otherwise the remove will drop.
                   // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
                   // just something good to do, and not leave for Remove Orphans.
-                  updateToRemoveSnapshot.forEach((update -> update.applyTo(metadataBuilder)));
+                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
                   // Ref rolled back update correctly to snapshot to be committed parent now.
                   newBase = metadataBuilder.build();
-                  // move the lastSequenceNumber back, to apply snapshot properly.
-                  // Seq number are considered increasing monotonically, snapshot over snapshot, so
-                  // this is important.
+                  // move the lastSequenceNumber back, to apply snapshot properly on the
+                  // current-metadata
+                  // Seq number are considered increasing monotonically, snapshot over snapshot, the
+                  // client
+                  // generates the manifest list and hence the sequence number can't be changed for
+                  // a snapshot
+                  // the only possible option then is to change the sequenceNumber tracked by
+                  // metadata.json
                   Class<?> clazz = newBase.getClass();
                   try {
                     Field field = clazz.getDeclaredField("lastSequenceNumber");
@@ -1000,7 +987,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     throw new RuntimeException(ex);
                   }
                 }
-
                 // double check if the requirements passes now.
                 try {
                   TableMetadata baseWithRemovedSnaps = newBase;
@@ -1024,7 +1010,57 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return ops.current();
   }
 
+  private static UpdateRequirement.AssertRefSnapshotID findAssertRefSnapshotID(
+      UpdateTableRequest request) {
+    UpdateRequirement.AssertRefSnapshotID assertRefSnapshotID = null;
+    int total = 0;
+    for (UpdateRequirement requirement : request.requirements()) {
+      if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
+        ++total;
+        assertRefSnapshotID = (UpdateRequirement.AssertRefSnapshotID) requirement;
+      }
+    }
 
+    // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
+    return total != 1 ? null : assertRefSnapshotID;
+  }
+
+  private static List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
+      TableOperations ops, long currentSnapshotId, long expectedCurrentSnapshotId) {
+    List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
+    Long snapshotId = currentSnapshotId;
+    while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
+      Snapshot snap = ops.current().snapshot(snapshotId);
+      if (!DataOperations.REPLACE.equals(snap.operation())) {
+        break;
+      }
+      updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
+      snapshotId = snap.parentId();
+    }
+
+    boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
+    return wasExpectedSnapshotReached ? updateToRemoveSnapshot : null;
+  }
+
+  private static MetadataUpdate.SetSnapshotRef findSetSnapshotRefUpdate(
+      UpdateTableRequest request) {
+    int total = 0;
+    MetadataUpdate.SetSnapshotRef setSnapshotRefUpdate = null;
+    // find the SetRefName snapshot update
+    for (MetadataUpdate update : request.updates()) {
+      if (update instanceof MetadataUpdate.SetSnapshotRef) {
+        total++;
+        setSnapshotRefUpdate = (MetadataUpdate.SetSnapshotRef) update;
+      }
+    }
+
+    // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
+    return total != 1 ? null : setSnapshotRefUpdate;
+  }
+
+  private static boolean hasJustMainBranch(TableMetadata tableMetadata) {
+    return tableMetadata.refs().values().stream().filter(SnapshotRef::isBranch).count() == 1;
+  }
 
   public LoadTableResponse updateTableForStagedCreate(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
