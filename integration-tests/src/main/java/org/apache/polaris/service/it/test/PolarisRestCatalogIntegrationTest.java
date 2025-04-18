@@ -19,6 +19,8 @@
 package org.apache.polaris.service.it.test;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +36,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +67,7 @@ import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -1342,5 +1346,67 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
 
     genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testLoadTableWithSnapshots() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+    restCatalog.createTable(tableIdentifier, SCHEMA);
+
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
+        .isEqualTo(OK.getStatusCode());
+    assertThat(catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
+        .isEqualTo(BAD_REQUEST.getStatusCode());
+
+    catalogApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testLoadTableWithRefFiltering() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    restCatalog.createTable(tableIdentifier, SCHEMA);
+
+    Table table = restCatalog.loadTable(tableIdentifier);
+
+    table.newAppend().appendFile(FILE_A).commit();
+    table.newAppend().appendFile(FILE_B).commit();
+
+    // Expire current snapshot to simulate orphaned commit
+    long orphanedSnapshotId = table.currentSnapshot().snapshotId();
+    table.expireSnapshots().expireSnapshotId(orphanedSnapshotId).commit();
+
+    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    try (Response res =
+             catalogApi.request(
+                     "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                     Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
+                 .header("snapshots", "all")
+                 .get()) {
+      LoadTableResponse responseContent = res.readEntity(LoadTableResponse.class);
+      assertThat(responseContent.tableMetadata().snapshots().size()).isEqualTo(2);
+    }
+
+    try (Response res =
+             catalogApi.request(
+                     "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                     Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
+                 .header("snapshots", "refs")
+                 .get()) {
+      LoadTableResponse responseContent = res.readEntity(LoadTableResponse.class);
+      assertThat(responseContent.tableMetadata().snapshots().size()).isEqualTo(1);
+    }
+
+    catalogApi.purge(currentCatalogName, namespace);
   }
 }
