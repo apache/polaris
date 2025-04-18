@@ -33,19 +33,16 @@ public class EntityCacheCoherenceTest {
 
   @JCStressTest
   @Description(
-      "Tests that the two caches inside EntityCache are coherent with one another.  In this test, two"
-          + " actors are calling getOrLoadById and getOrLoadByName.  The entities received by the"
-          + " actors are not checked as part of this test.  Instead, an arbiter runs after the"
-          + " actors have performed their calls and checks the version of the entity that are in"
-          + " each of the two caches using the getter methods getEntityById and getEntityByName. "
-          + " Expected behaviour is that the two caches return the same entity version.  Any"
-          + " discrepancy indicates that the caches are out of sync.")
+      "Tests that the two access methods inside EntityCache are coherent with one another.  In "
+          + "this test, two actors are calling getOrLoadById and getOrLoadByName.  The entities "
+          + "received by the actors are not checked as part of this test.  Instead, an arbiter "
+          + "runs after the actors have performed their calls and checks the version of the "
+          + "entity that are in each of the two caches using the getter methods getEntityById "
+          + "and getEntityByName.  Expected behaviour is that the two caches return the same "
+          + "entity version.  Any discrepancy indicates that the caches appear to be out of sync.")
   @Outcome.Outcomes({
     @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "The caches are in sync"),
-    @Outcome(id = "1, 2", expect = FORBIDDEN, desc = "The caches are out of sync"),
-    @Outcome(id = "2, 2", expect = ACCEPTABLE, desc = "The caches are in sync"),
-    @Outcome(id = "2, 1", expect = FORBIDDEN, desc = "The caches are out of sync"),
-    @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
+    @Outcome(expect = FORBIDDEN, desc = "Not sure what happened"),
   })
   @State()
   public static class UsingGetters {
@@ -101,13 +98,13 @@ public class EntityCacheCoherenceTest {
 
   @JCStressTest
   @Description(
-      "Tests that the two caches inside EntityCache are coherent with one another.  In this test, two"
-          + " actors are calling getOrLoadById and getOrLoadByName.  The entities received by the"
-          + " actors are not checked as part of this test.  Instead, an arbiter runs after the"
-          + " actors have performed their calls and checks the version of the entity that are in"
-          + " each of the two caches using the getter methods getOrLoadById  and getOrLoadByName. "
-          + " Expected behaviour is that the two caches return the same entity version.  Any"
-          + " discrepancy indicates that the caches are out of sync.")
+      "Tests that the two access methods inside EntityCache are coherent with one another.  In "
+          + "this test, two actors are calling getOrLoadById and getOrLoadByName.  The entities "
+          + "received by the actors are not checked as part of this test.  Instead, an arbiter "
+          + "runs after the actors have performed their calls and checks the version of the "
+          + "entity that are in each of the two caches using the getter methods getOrLoadById "
+          + "and getOrLoadByName.  Expected behaviour is that the two caches return the same "
+          + "entity version.  Any discrepancy indicates that the caches appear to be out of sync.")
   @Outcome.Outcomes({
     @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "The caches are in sync"),
     @Outcome(id = "1, 2", expect = FORBIDDEN, desc = "The caches are out of sync"),

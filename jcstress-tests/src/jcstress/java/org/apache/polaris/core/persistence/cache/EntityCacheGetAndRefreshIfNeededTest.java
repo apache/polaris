@@ -31,13 +31,13 @@ import org.openjdk.jcstress.infra.results.II_Result;
         + " getAndRefreshIfNeeded twice on the same key.  Each actor returns the version of the"
         + " entity returned by the two calls to getAndRefreshIfNeeded.  The method is invoked using"
         + " a minimum entity version equal to 2.  Expected behaviour is that the two actors get"
-        + " the same object twice, or for an object to be updated to a newer version between"
-        + " reads.  But the cache should never go backward and serve a stale version after a newer"
-        + " one has been observed.")
+        + " the same object twice.  But the cache should never go backward in time and serve a"
+        + " stale version after a newer one has been observed.  It should also not refresh an"
+        + " entity that is already at a sufficientlty high version id in cache.")
 @Outcome.Outcomes({
   @Outcome(id = "2, 2", expect = ACCEPTABLE, desc = "Stable cache behaviour"),
-  @Outcome(id = "2, 3", expect = ACCEPTABLE, desc = "Concurrent cache update"),
-  @Outcome(id = "3, 3", expect = ACCEPTABLE_INTERESTING, desc = "No thread got v2?"),
+  @Outcome(id = "2, 3", expect = FORBIDDEN, desc = "Concurrent cache update"),
+  @Outcome(id = "3, 3", expect = FORBIDDEN, desc = "Race condition: no thread got v2"),
   @Outcome(id = "3, 2", expect = FORBIDDEN, desc = "Cache went back in time"),
   @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
 })

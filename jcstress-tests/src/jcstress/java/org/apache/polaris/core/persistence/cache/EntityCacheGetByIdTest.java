@@ -33,14 +33,13 @@ public class EntityCacheGetByIdTest {
       "Tests getOrLoadById is thread-safe.  In this test, two actors are calling getOrLoadById "
           + "twice on the same key.  Each actor returns the version of the entity returned by the "
           + "two calls to getOrLoadById.  Expected behaviour is that the two actors get the same "
-          + "object twice, or for an object to be updated to a newer version between reads.  "
-          + "But the cache should never go backward and serve a stale version after a newer one "
-          + "has been observed as it is not allowed by `cacheNewEntry`.")
+          + "object twice.  Only a single database call should happen.  There should be no race "
+          + "condition between threads for the same entity id.  And the cache should never go "
+          + "backward and serve a stale version after a newer one has been observed.")
   @Outcome.Outcomes({
     @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "Got the same object twice"),
-    @Outcome(id = "2, 2", expect = ACCEPTABLE, desc = "Got the same object twice"),
-    @Outcome(id = "1, 2", expect = ACCEPTABLE_INTERESTING, desc = "Got updated object"),
-    @Outcome(id = "2, 1", expect = FORBIDDEN, desc = "Got stale object after update"),
+    @Outcome(id = "1, 2", expect = FORBIDDEN, desc = "Race condition between threads"),
+    @Outcome(id = "2, 1", expect = FORBIDDEN, desc = "Cache went backward in time"),
     @Outcome(expect = UNKNOWN, desc = "Not sure what happened"),
   })
   @State()
@@ -92,13 +91,11 @@ public class EntityCacheGetByIdTest {
           + "twice on the same key.  The updates received by the actors are not checked as part of "
           + "this test.  Instead, an arbiter runs after the actors have performed their calls and "
           + "checks the version of the entity that is in the cache.  Expected behaviour is that "
-          + "at most two database calls happens.  Thus only versions 1 and 2 are acceptable.  Any "
-          + "other version indicates that the cache was updated even after both threads populated "
-          + "it with their own values.")
+          + "at most one database call happens.  Thus only versions 1 is acceptable.")
   @Outcome.Outcomes({
     @Outcome(id = "1", expect = ACCEPTABLE, desc = "All cache calls happened in sequence"),
-    @Outcome(id = "2", expect = ACCEPTABLE_INTERESTING, desc = "Concurrent cache updates happened"),
-    @Outcome(expect = FORBIDDEN, desc = "Threads did not read their own writes"),
+    @Outcome(id = "2", expect = FORBIDDEN, desc = "Race condition resulted in multiple db calls"),
+    @Outcome(expect = FORBIDDEN, desc = "Not sure what happened"),
   })
   @State()
   public static class WithArbiter {
