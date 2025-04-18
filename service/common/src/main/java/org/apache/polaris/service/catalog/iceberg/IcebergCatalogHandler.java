@@ -18,14 +18,24 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.RawSerializer;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +62,8 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.CatalogHandlers;
+import org.apache.iceberg.rest.RESTResponse;
+import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -63,11 +75,14 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -488,7 +503,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
 
-  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
+  public RESTResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
     return loadTableIfStale(tableIdentifier, null, snapshots).get();
   }
 
@@ -502,7 +517,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
    *     load table response, otherwise
    */
-  public Optional<LoadTableResponse> loadTableIfStale(
+  public Optional<RESTResponse> loadTableIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(
@@ -528,12 +543,175 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (baseCatalog instanceof IcebergCatalog ic
+        && polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, FeatureConfiguration.ENABLE_STREAMING_TABLE_METADATA)
+            .equals(true)) {
+      IcebergCatalog.TableMetadataProvider ops =
+          (IcebergCatalog.TableMetadataProvider) ic.newTableOps(tableIdentifier);
+      StreamingLoadTableResponse res =
+          ops.processLatestMetadata(
+              (fileIO, tableEntity) -> {
+                return new StreamingLoadTableResponse(
+                    tableEntity.getMetadataLocation(),
+                    fileIO.newInputFile(tableEntity.getMetadataLocation()).newStream(),
+                    Map.of(),
+                    List.of());
+              },
+              () -> null);
+      if (res == null) {
+        throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+      }
+      return Optional.of(res);
+    }
     return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
   }
 
-  public LoadTableResponse loadTableWithAccessDelegation(
+  public static class StreamingLoadTableResponse implements RESTResponse {
+    private String metadataLocation;
+    private InputStream metadata;
+    private Map<String, String> config;
+    private List<Credential> credentials;
+
+    public StreamingLoadTableResponse() {}
+
+    public StreamingLoadTableResponse(
+        String metadataLocation,
+        InputStream metadata,
+        Map<String, String> config,
+        List<Credential> credentials) {
+      this.metadataLocation = metadataLocation;
+      this.metadata = metadata;
+      this.config = config;
+      this.credentials = credentials;
+    }
+
+    @Override
+    public void validate() {
+      Preconditions.checkNotNull(this.metadata, "Invalid metadata: null");
+    }
+
+    @JsonProperty("metadata-location")
+    public String metadataLocation() {
+      return this.metadataLocation;
+    }
+
+    @JsonProperty("metadata")
+    @JsonSerialize(using = InputStreamSerializer.class)
+    public InputStream tableMetadata() {
+      return this.metadata;
+    }
+
+    @JsonProperty("config")
+    public Map<String, String> config() {
+      return this.config != null ? this.config : Map.of();
+    }
+
+    @JsonProperty("storage-credentials")
+    public List<Credential> credentials() {
+      return this.credentials != null ? this.credentials : List.of();
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(this)
+          .add("metadataLocation", this.metadataLocation)
+          .add("metadata", this.metadata)
+          .add("config", this.config)
+          .toString();
+    }
+  }
+
+  public static class InputStreamSerializer extends RawSerializer<InputStream> {
+    public InputStreamSerializer() {
+      super(InputStream.class);
+    }
+
+    @Override
+    public void serialize(
+        InputStream inputStream, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+        throws IOException {
+      LoggerFactory.getLogger(getClass()).warn("Using custom serializer for input stream");
+      byte[] buffer = new byte[4096];
+      try (inputStream) {
+        // tell jackson we're about to write a value
+        // this ensures we get the correct token prefixing the value (i.e., a : for a field value or
+        // a , for an array)
+        jsonGenerator.writeRawValue("");
+        for (int read = inputStream.read(buffer); read >= 0; read = inputStream.read(buffer)) {
+          char[] charArray = new String(buffer, 0, read, StandardCharsets.UTF_8).toCharArray();
+          jsonGenerator.writeRaw(charArray, 0, charArray.length);
+        }
+      }
+    }
+  }
+
+  public RESTResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier, String snapshots) {
     return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+  }
+
+  public LoadCredentialsResponse loadAccessDelegation(
+      TableIdentifier tableIdentifier, String snapshots) {
+    PolarisAuthorizableOperation read =
+        PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
+    PolarisAuthorizableOperation write =
+        PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
+
+    Set<PolarisStorageActions> actionsRequested =
+        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+    try {
+      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
+      // easily.
+      authorizeBasicTableLikeOperationOrThrow(
+          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+      actionsRequested.add(PolarisStorageActions.WRITE);
+    } catch (ForbiddenException e) {
+      authorizeBasicTableLikeOperationOrThrow(
+          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    }
+    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
+    callContext
+        .getPolarisCallContext()
+        .getDiagServices()
+        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+    PolarisConfigurationStore configurationStore =
+        callContext.getPolarisCallContext().getConfigurationStore();
+    if (catalogEntity
+            .getCatalogType()
+            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
+        && !configurationStore.getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+      throw new ForbiddenException(
+          "Access Delegation is not enabled for this catalog. Please consult applicable "
+              + "documentation for the catalog config property '%s' to enable this feature",
+          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+    }
+    ImmutableLoadCredentialsResponse.Builder credentialBuilder =
+        ImmutableLoadCredentialsResponse.builder();
+    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Fetching client credentials for table");
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Fetching client credentials for table");
+
+      Credential creds =
+          credentialDelegation.getCredentialConfig(tableIdentifier, actionsRequested);
+      if (creds != null) {
+        credentialBuilder.addCredentials(creds);
+      }
+    }
+    return credentialBuilder.build();
   }
 
   /**
@@ -546,7 +724,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
    *     load table response, otherwise
    */
-  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
+  public Optional<RESTResponse> loadTableWithAccessDelegationIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
@@ -617,6 +795,46 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           return Optional.empty();
         }
       }
+    }
+
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (baseCatalog instanceof IcebergCatalog ic
+        && polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, FeatureConfiguration.ENABLE_STREAMING_TABLE_METADATA)
+            .equals(true)) {
+      IcebergCatalog.TableMetadataProvider ops =
+          (IcebergCatalog.TableMetadataProvider) ic.newTableOps(tableIdentifier);
+      StreamingLoadTableResponse res =
+          ops.processLatestMetadata(
+              (fileIO, entity) -> {
+                Map<String, String> credsMap = new HashMap<>();
+                if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+                  LOGGER
+                      .atDebug()
+                      .addKeyValue("tableIdentifier", tableIdentifier)
+                      .log("Fetching client credentials for table");
+                  LOGGER
+                      .atDebug()
+                      .addKeyValue("tableIdentifier", tableIdentifier)
+                      .addKeyValue("tableLocation", entity.getMetadataLocation())
+                      .log("Fetching client credentials for table");
+                  credsMap =
+                      credentialDelegation.getCredentialConfig(
+                          tableIdentifier, entity, actionsRequested);
+                }
+                return new StreamingLoadTableResponse(
+                    entity.getMetadataLocation(),
+                    fileIO.newInputFile(entity.getMetadataLocation()).newStream(),
+                    credsMap,
+                    List.of());
+              },
+              () -> null);
+      if (res == null) {
+        throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+      }
+      return Optional.of(res);
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit

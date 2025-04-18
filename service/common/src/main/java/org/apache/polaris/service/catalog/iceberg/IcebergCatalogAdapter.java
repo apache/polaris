@@ -42,6 +42,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -53,7 +54,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -236,15 +237,16 @@ public class IcebergCatalogAdapter
    * unable to get metadata location and logs a warning.
    */
   private Response.ResponseBuilder tryInsertETagHeader(
-      Response.ResponseBuilder builder,
-      LoadTableResponse response,
-      String namespace,
-      String tableName) {
-    if (response.metadataLocation() != null) {
+      Response.ResponseBuilder builder, RESTResponse response, String namespace, String tableName) {
+    String metadataLocation =
+        response instanceof IcebergCatalogHandler.StreamingLoadTableResponse
+            ? ((IcebergCatalogHandler.StreamingLoadTableResponse) response).metadataLocation()
+            : ((LoadTableResponse) response).metadataLocation();
+    if (metadataLocation != null) {
       builder =
           builder.header(
               HttpHeaders.ETAG,
-              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()));
+              IcebergHttpUtil.generateETagForMetadataFileLocation(metadataLocation));
     } else {
       LOGGER
           .atWarn()
@@ -384,7 +386,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response;
+          RESTResponse response;
 
           if (delegationModes.isEmpty()) {
             response =
@@ -541,13 +543,8 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
-          return Response.ok(
-                  ImmutableLoadCredentialsResponse.builder()
-                      .credentials(loadTableResponse.credentials())
-                      .build())
-              .build();
+          LoadCredentialsResponse response = catalog.loadAccessDelegation(tableIdentifier, "all");
+          return Response.ok(response).build();
         });
   }
 
