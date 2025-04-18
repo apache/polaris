@@ -402,8 +402,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL
-      )
+              SNAPSHOTS_ALL)
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -609,9 +608,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     } else if (!(table instanceof BaseTable)) {
       throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
     } else {
-      LoadTableResponse rawResponse = LoadTableResponse.builder()
-        .withTableMetadata(((BaseTable) table).operations().current())
-        .build();
+      LoadTableResponse rawResponse =
+          LoadTableResponse.builder()
+              .withTableMetadata(((BaseTable) table).operations().current())
+              .build();
       return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
     }
   }
@@ -1056,13 +1056,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
       TableMetadata metadata = loadTableResponse.tableMetadata();
 
-      Set<Long> referencedSnapshotIds = metadata.refs().values().stream()
-          .map(SnapshotRef::snapshotId)
-          .collect(Collectors.toSet());
+      Set<Long> referencedSnapshotIds =
+          metadata.refs().values().stream()
+              .map(SnapshotRef::snapshotId)
+              .collect(Collectors.toSet());
 
-      List<Snapshot> filterSnapshots = metadata.snapshots().stream()
-          .filter(snapshot -> referencedSnapshotIds.contains(snapshot.snapshotId()))
-          .collect(Collectors.toList());
+      List<Snapshot> filterSnapshots =
+          metadata.snapshots().stream()
+              .filter(snapshot -> referencedSnapshotIds.contains(snapshot.snapshotId()))
+              .collect(Collectors.toList());
 
       try {
         tableMetadataSnapshotsField.set(metadata, filterSnapshots);
