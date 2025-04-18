@@ -21,7 +21,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
   id("polaris-client")
-  // alias(libs.plugins.jandex)
 }
 
 // get version information
