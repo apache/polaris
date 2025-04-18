@@ -75,7 +75,7 @@ public class EntityCache {
         Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofHours(1))
             .maximumSize(100_000)
-            .removalListener(this::remove)
+            .evictionListener(this::remove)
             .build();
   }
 
@@ -268,7 +268,8 @@ public class EntityCache {
     try {
       ResolvedPolarisEntity cachedEntity = getEntityById(entityId);
       if (cachedEntity != null) {
-        // Cache was populated concurrently, nothing more to do
+        // Cache was populated concurrently, nothing more to do, exit the critical section as
+        // quickly as possible
         return new EntityCacheLookupResult(cachedEntity, true);
       }
 
@@ -340,15 +341,21 @@ public class EntityCache {
       return new EntityCacheLookupResult(cachedEntity, true);
     }
 
-    // Cache miss, we have to load the entity from the metastore
-    return loadEntityByName(callContext, entityNameKey);
+    // Cache miss, we may have to load the entity from the metastore
+    return maybeLoadEntityByName(callContext, entityNameKey);
   }
 
-  private EntityCacheLookupResult loadEntityByName(
+  private EntityCacheLookupResult maybeLoadEntityByName(
       PolarisCallContext callContext, EntityCacheByNameKey entityNameKey) {
-    ResolvedPolarisEntity cachedEntity;
     lock.writeLock().lock();
     try {
+      ResolvedPolarisEntity cachedEntity = getEntityByName(entityNameKey);
+      if (cachedEntity != null) {
+        // Cache was populated concurrently, nothing more to do, exit the critical section as
+        // quickly as possible
+        return new EntityCacheLookupResult(cachedEntity, true);
+      }
+
       ResolvedEntityResult result =
           polarisMetaStoreManager.loadResolvedEntityByName(
               callContext,
