@@ -19,6 +19,9 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doReturn;
@@ -29,6 +32,8 @@ import static org.mockito.Mockito.when;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -37,6 +42,7 @@ import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
@@ -48,12 +54,18 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.ContentFile;
+import org.apache.iceberg.ContentScanTask;
+import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileMetadata;
+import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
@@ -62,6 +74,9 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.UpdateRequirement;
+import org.apache.iceberg.UpdateRequirements;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
@@ -72,8 +87,11 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.CharSequenceSet;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -116,6 +134,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -139,7 +158,9 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
+import org.assertj.core.api.AbstractCollectionAssert;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.ListAssert;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
@@ -574,36 +595,100 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       catalog.createNamespace(NS);
     }
 
-    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    Table table =
+        catalog
+            .buildTable(TABLE, SCHEMA)
+            .withPartitionSpec(SPEC)
+            .withProperties(Map.of("rollback.compaction.on-conflicts.enabled", "true"))
+            .create();
     this.assertNoFiles(table);
+
     // commit FILE_A
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
     this.assertFiles(catalog.loadTable(TABLE), FILE_A);
     table.refresh();
+
     long lastSnapshotId = table.currentSnapshot().snapshotId();
-    //         Apply the deletes based on FILE_A
-    //         this should conflict when we try to commit
-    //         without the change
-    RowDelta rowDelta =
+
+    // Apply the deletes based on FILE_A
+    // this should conflict when we try to commit without the change.
+    RowDelta originalRowDelta =
         table
             .newRowDelta()
             .addDeletes(FILE_A_DELETES)
             .validateFromSnapshot(lastSnapshotId)
             .validateDataFilesExist(List.of(FILE_A.location()));
-    Snapshot uncomittedSnapshot = rowDelta.apply();
+    // Make client ready with updates, don't reach out to IRC server yet
+    Snapshot s = originalRowDelta.apply();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    TableMetadata base = ops.current();
+    TableMetadata.Builder update = TableMetadata.buildFrom(base);
+    update.setBranchSnapshot(s, "main");
+    TableMetadata updatedMetadata = update.build();
+    List<MetadataUpdate> updates = updatedMetadata.changes();
+    List<UpdateRequirement> requirements = UpdateRequirements.forUpdateTable(base, updates);
+    UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
 
     // replace FILE_A with FILE_B
+    // commit the transaction.
     catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
 
-    // no try commit FILE_A delete, It's impossible to mimic the contention
-    // situation presently as commit triggers client side validation again
-    // even when the apply() method has been called before
-    // TODO: to better add such test cases, may be mocking the taskOps to not
-    // do the refresh, hence make on base snapshot.
-    // also there is an issue on overriding this as all things are package scope
-    // For ex MergingSnapshotPro
-    // rowDelta.commit();
-    this.assertFiles(catalog.loadTable(TABLE), FILE_B);
+    try {
+      // Now call IRC server to commit delete operation.
+      IcebergCatalogHandler.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
+    } catch (Exception e) {
+      fail("Rollback Compaction on conflict feature failed : " + e.getMessage());
+    }
+
+    table.refresh();
+
+    // Assert only 2 snapshots and no snapshot of REPLACE left.
+    Snapshot currentSnapshot = table.snapshot(table.refs().get("main").snapshotId());
+    int totalSnapshots = 1;
+    while (currentSnapshot.parentId() != null) {
+      // no snapshot in the hierarchy for REPLACE operations
+      assertThat(currentSnapshot.operation()).isNotEqualTo(DataOperations.REPLACE);
+      currentSnapshot = table.snapshot(currentSnapshot.parentId());
+      totalSnapshots += 1;
+    }
+    assertThat(totalSnapshots).isEqualTo(2);
+
+    // Inspect the files 1 DELETE file i.e. FILE_A_DELETES and 1 DATA FILE FILE_A
+    try {
+      try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
+        List<CharSequence> dataFilePaths =
+            Streams.stream(tasks)
+                .map(ContentScanTask::file)
+                .map(ContentFile::location)
+                .collect(Collectors.toList());
+        List<CharSequence> deleteFilePaths =
+            Streams.stream(tasks)
+                .flatMap(t -> t.deletes().stream().map(ContentFile::location))
+                .collect(Collectors.toList());
+        ((ListAssert)
+                Assertions.assertThat(dataFilePaths)
+                    .as("Should contain expected number of data files", new Object[0]))
+            .hasSize(1);
+        ((ListAssert)
+                Assertions.assertThat(deleteFilePaths)
+                    .as("Should contain expected number of delete files", new Object[0]))
+            .hasSize(1);
+        ((AbstractCollectionAssert)
+                Assertions.assertThat(CharSequenceSet.of(dataFilePaths))
+                    .as("Should contain correct file paths", new Object[0]))
+            .isEqualTo(
+                CharSequenceSet.of(
+                    Iterables.transform(Arrays.asList(FILE_A), ContentFile::location)));
+        ((AbstractCollectionAssert)
+                Assertions.assertThat(CharSequenceSet.of(deleteFilePaths))
+                    .as("Should contain correct file paths", new Object[0]))
+            .isEqualTo(
+                CharSequenceSet.of(
+                    Iterables.transform(Arrays.asList(FILE_A_DELETES), ContentFile::location)));
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   @Test
