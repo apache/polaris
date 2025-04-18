@@ -121,8 +121,6 @@ import org.slf4j.LoggerFactory;
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
-  private static final Field tableMetadataSnapshotsField;
-
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
@@ -135,18 +133,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public static final String SNAPSHOTS_ALL = "all";
   public static final String SNAPSHOTS_REFS = "refs";
-
-  static {
-    Field snapshotsField;
-    try {
-      snapshotsField = TableMetadata.class.getField("snapshots");
-      snapshotsField.setAccessible(true);
-    } catch (NoSuchFieldException e) {
-      LOGGER.error("Could not load snapshots field for snapshot filtering", e);
-      snapshotsField = null;
-    }
-    tableMetadataSnapshotsField = snapshotsField;
-  }
 
   public IcebergCatalogHandler(
       CallContext callContext,
@@ -1049,11 +1035,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
-      if (tableMetadataSnapshotsField == null) {
-        // We should have already logged an error in the static block
-        return loadTableResponse;
-      }
-
       TableMetadata metadata = loadTableResponse.tableMetadata();
 
       Set<Long> referencedSnapshotIds =
@@ -1061,18 +1042,25 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .map(SnapshotRef::snapshotId)
               .collect(Collectors.toSet());
 
-      List<Snapshot> filterSnapshots =
+      List<Snapshot> filteredSnapshots =
           metadata.snapshots().stream()
               .filter(snapshot -> referencedSnapshotIds.contains(snapshot.snapshotId()))
               .collect(Collectors.toList());
 
-      try {
-        tableMetadataSnapshotsField.set(metadata, filterSnapshots);
-      } catch (IllegalAccessException e) {
-        LOGGER.error("Error setting filtered snapshots", e);
-      }
+      TableMetadata filteredMetadata =
+          TableMetadata.buildFrom(metadata)
+              .withMetadataLocation(loadTableResponse.metadataLocation())
+              .setPreviousFileLocation(null)
+              .setSnapshotsSupplier(
+                  () -> filteredSnapshots)
+              .discardChanges()
+              .build();
 
-      return loadTableResponse;
+      return LoadTableResponse.builder()
+          .withTableMetadata(filteredMetadata)
+          .addAllConfig(loadTableResponse.config())
+          .addAllCredentials(loadTableResponse.credentials())
+          .build();
     } else {
       throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
     }
