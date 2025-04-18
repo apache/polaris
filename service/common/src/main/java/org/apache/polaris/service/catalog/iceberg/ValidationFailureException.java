@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.iceberg;
 
 import org.apache.iceberg.exceptions.CommitFailedException;
 
 public class ValidationFailureException extends RuntimeException {
-    private final CommitFailedException wrapped;
+  private final CommitFailedException wrapped;
 
-    public ValidationFailureException(CommitFailedException cause) {
-        super(cause);
-        this.wrapped = cause;
-    }
+  public ValidationFailureException(CommitFailedException cause) {
+    super(cause);
+    this.wrapped = cause;
+  }
 
-    public CommitFailedException wrapped() {
-        return this.wrapped;
-    }
+  public CommitFailedException wrapped() {
+    return this.wrapped;
+  }
 }
