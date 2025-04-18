@@ -36,7 +36,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -1388,21 +1387,23 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
     try (Response res =
-             catalogApi.request(
-                     "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                     Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
-                 .header("snapshots", "all")
-                 .get()) {
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
+            .header("snapshots", "all")
+            .get()) {
       LoadTableResponse responseContent = res.readEntity(LoadTableResponse.class);
       assertThat(responseContent.tableMetadata().snapshots().size()).isEqualTo(2);
     }
 
     try (Response res =
-             catalogApi.request(
-                     "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                     Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
-                 .header("snapshots", "refs")
-                 .get()) {
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                Map.of("cat", currentCatalogName, "table", tableIdentifier.name()))
+            .header("snapshots", "refs")
+            .get()) {
       LoadTableResponse responseContent = res.readEntity(LoadTableResponse.class);
       assertThat(responseContent.tableMetadata().snapshots().size()).isEqualTo(1);
     }

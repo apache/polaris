@@ -152,11 +152,11 @@ public class CatalogApi extends RestApi {
   public int loadTable(String catalog, TableIdentifier id, String snapshots) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
-             request(
-                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                 Map.of("cat", catalog, "table", id.name()))
-                 .header("snapshots", snapshots)
-                 .get()) {
+        request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                Map.of("cat", catalog, "table", id.name()))
+            .header("snapshots", snapshots)
+            .get()) {
       return res.getStatus();
     }
   }
