@@ -349,9 +349,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return new PolarisIcebergCatalogViewBuilder(identifier);
   }
 
+  @VisibleForTesting
+  public TableOperations newTableOps(
+      TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
+    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, updateMetadataOnCommit);
+  }
+
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier);
+    boolean updateMetadataOnCommit =
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(),
+                BehaviorChangeConfiguration.TABLE_OPERATIONS_COMMIT_UPDATE_METADATA);
+    return newTableOps(tableIdentifier, updateMetadataOnCommit);
   }
 
   @Override
@@ -1190,16 +1202,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations extends BaseMetastoreTableOperations {
+  public class BasePolarisTableOperations extends BaseMetastoreTableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
+    private final boolean updateMetadataOnCommit;
     private FileIO tableFileIO;
 
-    BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
+    BasePolarisTableOperations(
+        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+      this.updateMetadataOnCommit = updateMetadataOnCommit;
     }
 
     @Override
@@ -1387,6 +1402,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "Cannot commit to table %s metadata location from %s to %s "
                 + "because it has been concurrently modified to %s",
             tableIdentifier, oldLocation, newLocation, existingLocation);
+      }
+      // TODO: we should not need to do this hack, but there's no other way to modify
+      // currentMetadata / currentMetadataLocation
+      if (updateMetadataOnCommit) {
+        TableOperationsReflectionUtil reflectionUtil = TableOperationsReflectionUtil.getInstance();
+        reflectionUtil.setMetadataFileLocation(metadata, newLocation);
+        reflectionUtil.setCurrentMetadata(this, metadata, newLocation);
       }
       if (null == existingLocation) {
         createTableLike(tableIdentifier, entity);
