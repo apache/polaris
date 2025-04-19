@@ -1041,7 +1041,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .collect(Collectors.toSet());
 
       TableMetadata filteredMetadata =
-          metadata.removeSnapshotsIf(s -> referencedSnapshotIds.contains(s.snapshotId()));
+          metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
 
       return LoadTableResponse.builder()
           .withTableMetadata(filteredMetadata)
