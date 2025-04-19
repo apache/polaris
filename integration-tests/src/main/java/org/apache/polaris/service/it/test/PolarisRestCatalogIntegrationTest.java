@@ -1405,7 +1405,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .get()) {
       LoadTableResponse responseContent = res.readEntity(LoadTableResponse.class);
       assertThat(responseContent.tableMetadata().snapshots().size()).isEqualTo(1);
-      assertThat(responseContent.tableMetadata().snapshots().get(0).snapshotId()).isEqualTo(snapshotIdA);
+      assertThat(responseContent.tableMetadata().snapshots().get(0).snapshotId())
+          .isEqualTo(snapshotIdA);
     }
 
     catalogApi.purge(currentCatalogName, namespace);
