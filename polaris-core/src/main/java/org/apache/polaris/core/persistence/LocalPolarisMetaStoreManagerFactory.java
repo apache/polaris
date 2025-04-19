@@ -118,11 +118,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-
-        if (rootCredentialsSet.credentials().containsKey(realm)) {
-          LOGGER.info("Bootstrapped realm {} using preset credentials.", realm);
-        }
-
         results.put(realmContext.getRealmIdentifier(), secretsResult);
       }
     }
