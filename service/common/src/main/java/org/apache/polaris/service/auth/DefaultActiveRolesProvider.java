@@ -29,7 +29,6 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -57,34 +56,35 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   public Set<String> getActiveRoles(AuthenticatedPolarisPrincipal principal) {
     List<PrincipalRoleEntity> activeRoles =
         loadActivePrincipalRoles(
-            principal.getActivatedPrincipalRoleNames(),
-            principal.getPrincipalEntity(),
+            principal,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()));
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 
   protected List<PrincipalRoleEntity> loadActivePrincipalRoles(
-      Set<String> tokenRoles, PolarisEntity principal, PolarisMetaStoreManager metaStoreManager) {
+      AuthenticatedPolarisPrincipal principal, PolarisMetaStoreManager metaStoreManager) {
     PolarisCallContext polarisContext = callContext.getPolarisCallContext();
     LoadGrantsResult principalGrantResults =
-        metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
+        metaStoreManager.loadGrantsToGrantee(polarisContext, principal.getPrincipalEntity());
     polarisContext
         .getDiagServices()
         .check(
             principalGrantResults.isSuccess(),
             "Failed to resolve principal roles for principal name={} id={}",
             principal.getName(),
-            principal.getId());
+            principal.getPrincipalEntity().getId());
     if (!principalGrantResults.isSuccess()) {
       LOGGER.warn(
           "Failed to resolve principal roles for principal name={} id={}",
           principal.getName(),
-          principal.getId());
+          principal.getPrincipalEntity().getId());
       throw new NotAuthorizedException("Unable to authenticate");
     }
-    boolean allRoles = tokenRoles.contains(BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL);
+
+    // By convention, an empty set means all roles are activated
+    Set<String> tokenRoles = principal.getActivatedPrincipalRoleNames();
     Predicate<PrincipalRoleEntity> includeRoleFilter =
-        allRoles ? r -> true : r -> tokenRoles.contains(r.getName());
+        principal.allRoles() ? r -> true : r -> tokenRoles.contains(r.getName());
     List<PrincipalRoleEntity> activeRoles =
         principalGrantResults.getGrantRecords().stream()
             .map(
@@ -103,7 +103,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
       LOGGER
           .atWarn()
           .addKeyValue("principal", principal.getName())
-          .addKeyValue("scopes", tokenRoles)
+          .addKeyValue("tokenRoles", principal.allRoles() ? "ALL" : tokenRoles)
           .addKeyValue("roles", activeRoles)
           .log("Some principal roles were not found in the principal's grants");
     }

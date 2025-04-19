@@ -16,26 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.quarkus.auth.external.mapping;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.quarkus.security.identity.SecurityIdentity;
+import java.util.Optional;
+import java.util.OptionalLong;
 
-dependencies {
+/**
+ * Maps the {@link SecurityIdentity}, as provided by the OIDC authentication mechanism, to a Polaris
+ * principal.
+ */
+public interface PrincipalMapper {
 
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+  OptionalLong mapPrincipalId(SecurityIdentity identity);
+
+  Optional<String> mapPrincipalName(SecurityIdentity identity);
 }

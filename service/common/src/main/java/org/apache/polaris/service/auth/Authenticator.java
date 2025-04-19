@@ -20,8 +20,29 @@ package org.apache.polaris.service.auth;
 
 import java.security.Principal;
 import java.util.Optional;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 
+/**
+ * An interface for authenticating principals based on provided credentials.
+ *
+ * @param <C> the type of credentials used for authentication
+ * @param <P> the type of principal that is returned upon successful authentication
+ */
 public interface Authenticator<C, P extends Principal> {
 
-  Optional<P> authenticate(C credentials);
+  /**
+   * Authenticates the given credentials and returns an optional principal.
+   *
+   * <p>If the credentials are not valid or if the authentication fails, implementations may choose
+   * to return an empty optional or throw an exception. Returning empty will generally translate
+   * into a {@link NotAuthorizedException}.
+   *
+   * @param credentials the credentials to authenticate
+   * @return an optional principal if authentication is successful, or an empty optional if
+   *     authentication fails.
+   * @throws NotAuthorizedException if the credentials are not authorized
+   * @throws ServiceFailureException if there is a failure in the authentication service
+   */
+  Optional<P> authenticate(C credentials) throws NotAuthorizedException, ServiceFailureException;
 }

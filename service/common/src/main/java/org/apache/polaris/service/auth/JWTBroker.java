@@ -25,6 +25,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
@@ -120,7 +121,7 @@ public abstract class JWTBroker implements TokenBroker {
         metaStoreManager.loadEntity(
             CallContext.getCurrentContext().getPolarisCallContext(),
             0L,
-            decodedToken.getPrincipalId(),
+            Objects.requireNonNull(decodedToken.getPrincipalId()),
             PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
@@ -186,6 +187,6 @@ public abstract class JWTBroker implements TokenBroker {
   }
 
   private String scopes(String scope) {
-    return StringUtils.isNotBlank(scope) ? scope : BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL;
+    return StringUtils.isNotBlank(scope) ? scope : DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
   }
 }
