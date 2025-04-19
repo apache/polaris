@@ -24,6 +24,8 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(libs.eclipselink)
+
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.persistence.api)
