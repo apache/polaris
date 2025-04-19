@@ -79,6 +79,8 @@ internal fun <T : Any> parseJson(url: String): T {
   }
 }
 
+// TODO: this function doesn't work because name attribute doesn't exist on
+// public_ldap_projects.json
 internal fun fetchAsfProjectName(apacheId: String): String {
   val projectsAll: Map<String, Map<String, Any>> =
     parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")

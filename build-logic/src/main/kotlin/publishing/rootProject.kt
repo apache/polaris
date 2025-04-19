@@ -132,7 +132,7 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val asfProjectName = fetchAsfProjectName(asfName)
+        val asfProjectName = "Apache Polaris"
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
