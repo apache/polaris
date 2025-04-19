@@ -17,14 +17,11 @@
 -- under the License.
 --
 
--- Note: Database and schema creation is not included in this script. Please create the database and
--- schema before running this script. for example in psql:
--- CREATE DATABASE polaris_db;
--- \c polaris_db
--- CREATE SCHEMA polaris_schema;
--- set search_path to polaris_schema;
-
+CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
+SET SCHEMA POLARIS_SCHEMA;
+DROP TABLE IF EXISTS entities;
 CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
@@ -37,8 +34,8 @@ CREATE TABLE IF NOT EXISTS entities (
     purge_timestamp BIGINT NOT NULL,
     to_purge_timestamp BIGINT NOT NULL,
     last_update_timestamp BIGINT NOT NULL,
-    properties JSONB not null default '{}'::JSONB,
-    internal_properties JSONB not null default '{}'::JSONB,
+    properties TEXT NOT NULL DEFAULT '{}',
+    internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
@@ -64,8 +61,9 @@ COMMENT ON COLUMN entities.properties IS 'entities properties json';
 COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
 COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
+DROP TABLE IF EXISTS grant_records;
 CREATE TABLE IF NOT EXISTS grant_records (
-    realm_id INT NOT NULL,
+    realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
@@ -75,16 +73,15 @@ CREATE TABLE IF NOT EXISTS grant_records (
 );
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
-
 COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
 COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
-
+DROP TABLE IF EXISTS principal_authentication_data;
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
-    realm_id INT NOT NULL,
+    realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
     principal_client_id VARCHAR(255) NOT NULL,
     main_secret_hash VARCHAR(255) NOT NULL,
