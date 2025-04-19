@@ -26,20 +26,15 @@ import jakarta.enterprise.inject.Produces;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
-import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.JWTRSAKeyPairFactory;
 import org.apache.polaris.service.auth.JWTSymmetricKeyFactory;
-import org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator;
-import org.apache.polaris.service.auth.TestOAuth2ApiService;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
-import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
@@ -82,30 +77,6 @@ public class ProductionReadinessChecks {
       LOGGER.warn(
           "Refer to https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production for more information.");
     }
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkAuthenticator(
-      Authenticator<String, AuthenticatedPolarisPrincipal> authenticator) {
-    if (authenticator instanceof TestInlineBearerTokenPolarisAuthenticator) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "The current authenticator is intended for tests only.",
-              "polaris.authentication.authenticator.type"));
-    }
-
-    return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkTokenService(IcebergRestOAuth2ApiService service) {
-    if (service instanceof TestOAuth2ApiService) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "The current token service is intended for tests only.",
-              "polaris.authentication.token-service.type"));
-    }
-    return ProductionReadinessCheck.OK;
   }
 
   @Produces
