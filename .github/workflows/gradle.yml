@@ -57,10 +57,10 @@ jobs:
           validate-wrappers: false
 
       - name: Code style checks and tests
-        run: ./gradlew --continue check
+        run: ./gradlew --continue check --no-build-cache
 
       - name: Check Maven publication
-        run: ./gradlew publishToMavenLocal sourceTarball
+        run: ./gradlew publishToMavenLocal sourceTarball --no-build-cache
 
       - name: Archive test results
         uses: actions/upload-artifact@v4
@@ -84,9 +84,9 @@ jobs:
       - name: Clean
         run: ./gradlew clean
       - name: Build
-        run: ./gradlew compileAll
+        run: ./gradlew compileAll --no-build-cache
       - name: Run selected tests
-        run: ./gradlew :polaris-quarkus-service:intTest
+        run: ./gradlew :polaris-quarkus-service:intTest --no-build-cache
 
       - name: Archive test results
         uses: actions/upload-artifact@v4
