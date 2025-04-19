@@ -30,8 +30,6 @@ import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,7 +46,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -119,7 +116,6 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.Unsafe;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class IcebergCatalog extends BaseMetastoreViewCatalog
@@ -1206,42 +1202,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     private final boolean updateMetadataOnCommit;
     private FileIO tableFileIO;
 
-    // TODO remove the following if the Iceberg library allows us to do this without reflection
-    // For more details see:
-    // https://github.com/apache/polaris/pull/1378
-    private static final Unsafe unsafe;
-    private static final Field tableMetadataField;
-    private static final long changesFieldOffset;
-    private static final Field currentMetadataLocationField;
-    private static final Field currentMetadataField;
-
-    static {
-      try {
-        tableMetadataField = TableMetadata.class.getDeclaredField("metadataFileLocation");
-        tableMetadataField.setAccessible(true);
-
-        Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        unsafe = (Unsafe) unsafeField.get(null);
-        Field changesField = TableMetadata.class.getDeclaredField("changes");
-        changesField.setAccessible(true);
-        changesFieldOffset = unsafe.objectFieldOffset(changesField);
-
-        currentMetadataLocationField =
-            BaseMetastoreTableOperations.class.getDeclaredField("currentMetadataLocation");
-        currentMetadataLocationField.setAccessible(true);
-
-        currentMetadataField =
-            BaseMetastoreTableOperations.class.getDeclaredField("currentMetadata");
-        currentMetadataField.setAccessible(true);
-      } catch (IllegalAccessException | NoSuchFieldException e) {
-        LOGGER.error(
-            "Encountered an unexpected error while attempting to access private fields in TableMetadata",
-            e);
-        throw new RuntimeException(e);
-      }
-    }
-
     BasePolarisTableOperations(
         FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
@@ -1386,16 +1346,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // TODO: we should not need to do this hack, but there's no other way to modify
       // currentMetadata / currentMetadataLocation
       if (updateMetadataOnCommit) {
-        try {
-          tableMetadataField.set(metadata, newLocation);
-          unsafe.putObject(metadata, changesFieldOffset, new ArrayList<MetadataUpdate>());
-          currentMetadataLocationField.set(this, newLocation);
-          currentMetadataField.set(this, metadata);
-        } catch (IllegalAccessException e) {
-          LOGGER.error(
-              "Encountered an unexpected error while attempting to access private fields in TableMetadata",
-              e);
-        }
+        TableOperationsReflectionUtil reflectionUtil = TableOperationsReflectionUtil.getInstance();
+        reflectionUtil.setMetadataFileLocation(metadata, newLocation);
+        reflectionUtil.setCurrentMetadata(this, metadata, newLocation);
       }
 
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
