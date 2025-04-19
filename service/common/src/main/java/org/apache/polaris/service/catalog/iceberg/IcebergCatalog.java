@@ -1343,14 +1343,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       String newLocation = writeNewMetadataIfRequired(base == null, metadata);
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
-      // TODO: we should not need to do this hack, but there's no other way to modify
-      // currentMetadata / currentMetadataLocation
-      if (updateMetadataOnCommit) {
-        TableOperationsReflectionUtil reflectionUtil = TableOperationsReflectionUtil.getInstance();
-        reflectionUtil.setMetadataFileLocation(metadata, newLocation);
-        reflectionUtil.setCurrentMetadata(this, metadata, newLocation);
-      }
-
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
       // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification
       // between doRefresh() and doCommit(), and then updateEntityPropertiesIfNotChanged to detect
@@ -1404,6 +1396,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "Cannot commit to table %s metadata location from %s to %s "
                 + "because it has been concurrently modified to %s",
             tableIdentifier, oldLocation, newLocation, existingLocation);
+      }
+      // TODO: we should not need to do this hack, but there's no other way to modify
+      // currentMetadata / currentMetadataLocation
+      if (updateMetadataOnCommit) {
+        TableOperationsReflectionUtil reflectionUtil = TableOperationsReflectionUtil.getInstance();
+        reflectionUtil.setMetadataFileLocation(metadata, newLocation);
+        reflectionUtil.setCurrentMetadata(this, metadata, newLocation);
       }
       if (null == existingLocation) {
         createTableLike(tableIdentifier, entity);
