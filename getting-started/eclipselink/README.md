@@ -30,7 +30,6 @@ This example requires `jq` to be installed on your machine.
        :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
        :polaris-quarkus-admin:assemble \
        :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
-       -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true
     ```

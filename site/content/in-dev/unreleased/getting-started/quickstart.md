@@ -34,7 +34,6 @@ cd ~/polaris
   :polaris-quarkus-server:assemble \
   :polaris-quarkus-server:quarkusAppPartsBuild \
   :polaris-quarkus-admin:assemble --rerun \
-  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 docker compose -f getting-started/eclipselink/docker-compose.yml up

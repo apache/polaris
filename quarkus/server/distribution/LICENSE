@@ -2086,6 +2086,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: org.eclipse.angus Name: angus-activation Version: 2.0.2
+Project URL: https://projects.eclipse.org/projects/ee4j.angus
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
 Group: org.eclipse.jetty Name: jetty-http Version: 9.4.53.v20231009
 Project URL (from POM): https://eclipse.org/jetty
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2164,6 +2170,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: org.eclipse.microprofile.health Name: microprofile-health-api Version: 4.0.1
 Project URL (from POM): http://microprofile.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.eclipse.persistence Name: eclipselink Version: 4.0.6
+Project URL: https://eclipse.dev/eclipselink/
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2478,5 +2490,11 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
 Project URL (from POM): https://github.com/awslabs/aws-eventstream-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.postgresql Name: postgresql Version: 42.7.5
+Project URL: https://jdbc.postgresql.org/
+License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
 
 --------------------------------------------------------------------------------
