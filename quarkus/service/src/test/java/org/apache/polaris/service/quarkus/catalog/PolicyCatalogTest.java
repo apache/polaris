@@ -38,6 +38,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -94,6 +95,7 @@ import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -585,8 +587,8 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(2);
-    assertThat(applicablePolicies.contains(p1)).isTrue();
-    assertThat(applicablePolicies.contains(p2)).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p1, true, NS))).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
 
     // attach policies to a table
     icebergCatalog.createTable(TABLE, SCHEMA);
@@ -605,8 +607,8 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY4, POLICY_ATTACH_TARGET_TBL, null);
     applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
     // p2 should be overwritten by p4, as they are the same type
-    assertThat(applicablePolicies.contains(p4)).isTrue();
-    assertThat(applicablePolicies.contains(p2)).isFalse();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p4, false, NS))).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, true, NS))).isFalse();
   }
 
   @Test
@@ -626,6 +628,19 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, DATA_COMPACTION);
     // only p2 is with the type fetched
-    assertThat(applicablePolicies.contains(p2)).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
+  }
+
+  private static ApplicablePolicy policyToApplicablePolicy(
+      Policy policy, boolean inherited, Namespace parent) {
+    return new ApplicablePolicy(
+        policy.getPolicyType(),
+        policy.getInheritable(),
+        policy.getName(),
+        policy.getDescription(),
+        policy.getContent(),
+        policy.getVersion(),
+        inherited,
+        Arrays.asList(parent.levels()));
   }
 }

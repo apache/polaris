@@ -24,11 +24,15 @@ import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.C
 import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -52,6 +56,7 @@ import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.PolicyValidators;
+import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -342,7 +347,7 @@ public class PolicyCatalog {
     return true;
   }
 
-  public List<Policy> getApplicablePolicies(
+  public List<ApplicablePolicy> getApplicablePolicies(
       Namespace namespace, String targetName, PolicyType policyType) {
     var targetFullPath = getFullPath(namespace, targetName);
     return getEffectivePolicies(targetFullPath, policyType);
@@ -369,14 +374,15 @@ public class PolicyCatalog {
    * @return a list of effective policies, combining inherited policies from upper levels and
    *     non-inheritable policies from the final entity
    */
-  private List<Policy> getEffectivePolicies(List<PolarisEntity> path, PolicyType policyType) {
+  private List<ApplicablePolicy> getEffectivePolicies(
+      List<PolarisEntity> path, PolicyType policyType) {
     if (path == null || path.isEmpty()) {
       return List.of();
     }
 
-    Map<String, PolicyEntity> inheritedPolicies = new LinkedHashMap<>();
-    // Final list of effective policies (inheritable + last-entity non-inheritable)
-    List<PolicyEntity> finalPolicies = new ArrayList<>();
+    Map<String, PolicyEntity> inheritablePolicies = new LinkedHashMap<>();
+    Set<Long> directAttachedInheritablePolicies = new HashSet<>();
+    List<PolicyEntity> nonInheritablePolicies = new ArrayList<>();
 
     // Process all entities except the last one
     for (int i = 0; i < path.size() - 1; i++) {
@@ -387,7 +393,7 @@ public class PolicyCatalog {
         // For non-last entities, we only carry forward inheritable policies
         if (policy.getPolicyType().isInheritable()) {
           // Put in map; overwrites by policyType if encountered again
-          inheritedPolicies.put(policy.getPolicyType().getName(), policy);
+          inheritablePolicies.put(policy.getPolicyType().getName(), policy);
         }
       }
     }
@@ -398,17 +404,22 @@ public class PolicyCatalog {
     for (var policy : lastPolicies) {
       if (policy.getPolicyType().isInheritable()) {
         // Overwrite anything by the same policyType in the inherited map
-        inheritedPolicies.put(policy.getPolicyType().getName(), policy);
+        inheritablePolicies.put(policy.getPolicyType().getName(), policy);
+        directAttachedInheritablePolicies.add(policy.getId());
       } else {
         // Non-inheritable => goes directly to final list
-        finalPolicies.add(policy);
+        nonInheritablePolicies.add(policy);
       }
     }
 
-    // Append all inherited policies at the end, preserving insertion order
-    finalPolicies.addAll(inheritedPolicies.values());
-
-    return finalPolicies.stream().map(PolicyCatalog::constructPolicy).toList();
+    return Stream.concat(
+            nonInheritablePolicies.stream().map(policy -> constructApplicablePolicy(policy, false)),
+            inheritablePolicies.values().stream()
+                .map(
+                    policy ->
+                        constructApplicablePolicy(
+                            policy, !directAttachedInheritablePolicies.contains(policy.getId()))))
+        .toList();
   }
 
   private List<PolicyEntity> getPolicies(PolarisEntity target, PolicyType policyType) {
@@ -504,6 +515,22 @@ public class PolicyCatalog {
         .setDescription(policyEntity.getDescription())
         .setContent(policyEntity.getContent())
         .setVersion(policyEntity.getPolicyVersion())
+        .build();
+  }
+
+  private static ApplicablePolicy constructApplicablePolicy(
+      PolicyEntity policyEntity, boolean inherited) {
+    Namespace parentNamespace = policyEntity.getParentNamespace();
+
+    return ApplicablePolicy.builder()
+        .setPolicyType(policyEntity.getPolicyType().getName())
+        .setInheritable(policyEntity.getPolicyType().isInheritable())
+        .setName(policyEntity.getName())
+        .setDescription(policyEntity.getDescription())
+        .setContent(policyEntity.getContent())
+        .setVersion(policyEntity.getPolicyVersion())
+        .setInherited(inherited)
+        .setNamespace(Arrays.asList(parentNamespace.levels()))
         .build();
   }
 }
