@@ -181,12 +181,13 @@ public abstract class PolarisAuthzTestBase {
               Map.of(
                   FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
                   true)));
-  protected final ReservedProperties reservedProperties = new ReservedProperties() {
-    @Override
-    public List<String> reservedPrefixes() {
-      return List.of();
-    }
-  };
+  protected final ReservedProperties reservedProperties =
+      new ReservedProperties() {
+        @Override
+        public List<String> reservedPrefixes() {
+          return List.of();
+        }
+      };
 
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;

@@ -169,12 +169,13 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
 
-    ReservedProperties reservedProperties = new ReservedProperties() {
-      @Override
-      public List<String> reservedPrefixes() {
-        return List.of();
-      }
-    };
+    ReservedProperties reservedProperties =
+        new ReservedProperties() {
+          @Override
+          public List<String> reservedPrefixes() {
+            return List.of();
+          }
+        };
 
     PolarisAdminService adminService =
         new PolarisAdminService(

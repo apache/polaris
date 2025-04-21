@@ -299,16 +299,19 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    UpdateNamespacePropertiesRequest revisedRequest = UpdateNamespacePropertiesRequest.builder()
-        .removeAll(reservedProperties.removeReservedProperties(updateNamespacePropertiesRequest.removals()))
-        .updateAll(reservedProperties.removeReservedProperties(updateNamespacePropertiesRequest.updates()))
-        .build();
+    UpdateNamespacePropertiesRequest revisedRequest =
+        UpdateNamespacePropertiesRequest.builder()
+            .removeAll(
+                reservedProperties.removeReservedProperties(
+                    updateNamespacePropertiesRequest.removals()))
+            .updateAll(
+                reservedProperties.removeReservedProperties(
+                    updateNamespacePropertiesRequest.updates()))
+            .build();
     return withCatalog(
         securityContext,
         prefix,
-        catalog ->
-            Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest))
-                .build());
+        catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
   private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {

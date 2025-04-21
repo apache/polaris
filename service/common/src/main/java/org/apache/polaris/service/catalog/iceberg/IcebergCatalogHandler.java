@@ -246,12 +246,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // retrieve the latest namespace metadata for the duration of the CreateNamespace
       // operation, even if the entityVersion and/or grantsVersion update in the interim.
       namespaceCatalog.createNamespace(namespace, request.properties());
-      Map<String, String> filteredProperties = reservedProperties.removeReservedProperties(
-          resolutionManifest
-              .getPassthroughResolvedPath(namespace)
-              .getRawLeafEntity()
-              .getPropertiesAsMap()
-      );
+      Map<String, String> filteredProperties =
+          reservedProperties.removeReservedProperties(
+              resolutionManifest
+                  .getPassthroughResolvedPath(namespace)
+                  .getRawLeafEntity()
+                  .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
           .withNamespace(namespace)
           .setProperties(filteredProperties)
@@ -332,15 +332,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    CreateTableRequest requestWithoutReservedProperties = CreateTableRequest
-        .builder()
-        .withName(request.name())
-        .withLocation(request.location())
-        .withPartitionSpec(request.spec())
-        .withSchema(request.schema())
-        .withWriteOrder(request.writeOrder())
-        .setProperties(reservedProperties.removeReservedProperties(request.properties()))
-        .build();
+    CreateTableRequest requestWithoutReservedProperties =
+        CreateTableRequest.builder()
+            .withName(request.name())
+            .withLocation(request.location())
+            .withPartitionSpec(request.spec())
+            .withSchema(request.schema())
+            .withWriteOrder(request.writeOrder())
+            .setProperties(reservedProperties.removeReservedProperties(request.properties()))
+            .build();
     return CatalogHandlers.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
   }
 

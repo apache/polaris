@@ -813,14 +813,12 @@ public class PolarisAdminService {
           currentCatalogEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
 
-
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
     String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
     if (updateRequest.getProperties() != null) {
-      Map<String, String> updateProperties = reservedProperties.removeReservedPropertiesFromUpdate(
-          currentCatalogEntity.getPropertiesAsMap(),
-          updateRequest.getProperties()
-      );
+      Map<String, String> updateProperties =
+          reservedProperties.removeReservedPropertiesFromUpdate(
+              currentCatalogEntity.getPropertiesAsMap(), updateRequest.getProperties());
       updateBuilder.setProperties(updateProperties);
       String newDefaultBaseLocation =
           updateRequest.getProperties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
@@ -969,10 +967,9 @@ public class PolarisAdminService {
 
     PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(currentPrincipalEntity);
     if (updateRequest.getProperties() != null) {
-      Map<String, String> updateProperties = reservedProperties.removeReservedPropertiesFromUpdate(
-          currentPrincipalEntity.getPropertiesAsMap(),
-          updateRequest.getProperties()
-      );
+      Map<String, String> updateProperties =
+          reservedProperties.removeReservedPropertiesFromUpdate(
+              currentPrincipalEntity.getPropertiesAsMap(), updateRequest.getProperties());
       updateBuilder.setProperties(updateProperties);
     }
     PrincipalEntity updatedEntity = updateBuilder.build();
@@ -1138,10 +1135,9 @@ public class PolarisAdminService {
     PrincipalRoleEntity.Builder updateBuilder =
         new PrincipalRoleEntity.Builder(currentPrincipalRoleEntity);
     if (updateRequest.getProperties() != null) {
-      Map<String, String> updateProperties = reservedProperties.removeReservedPropertiesFromUpdate(
-          currentPrincipalRoleEntity.getPropertiesAsMap(),
-          updateRequest.getProperties()
-      );
+      Map<String, String> updateProperties =
+          reservedProperties.removeReservedPropertiesFromUpdate(
+              currentPrincipalRoleEntity.getPropertiesAsMap(), updateRequest.getProperties());
       updateBuilder.setProperties(updateProperties);
     }
     PrincipalRoleEntity updatedEntity = updateBuilder.build();
@@ -1265,10 +1261,9 @@ public class PolarisAdminService {
     CatalogRoleEntity.Builder updateBuilder =
         new CatalogRoleEntity.Builder(currentCatalogRoleEntity);
     if (updateRequest.getProperties() != null) {
-      Map<String, String> updateProperties = reservedProperties.removeReservedPropertiesFromUpdate(
-          currentCatalogRoleEntity.getPropertiesAsMap(),
-          updateRequest.getProperties()
-      );
+      Map<String, String> updateProperties =
+          reservedProperties.removeReservedPropertiesFromUpdate(
+              currentCatalogRoleEntity.getPropertiesAsMap(), updateRequest.getProperties());
       updateBuilder.setProperties(updateProperties);
     }
     CatalogRoleEntity updatedEntity = updateBuilder.build();

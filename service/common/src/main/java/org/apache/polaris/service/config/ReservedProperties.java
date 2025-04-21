@@ -18,16 +18,10 @@
  */
 package org.apache.polaris.service.config;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,30 +38,31 @@ public interface ReservedProperties {
    */
   List<String> reservedPrefixes();
 
-  /**
-   * If true, attempts to modify a reserved property should throw an exception.
-   */
+  /** If true, attempts to modify a reserved property should throw an exception. */
   default boolean shouldThrow() {
     return true;
   }
 
   /**
-   * Removes reserved properties from a planned change to an entity.
-   * If `shouldThrow`returns true, this will throw an IllegalArgumentException.
+   * Removes reserved properties from a planned change to an entity. If `shouldThrow`returns true,
+   * this will throw an IllegalArgumentException.
    *
    * @param existingProperties The properties currently present for an entity
    * @param updateProperties The properties present in an update to an entity
    * @return The keys from the new key list which are not reserved properties
    */
   default Map<String, String> removeReservedPropertiesFromUpdate(
-      Map<String, String> existingProperties,
-      Map<String, String> updateProperties) throws IllegalArgumentException {
-    Map<String, String> updatePropertiesWithoutReservedProperties = removeReservedProperties(updateProperties);
-    for (var entry: updateProperties.entrySet()) {
-      // If a key was removed from the update, we substitute in the existing value as to not remove it
+      Map<String, String> existingProperties, Map<String, String> updateProperties)
+      throws IllegalArgumentException {
+    Map<String, String> updatePropertiesWithoutReservedProperties =
+        removeReservedProperties(updateProperties);
+    for (var entry : updateProperties.entrySet()) {
+      // If a key was removed from the update, we substitute in the existing value as to not remove
+      // it
       if (!updatePropertiesWithoutReservedProperties.containsKey(entry.getKey())) {
         if (existingProperties.containsKey(entry.getKey())) {
-          updatePropertiesWithoutReservedProperties.put(entry.getKey(), existingProperties.get(entry.getKey()));
+          updatePropertiesWithoutReservedProperties.put(
+              entry.getKey(), existingProperties.get(entry.getKey()));
         }
       }
     }
@@ -75,20 +70,21 @@ public interface ReservedProperties {
   }
 
   /**
-   * Removes reserved properties from a list of input property keys.
-   * If `shouldThrow`returns true, this will throw an IllegalArgumentException.
+   * Removes reserved properties from a list of input property keys. If `shouldThrow`returns true,
+   * this will throw an IllegalArgumentException.
    *
    * @param properties A map of properties to remove reserved properties from
    * @return The keys from the input list which are not reserved properties
    */
-  default Map<String, String> removeReservedProperties(
-      Map<String, String> properties) throws IllegalArgumentException {
+  default Map<String, String> removeReservedProperties(Map<String, String> properties)
+      throws IllegalArgumentException {
     Map<String, String> results = new HashMap<>();
     List<String> prefixes = reservedPrefixes();
     for (var entry : properties.entrySet()) {
       for (String prefix : prefixes) {
         if (entry.getKey().startsWith(prefix)) {
-          String message = String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
+          String message =
+              String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
           if (shouldThrow()) {
             throw new IllegalArgumentException(message);
           } else {
@@ -102,12 +98,11 @@ public interface ReservedProperties {
     return results;
   }
 
-  /**
-   * See {@link #removeReservedProperties(Map)}
-   */
-  default List<String> removeReservedProperties(
-      List<String> properties) throws IllegalArgumentException {
-    Map<String, String> propertyMap = properties.stream().collect(Collectors.toMap(k -> k, k -> ""));
+  /** See {@link #removeReservedProperties(Map)} */
+  default List<String> removeReservedProperties(List<String> properties)
+      throws IllegalArgumentException {
+    Map<String, String> propertyMap =
+        properties.stream().collect(Collectors.toMap(k -> k, k -> ""));
     Map<String, String> filteredMap = removeReservedProperties(propertyMap);
     return filteredMap.keySet().stream().toList();
   }

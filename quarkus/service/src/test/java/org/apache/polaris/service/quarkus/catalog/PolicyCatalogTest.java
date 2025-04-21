@@ -216,12 +216,13 @@ public class PolicyCatalogTest {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
-    reservedProperties = new ReservedProperties() {
-      @Override
-      public List<String> reservedPrefixes() {
-        return List.of();
-      }
-    };
+    reservedProperties =
+        new ReservedProperties() {
+          @Override
+          public List<String> reservedPrefixes() {
+            return List.of();
+          }
+        };
 
     adminService =
         new PolarisAdminService(
