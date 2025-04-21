@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
@@ -54,6 +55,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
@@ -232,6 +234,13 @@ public record TestServices(
             }
           };
 
+        ReservedProperties reservedProperties = new ReservedProperties() {
+            @Override
+            public List<String> reservedPrefixes() {
+                return List.of();
+            }
+        };
+
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
@@ -239,7 +248,8 @@ public record TestServices(
                   metaStoreManagerFactory,
                   userSecretsManagerFactory,
                   authorizer,
-                  callContext));
+                  callContext,
+                  reservedProperties));
 
       return new TestServices(
           catalogsApi,

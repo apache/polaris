@@ -32,6 +32,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -48,17 +49,20 @@ public class GenericTableCatalogAdapter
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
+  private final ReservedProperties reservedProperties;
 
   @Inject
   public GenericTableCatalogAdapter(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisAuthorizer polarisAuthorizer) {
+      PolarisAuthorizer polarisAuthorizer,
+      ReservedProperties reservedProperties) {
     this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
+    this.reservedProperties = reservedProperties;
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(
