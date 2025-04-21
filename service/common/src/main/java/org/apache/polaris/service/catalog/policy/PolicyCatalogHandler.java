@@ -320,4 +320,47 @@ public class PolicyCatalogHandler extends CatalogHandler {
       }
     }
   }
+
+  private void authorizeGetApplicablePoliciesOperationOrThrow(
+      @Nullable Namespace namespace, @Nullable String targetName) {
+    if (namespace == null || namespace.isEmpty()) {
+      // catalog
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_CATALOG;
+      authorizeBasicCatalogOperationOrThrow(op);
+    } else if (Strings.isNullOrEmpty(targetName)) {
+      // namespace
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE;
+      authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    } else {
+      // table
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, targetName);
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
+      // only Iceberg tables are supported
+      authorizeBasicTableLikeOperationOrThrow(
+          op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    }
+  }
+
+  private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
+    resolutionManifest =
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+    resolutionManifest.resolveAll();
+
+    PolarisResolvedPathWrapper targetCatalog =
+        resolutionManifest.getResolvedReferenceCatalogEntity();
+    if (targetCatalog == null) {
+      throw new NotFoundException("Catalog not found");
+    }
+    authorizer.authorizeOrThrow(
+        authenticatedPrincipal,
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        op,
+        targetCatalog,
+        null /* secondary */);
+
+    initializeCatalog();
+  }
 }
