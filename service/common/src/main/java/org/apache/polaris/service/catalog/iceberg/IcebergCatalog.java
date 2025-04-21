@@ -330,7 +330,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             Set.of(locationDir),
             resolvedParent,
             new HashMap<>(tableDefaultProperties),
-            Set.of(PolarisStorageActions.READ));
+            Set.of(PolarisStorageActions.READ,PolarisStorageActions.LIST));
 
     InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFile);
