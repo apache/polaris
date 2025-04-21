@@ -19,15 +19,13 @@
 package org.apache.polaris.service.quarkus.config;
 
 import io.smallrye.config.ConfigMapping;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import org.apache.polaris.service.config.ReservedProperties;
 
-@ApplicationScoped
 @ConfigMapping(prefix = "polaris.reserved-properties")
-public class QuarkusReservedProperties implements ReservedProperties {
+public interface QuarkusReservedProperties extends ReservedProperties {
   @Override
-  public List<String> reservedPrefixes() {
+  default List<String> reservedPrefixes() {
     return List.of("polaris.");
   }
 }
