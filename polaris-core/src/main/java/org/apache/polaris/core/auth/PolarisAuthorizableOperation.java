@@ -81,9 +81,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
-import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
-import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST_GRANTS;
@@ -205,11 +203,9 @@ public enum PolarisAuthorizableOperation {
   ATTACH_POLICY_TO_CATALOG(POLICY_ATTACH, CATALOG_ATTACH_POLICY),
   ATTACH_POLICY_TO_NAMESPACE(POLICY_ATTACH, NAMESPACE_ATTACH_POLICY),
   ATTACH_POLICY_TO_TABLE(POLICY_ATTACH, TABLE_ATTACH_POLICY),
-  ATTACH_POLICY_TO_VIEW(POLICY_ATTACH, VIEW_ATTACH_POLICY),
   DETACH_POLICY_FROM_CATALOG(POLICY_DETACH, CATALOG_DETACH_POLICY),
   DETACH_POLICY_FROM_NAMESPACE(POLICY_DETACH, NAMESPACE_DETACH_POLICY),
   DETACH_POLICY_FROM_TABLE(POLICY_DETACH, TABLE_DETACH_POLICY),
-  DETACH_POLICY_FROM_VIEW(POLICY_DETACH, VIEW_DETACH_POLICY),
   GET_APPLICABLE_POLICIES_ON_CATALOG(CATALOG_READ_PROPERTIES),
   GET_APPLICABLE_POLICIES_ON_NAMESPACE(NAMESPACE_READ_PROPERTIES),
   GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES),

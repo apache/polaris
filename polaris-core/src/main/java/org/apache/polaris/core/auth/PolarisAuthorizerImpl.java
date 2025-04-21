@@ -93,9 +93,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
-import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
-import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
@@ -514,15 +512,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         TABLE_ATTACH_POLICY, List.of(TABLE_ATTACH_POLICY, CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
-        VIEW_ATTACH_POLICY, List.of(VIEW_ATTACH_POLICY, CATALOG_MANAGE_CONTENT));
-    SUPER_PRIVILEGES.putAll(
         CATALOG_DETACH_POLICY, List.of(CATALOG_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_DETACH_POLICY, List.of(NAMESPACE_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
         TABLE_DETACH_POLICY, List.of(TABLE_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
-    SUPER_PRIVILEGES.putAll(
-        VIEW_DETACH_POLICY, List.of(VIEW_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
   }
 
   private final PolarisConfigurationStore featureConfig;

@@ -147,11 +147,9 @@ public enum PolarisPrivilege {
   CATALOG_ATTACH_POLICY(78, PolarisEntityType.CATALOG),
   NAMESPACE_ATTACH_POLICY(79, PolarisEntityType.NAMESPACE),
   TABLE_ATTACH_POLICY(80, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
-  VIEW_ATTACH_POLICY(81, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
-  CATALOG_DETACH_POLICY(82, PolarisEntityType.CATALOG),
-  NAMESPACE_DETACH_POLICY(83, PolarisEntityType.NAMESPACE),
-  TABLE_DETACH_POLICY(84, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
-  VIEW_DETACH_POLICY(85, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
+  CATALOG_DETACH_POLICY(81, PolarisEntityType.CATALOG),
+  NAMESPACE_DETACH_POLICY(82, PolarisEntityType.NAMESPACE),
+  TABLE_DETACH_POLICY(83, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
   ;
 
   /**
