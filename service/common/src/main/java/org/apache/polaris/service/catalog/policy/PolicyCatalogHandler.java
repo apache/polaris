@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import com.google.common.base.Strings;
+import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -26,6 +28,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -43,6 +46,7 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
 import org.apache.polaris.service.types.ListPoliciesResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
@@ -134,6 +138,16 @@ public class PolicyCatalogHandler extends CatalogHandler {
     return policyCatalog.detachPolicy(identifier, request.getTarget());
   }
 
+  public GetApplicablePoliciesResponse getApplicablePolicies(
+      @Nullable Namespace namespace, @Nullable String targetName, @Nullable PolicyType policyType) {
+    authorizeGetApplicablePoliciesOperationOrThrow(namespace, targetName);
+
+    return GetApplicablePoliciesResponse.builder()
+        .setApplicablePolicies(
+            new HashSet<>(policyCatalog.getApplicablePolicies(namespace, targetName, policyType)))
+        .build();
+  }
+
   private void authorizeBasicPolicyOperationOrThrow(
       PolarisAuthorizableOperation op, PolicyIdentifier identifier) {
     resolutionManifest =
@@ -156,6 +170,49 @@ public class PolicyCatalogHandler extends CatalogHandler {
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
+        null /* secondary */);
+
+    initializeCatalog();
+  }
+
+  private void authorizeGetApplicablePoliciesOperationOrThrow(
+      @Nullable Namespace namespace, @Nullable String targetName) {
+    if (namespace == null || namespace.isEmpty()) {
+      // catalog
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_CATALOG;
+      authorizeBasicCatalogOperationOrThrow(op);
+    } else if (Strings.isNullOrEmpty(targetName)) {
+      // namespace
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE;
+      authorizeBasicNamespaceOperationOrThrow(op, namespace);
+    } else {
+      // table
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, targetName);
+      PolarisAuthorizableOperation op =
+          PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
+      // only Iceberg tables are supported
+      authorizeBasicTableLikeOperationOrThrow(
+          op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    }
+  }
+
+  private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
+    resolutionManifest =
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+    resolutionManifest.resolveAll();
+
+    PolarisResolvedPathWrapper targetCatalog =
+        resolutionManifest.getResolvedReferenceCatalogEntity();
+    if (targetCatalog == null) {
+      throw new NotFoundException("Catalog not found");
+    }
+    authorizer.authorizeOrThrow(
+        authenticatedPrincipal,
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        op,
+        targetCatalog,
         null /* secondary */);
 
     initializeCatalog();
