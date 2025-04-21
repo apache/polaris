@@ -586,18 +586,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    Table table = baseCatalog.loadTable(tableIdentifier);
-    if (table instanceof BaseMetadataTable) {
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-    } else if (!(table instanceof BaseTable)) {
-      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-    } else {
-      LoadTableResponse rawResponse =
-          LoadTableResponse.builder()
-              .withTableMetadata(((BaseTable) table).operations().current())
-              .build();
-      return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
-    }
+    LoadTableResponse rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
