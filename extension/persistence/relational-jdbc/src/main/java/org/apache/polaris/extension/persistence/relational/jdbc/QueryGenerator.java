@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Nonnull;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,91 +33,25 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEnti
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 
-public class JdbcCrudQueryGenerator {
+public class QueryGenerator {
 
   private static final Pattern CAMEL_CASE_PATTERN =
       Pattern.compile("(?<=[a-z0-9])[A-Z]|(?<=[A-Z])[A-Z](?=[a-z])");
 
   public static String generateSelectQuery(
-      Class<?> entityClass, String filter, Integer limit, Integer offset, String orderBy) {
-    String tableName = getTableName(entityClass);
-    List<String> fields = new ArrayList<>();
-
-    for (Field field : entityClass.getDeclaredFields()) {
-      fields.add(camelToSnake(field.getName()));
-    }
-
-    String columns = String.join(", ", fields);
-    StringBuilder query =
-        new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
-    if (filter != null && !filter.isEmpty()) {
-      query.append(" WHERE ").append(String.join(" AND ", filter));
-    }
-
-    return query.toString();
-  }
-
-  public static String generateSelectQuery(
-      Class<?> entityClass,
-      Map<String, Object> whereClause,
-      Integer limit,
-      Integer offset,
-      String orderBy) {
-    String tableName = getTableName(entityClass);
-    List<String> fields = new ArrayList<>();
-
-    for (Field field : entityClass.getDeclaredFields()) {
-      fields.add(camelToSnake(field.getName()));
-    }
-
-    String columns = String.join(", ", fields);
-    StringBuilder query =
-        new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
-
-    if (whereClause != null && !whereClause.isEmpty()) {
-      query.append(generateWhereClause(whereClause));
-    }
-
-    if (orderBy != null && !orderBy.isEmpty()) {
-      query.append(" ORDER BY ").append(orderBy);
-    }
-
-    if (limit != null) {
-      query.append(" LIMIT ").append(limit);
-    }
-
-    if (offset != null && limit != null) { // Offset only makes sense with limit.
-      query.append(" OFFSET ").append(offset);
-    }
-
-    return query.toString();
+      @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
+    return generateSelectQuery(entityClass, generateWhereClause(whereClause));
   }
 
   public static String generateDeleteQueryForEntityGrantRecords(
-      PolarisEntityCore entity, String realmId) {
-    // generate where clause
-    StringBuilder granteeCondition = new StringBuilder("(grantee_id, grantee_catalog_id) IN (");
-    granteeCondition
-        .append("(")
-        .append(entity.getId())
-        .append(", ")
-        .append(entity.getCatalogId())
-        .append(")");
-    granteeCondition.append(",");
-    // extra , removed
-    granteeCondition.deleteCharAt(granteeCondition.length() - 1);
-    granteeCondition.append(")");
-
-    StringBuilder securableCondition =
-        new StringBuilder("(securable_catalog_id, securable_id) IN (");
-
-    String in = "(" + entity.getCatalogId() + ", " + entity.getId() + ")";
-    securableCondition.append(in);
-    securableCondition.append(",");
-
-    // extra , removed
-    securableCondition.deleteCharAt(securableCondition.length() - 1);
-    securableCondition.append(")");
+      @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
+    String granteeCondition =
+        String.format(
+            "grantee_id = %s AND grantee_catalog_id = %s", entity.getId(), entity.getCatalogId());
+    String securableCondition =
+        String.format(
+            "securable_id = %s AND securable_catalog_id = %s",
+            entity.getId(), entity.getCatalogId());
 
     String whereClause =
         " WHERE ("
@@ -125,11 +61,14 @@ public class JdbcCrudQueryGenerator {
             + ") AND realm_id = '"
             + realmId
             + "'";
-    return JdbcCrudQueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause);
+    return QueryGenerator.generateDeleteQuery(ModelGrantRecord.class, whereClause);
   }
 
-  public static String generateSelectQueryForMultipleEntities(
-      String realmId, List<PolarisEntityId> entityIds) {
+  public static String generateSelectQueryWithEntityIds(
+      @Nonnull String realmId, @Nonnull List<PolarisEntityId> entityIds) {
+    if (entityIds.isEmpty()) {
+      throw new IllegalArgumentException("Empty entity ids");
+    }
     StringBuilder condition = new StringBuilder("(catalog_id, id) IN (");
     for (PolarisEntityId entityId : entityIds) {
       String in = "(" + entityId.getCatalogId() + ", " + entityId.getId() + ")";
@@ -140,15 +79,11 @@ public class JdbcCrudQueryGenerator {
     condition.deleteCharAt(condition.length() - 1);
     condition.append(")");
     condition.append(" AND realm_id = '").append(realmId).append("'");
-    return JdbcCrudQueryGenerator.generateSelectQuery(
-        ModelEntity.class, entityIds.isEmpty() ? "" : String.valueOf(condition), null, null, null);
+
+    return generateSelectQuery(ModelEntity.class, " WHERE " + condition);
   }
 
-  public static String generateInsertQuery(Object object, String realmId) {
-    if (object == null) {
-      return null;
-    }
-
+  public static String generateInsertQuery(@Nonnull Object object, @Nonnull String realmId) {
     String tableName = getTableName(object.getClass());
 
     Class<?> objectClass = object.getClass();
@@ -164,15 +99,15 @@ public class JdbcCrudQueryGenerator {
         Object value = field.get(object);
         if (value != null) { // Only include non-null fields
           columnNames.add(camelToSnake(field.getName()));
-          values.add("'" + value.toString() + "'");
+          values.add("'" + value + "'");
         }
       } catch (IllegalAccessException e) {
-        return null; // Or throw an exception
+        throw new RuntimeException(e);
       }
     }
 
     if (columnNames.isEmpty()) {
-      return null; // Or throw an exception if no non-null fields are found
+      throw new RuntimeException("No column names found");
     }
 
     String columns = String.join(", ", columnNames);
@@ -182,10 +117,10 @@ public class JdbcCrudQueryGenerator {
   }
 
   public static String generateUpdateQuery(
-      Object object, Map<String, Object> whereClause, Class<?> entityClass) {
-    String tableName = getTableName(entityClass);
-    List<String> setClauses = new ArrayList<>();
+      @Nonnull Object object, @Nonnull Map<String, Object> whereClause) {
     Class<?> objectClass = object.getClass();
+    String tableName = getTableName(objectClass);
+    List<String> setClauses = new ArrayList<>();
     Field[] fields = objectClass.getDeclaredFields();
     List<String> columnNames = new ArrayList<>();
     List<Object> values = new ArrayList<>();
@@ -199,7 +134,7 @@ public class JdbcCrudQueryGenerator {
           values.add("'" + value + "'");
         }
       } catch (IllegalAccessException e) {
-        // should never happen
+        throw new RuntimeException(e);
       }
     }
 
@@ -212,21 +147,24 @@ public class JdbcCrudQueryGenerator {
     return "UPDATE " + tableName + " SET " + setClausesString + generateWhereClause(whereClause);
   }
 
-  public static String generateDeleteQuery(Map<String, Object> whereClause, Class<?> entityClass) {
+  public static String generateDeleteQuery(
+      @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
     String tableName = getTableName(entityClass);
     return "DELETE FROM " + tableName + (generateWhereClause(whereClause));
   }
 
-  public static String generateDeleteQuery(Class<?> entityClass, String whereClause) {
+  public static String generateDeleteQuery(
+      @Nonnull Class<?> entityClass, @Nonnull String whereClause) {
     return "DELETE FROM " + getTableName(entityClass) + whereClause;
   }
 
-  public static String generateDeleteAll(Class<?> entityClass, String realmId) {
+  public static String generateDeleteAll(@Nonnull Class<?> entityClass, @Nonnull String realmId) {
     String tableName = getTableName(entityClass);
     return "DELETE FROM " + tableName + " WHERE 1 = 1 AND realm_id = '" + realmId + "'";
   }
 
-  public static String generateDeleteQuery(Object obj, Class<?> entityClass, String realmId) {
+  public static String generateDeleteQuery(
+      @Nonnull Object obj, @Nonnull Class<?> entityClass, @Nonnull String realmId) {
     String tableName = getTableName(entityClass);
     List<String> whereConditions = new ArrayList<>();
 
@@ -258,10 +196,30 @@ public class JdbcCrudQueryGenerator {
     return "DELETE FROM " + tableName + whereConditionsString;
   }
 
-  private static String generateWhereClause(Map<String, Object> whereClause) {
+  @VisibleForTesting
+  public static String generateSelectQuery(@Nonnull Class<?> entityClass, @Nonnull String filter) {
+    String tableName = getTableName(entityClass);
+    List<String> fields = new ArrayList<>();
+
+    for (Field field : entityClass.getDeclaredFields()) {
+      fields.add(camelToSnake(field.getName()));
+    }
+
+    String columns = String.join(", ", fields);
+    StringBuilder query =
+        new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
+    if (!filter.isEmpty()) {
+      query.append(filter);
+    }
+
+    return query.toString();
+  }
+
+  @VisibleForTesting
+  public static String generateWhereClause(@Nonnull Map<String, Object> whereClause) {
     List<String> whereConditions = new ArrayList<>();
 
-    if (whereClause != null && !whereClause.isEmpty()) {
+    if (!whereClause.isEmpty()) {
       for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
         String fieldName = entry.getKey();
         Object value = entry.getValue();
@@ -277,7 +235,8 @@ public class JdbcCrudQueryGenerator {
     return !whereConditionsString.isEmpty() ? (" WHERE " + whereConditionsString) : "";
   }
 
-  private static String camelToSnake(String camelCase) {
+  @VisibleForTesting
+  public static String camelToSnake(@Nonnull String camelCase) {
     Matcher matcher = CAMEL_CASE_PATTERN.matcher(camelCase);
     StringBuilder sb = new StringBuilder();
     while (matcher.find()) {
@@ -287,7 +246,8 @@ public class JdbcCrudQueryGenerator {
     return sb.toString().toLowerCase(Locale.ROOT);
   }
 
-  private static String getTableName(Class<?> entityClass) {
+  @VisibleForTesting
+  public static String getTableName(@Nonnull Class<?> entityClass) {
     String tableName;
     if (entityClass.equals(ModelEntity.class)) {
       tableName = "ENTITIES";

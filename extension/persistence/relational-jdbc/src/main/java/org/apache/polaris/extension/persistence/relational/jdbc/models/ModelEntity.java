@@ -24,8 +24,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 
 public class ModelEntity {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
-  // like
-  // a catalog
+  // like a catalog
   private long catalogId;
 
   // the id of the entity which was resolved

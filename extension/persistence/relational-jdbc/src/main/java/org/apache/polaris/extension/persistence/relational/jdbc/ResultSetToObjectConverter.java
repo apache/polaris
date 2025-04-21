@@ -87,7 +87,7 @@ public class ResultSetToObjectConverter {
     return resultList;
   }
 
-  public static String convertSnakeCaseToCamelCase(String snakeCase) {
+  private static String convertSnakeCaseToCamelCase(String snakeCase) {
     StringBuilder camelCase = new StringBuilder();
     boolean nextUpperCase = false;
     for (char c : snakeCase.toCharArray()) {

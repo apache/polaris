@@ -102,8 +102,9 @@ public class DatasourceOperations {
       throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement();
-        ResultSet s = statement.executeQuery(query)) {
-      return ResultSetToObjectConverter.collect(s, targetClass, transformer, entityFilter, limit);
+        ResultSet resultSet = statement.executeQuery(query)) {
+      return ResultSetToObjectConverter.collect(
+          resultSet, targetClass, transformer, entityFilter, limit);
     } catch (SQLException e) {
       LOGGER.error("Error executing query {}", query, e);
       throw e;
@@ -146,7 +147,7 @@ public class DatasourceOperations {
         connection.setAutoCommit(autoCommit);
       }
     } catch (SQLException e) {
-      LOGGER.debug("Caught Error while executing transaction", e);
+      LOGGER.error("Caught Error while executing transaction", e);
       throw e;
     }
   }

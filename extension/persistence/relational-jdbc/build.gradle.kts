@@ -22,6 +22,7 @@ plugins { id("polaris-server") }
 dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.slf4j.api)
+  implementation("com.google.guava:guava:33.0.0-jre") // Use the latest version
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
