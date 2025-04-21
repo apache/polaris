@@ -189,6 +189,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
                 PolarisEntityType.TABLE_LIKE),
             targetIdentifier);
       }
+      default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     }
 
     ResolverStatus status = resolutionManifest.resolveAll();
