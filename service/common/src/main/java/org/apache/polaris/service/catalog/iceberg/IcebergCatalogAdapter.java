@@ -200,7 +200,8 @@ public class IcebergCatalogAdapter
         securityContext,
         catalogFactory,
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   @Override
@@ -298,11 +299,15 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
+    UpdateNamespacePropertiesRequest revisedRequest = UpdateNamespacePropertiesRequest.builder()
+        .removeAll(reservedProperties.removeReservedProperties(updateNamespacePropertiesRequest.removals()))
+        .updateAll(reservedProperties.removeReservedProperties(updateNamespacePropertiesRequest.updates()))
+        .build();
     return withCatalog(
         securityContext,
         prefix,
         catalog ->
-            Response.ok(catalog.updateNamespaceProperties(ns, updateNamespacePropertiesRequest))
+            Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest))
                 .build());
   }
 

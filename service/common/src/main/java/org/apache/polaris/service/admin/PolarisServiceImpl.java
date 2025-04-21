@@ -130,7 +130,8 @@ public class PolarisServiceImpl
         metaStoreManager,
         userSecretsManager,
         securityContext,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   /** From PolarisCatalogsApiService */

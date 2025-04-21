@@ -24,6 +24,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,5 +100,15 @@ public interface ReservedProperties {
       }
     }
     return results;
+  }
+
+  /**
+   * See {@link #removeReservedProperties(Map)}
+   */
+  default List<String> removeReservedProperties(
+      List<String> properties) throws IllegalArgumentException {
+    Map<String, String> propertyMap = properties.stream().collect(Collectors.toMap(k -> k, k -> ""));
+    Map<String, String> filteredMap = removeReservedProperties(propertyMap);
+    return filteredMap.keySet().stream().toList();
   }
 }
