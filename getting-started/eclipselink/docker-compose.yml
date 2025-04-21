@@ -50,6 +50,10 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+    environment:
+      - STORAGE_LOCATION=${STORAGE_LOCATION}
+      - AWS_ROLE_ARN=${AWS_ROLE_ARN}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'

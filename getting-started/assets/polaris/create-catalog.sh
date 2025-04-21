@@ -19,7 +19,7 @@
 
 set -e
 
-token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
+token=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
   --user root:s3cr3t \
   -d grant_type=client_credentials \
   -d scope=PRINCIPAL_ROLE:ALL | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
@@ -31,6 +31,30 @@ fi
 
 echo
 echo "Obtained access token: ${token}"
+
+STORAGE_TYPE="FILE"
+if [ -z "${STORAGE_LOCATION}" ]; then
+    echo "STORAGE_LOCATION is not set, using FILE storage type"
+    STORAGE_LOCATION="file:///var/tmp/quickstart_catalog/"
+else
+    echo "STORAGE_LOCATION is set to '$STORAGE_LOCATION'"
+    if [[ "$STORAGE_LOCATION" == s3* ]]; then
+        STORAGE_TYPE="S3"
+    elif [[ "$STORAGE_LOCATION" == gs* ]]; then
+        STORAGE_TYPE="GCS"
+    else
+        STORAGE_TYPE="AZURE"
+    fi
+    echo "Using StorageType: $STORAGE_TYPE"
+fi
+
+STORAGE_CONFIG_INFO = '{"storageType": "$STORAGE_TYPE", "allowedLocations": ["$STORAGE_LOCATION"]}'
+
+if [[ "$STORAGE_TYPE" == "S3" ]]; then
+    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg roleArn "$AWS_ROLE_ARN" '. + {roleArn: $AWS_ROLE_ARN}')
+elif [[ "$STORAGE_TYPE" == "AZURE" ]]; then
+    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg tenantId "$AZURE_TENANT_ID" '. + {tenantId: [$AZURE_TENANT_ID]}')
+fi
 
 echo
 echo Creating a catalog named quickstart_catalog...
@@ -45,14 +69,9 @@ curl -s -H "Authorization: Bearer ${token}" \
        "type": "INTERNAL",
        "readOnly": false,
        "properties": {
-         "default-base-location": "file:///var/tmp/quickstart_catalog/"
+         "default-base-location": "$STORAGE_LOCATION"
        },
-       "storageConfigInfo": {
-         "storageType": "FILE",
-         "allowedLocations": [
-           "file:///var/tmp"
-         ]
-       }
+       "storageConfigInfo": $STORAGE_CONFIG_INFO
      }
    }'
 

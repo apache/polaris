@@ -21,12 +21,12 @@ EC2_INSTANCE_ID=$(cat /var/lib/cloud/data/instance-id)
 
 DESCRIBE_INSTANCE=$(aws ec2 describe-instances \
     --instance-ids $EC2_INSTANCE_ID \
-    --query 'Reservations[*].Instances[*].{Instance:InstanceId,VPC:VpcId,AZ:Placement.AvailabilityZone}' \
+    --query 'Reservations[*].Instances[*].{Instance:InstanceId,VPC:VpcId,AZ:Placement.AvailabilityZone,RoleArn:IamInstanceProfile.Arn}' \
     --output json)
 
 CURRENT_VPC=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."VPC")
-
 CURRENT_REGION=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."AZ" | sed 's/.$//')
+export AWS_ROLE_ARN=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."RoleArn")
 
 ALL_SUBNETS=$(aws ec2 describe-subnets \
   --region $CURRENT_REGION \
@@ -68,6 +68,12 @@ POSTGRES_ADDR=$(echo $DESCRIBE_DB | jq -r '.["DBInstances"][0]["Endpoint"]' | jq
 
 FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR/{realm}" | sed 's/[&/\]/\\&/g')
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
+
+S3_BUCKET_NAME="polaris-test-s3-$RANDOM_SUFFIX"
+
+aws s3api create-bucket --bucket $S3_BUCKET_NAME --region $CURRENT_REGION --create-bucket-configuration LocationConstraint=$CURRENT_REGION
+
+export STORAGE_LOCATION="s3://$S3_BUCKET_NAME/quickstart_catalog/"
 
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
