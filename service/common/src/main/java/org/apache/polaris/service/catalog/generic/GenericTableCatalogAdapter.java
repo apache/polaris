@@ -94,7 +94,7 @@ public class GenericTableCatalogAdapter
             TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getDoc(),
-            createGenericTableRequest.getProperties());
+            reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()));
 
     return Response.ok(response).build();
   }

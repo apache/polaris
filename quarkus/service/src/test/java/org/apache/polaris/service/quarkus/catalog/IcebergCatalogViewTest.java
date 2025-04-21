@@ -67,6 +67,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -167,6 +168,14 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
+
+    ReservedProperties reservedProperties = new ReservedProperties() {
+      @Override
+      public List<String> reservedPrefixes() {
+        return List.of();
+      }
+    };
+
     PolarisAdminService adminService =
         new PolarisAdminService(
             callContext,
@@ -174,7 +183,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            reservedProperties);
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()

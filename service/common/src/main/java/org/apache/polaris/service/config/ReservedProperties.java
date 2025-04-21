@@ -19,8 +19,10 @@
 package org.apache.polaris.service.config;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,47 +41,60 @@ public interface ReservedProperties {
   List<String> reservedPrefixes();
 
   /**
-   * Checks whether a planned change to an entity's property would modify any reserved properties
-   *
-   * @param originalKeys The keys currently present for an entity
-   * @param newKeys The keys present in an update to an entity
-   * @return True if the change would modify a reserved property
+   * If true, attempts to modify a reserved property should throw an exception.
    */
-  default boolean updateContainsReservedProperty(List<String> originalKeys, List<String> newKeys) {
-    Set<String> originalKeySet = new HashSet<>(newKeys);
-    Set<String> newKeySet = new HashSet<>(newKeys);
-
-    ArrayList<String> modifiedKeys = new ArrayList<>();
-    for (String originalKey : originalKeys) {
-      if (!newKeySet.contains(originalKey)) {
-        modifiedKeys.add(originalKey);
-      }
-    }
-    for (String newKey : newKeys) {
-      if (!originalKeySet.contains(newKey)) {
-        modifiedKeys.add(newKey);
-      }
-    }
-
-    return containsReservedProperty(modifiedKeys);
+  default boolean shouldThrow() {
+    return true;
   }
 
   /**
-   * Checks whether any of the specified keys is a reserved property
+   * Removes reserved properties from a planned change to an entity.
+   * If `shouldThrow`returns true, this will throw an IllegalArgumentException.
    *
-   * @param keys A list of property keys to validate
-   * @return True if the list of property keys has a reserved property
+   * @param existingProperties The properties currently present for an entity
+   * @param updateProperties The properties present in an update to an entity
+   * @return The keys from the new key list which are not reserved properties
    */
-  default boolean containsReservedProperty(List<String> keys) {
-    List<String> prefixes = reservedPrefixes();
-    for (String key : keys) {
-      for (String prefix : prefixes) {
-        if (key.startsWith(prefix)) {
-          LOGGER.debug("Property '{}' matches reserved prefix '{}'", key, prefix);
-          return true;
+  default Map<String, String> removeReservedPropertiesFromUpdate(
+      Map<String, String> existingProperties,
+      Map<String, String> updateProperties) throws IllegalArgumentException {
+    Map<String, String> updatePropertiesWithoutReservedProperties = removeReservedProperties(updateProperties);
+    for (var entry: updateProperties.entrySet()) {
+      // If a key was removed from the update, we substitute in the existing value as to not remove it
+      if (!updatePropertiesWithoutReservedProperties.containsKey(entry.getKey())) {
+        if (existingProperties.containsKey(entry.getKey())) {
+          updatePropertiesWithoutReservedProperties.put(entry.getKey(), existingProperties.get(entry.getKey()));
         }
       }
     }
-    return false;
+    return updatePropertiesWithoutReservedProperties;
+  }
+
+  /**
+   * Removes reserved properties from a list of input property keys.
+   * If `shouldThrow`returns true, this will throw an IllegalArgumentException.
+   *
+   * @param properties A map of properties to remove reserved properties from
+   * @return The keys from the input list which are not reserved properties
+   */
+  default Map<String, String> removeReservedProperties(
+      Map<String, String> properties) throws IllegalArgumentException {
+    Map<String, String> results = new HashMap<>();
+    List<String> prefixes = reservedPrefixes();
+    for (var entry : properties.entrySet()) {
+      for (String prefix : prefixes) {
+        if (entry.getKey().startsWith(prefix)) {
+          String message = String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
+          if (shouldThrow()) {
+            throw new IllegalArgumentException(message);
+          } else {
+            LOGGER.debug(message);
+          }
+        } else {
+          results.put(entry.getKey(), properties.get(entry.getValue()));
+        }
+      }
+    }
+    return results;
   }
 }

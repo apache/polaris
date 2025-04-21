@@ -55,7 +55,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         metaStoreManager,
         userSecretsManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   private void doTestSufficientPrivileges(

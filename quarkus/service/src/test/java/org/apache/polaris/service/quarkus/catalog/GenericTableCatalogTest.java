@@ -81,6 +81,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -140,6 +141,7 @@ public class GenericTableCatalogTest {
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
+  private ReservedProperties reservedProperties;
 
   protected static final Schema SCHEMA =
       new Schema(
@@ -192,6 +194,14 @@ public class GenericTableCatalogTest {
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
+
+    reservedProperties = new ReservedProperties() {
+      @Override
+      public List<String> reservedPrefixes() {
+        return List.of();
+      }
+    };
+
     adminService =
         new PolarisAdminService(
             callContext,
@@ -199,7 +209,8 @@ public class GenericTableCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =

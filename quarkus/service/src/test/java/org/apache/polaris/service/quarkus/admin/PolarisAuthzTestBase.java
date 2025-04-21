@@ -86,6 +86,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -180,6 +181,12 @@ public abstract class PolarisAuthzTestBase {
               Map.of(
                   FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
                   true)));
+  protected final ReservedProperties reservedProperties = new ReservedProperties() {
+    @Override
+    public List<String> reservedPrefixes() {
+      return List.of();
+    }
+  };
 
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
@@ -262,7 +269,8 @@ public abstract class PolarisAuthzTestBase {
             metaStoreManager,
             userSecretsManager,
             securityContext(authenticatedRoot, Set.of()),
-            polarisAuthorizer);
+            polarisAuthorizer,
+            reservedProperties);
 
     String storageLocation = "file:///tmp/authz";
     FileStorageConfigInfo storageConfigModel =

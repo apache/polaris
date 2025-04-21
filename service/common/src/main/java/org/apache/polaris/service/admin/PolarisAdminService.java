@@ -105,6 +105,7 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +129,7 @@ public class PolarisAdminService {
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
+  private final ReservedProperties reservedProperties;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -138,7 +140,8 @@ public class PolarisAdminService {
       @NotNull PolarisMetaStoreManager metaStoreManager,
       @NotNull UserSecretsManager userSecretsManager,
       @NotNull SecurityContext securityContext,
-      @NotNull PolarisAuthorizer authorizer) {
+      @NotNull PolarisAuthorizer authorizer,
+      @NotNull ReservedProperties reservedProperties) {
     this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -155,6 +158,7 @@ public class PolarisAdminService {
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
+    this.reservedProperties = reservedProperties;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -808,6 +812,8 @@ public class PolarisAdminService {
           "Failed to update Catalog; currentEntityVersion '%s', expected '%s'",
           currentCatalogEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
+
+    Map<String, String> updateProperties = reservedProperties.
 
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
     String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
