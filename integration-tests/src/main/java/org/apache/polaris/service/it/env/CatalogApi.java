@@ -149,18 +149,24 @@ public class CatalogApi extends RestApi {
     }
   }
 
-  public int loadTable(String catalog, TableIdentifier id, String snapshots) {
+  public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
                 Map.of("cat", catalog, "table", id.name()),
-                Map.of("snapshots", snapshots))
+                snapshots == null ? Map.of() : Map.of("snapshots", snapshots))
             .get()) {
-      return res.getStatus();
+      if (res.getStatus() == Response.Status.OK.getStatusCode()) {
+        return res.readEntity(LoadTableResponse.class);
+      }
+      throw new RESTException(
+          "Unhandled error: %s",
+          ((ErrorHandler) ErrorHandlers.defaultErrorHandler())
+              .parseResponse(res.getStatus(), res.readEntity(String.class)));
     }
   }
-
+  
   public List<TableIdentifier> listViews(String catalog, Namespace namespace) {
     String ns = RESTUtil.encodeNamespace(namespace);
     try (Response res =
