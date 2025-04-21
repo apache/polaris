@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +47,7 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
 import org.apache.polaris.service.types.ListPoliciesResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
@@ -128,8 +130,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
   }
 
   public boolean attachPolicy(PolicyIdentifier identifier, AttachPolicyRequest request) {
-      authorizePolicyAttachmentOperationOrThrow(identifier, request.getTarget(), true);
-      return policyCatalog.attachPolicy(identifier, request.getTarget(), request.getParameters());
+    authorizePolicyAttachmentOperationOrThrow(identifier, request.getTarget(), true);
+    return policyCatalog.attachPolicy(identifier, request.getTarget(), request.getParameters());
   }
 
   public boolean detachPolicy(PolicyIdentifier identifier, DetachPolicyRequest request) {
@@ -165,7 +167,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
   }
 
   private void authorizePolicyAttachmentOperationOrThrow(
-          PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
+      PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     resolutionManifest.addPassthroughPath(
@@ -175,53 +177,55 @@ public class PolicyCatalogHandler extends CatalogHandler {
             true /* optional */),
         identifier);
 
-
     switch (target.getType()) {
       case CATALOG -> {}
       case NAMESPACE -> {
         Namespace targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
         resolutionManifest.addPath(
-                new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE),
-                targetNamespace);
+            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE),
+            targetNamespace);
       }
       case TABLE_LIKE -> {
-        TableIdentifier targetIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
+        TableIdentifier targetIdentifier =
+            TableIdentifier.of(target.getPath().toArray(new String[0]));
         resolutionManifest.addPath(
-                new ResolverPath(
-                        PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
-                        PolarisEntityType.TABLE_LIKE),
-                targetIdentifier);
+            new ResolverPath(
+                PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
+                PolarisEntityType.TABLE_LIKE),
+            targetIdentifier);
       }
     }
-
-
 
     ResolverStatus status = resolutionManifest.resolveAll();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       switch (status.getFailedToResolvePath().getLastEntityType()) {
         case PolarisEntityType.TABLE_LIKE -> {
-          TableIdentifier targetIdentifier = PolarisCatalogHelpers.listToTableIdentifier(
+          TableIdentifier targetIdentifier =
+              PolarisCatalogHelpers.listToTableIdentifier(
                   status.getFailedToResolvePath().getEntityNames());
           throw new NoSuchTableException("Table or view does not exist: %s", targetIdentifier);
         }
 
         case PolarisEntityType.NAMESPACE -> {
-          Namespace targetNamespace = Namespace.of(status.getFailedToResolvePath().getEntityNames().toArray(new String[0]));
-            throw new NoSuchNamespaceException("Namespace does not exist: %s", targetNamespace);
+          Namespace targetNamespace =
+              Namespace.of(status.getFailedToResolvePath().getEntityNames().toArray(new String[0]));
+          throw new NoSuchNamespaceException("Namespace does not exist: %s", targetNamespace);
         }
 
         case PolarisEntityType.POLICY -> {
-            throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
+          throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
         }
 
         default -> throw new IllegalStateException("Cannot resolve");
       }
     }
 
-    PolarisResolvedPathWrapper policyWrapper = resolutionManifest.getPassthroughResolvedPath(identifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+    PolarisResolvedPathWrapper policyWrapper =
+        resolutionManifest.getPassthroughResolvedPath(
+            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
     if (policyWrapper == null) {
-        throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
+      throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
     PolarisResolvedPathWrapper targetWrapper = getResolvedPathWrapper(target);
@@ -229,19 +233,21 @@ public class PolicyCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = null;
 
     if (targetWrapper.getRawLeafEntity().getType() == PolarisEntityType.CATALOG) {
-      op = isAttach
+      op =
+          isAttach
               ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_CATALOG
               : PolarisAuthorizableOperation.DETACH_POLICY_FROM_CATALOG;
     } else if (targetWrapper.getRawLeafEntity().getType() == PolarisEntityType.NAMESPACE) {
-        op = isAttach
-                ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE
-                : PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE;
-        } else if (targetWrapper.getRawLeafEntity().getType() == PolarisEntityType.TABLE_LIKE) {
+      op =
+          isAttach
+              ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE
+              : PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE;
+    } else if (targetWrapper.getRawLeafEntity().getType() == PolarisEntityType.TABLE_LIKE) {
       if (targetWrapper.getRawLeafEntity().getSubType() == PolarisEntitySubType.ICEBERG_TABLE) {
         op =
-                isAttach
-                        ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE
-                        : PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
+            isAttach
+                ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE
+                : PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
       }
     }
 
@@ -250,17 +256,17 @@ public class PolicyCatalogHandler extends CatalogHandler {
     }
 
     authorizer.authorizeOrThrow(
-            authenticatedPrincipal,
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            policyWrapper,
-            targetWrapper);
+        authenticatedPrincipal,
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        op,
+        policyWrapper,
+        targetWrapper);
 
     initializeCatalog();
   }
 
   private PolarisResolvedPathWrapper getResolvedPathWrapper(
-          @Nonnull PolicyAttachmentTarget target) {
+      @Nonnull PolicyAttachmentTarget target) {
     return switch (target.getType()) {
       // get the current catalog entity, since policy cannot apply across catalog at this moment
       case CATALOG -> resolutionManifest.getResolvedReferenceCatalogEntity();
@@ -276,8 +282,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
         var tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
         // only Iceberg tables are supported
         var resolvedTableEntity =
-                resolutionManifest.getResolvedPath(
-                        tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+            resolutionManifest.getResolvedPath(
+                tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
           throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
         }
