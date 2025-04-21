@@ -170,7 +170,7 @@ public class CatalogApi extends RestApi {
               .parseResponse(res.getStatus(), res.readEntity(String.class)));
     }
   }
-  
+
   public List<TableIdentifier> listViews(String catalog, Namespace namespace) {
     String ns = RESTUtil.encodeNamespace(namespace);
     try (Response res =

@@ -20,7 +20,6 @@ package org.apache.polaris.service.it.test;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -68,7 +67,6 @@ import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -1272,8 +1270,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
 
-    assertThatCode(
-            () -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+    assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
         .isInstanceOf(ProcessingException.class);
 
     genericTableApi.purge(currentCatalogName, namespace);
@@ -1389,11 +1386,17 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     table.manageSnapshots().setCurrentSnapshot(snapshotIdA).commit();
 
     var allSnapshots =
-        catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL").tableMetadata().snapshots();
+        catalogApi
+            .loadTable(currentCatalogName, tableIdentifier, "ALL")
+            .tableMetadata()
+            .snapshots();
     assertThat(allSnapshots).hasSize(2);
 
     var refsSnapshots =
-        catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS").tableMetadata().snapshots();
+        catalogApi
+            .loadTable(currentCatalogName, tableIdentifier, "REFS")
+            .tableMetadata()
+            .snapshots();
     assertThat(refsSnapshots).hasSize(1);
     assertThat(refsSnapshots.getFirst().snapshotId()).isEqualTo(snapshotIdA);
 
