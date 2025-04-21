@@ -185,6 +185,14 @@ public record TestServices(
               taskExecutor,
               fileIOFactory);
 
+      ReservedProperties reservedProperties =
+          new ReservedProperties() {
+            @Override
+            public List<String> reservedPrefixes() {
+              return List.of();
+            }
+          };
+
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(
               realmContext,
@@ -194,7 +202,8 @@ public record TestServices(
               metaStoreManager,
               userSecretsManager,
               authorizer,
-              new DefaultCatalogPrefixParser());
+              new DefaultCatalogPrefixParser(),
+              reservedProperties);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
       IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
@@ -233,13 +242,6 @@ public record TestServices(
               return "";
             }
           };
-
-        ReservedProperties reservedProperties = new ReservedProperties() {
-            @Override
-            public List<String> reservedPrefixes() {
-                return List.of();
-            }
-        };
 
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(

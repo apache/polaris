@@ -16,20 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus.config;
 
 import io.smallrye.config.ConfigMapping;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.service.config.ReservedProperties;
-
 import java.util.List;
+import org.apache.polaris.service.config.ReservedProperties;
 
 @ApplicationScoped
 @ConfigMapping(prefix = "polaris.reserved-properties")
 public class QuarkusReservedProperties implements ReservedProperties {
-    @Override
-    public List<String> reservedPrefixes() {
-        return List.of("polaris.");
-    }
+  @Override
+  public List<String> reservedPrefixes() {
+    return List.of("polaris.");
+  }
 }
