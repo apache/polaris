@@ -491,7 +491,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             String.format(
                 "More than one grant record %s for a given Grant record", results.getFirst()));
       }
-      return results.get(0);
+      return results.getFirst();
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve grant record due to %s", e.getMessage()));
@@ -524,8 +524,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for securableCatalogId: %s securableId: %s due to %s",
-              securableCatalogId, securableId, e.getMessage()),
-          e);
+              securableCatalogId, securableId, e.getMessage()));
     }
   }
 
@@ -550,8 +549,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for granteeCatalogId: %s granteeId: %s due to %s",
-              granteeCatalogId, granteeId, e.getMessage()),
-          e);
+              granteeCatalogId, granteeId, e.getMessage()));
     }
   }
 
