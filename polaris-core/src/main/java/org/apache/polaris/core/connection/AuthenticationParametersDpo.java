@@ -31,7 +31,10 @@ import org.apache.polaris.core.secrets.UserSecretReference;
  * The internal persistence-object counterpart to AuthenticationParameters defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link AuthenticationType}.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authenticationTypeCode", visible = true)
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "authenticationTypeCode")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = OAuthClientCredentialsParametersDpo.class, name = "1"),
   @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
@@ -65,7 +68,6 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
             (OAuthClientCredentialsParameters) authenticationParameters;
         config =
             new OAuthClientCredentialsParametersDpo(
-                AuthenticationType.OAUTH.getCode(),
                 oauthClientCredentialsModel.getTokenUri(),
                 oauthClientCredentialsModel.getClientId(),
                 secretReferences.get(INLINE_CLIENT_SECRET_REFERENCE_KEY),
@@ -76,7 +78,6 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
             (BearerAuthenticationParameters) authenticationParameters;
         config =
             new BearerAuthenticationParametersDpo(
-                AuthenticationType.BEARER.getCode(),
                 secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
         break;
       default:
