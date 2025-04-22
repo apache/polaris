@@ -47,7 +47,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -1494,7 +1493,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
         @Override
         public void commit(TableMetadata base, TableMetadata metadata) {
-          throw new UnsupportedOperationException("Cannot call commit on temporary table operations");
+          throw new UnsupportedOperationException(
+              "Cannot call commit on temporary table operations");
         }
 
         @Override
