@@ -61,21 +61,25 @@ fi
 echo
 echo Creating a catalog named quickstart_catalog...
 
+PAYLOAD='{
+   "catalog": {
+     "name": "quickstart_catalog",
+     "type": "INTERNAL",
+     "readOnly": false,
+     "properties": {
+       "default-base-location": "'$STORAGE_LOCATION'"
+     },
+     "storageConfigInfo": '$STORAGE_CONFIG_INFO'
+   }
+ }'
+
+echo $PAYLOAD
+
 curl -s -H "Authorization: Bearer ${token}" \
    -H 'Accept: application/json' \
    -H 'Content-Type: application/json' \
    http://polaris:8181/api/management/v1/catalogs \
-   -d '{
-     "catalog": {
-       "name": "quickstart_catalog",
-       "type": "INTERNAL",
-       "readOnly": false,
-       "properties": {
-         "default-base-location": "$STORAGE_LOCATION"
-       },
-       "storageConfigInfo": $STORAGE_CONFIG_INFO
-     }
-   }'
+   -d "$PAYLOAD"
 
 echo
 echo Done.
