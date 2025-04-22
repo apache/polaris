@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,8 +29,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class ConnectionConfigInfoDpoTest {
-  PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
-  ObjectMapper objectMapper = new ObjectMapper();
+  private static final PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  static {
+    objectMapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+  }
 
   @Test
   void testOAuthClientCredentialsParameters() throws JsonProcessingException {
