@@ -363,7 +363,7 @@ public class PolicyCatalogTest {
             () ->
                 policyCatalog.createPolicy(
                     POLICY1,
-                    PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(),
+                    PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(),
                     "test",
                     "{\"enable\": false}"))
         .isInstanceOf(AlreadyExistsException.class);
@@ -382,7 +382,7 @@ public class PolicyCatalogTest {
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
         POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
@@ -405,7 +405,7 @@ public class PolicyCatalogTest {
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
         POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
