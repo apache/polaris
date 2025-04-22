@@ -61,6 +61,7 @@ import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
@@ -81,7 +82,6 @@ import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
-import org.apache.iceberg.view.BaseViewOperations;
 import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
@@ -1202,17 +1202,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations implements TableOperations {
+  private class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
+      implements TableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
     private FileIO tableFileIO;
-
-    private static final String METADATA_FOLDER_NAME = "metadata";
-
-    private TableMetadata currentMetadata = null;
-    private String currentMetadataLocation = null;
-    private boolean shouldRefresh = true;
-    private int version = -1;
 
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
@@ -1236,7 +1230,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         doRefresh();
       } catch (NoSuchTableException e) {
         if (currentMetadataWasAvailable) {
-          LOGGER.warn("Could not find the table during refresh, setting current metadata to null", e);
+          LOGGER.warn(
+              "Could not find the table during refresh, setting current metadata to null", e);
           shouldRefresh = true;
         }
 
@@ -1257,7 +1252,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         } else {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
-          throw new AlreadyExistsException("Table already exists: %s", tableName());
+          throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
       }
       // if the metadata is not changed, return early
@@ -1273,7 +1268,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       LOGGER.info(
           "Successfully committed to table {} in {} ms",
-          tableName(),
+          fullTableName,
           System.currentTimeMillis() - start);
     }
 
@@ -1337,40 +1332,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
       }
-    }
-
-    protected void refreshFromMetadataLocation(
-        String newLocation,
-        Predicate<Exception> shouldRetry,
-        int numRetries,
-        Function<String, TableMetadata> metadataLoader) {
-      // use null-safe equality check because new tables have a null metadata location
-      if (!Objects.equal(currentMetadataLocation, newLocation)) {
-        LOGGER.info("Refreshing table metadata from new version: {}", newLocation);
-
-        AtomicReference<TableMetadata> newMetadata = new AtomicReference<>();
-        Tasks.foreach(newLocation)
-            .retry(numRetries)
-            .exponentialBackoff(100, 5000, 600000, 4.0 /* 100, 400, 1600, ... */)
-            .throwFailureWhenFinished()
-            .stopRetryOn(NotFoundException.class) // overridden if shouldRetry is non-null
-            .shouldRetryTest(shouldRetry)
-            .run(metadataLocation -> newMetadata.set(metadataLoader.apply(metadataLocation)));
-
-        String newUUID = newMetadata.get().uuid();
-        if (currentMetadata != null && currentMetadata.uuid() != null && newUUID != null) {
-          Preconditions.checkState(
-              newUUID.equals(currentMetadata.uuid()),
-              "Table UUID does not match: current=%s != refreshed=%s",
-              currentMetadata.uuid(),
-              newUUID);
-        }
-
-        this.currentMetadata = newMetadata.get();
-        this.currentMetadataLocation = newLocation;
-        this.version = parseVersion(newLocation);
-      }
-      this.shouldRefresh = false;
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
@@ -1498,11 +1459,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
-          throw new AlreadyExistsException("Table already exists: %s", tableName());
+          throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
 
         if (null == existingLocation) {
-          throw new NoSuchTableException("Table does not exist: %s", tableName());
+          throw new NoSuchTableException("Table does not exist: %s", fullTableName);
         }
 
         throw new CommitFailedException(
@@ -1517,22 +1478,58 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    public int currentVersion() {
-      return version;
-    }
+    @Override
+    public TableOperations temp(TableMetadata uncommittedMetadata) {
+      return new TableOperations() {
+        @Override
+        public TableMetadata current() {
+          return uncommittedMetadata;
+        }
 
-    protected void requestRefresh() {
-      this.shouldRefresh = true;
-    }
+        @Override
+        public TableMetadata refresh() {
+          throw new UnsupportedOperationException(
+              "Cannot call refresh on temporary table operations");
+        }
 
-    protected void disableRefresh() {
-      this.shouldRefresh = false;
+        @Override
+        public void commit(TableMetadata base, TableMetadata metadata) {
+          throw new UnsupportedOperationException("Cannot call commit on temporary table operations");
+        }
+
+        @Override
+        public String metadataFileLocation(String fileName) {
+          return BasePolarisTableOperations.this.metadataFileLocation(
+              uncommittedMetadata, fileName);
+        }
+
+        @Override
+        public LocationProvider locationProvider() {
+          return LocationProviders.locationsFor(
+              uncommittedMetadata.location(), uncommittedMetadata.properties());
+        }
+
+        @Override
+        public FileIO io() {
+          return BasePolarisTableOperations.this.io();
+        }
+
+        @Override
+        public EncryptionManager encryption() {
+          return BasePolarisTableOperations.this.encryption();
+        }
+
+        @Override
+        public long newSnapshotId() {
+          return BasePolarisTableOperations.this.newSnapshotId();
+        }
+      };
     }
 
     protected String writeNewMetadataIfRequired(boolean newTable, TableMetadata metadata) {
       return newTable && metadata.metadataFileLocation() != null
           ? metadata.metadataFileLocation()
-          : writeNewMetadata(metadata, currentVersion() + 1);
+          : writeNewMetadata(metadata, version + 1);
     }
 
     protected String writeNewMetadata(TableMetadata metadata, int newVersion) {
@@ -1540,15 +1537,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       OutputFile newMetadataLocation = io().newOutputFile(newTableMetadataFilePath);
 
       // write the new metadata
-      // use overwrite to avoid negative caching in S3. this is safe because the metadata location is
+      // use overwrite to avoid negative caching in S3. this is safe because the metadata location
+      // is
       // always unique because it includes a UUID.
       TableMetadataParser.overwrite(metadata, newMetadataLocation);
 
       return newMetadataLocation.location();
-    }
-
-    protected String tableName() {
-      return fullTableName;
     }
 
     private String metadataFileLocation(TableMetadata metadata, String filename) {
@@ -1561,22 +1555,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    /**
-     * Validate if the new metadata location is the current metadata location or present within
-     * previous metadata files.
-     *
-     * @param newMetadataLocation newly written metadata location
-     * @return true if the new metadata location is the current metadata location or present within
-     *     previous metadata files.
-     */
-    private boolean checkCurrentMetadataLocation(String newMetadataLocation) {
-      TableMetadata metadata = refresh();
-      String currentMetadataFileLocation = metadata.metadataFileLocation();
-      return currentMetadataFileLocation.equals(newMetadataLocation)
-          || metadata.previousFiles().stream()
-          .anyMatch(log -> log.file().equals(newMetadataLocation));
-    }
-
     private String newTableMetadataFilePath(TableMetadata meta, int newVersion) {
       String codecName =
           meta.property(
@@ -1586,43 +1564,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           meta,
           String.format(Locale.ROOT, "%05d-%s%s", newVersion, UUID.randomUUID(), fileExtension));
     }
-
-    /**
-     * Parse the version from table metadata file name.
-     *
-     * @param metadataLocation table metadata file location
-     * @return version of the table metadata file in success case and -1 if the version is not
-     *     parsable (as a sign that the metadata is not part of this catalog)
-     */
-    private static int parseVersion(String metadataLocation) {
-      int versionStart = metadataLocation.lastIndexOf('/') + 1; // if '/' isn't found, this will be 0
-      int versionEnd = metadataLocation.indexOf('-', versionStart);
-      if (versionEnd < 0) {
-        // found filesystem table's metadata
-        return -1;
-      }
-
-      try {
-        return Integer.parseInt(metadataLocation.substring(versionStart, versionEnd));
-      } catch (NumberFormatException e) {
-        LOGGER.warn("Unable to parse version from metadata location: {}", metadataLocation, e);
-        return -1;
-      }
-    }
   }
 
-  private class BasePolarisViewOperations extends ViewOperations {
+  private class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
+      implements ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
     private FileIO viewFileIO;
-
-    private static final String METADATA_FOLDER_NAME = "metadata";
-
-    private ViewMetadata currentMetadata = null;
-    private String currentMetadataLocation = null;
-    private boolean shouldRefresh = true;
-    private int version = -1;
-
 
     BasePolarisViewOperations(FileIO defaultFileIO, TableIdentifier identifier) {
       this.viewFileIO = defaultFileIO;
@@ -1646,7 +1594,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         doRefresh();
       } catch (NoSuchViewException e) {
         if (currentMetadataWasAvailable) {
-          LOGGER.warn("Could not find the view during refresh, setting current metadata to null", e);
+          LOGGER.warn(
+              "Could not find the view during refresh, setting current metadata to null", e);
           shouldRefresh = true;
         }
 
@@ -1687,14 +1636,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           "Successfully committed to view {} in {} ms",
           viewName(),
           System.currentTimeMillis() - start);
-    }
-
-    protected void requestRefresh() {
-      this.shouldRefresh = true;
-    }
-
-    protected void disableRefresh() {
-      this.shouldRefresh = false;
     }
 
     public void doRefresh() {
@@ -1798,7 +1739,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       String newLocation = writeNewMetadataIfRequired(metadata);
-      String oldLocation = base == null ? null : currentMetadataLocation();
+      String oldLocation = base == null ? null : currentMetadataLocation;
 
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
@@ -1850,7 +1791,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       OutputFile newMetadataLocation = io().newOutputFile(newMetadataFilePath);
 
       // write the new metadata
-      // use overwrite to avoid negative caching in S3. this is safe because the metadata location is
+      // use overwrite to avoid negative caching in S3. this is safe because the metadata location
+      // is
       // always unique because it includes a UUID.
       ViewMetadataParser.overwrite(metadata, newMetadataLocation);
 
@@ -1871,7 +1813,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     private String metadataFileLocation(ViewMetadata metadata, String filename) {
       String metadataLocation = metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION);
-
       if (metadataLocation != null) {
         return String.format("%s/%s", LocationUtil.stripTrailingSlash(metadataLocation), filename);
       } else {
@@ -1888,52 +1829,38 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     protected String viewName() {
       return fullViewName;
     }
+  }
 
-    protected String currentMetadataLocation() {
-      return currentMetadataLocation;
+  private abstract static class PolarisOperationsBase<T> {
+
+    protected static final String METADATA_FOLDER_NAME = "metadata";
+
+    protected T currentMetadata = null;
+    protected String currentMetadataLocation = null;
+    protected boolean shouldRefresh = true;
+    protected int version = -1;
+
+    protected void requestRefresh() {
+      this.shouldRefresh = true;
     }
 
-    protected int currentVersion() {
-      return version;
-    }
-
-    protected void refreshFromMetadataLocation(
-        String newLocation,
-        Predicate<Exception> shouldRetry,
-        int numRetries,
-        Function<String, ViewMetadata> metadataLoader) {
-      if (!Objects.equal(currentMetadataLocation, newLocation)) {
-        LOGGER.info("Refreshing view metadata from new version: {}", newLocation);
-
-        AtomicReference<ViewMetadata> newMetadata = new AtomicReference<>();
-        Tasks.foreach(newLocation)
-            .retry(numRetries)
-            .exponentialBackoff(100, 5000, 600000, 4.0 /* 100, 400, 1600, ... */)
-            .throwFailureWhenFinished()
-            .stopRetryOn(NotFoundException.class) // overridden if shouldRetry is non-null
-            .shouldRetryTest(shouldRetry)
-            .run(metadataLocation -> newMetadata.set(metadataLoader.apply(metadataLocation)));
-
-        this.currentMetadata = newMetadata.get();
-        this.currentMetadataLocation = newLocation;
-        this.version = parseVersion(newLocation);
-      }
-
+    protected void disableRefresh() {
       this.shouldRefresh = false;
     }
 
     /**
-     * Parse the version from view metadata file name.
+     * Parse the version from table/view metadata file name.
      *
-     * @param metadataLocation view metadata file location
-     * @return version of the view metadata file in success case and -1 if the version is not parsable
-     *     (as a sign that the metadata is not part of this catalog)
+     * @param metadataLocation table/view metadata file location
+     * @return version of the table/view metadata file in success case and -1 if the version is not
+     *     parsable (as a sign that the metadata is not part of this catalog)
      */
-    private static int parseVersion(String metadataLocation) {
-      int versionStart = metadataLocation.lastIndexOf('/') + 1; // if '/' isn't found, this will be 0
+    protected int parseVersion(String metadataLocation) {
+      int versionStart =
+          metadataLocation.lastIndexOf('/') + 1; // if '/' isn't found, this will be 0
       int versionEnd = metadataLocation.indexOf('-', versionStart);
       if (versionEnd < 0) {
-        // found filesystem view's metadata
+        // found filesystem object's metadata
         return -1;
       }
 
@@ -1943,6 +1870,44 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         LOGGER.warn("Unable to parse version from metadata location: {}", metadataLocation, e);
         return -1;
       }
+    }
+
+    protected void refreshFromMetadataLocation(
+        String newLocation,
+        Predicate<Exception> shouldRetry,
+        int numRetries,
+        Function<String, T> metadataLoader) {
+      // use null-safe equality check because new tables have a null metadata location
+      if (!Objects.equal(currentMetadataLocation, newLocation)) {
+        LOGGER.info("Refreshing table metadata from new version: {}", newLocation);
+
+        AtomicReference<T> newMetadata = new AtomicReference<>();
+        Tasks.foreach(newLocation)
+            .retry(numRetries)
+            .exponentialBackoff(100, 5000, 600000, 4.0 /* 100, 400, 1600, ... */)
+            .throwFailureWhenFinished()
+            .stopRetryOn(NotFoundException.class) // overridden if shouldRetry is non-null
+            .shouldRetryTest(shouldRetry)
+            .run(metadataLocation -> newMetadata.set(metadataLoader.apply(metadataLocation)));
+
+        if (newMetadata.get() instanceof TableMetadata tableMetadata) {
+          if (currentMetadata instanceof TableMetadata currentTableMetadata) {
+            String newUUID = tableMetadata.uuid();
+            if (currentMetadata != null && currentTableMetadata.uuid() != null && newUUID != null) {
+              Preconditions.checkState(
+                  newUUID.equals(currentTableMetadata.uuid()),
+                  "Table UUID does not match: current=%s != refreshed=%s",
+                  currentTableMetadata.uuid(),
+                  newUUID);
+            }
+          }
+        }
+
+        this.currentMetadata = newMetadata.get();
+        this.currentMetadataLocation = newLocation;
+        this.version = parseVersion(newLocation);
+      }
+      this.shouldRefresh = false;
     }
   }
 
@@ -1956,9 +1921,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !polarisCallContext
-        .getConfigurationStore()
-        .getConfiguration(
-            polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),

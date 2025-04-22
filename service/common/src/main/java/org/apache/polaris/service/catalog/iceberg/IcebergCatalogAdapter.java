@@ -369,6 +369,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
+      String ifNoneMatchString, // TODO remove this
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
