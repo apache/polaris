@@ -76,6 +76,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -119,6 +120,7 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -244,13 +246,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
-    reservedProperties =
-        new ReservedProperties() {
-          @Override
-          public List<String> reservedPrefixes() {
-            return List.of();
-          }
-        };
+    reservedProperties = new QuarkusReservedProperties() {};
 
     adminService =
         new PolarisAdminService(
@@ -1853,6 +1849,47 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  @Test
+  public void createCatalogWithReservedProperty() {
+    Assertions.assertThatCode(
+            () -> {
+              adminService.createCatalog(
+                  new CreateCatalogRequest(
+                      new CatalogEntity.Builder()
+                          .setDefaultBaseLocation("file://")
+                          .setName("createCatalogWithReservedProperty")
+                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                          .build()
+                          .asCatalog()));
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+  }
+
+  @Test
+  public void updateCatalogWithReservedProperty() {
+    adminService.createCatalog(
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("file://")
+                .setName("updateCatalogWithReservedProperty")
+                .setProperties(ImmutableMap.of("a", "b"))
+                .build()
+                .asCatalog()));
+    Assertions.assertThatCode(
+            () -> {
+              adminService.updateCatalog(
+                  "updateCatalogWithReservedProperty",
+                  UpdateCatalogRequest.builder()
+                      .setCurrentEntityVersion(1)
+                      .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                      .build());
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    adminService.deleteCatalog("updateCatalogWithReservedProperty");
   }
 
   private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {

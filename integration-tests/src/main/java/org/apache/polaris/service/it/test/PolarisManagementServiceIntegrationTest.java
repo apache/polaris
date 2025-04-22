@@ -84,6 +84,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 /**
@@ -2100,6 +2101,129 @@ public class PolarisManagementServiceIntegrationTest {
         catalogApi.request("v1/" + catalogName + "/namespaces/" + namespaceName).delete()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
+  }
+
+  @Test
+  public void testCreateAndUpdateCatalogRoleWithReservedProperties() {
+    String catalogName = client.newEntityName("mycatalog1");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://required/base/location"))
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    CatalogRole badCatalogRole =
+        new CatalogRole("mycatalogrole", Map.of("polaris.reserved", "foo"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}/catalog-roles", Map.of("cat", catalogName))
+            .post(Entity.json(new CreateCatalogRoleRequest(badCatalogRole)))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+
+    CatalogRole okCatalogRole = new CatalogRole("mycatalogrole", Map.of("foo", "bar"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}/catalog-roles", Map.of("cat", catalogName))
+            .post(Entity.json(new CreateCatalogRoleRequest(okCatalogRole)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    UpdateCatalogRoleRequest updateRequest =
+        new UpdateCatalogRoleRequest(
+            okCatalogRole.getEntityVersion(), Map.of("polaris.reserved", "true"));
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}/catalog-roles/mycatalogrole", Map.of("cat", catalogName))
+            .put(Entity.json(updateRequest))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testCreateAndUpdatePrincipalRoleWithReservedProperties() {
+    String principal = "testCreateAndUpdatePrincipalRoleWithReservedProperties";
+    managementApi.createPrincipal(principal);
+
+    PrincipalRole badPrincipalRole =
+        new PrincipalRole(
+            client.newEntityName("myprincipalrole"), Map.of("polaris.reserved", "foo"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles")
+            .post(Entity.json(new CreatePrincipalRoleRequest(badPrincipalRole)))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+
+    PrincipalRole goodPrincipalRole =
+        new PrincipalRole(
+            client.newEntityName("myprincipalrole"), Map.of("not.reserved", "foo"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles")
+            .post(Entity.json(new CreatePrincipalRoleRequest(goodPrincipalRole)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    UpdatePrincipalRoleRequest badUpdate =
+        new UpdatePrincipalRoleRequest(
+            goodPrincipalRole.getEntityVersion(), ImmutableMap.of("polaris.reserved", "true"));
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles/{pr}", Map.of("pr", goodPrincipalRole.getName()))
+            .put(Entity.json(badUpdate))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+
+    managementApi.deletePrincipalRole(goodPrincipalRole);
+    managementApi.deletePrincipal(principal);
+  }
+
+  @Test
+  public void testCreateAndUpdatePrincipalWithReservedProperties() {
+    String principal = "testCreateAndUpdatePrincipalWithReservedProperties";
+
+    Principal badPrincipal =
+        new Principal(
+            principal, "clientId", ImmutableMap.of("polaris.reserved", "true"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/principals")
+            .post(Entity.json(new CreatePrincipalRequest(badPrincipal, false)))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+
+    Principal goodPrincipal =
+        new Principal(principal, "clientId", ImmutableMap.of("not.reserved", "true"), 0L, 0L, 1);
+    try (Response response =
+        managementApi
+            .request("v1/principals")
+            .post(Entity.json(new CreatePrincipalRequest(goodPrincipal, false)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    UpdatePrincipalRequest badUpdate =
+        new UpdatePrincipalRequest(
+            goodPrincipal.getEntityVersion(), ImmutableMap.of("polaris.reserved", "true"));
+    try (Response response =
+        managementApi
+            .request("v1/principals/{p}", Map.of("p", goodPrincipal.getName()))
+            .put(Entity.json(badUpdate))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+
+    managementApi.deletePrincipal(principal);
   }
 
   public static JWTCreator.Builder defaultJwt() {

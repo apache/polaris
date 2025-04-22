@@ -675,6 +675,7 @@ public class PolarisAdminService {
         new CatalogEntity.Builder(entity)
             .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCreateTimestamp(System.currentTimeMillis())
+            .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
     if (requiresSecretReferenceExtraction(catalogRequest)) {

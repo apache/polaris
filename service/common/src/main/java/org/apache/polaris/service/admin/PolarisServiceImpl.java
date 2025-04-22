@@ -213,7 +213,13 @@ public class PolarisServiceImpl
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    PrincipalEntity principal = PrincipalEntity.fromPrincipal(request.getPrincipal());
+    PrincipalEntity principal =
+        new PrincipalEntity.Builder()
+            .setName(request.getPrincipal().getName())
+            .setClientId(request.getPrincipal().getClientId())
+            .setProperties(
+                reservedProperties.removeReservedProperties(request.getPrincipal().getProperties()))
+            .build();
     if (Boolean.TRUE.equals(request.getCredentialRotationRequired())) {
       principal =
           new PrincipalEntity.Builder(principal).setCredentialRotationRequiredState().build();
@@ -281,11 +287,15 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    PrincipalRoleEntity entity =
+        new PrincipalRoleEntity.Builder()
+            .setName(request.getPrincipalRole().getName())
+            .setProperties(
+                reservedProperties.removeReservedProperties(
+                    request.getPrincipalRole().getProperties()))
+            .build();
     PrincipalRole newPrincipalRole =
-        new PrincipalRoleEntity(
-                adminService.createPrincipalRole(
-                    PrincipalRoleEntity.fromPrincipalRole(request.getPrincipalRole())))
-            .asPrincipalRole();
+        new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -342,11 +352,15 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    CatalogRoleEntity entity =
+        new CatalogRoleEntity.Builder()
+            .setName(request.getCatalogRole().getName())
+            .setProperties(
+                reservedProperties.removeReservedProperties(
+                    request.getCatalogRole().getProperties()))
+            .build();
     CatalogRole newCatalogRole =
-        new CatalogRoleEntity(
-                adminService.createCatalogRole(
-                    catalogName, CatalogRoleEntity.fromCatalogRole(request.getCatalogRole())))
-            .asCatalogRole();
+        new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
     return Response.status(Response.Status.CREATED).build();
   }
