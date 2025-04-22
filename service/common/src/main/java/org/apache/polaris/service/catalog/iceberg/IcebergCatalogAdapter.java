@@ -505,14 +505,13 @@ public class IcebergCatalogAdapter
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    CommitTableRequest revisedRequest =
-        (CommitTableRequest)
-            CommitTableRequest.create(
-                commitTableRequest.identifier(),
-                commitTableRequest.requirements(),
-                commitTableRequest.updates().stream()
-                    .map(reservedProperties::removeReservedProperties)
-                    .toList());
+    UpdateTableRequest revisedRequest =
+        UpdateTableRequest.create(
+            commitTableRequest.identifier(),
+            commitTableRequest.requirements(),
+            commitTableRequest.updates().stream()
+                .map(reservedProperties::removeReservedProperties)
+                .toList());
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     return withCatalog(
@@ -654,14 +653,13 @@ public class IcebergCatalogAdapter
       CommitViewRequest commitViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    CommitViewRequest revisedRequest =
-        (CommitViewRequest)
-            CommitViewRequest.create(
-                commitViewRequest.identifier(),
-                commitViewRequest.requirements(),
-                commitViewRequest.updates().stream()
-                    .map(reservedProperties::removeReservedProperties)
-                    .toList());
+    UpdateTableRequest revisedRequest =
+        UpdateTableRequest.create(
+            commitViewRequest.identifier(),
+            commitViewRequest.requirements(),
+            commitViewRequest.updates().stream()
+                .map(reservedProperties::removeReservedProperties)
+                .toList());
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
     return withCatalog(
