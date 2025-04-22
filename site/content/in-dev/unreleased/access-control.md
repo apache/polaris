@@ -106,7 +106,7 @@ perform on objects in Polaris.
 
 > **Important**
 >
-> You can only grant privileges at the catalog level. Fine-grained access controls are not available. For example, you can grant read
+> You can only grant privileges at the catalog level. Fine-grained access controls are not available. For example, you can grant read 
 > privileges to all tables in a catalog but not to an individual table in the catalog.
 
 To grant the full set of privileges (drop, list, read, write, etc.) on an object, you can use the *full privilege* option.
@@ -162,32 +162,32 @@ The following diagram illustrates how RBAC works in Polaris and
 includes the following users:
 
 - **Alice:** A service admin who signs up for Polaris. Alice can
-  create service principals. She can also create catalogs and
-  namespaces and configure access control for Polaris resources.
+    create service principals. She can also create catalogs and
+    namespaces and configure access control for Polaris resources.
 
-- **Bob:** A data engineer who uses Apache Spark&trade; to
-  interact with Polaris.
+- **Bob:** A data engineer who uses Apache Spark&trade; to 
+    interact with Polaris.
 
     - Alice has created a service principal for Bob. It has been
-      granted the Data_engineer principal role, which in turn has been
-      granted the following catalog roles: Catalog contributor and
-      Data administrator (for both the Silver and Gold zone catalogs
-      in the following diagram).
+        granted the Data_engineer principal role, which in turn has been
+        granted the following catalog roles: Catalog contributor and
+        Data administrator (for both the Silver and Gold zone catalogs
+        in the following diagram).
 
     - The Catalog contributor role grants permission to create
-      namespaces and tables in the Bronze zone catalog.
+        namespaces and tables in the Bronze zone catalog.
 
     - The Data administrator roles grant full administrative rights to
-      the Silver zone catalog and Gold zone catalog.
+        the Silver zone catalog and Gold zone catalog.
 
 - **Mark:** A data scientist who uses trains models with data managed
-  by Polaris.
+    by Polaris.
 
     - Alice has created a service principal for Mark. It has been
-      granted the Data_scientist principal role, which in turn has
-      been granted the catalog role named Catalog reader.
+        granted the Data_scientist principal role, which in turn has
+        been granted the catalog role named Catalog reader.
 
     - The Catalog reader role grants read-only access for a catalog
-      named Gold zone catalog.
+        named Gold zone catalog.
 
 ![Diagram that shows an example of how RBAC works in Apache Polaris.](/img/rbac-example.svg "Apache Polaris RBAC example")
