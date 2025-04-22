@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -37,9 +38,11 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
@@ -1348,7 +1351,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   }
 
   @Test
-  public void testCreateGenericTableWithReservedProperties() {
+  public void testCreateGenericTableWithReservedProperty() {
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
@@ -1364,8 +1367,45 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                      "doc",
                      Map.of("polaris.reserved", "true"))))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains("reserved prefix");
     }
 
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testCreateNamespaceWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    Assertions.assertThatCode(() -> {
+      restCatalog.createNamespace(namespace, ImmutableMap.of("polaris.reserved", "true"));
+    })
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessageContaining("reserved prefix");
+  }
+
+  @Test
+  public void testUpdateNamespaceWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
+    restCatalog.setProperties(namespace, ImmutableMap.of("c", "d"));
+    Assertions.assertThatCode(() -> {
+      restCatalog.setProperties(namespace, ImmutableMap.of("polaris.reserved", "true"));
+    })
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testRemoveReservedPropertyFromNamespace() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
+    restCatalog.removeProperties(namespace, Sets.newHashSet("a"));
+    Assertions.assertThatCode(() -> {
+      restCatalog.removeProperties(namespace, Sets.newHashSet("polaris.reserved"));
+    })
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }
 }
