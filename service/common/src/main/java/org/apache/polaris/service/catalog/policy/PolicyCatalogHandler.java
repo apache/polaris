@@ -125,12 +125,12 @@ public class PolicyCatalogHandler extends CatalogHandler {
   }
 
   public boolean attachPolicy(PolicyIdentifier identifier, AttachPolicyRequest request) {
-    authorizePolicyAttachmentOperationOrThrow(identifier, request.getTarget(), true);
+    authorizePolicyMappingOperationOrThrow(identifier, request.getTarget(), true);
     return policyCatalog.attachPolicy(identifier, request.getTarget(), request.getParameters());
   }
 
   public boolean detachPolicy(PolicyIdentifier identifier, DetachPolicyRequest request) {
-    authorizePolicyAttachmentOperationOrThrow(identifier, request.getTarget(), false);
+    authorizePolicyMappingOperationOrThrow(identifier, request.getTarget(), false);
     return policyCatalog.detachPolicy(identifier, request.getTarget());
   }
 
@@ -161,7 +161,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
     initializeCatalog();
   }
 
-  private void authorizePolicyAttachmentOperationOrThrow(
+  private void authorizePolicyMappingOperationOrThrow(
       PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
@@ -207,7 +207,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
         PolicyCatalogUtils.getResolvedPathWrapper(resolutionManifest, target);
 
     PolarisAuthorizableOperation op =
-        determinePolicyAttachmentOperation(target, targetWrapper, isAttach);
+        determinePolicyMappingOperation(target, targetWrapper, isAttach);
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
@@ -219,7 +219,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
     initializeCatalog();
   }
 
-  private PolarisAuthorizableOperation determinePolicyAttachmentOperation(
+  private PolarisAuthorizableOperation determinePolicyMappingOperation(
       PolicyAttachmentTarget target, PolarisResolvedPathWrapper targetWrapper, boolean isAttach) {
     return switch (targetWrapper.getRawLeafEntity().getType()) {
       case CATALOG ->
