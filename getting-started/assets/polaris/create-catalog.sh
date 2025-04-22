@@ -19,6 +19,8 @@
 
 set -e
 
+apk add --no-cache jq
+
 token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
   --user root:s3cr3t \
   -d grant_type=client_credentials \
