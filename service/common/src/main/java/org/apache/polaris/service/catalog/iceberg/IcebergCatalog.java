@@ -86,6 +86,7 @@ import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.iceberg.view.ViewOperations;
+import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -1610,10 +1611,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisViewOperations extends BaseViewOperations {
+  private class BasePolarisViewOperations extends ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
     private FileIO viewFileIO;
+
+    private static final String METADATA_FOLDER_NAME = "metadata";
+
+    private ViewMetadata currentMetadata = null;
+    private String currentMetadataLocation = null;
+    private boolean shouldRefresh = true;
+    private int version = -1;
+
 
     BasePolarisViewOperations(FileIO defaultFileIO, TableIdentifier identifier) {
       this.viewFileIO = defaultFileIO;
@@ -1622,6 +1631,72 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     @Override
+    public ViewMetadata current() {
+      if (shouldRefresh) {
+        return refresh();
+      }
+
+      return currentMetadata;
+    }
+
+    @Override
+    public ViewMetadata refresh() {
+      boolean currentMetadataWasAvailable = currentMetadata != null;
+      try {
+        doRefresh();
+      } catch (NoSuchViewException e) {
+        if (currentMetadataWasAvailable) {
+          LOGGER.warn("Could not find the view during refresh, setting current metadata to null", e);
+          shouldRefresh = true;
+        }
+
+        currentMetadata = null;
+        currentMetadataLocation = null;
+        version = -1;
+        throw e;
+      }
+
+      return current();
+    }
+
+    @Override
+    @SuppressWarnings("ImmutablesReferenceEquality")
+    public void commit(ViewMetadata base, ViewMetadata metadata) {
+      // if the metadata is already out of date, reject it
+      if (base != current()) {
+        if (base != null) {
+          throw new CommitFailedException("Cannot commit: stale view metadata");
+        } else {
+          // when current is non-null, the view exists. but when base is null, the commit is trying
+          // to create the view
+          throw new AlreadyExistsException("View already exists: %s", viewName());
+        }
+      }
+
+      // if the metadata is not changed, return early
+      if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      }
+
+      long start = System.currentTimeMillis();
+      doCommit(base, metadata);
+      requestRefresh();
+
+      LOGGER.info(
+          "Successfully committed to view {} in {} ms",
+          viewName(),
+          System.currentTimeMillis() - start);
+    }
+
+    protected void requestRefresh() {
+      this.shouldRefresh = true;
+    }
+
+    protected void disableRefresh() {
+      this.shouldRefresh = false;
+    }
+
     public void doRefresh() {
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
@@ -1668,7 +1743,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    @Override
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
@@ -1765,14 +1839,110 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    @Override
+    protected String writeNewMetadataIfRequired(ViewMetadata metadata) {
+      return null != metadata.metadataFileLocation()
+          ? metadata.metadataFileLocation()
+          : writeNewMetadata(metadata, version + 1);
+    }
+
+    private String writeNewMetadata(ViewMetadata metadata, int newVersion) {
+      String newMetadataFilePath = newMetadataFilePath(metadata, newVersion);
+      OutputFile newMetadataLocation = io().newOutputFile(newMetadataFilePath);
+
+      // write the new metadata
+      // use overwrite to avoid negative caching in S3. this is safe because the metadata location is
+      // always unique because it includes a UUID.
+      ViewMetadataParser.overwrite(metadata, newMetadataLocation);
+
+      return newMetadataLocation.location();
+    }
+
+    private String newMetadataFilePath(ViewMetadata metadata, int newVersion) {
+      String codecName =
+          metadata
+              .properties()
+              .getOrDefault(
+                  ViewProperties.METADATA_COMPRESSION, ViewProperties.METADATA_COMPRESSION_DEFAULT);
+      String fileExtension = TableMetadataParser.getFileExtension(codecName);
+      return metadataFileLocation(
+          metadata,
+          String.format(Locale.ROOT, "%05d-%s%s", newVersion, UUID.randomUUID(), fileExtension));
+    }
+
+    private String metadataFileLocation(ViewMetadata metadata, String filename) {
+      String metadataLocation = metadata.properties().get(ViewProperties.WRITE_METADATA_LOCATION);
+
+      if (metadataLocation != null) {
+        return String.format("%s/%s", LocationUtil.stripTrailingSlash(metadataLocation), filename);
+      } else {
+        return String.format(
+            "%s/%s/%s",
+            LocationUtil.stripTrailingSlash(metadata.location()), METADATA_FOLDER_NAME, filename);
+      }
+    }
+
     public FileIO io() {
       return viewFileIO;
     }
 
-    @Override
     protected String viewName() {
       return fullViewName;
+    }
+
+    protected String currentMetadataLocation() {
+      return currentMetadataLocation;
+    }
+
+    protected int currentVersion() {
+      return version;
+    }
+
+    protected void refreshFromMetadataLocation(
+        String newLocation,
+        Predicate<Exception> shouldRetry,
+        int numRetries,
+        Function<String, ViewMetadata> metadataLoader) {
+      if (!Objects.equal(currentMetadataLocation, newLocation)) {
+        LOGGER.info("Refreshing view metadata from new version: {}", newLocation);
+
+        AtomicReference<ViewMetadata> newMetadata = new AtomicReference<>();
+        Tasks.foreach(newLocation)
+            .retry(numRetries)
+            .exponentialBackoff(100, 5000, 600000, 4.0 /* 100, 400, 1600, ... */)
+            .throwFailureWhenFinished()
+            .stopRetryOn(NotFoundException.class) // overridden if shouldRetry is non-null
+            .shouldRetryTest(shouldRetry)
+            .run(metadataLocation -> newMetadata.set(metadataLoader.apply(metadataLocation)));
+
+        this.currentMetadata = newMetadata.get();
+        this.currentMetadataLocation = newLocation;
+        this.version = parseVersion(newLocation);
+      }
+
+      this.shouldRefresh = false;
+    }
+
+    /**
+     * Parse the version from view metadata file name.
+     *
+     * @param metadataLocation view metadata file location
+     * @return version of the view metadata file in success case and -1 if the version is not parsable
+     *     (as a sign that the metadata is not part of this catalog)
+     */
+    private static int parseVersion(String metadataLocation) {
+      int versionStart = metadataLocation.lastIndexOf('/') + 1; // if '/' isn't found, this will be 0
+      int versionEnd = metadataLocation.indexOf('-', versionStart);
+      if (versionEnd < 0) {
+        // found filesystem view's metadata
+        return -1;
+      }
+
+      try {
+        return Integer.parseInt(metadataLocation.substring(versionStart, versionEnd));
+      } catch (NumberFormatException e) {
+        LOGGER.warn("Unable to parse version from metadata location: {}", metadataLocation, e);
+        return -1;
+      }
     }
   }
 
