@@ -213,7 +213,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         targetCatalog,
-        null /* secondary */);
+        null);
 
     initializeCatalog();
   }
