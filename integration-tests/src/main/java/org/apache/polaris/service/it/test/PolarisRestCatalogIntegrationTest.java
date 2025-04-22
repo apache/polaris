@@ -1420,7 +1420,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Assertions.assertThatCode(
             () -> {
               restCatalog.createTable(
-                  identifier, SCHEMA, PartitionSpec.unpartitioned(), ImmutableMap.of("polaris.reserved", ""));
+                  identifier,
+                  SCHEMA,
+                  PartitionSpec.unpartitioned(),
+                  ImmutableMap.of("polaris.reserved", ""));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -1435,13 +1438,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createTable(identifier, SCHEMA);
     Assertions.assertThatCode(
             () -> {
-              var txn = restCatalog.newReplaceTableTransaction(
-                  identifier,
-                  SCHEMA,
-                  PartitionSpec.unpartitioned(),
-                  ImmutableMap.of("polaris.reserved", ""),
-                  false
-              );
+              var txn =
+                  restCatalog.newReplaceTableTransaction(
+                      identifier,
+                      SCHEMA,
+                      PartitionSpec.unpartitioned(),
+                      ImmutableMap.of("polaris.reserved", ""),
+                      false);
               txn.commitTransaction();
             })
         .isInstanceOf(IllegalArgumentException.class)
