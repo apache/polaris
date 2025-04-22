@@ -309,7 +309,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
 
     // delete it
-    this.store.deleteFromEntities(localSession.get(), entity.getCatalogId(), entity.getId());
+    this.store.deleteFromEntities(
+        localSession.get(), entity.getCatalogId(), entity.getId(), entity.getTypeCode());
   }
 
   /** {@inheritDoc} */
