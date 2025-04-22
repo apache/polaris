@@ -35,10 +35,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -46,11 +50,14 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.LocationProviders;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -68,7 +75,11 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.io.LocationProvider;
+import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
 import org.apache.iceberg.view.BaseViewOperations;
 import org.apache.iceberg.view.ViewBuilder;
@@ -1190,10 +1201,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations extends BaseMetastoreTableOperations {
+  private class BasePolarisTableOperations implements TableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
     private FileIO tableFileIO;
+
+    private static final String METADATA_FOLDER_NAME = "metadata";
+
+    private TableMetadata currentMetadata = null;
+    private String currentMetadataLocation = null;
+    private boolean shouldRefresh = true;
+    private int version = -1;
 
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
@@ -1202,7 +1220,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       this.tableFileIO = defaultFileIO;
     }
 
-    @Override
     public void doRefresh() {
       LOGGER.debug("doRefresh for tableIdentifier {}", tableIdentifier);
       // While doing refresh/commit protocols, we must fetch the fresh "passthrough" resolved
@@ -1250,7 +1267,40 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    @Override
+    protected void refreshFromMetadataLocation(
+        String newLocation,
+        Predicate<Exception> shouldRetry,
+        int numRetries,
+        Function<String, TableMetadata> metadataLoader) {
+      // use null-safe equality check because new tables have a null metadata location
+      if (!Objects.equal(currentMetadataLocation, newLocation)) {
+        LOGGER.info("Refreshing table metadata from new version: {}", newLocation);
+
+        AtomicReference<TableMetadata> newMetadata = new AtomicReference<>();
+        Tasks.foreach(newLocation)
+            .retry(numRetries)
+            .exponentialBackoff(100, 5000, 600000, 4.0 /* 100, 400, 1600, ... */)
+            .throwFailureWhenFinished()
+            .stopRetryOn(NotFoundException.class) // overridden if shouldRetry is non-null
+            .shouldRetryTest(shouldRetry)
+            .run(metadataLocation -> newMetadata.set(metadataLoader.apply(metadataLocation)));
+
+        String newUUID = newMetadata.get().uuid();
+        if (currentMetadata != null && currentMetadata.uuid() != null && newUUID != null) {
+          Preconditions.checkState(
+              newUUID.equals(currentMetadata.uuid()),
+              "Table UUID does not match: current=%s != refreshed=%s",
+              currentMetadata.uuid(),
+              newUUID);
+        }
+
+        this.currentMetadata = newMetadata.get();
+        this.currentMetadataLocation = newLocation;
+        this.version = parseVersion(newLocation);
+      }
+      this.shouldRefresh = false;
+    }
+
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
@@ -1395,41 +1445,167 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    public int currentVersion() {
+      return version;
+    }
+
+    protected void requestRefresh() {
+      this.shouldRefresh = true;
+    }
+
+    protected void disableRefresh() {
+      this.shouldRefresh = false;
+    }
+
+    protected String writeNewMetadataIfRequired(boolean newTable, TableMetadata metadata) {
+      return newTable && metadata.metadataFileLocation() != null
+          ? metadata.metadataFileLocation()
+          : writeNewMetadata(metadata, currentVersion() + 1);
+    }
+
+    protected String writeNewMetadata(TableMetadata metadata, int newVersion) {
+      String newTableMetadataFilePath = newTableMetadataFilePath(metadata, newVersion);
+      OutputFile newMetadataLocation = io().newOutputFile(newTableMetadataFilePath);
+
+      // write the new metadata
+      // use overwrite to avoid negative caching in S3. this is safe because the metadata location is
+      // always unique because it includes a UUID.
+      TableMetadataParser.overwrite(metadata, newMetadataLocation);
+
+      return newMetadataLocation.location();
+    }
+
+    @Override
+    public TableMetadata current() {
+      if (shouldRefresh) {
+        return refresh();
+      }
+      return currentMetadata;
+    }
+
+    @Override
+    public TableMetadata refresh() {
+      boolean currentMetadataWasAvailable = currentMetadata != null;
+      try {
+        doRefresh();
+      } catch (NoSuchTableException e) {
+        if (currentMetadataWasAvailable) {
+          LOGGER.warn("Could not find the table during refresh, setting current metadata to null", e);
+          shouldRefresh = true;
+        }
+
+        currentMetadata = null;
+        currentMetadataLocation = null;
+        version = -1;
+        throw e;
+      }
+      return current();
+    }
+
+    @Override
+    public void commit(TableMetadata base, TableMetadata metadata) {
+      // if the metadata is already out of date, reject it
+      if (base != current()) {
+        if (base != null) {
+          throw new CommitFailedException("Cannot commit: stale table metadata");
+        } else {
+          // when current is non-null, the table exists. but when base is null, the commit is trying
+          // to create the table
+          throw new AlreadyExistsException("Table already exists: %s", tableName());
+        }
+      }
+      // if the metadata is not changed, return early
+      if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      }
+
+      long start = System.currentTimeMillis();
+      doCommit(base, metadata);
+      CatalogUtil.deleteRemovedMetadataFiles(io(), base, metadata);
+      requestRefresh();
+
+      LOGGER.info(
+          "Successfully committed to table {} in {} ms",
+          tableName(),
+          System.currentTimeMillis() - start);
+    }
+
     @Override
     public FileIO io() {
       return tableFileIO;
     }
 
     @Override
+    public String metadataFileLocation(String filename) {
+      return metadataFileLocation(current(), filename);
+    }
+
+    @Override
+    public LocationProvider locationProvider() {
+      return LocationProviders.locationsFor(current().location(), current().properties());
+    }
+
     protected String tableName() {
       return fullTableName;
     }
-  }
 
-  private void validateMetadataFileInTableDir(
-      TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
-    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    boolean allowEscape =
-        polarisCallContext
-            .getConfigurationStore()
-            .getConfiguration(
-                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
-    if (!allowEscape
-        && !polarisCallContext
-            .getConfigurationStore()
-            .getConfiguration(
-                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
-      LOGGER.debug(
-          "Validating base location {} for table {} in metadata file {}",
-          metadata.location(),
-          identifier,
-          metadata.metadataFileLocation());
-      StorageLocation metadataFileLocation = StorageLocation.of(metadata.metadataFileLocation());
-      StorageLocation baseLocation = StorageLocation.of(metadata.location());
-      if (!metadataFileLocation.isChildOf(baseLocation)) {
-        throw new BadRequestException(
-            "Metadata location %s is not allowed outside of table location %s",
-            metadata.metadataFileLocation(), metadata.location());
+    private String metadataFileLocation(TableMetadata metadata, String filename) {
+      String metadataLocation = metadata.properties().get(TableProperties.WRITE_METADATA_LOCATION);
+
+      if (metadataLocation != null) {
+        return String.format("%s/%s", LocationUtil.stripTrailingSlash(metadataLocation), filename);
+      } else {
+        return String.format("%s/%s/%s", metadata.location(), METADATA_FOLDER_NAME, filename);
+      }
+    }
+
+    /**
+     * Validate if the new metadata location is the current metadata location or present within
+     * previous metadata files.
+     *
+     * @param newMetadataLocation newly written metadata location
+     * @return true if the new metadata location is the current metadata location or present within
+     *     previous metadata files.
+     */
+    private boolean checkCurrentMetadataLocation(String newMetadataLocation) {
+      TableMetadata metadata = refresh();
+      String currentMetadataFileLocation = metadata.metadataFileLocation();
+      return currentMetadataFileLocation.equals(newMetadataLocation)
+          || metadata.previousFiles().stream()
+          .anyMatch(log -> log.file().equals(newMetadataLocation));
+    }
+
+    private String newTableMetadataFilePath(TableMetadata meta, int newVersion) {
+      String codecName =
+          meta.property(
+              TableProperties.METADATA_COMPRESSION, TableProperties.METADATA_COMPRESSION_DEFAULT);
+      String fileExtension = TableMetadataParser.getFileExtension(codecName);
+      return metadataFileLocation(
+          meta,
+          String.format(Locale.ROOT, "%05d-%s%s", newVersion, UUID.randomUUID(), fileExtension));
+    }
+
+    /**
+     * Parse the version from table metadata file name.
+     *
+     * @param metadataLocation table metadata file location
+     * @return version of the table metadata file in success case and -1 if the version is not
+     *     parsable (as a sign that the metadata is not part of this catalog)
+     */
+    private static int parseVersion(String metadataLocation) {
+      int versionStart = metadataLocation.lastIndexOf('/') + 1; // if '/' isn't found, this will be 0
+      int versionEnd = metadataLocation.indexOf('-', versionStart);
+      if (versionEnd < 0) {
+        // found filesystem table's metadata
+        return -1;
+      }
+
+      try {
+        return Integer.parseInt(metadataLocation.substring(versionStart, versionEnd));
+      } catch (NumberFormatException e) {
+        LOGGER.warn("Unable to parse version from metadata location: {}", metadataLocation, e);
+        return -1;
       }
     }
   }
@@ -1597,6 +1773,34 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     @Override
     protected String viewName() {
       return fullViewName;
+    }
+  }
+
+  private void validateMetadataFileInTableDir(
+      TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    boolean allowEscape =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    if (!allowEscape
+        && !polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(
+            polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+      LOGGER.debug(
+          "Validating base location {} for table {} in metadata file {}",
+          metadata.location(),
+          identifier,
+          metadata.metadataFileLocation());
+      StorageLocation metadataFileLocation = StorageLocation.of(metadata.metadataFileLocation());
+      StorageLocation baseLocation = StorageLocation.of(metadata.location());
+      if (!metadataFileLocation.isChildOf(baseLocation)) {
+        throw new BadRequestException(
+            "Metadata location %s is not allowed outside of table location %s",
+            metadata.metadataFileLocation(), metadata.location());
+      }
     }
   }
 
