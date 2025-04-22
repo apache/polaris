@@ -55,7 +55,7 @@ STORAGE_CONFIG_INFO="{\"storageType\": \"$STORAGE_TYPE\", \"allowedLocations\": 
 if [[ "$STORAGE_TYPE" == "S3" ]]; then
     STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg roleArn "$AWS_ROLE_ARN" '. + {roleArn: $roleArn}')
 elif [[ "$STORAGE_TYPE" == "AZURE" ]]; then
-    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg tenantId "$AZURE_TENANT_ID" '. + {tenantId: [$tenantId]}')
+    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg tenantId "$AZURE_TENANT_ID" '. + {tenantId: $tenantId}')
 fi
 
 echo
@@ -79,7 +79,7 @@ curl -s -H "Authorization: Bearer ${token}" \
    -H 'Accept: application/json' \
    -H 'Content-Type: application/json' \
    http://polaris:8181/api/management/v1/catalogs \
-   -d "$PAYLOAD"
+   -d "$PAYLOAD" -v
 
 echo
 echo Done.
