@@ -1220,6 +1220,77 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       this.tableFileIO = defaultFileIO;
     }
 
+    @Override
+    public TableMetadata current() {
+      if (shouldRefresh) {
+        return refresh();
+      }
+      return currentMetadata;
+    }
+
+    @Override
+    public TableMetadata refresh() {
+      boolean currentMetadataWasAvailable = currentMetadata != null;
+      try {
+        doRefresh();
+      } catch (NoSuchTableException e) {
+        if (currentMetadataWasAvailable) {
+          LOGGER.warn("Could not find the table during refresh, setting current metadata to null", e);
+          shouldRefresh = true;
+        }
+
+        currentMetadata = null;
+        currentMetadataLocation = null;
+        version = -1;
+        throw e;
+      }
+      return current();
+    }
+
+    @Override
+    public void commit(TableMetadata base, TableMetadata metadata) {
+      // if the metadata is already out of date, reject it
+      if (base != current()) {
+        if (base != null) {
+          throw new CommitFailedException("Cannot commit: stale table metadata");
+        } else {
+          // when current is non-null, the table exists. but when base is null, the commit is trying
+          // to create the table
+          throw new AlreadyExistsException("Table already exists: %s", tableName());
+        }
+      }
+      // if the metadata is not changed, return early
+      if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      }
+
+      long start = System.currentTimeMillis();
+      doCommit(base, metadata);
+      CatalogUtil.deleteRemovedMetadataFiles(io(), base, metadata);
+      requestRefresh();
+
+      LOGGER.info(
+          "Successfully committed to table {} in {} ms",
+          tableName(),
+          System.currentTimeMillis() - start);
+    }
+
+    @Override
+    public FileIO io() {
+      return tableFileIO;
+    }
+
+    @Override
+    public String metadataFileLocation(String filename) {
+      return metadataFileLocation(current(), filename);
+    }
+
+    @Override
+    public LocationProvider locationProvider() {
+      return LocationProviders.locationsFor(current().location(), current().properties());
+    }
+
     public void doRefresh() {
       LOGGER.debug("doRefresh for tableIdentifier {}", tableIdentifier);
       // While doing refresh/commit protocols, we must fetch the fresh "passthrough" resolved
@@ -1473,77 +1544,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableMetadataParser.overwrite(metadata, newMetadataLocation);
 
       return newMetadataLocation.location();
-    }
-
-    @Override
-    public TableMetadata current() {
-      if (shouldRefresh) {
-        return refresh();
-      }
-      return currentMetadata;
-    }
-
-    @Override
-    public TableMetadata refresh() {
-      boolean currentMetadataWasAvailable = currentMetadata != null;
-      try {
-        doRefresh();
-      } catch (NoSuchTableException e) {
-        if (currentMetadataWasAvailable) {
-          LOGGER.warn("Could not find the table during refresh, setting current metadata to null", e);
-          shouldRefresh = true;
-        }
-
-        currentMetadata = null;
-        currentMetadataLocation = null;
-        version = -1;
-        throw e;
-      }
-      return current();
-    }
-
-    @Override
-    public void commit(TableMetadata base, TableMetadata metadata) {
-      // if the metadata is already out of date, reject it
-      if (base != current()) {
-        if (base != null) {
-          throw new CommitFailedException("Cannot commit: stale table metadata");
-        } else {
-          // when current is non-null, the table exists. but when base is null, the commit is trying
-          // to create the table
-          throw new AlreadyExistsException("Table already exists: %s", tableName());
-        }
-      }
-      // if the metadata is not changed, return early
-      if (base == metadata) {
-        LOGGER.info("Nothing to commit.");
-        return;
-      }
-
-      long start = System.currentTimeMillis();
-      doCommit(base, metadata);
-      CatalogUtil.deleteRemovedMetadataFiles(io(), base, metadata);
-      requestRefresh();
-
-      LOGGER.info(
-          "Successfully committed to table {} in {} ms",
-          tableName(),
-          System.currentTimeMillis() - start);
-    }
-
-    @Override
-    public FileIO io() {
-      return tableFileIO;
-    }
-
-    @Override
-    public String metadataFileLocation(String filename) {
-      return metadataFileLocation(current(), filename);
-    }
-
-    @Override
-    public LocationProvider locationProvider() {
-      return LocationProviders.locationsFor(current().location(), current().properties());
     }
 
     protected String tableName() {
