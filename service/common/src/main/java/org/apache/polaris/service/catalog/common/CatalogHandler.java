@@ -43,6 +43,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
@@ -54,9 +55,9 @@ public abstract class CatalogHandler {
   // Initialized in the authorize methods.
   protected PolarisResolutionManifest resolutionManifest = null;
 
-  private final PolarisEntityManager entityManager;
-  private final String catalogName;
-  private final PolarisAuthorizer authorizer;
+  protected final PolarisEntityManager entityManager;
+  protected final String catalogName;
+  protected final PolarisAuthorizer authorizer;
 
   protected final CallContext callContext;
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
@@ -89,14 +90,15 @@ public abstract class CatalogHandler {
 
   protected void authorizeBasicNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
-    authorizeBasicNamespaceOperationOrThrow(op, namespace, null, null);
+    authorizeBasicNamespaceOperationOrThrow(op, namespace, null, null, null);
   }
 
   protected void authorizeBasicNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op,
       Namespace namespace,
       List<Namespace> extraPassthroughNamespaces,
-      List<TableIdentifier> extraPassthroughTableLikes) {
+      List<TableIdentifier> extraPassthroughTableLikes,
+      List<PolicyIdentifier> extraPassThroughPolicies) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     resolutionManifest.addPath(
@@ -121,6 +123,18 @@ public abstract class CatalogHandler {
             id);
       }
     }
+
+    if (extraPassThroughPolicies != null) {
+      for (PolicyIdentifier id : extraPassThroughPolicies) {
+        resolutionManifest.addPassthroughPath(
+            new ResolverPath(
+                PolarisCatalogHelpers.identifierToList(id.getNamespace(), id.getName()),
+                PolarisEntityType.POLICY,
+                true /* optional */),
+            id);
+      }
+    }
+
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
     if (target == null) {

@@ -21,6 +21,7 @@ package org.apache.polaris.core.config;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
 /**
@@ -34,6 +35,22 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
       String key, String description, T defaultValue, Optional<String> catalogConfig) {
     super(key, description, defaultValue, catalogConfig);
+  }
+
+  /**
+   * Helper for the common scenario of gating a feature with a boolean FeatureConfiguration, where
+   * we want to throw an UnsupportedOperationException if it's not enabled.
+   */
+  public static void enforceFeatureEnabledOrThrow(
+      CallContext callContext, FeatureConfiguration<Boolean> featureConfig) {
+    boolean enabled =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(callContext.getPolarisCallContext(), featureConfig);
+    if (!enabled) {
+      throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key);
+    }
   }
 
   public static final FeatureConfiguration<Boolean>
@@ -200,5 +217,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " unit of measurement. It roughly correlates with the total heap size of cached values. Fine-tuning"
                   + " requires experimentation in the specific deployment environment")
           .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_CATALOG_FEDERATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_CATALOG_FEDERATION")
+          .description(
+              "If true, allows creating and using ExternalCatalogs containing ConnectionConfigInfos"
+                  + " to perform federation to remote catalogs.")
+          .defaultValue(false)
           .buildFeatureConfiguration();
 }

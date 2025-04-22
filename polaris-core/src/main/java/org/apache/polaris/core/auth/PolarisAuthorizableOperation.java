@@ -40,6 +40,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST_GRA
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_LIST;
@@ -182,6 +187,11 @@ public enum PolarisAuthorizableOperation {
   REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE(
       VIEW_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
   LIST_GRANTS_ON_VIEW(VIEW_LIST_GRANTS),
+  CREATE_POLICY(POLICY_CREATE),
+  LOAD_POLICY(POLICY_READ),
+  DROP_POLICY(POLICY_DROP),
+  UPDATE_POLICY(POLICY_WRITE),
+  LIST_POLICY(POLICY_LIST),
   ;
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
