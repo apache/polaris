@@ -722,4 +722,68 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
   }
+
+  @Test
+  public void testGetApplicablePoliciesOnCatalogSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.CATALOG_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(null, null, null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnCatalogInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.TABLE_READ_PROPERTIES),
+        () -> newWrapper().getApplicablePolicies(null, null, null));
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNamespaceSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
+            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(NS1, null, null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNamespaceInSufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.TABLE_READ_PROPERTIES),
+        () -> newWrapper().getApplicablePolicies(NS1, null, null));
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnTableSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnTableInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES),
+        () ->
+            newWrapper().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null));
+  }
 }
