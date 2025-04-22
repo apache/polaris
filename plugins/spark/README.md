@@ -37,4 +37,54 @@ client tests for both Scala versions as well.
 
 The Jar can also be built alone with a specific version using target `:polaris-spark-3.5_<scala_version>`. For example:
 - `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin with scala version 2.12.
-The result jar is located at plugins/spark/build/<scala_version>/libs after the build.
+The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after the build.
+
+# Start Spark with Local Polaris Service using built Jar
+Once the jar is built, we can manually test it with Spark and a local Polaris service.
+
+Following command starts a Polaris server for local testing, it runs on localhost:8181 with default
+realm `POLARIS` and root credentials `root:secret`.
+```shell
+./gradlew run
+```
+
+Once the local server is running, following command can be used to start the spark-shell with the built Spark client
+jar, and uses the local Polaris server as Catalog server.
+
+```shell
+bin/spark-shell \
+--jars <path-to-spark-client-jar> \
+--packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_2.12:3.3.1 \
+--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
+--conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+--conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
+--conf spark.sql.catalog.<catalog-name>.header.X-Iceberg-Access-Delegation=true \
+--conf spark.sql.catalog.<catalog-name>=org.apache.polaris.spark.SparkCatalog \
+--conf spark.sql.catalog.<catalog-name>.uri=http://localhost:8181/api/catalog \
+--conf spark.sql.catalog.<catalog-name>.credential="root:secret" \
+--conf spark.sql.catalog.<catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
+--conf spark.sql.catalog.<catalog-name>.token-refresh-enabled=true \
+--conf spark.sql.catalog.<catalog-name>.type=rest \
+--conf spark.sql.sources.useV1SourceList=''
+```
+
+Assume the path to the built Spark client jar is
+`/polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-iceberg-1.8.1-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar`
+and the name of the catalog is `polaris`. The cli command will look like following:
+
+```shell
+bin/spark-shell \
+--jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-iceberg-1.8.1-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar \
+--packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_2.12:3.3.1 \
+--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
+--conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+--conf spark.sql.catalog.polaris.warehouse=<catalog-name> \
+--conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=true \
+--conf spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog \
+--conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
+--conf spark.sql.catalog.polaris.credential="root:secret" \
+--conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
+--conf spark.sql.catalog.polaris.token-refresh-enabled=true \
+--conf spark.sql.catalog.polaris.type=rest \
+--conf spark.sql.sources.useV1SourceList=''
+```

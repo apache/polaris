@@ -20,20 +20,14 @@ package org.apache.polaris.spark.quarkus.it;
 
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
-import java.net.URI;
+import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
-import software.amazon.awssdk.services.s3.model.S3Object;
 
 public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBase {
 
@@ -41,11 +35,13 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
   protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
     return builder
         .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.polaris.spark.SparkCatalog")
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
@@ -59,7 +55,10 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
+        .config("spark.hadoop.fs.s3.endpoint", s3Container.getHttpEndpoint())
+        .config("spark.hadoop.fs.s3.access.key", "fakekey")
+        .config("spark.hadoop.fs.s3.secret.key", "fakesecret");
   }
 
   @FormatMethod
@@ -97,21 +96,28 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .toArray(Object[]::new);
   }
 
-  protected void listDirs() {
-    S3Client s3Client =
-        S3Client.builder()
-            .region(Region.of("us-west-2"))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(AwsBasicCredentials.create("foo", "bar")))
-            .endpointOverride(URI.create(s3Container.getHttpEndpoint()))
-            .build();
-
-    ListObjectsV2Request listRequest =
-        ListObjectsV2Request.builder().bucket("my-bucket").prefix("path/to/data").build();
-    ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
-
-    for (S3Object object : listResponse.contents()) {
-      System.out.println("Found: " + object.key());
+  /** Delete the file directory recursively. */
+  protected void deleteDirectory(File directory) {
+    if (directory.exists()) {
+      File[] files = directory.listFiles();
+      if (files != null) {
+        for (File file : files) {
+          if (file.isDirectory()) {
+            deleteDirectory(file);
+          } else {
+            file.delete();
+          }
+        }
+      }
+      directory.delete();
     }
+  }
+
+  protected List<String> listDirectory(String directoryPath) {
+    File directory = new File(directoryPath);
+    if (!directory.exists() || directory.listFiles() == null) {
+      return ImmutableList.of();
+    }
+    return Arrays.stream(directory.listFiles()).map(File::getName).collect(Collectors.toList());
   }
 }

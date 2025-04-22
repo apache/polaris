@@ -18,8 +18,18 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.google.common.collect.Maps;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import java.util.Map;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.expressions.Transform;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusIntegrationTest
 public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
@@ -44,5 +54,21 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"delta", "csv"})
+  public void testNoneIcebergTableOperationsFails(String provider) throws Exception {
+    String[] l1ns = new String[] {"ns"};
+    namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
+
+    Identifier table = Identifier.of(l1ns, "table_" + provider);
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, provider);
+    properties.put(TableCatalog.PROP_LOCATION, "s3://my-bucket/path/to/data/table");
+
+    assertThatThrownBy(() -> tableCatalog.createTable(table, schema, new Transform[0], properties))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported format");
   }
 }

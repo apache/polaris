@@ -28,9 +28,11 @@ import java.util.Arrays;
 import java.util.Map;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.spark.SupportsReplaceView;
+import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.connector.catalog.*;
+import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +45,7 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusIntegrationTest
 public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
-  private static StructType schema = new StructType().add("id", "long").add("name", "string");
+  protected static StructType schema = new StructType().add("id", "long").add("name", "string");
   protected StagingTableCatalog tableCatalog = null;
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
@@ -256,6 +258,96 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
     }
     namespaceCatalog.dropNamespace(l2ns, true);
     viewCatalog.dropView(Identifier.of(l1ns, view1Name));
+    namespaceCatalog.dropNamespace(l1ns, true);
+  }
+
+  @Test
+  void testIcebergTableViewMix() throws Exception {
+    // initiate two namespaces with nesting
+    String[] l1ns = new String[] {"ns"};
+    namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
+    // create a new namespace under the ns
+    String[] l2ns = new String[] {"ns", "nsl2"};
+    namespaceCatalog.createNamespace(l2ns, Maps.newHashMap());
+
+    StructType iceberg_schema =
+        new StructType().add("isManaged", "boolean").add("people", "string");
+
+    // create two iceberg tables under ns
+    Identifier l1tb1 = Identifier.of(l1ns, "iceberg_table1");
+    tableCatalog.createTable(l1tb1, iceberg_schema, new Transform[0], Maps.newHashMap());
+
+    Identifier l1tb2 = Identifier.of(l1ns, "iceberg_table2");
+    Map<String, String> icebergProperties = Maps.newHashMap();
+    icebergProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "iceberg");
+    tableCatalog.createTable(l1tb2, iceberg_schema, new Transform[0], icebergProperties);
+
+    // create one iceberg view under ns
+    Identifier l1view = Identifier.of(l1ns, "test_view1");
+    String view1SQL = "select id from iceberg_table1 where isManaged = 'true'";
+    viewCatalog.createView(
+        l1view,
+        view1SQL,
+        catalogName,
+        l1ns,
+        iceberg_schema,
+        new String[0],
+        new String[0],
+        new String[0],
+        Maps.newHashMap());
+
+    // create one iceberg table under the nested namespace
+    Identifier l2tb = Identifier.of(l2ns, "iceberg_table3");
+    tableCatalog.createTable(l2tb, iceberg_schema, new Transform[0], Maps.newHashMap());
+
+    // create one iceberg view under the nested namespace
+    Identifier l2view = Identifier.of(l2ns, "test_view2");
+    String view2SQL = "select id from iceberg_table3 where isManaged = 'false'";
+    viewCatalog.createView(
+        l2view,
+        view2SQL,
+        catalogName,
+        l2ns,
+        iceberg_schema,
+        new String[0],
+        new String[0],
+        new String[0],
+        Maps.newHashMap());
+
+    // list table and views under l1ns
+    Identifier[] tables = tableCatalog.listTables(l1ns);
+    assertThat(tables.length).isEqualTo(2);
+    assertThat(tables).contains(l1tb1, l1tb2);
+    Identifier[] views = viewCatalog.listViews(l1ns);
+    assertThat(views.length).isEqualTo(1);
+    assertThat(views).contains(l1view);
+
+    // list tables and views under l2ns
+    tables = tableCatalog.listTables(l2ns);
+    assertThat(tables.length).isEqualTo(1);
+    assertThat(tables).contains(l2tb);
+    views = viewCatalog.listViews(l2ns);
+    assertThat(views.length).isEqualTo(1);
+    assertThat(views).contains(l2view);
+
+    // drop table under l1ns and view under l2ns
+    tableCatalog.dropTable(l1tb1);
+    viewCatalog.dropView(l2view);
+    assertThat(viewCatalog.listViews(l2ns).length).isEqualTo(0);
+    assertThat(tableCatalog.listTables(l2ns).length).isEqualTo(1);
+    assertThat(viewCatalog.listViews(l1ns).length).isEqualTo(1);
+    assertThat(tableCatalog.listTables(l1ns).length).isEqualTo(1);
+
+    // drop the rest table and views
+    tableCatalog.dropTable(l2tb);
+    assertThat(tableCatalog.listTables(l2ns).length).isEqualTo(0);
+    namespaceCatalog.dropNamespace(l2ns, true);
+    assertThatThrownBy(() -> tableCatalog.listTables(l2ns))
+        .isInstanceOf(org.apache.iceberg.exceptions.NoSuchNamespaceException.class);
+    tableCatalog.dropTable(l1tb2);
+    viewCatalog.dropView(l1view);
+    assertThat(viewCatalog.listViews(l1ns).length).isEqualTo(0);
+    assertThat(tableCatalog.listTables(l1ns).length).isEqualTo(0);
     namespaceCatalog.dropNamespace(l1ns, true);
   }
 }

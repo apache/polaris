@@ -38,9 +38,9 @@ val scalaLibraryVersion =
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
+    exclude("org.antlr", "antlr4-runtime")
+    exclude("org.scala-lang", "scala-library")
+    exclude("org.scala-lang", "scala-reflect")
   }
 
   implementation(project(":polaris-quarkus-service"))
@@ -49,12 +49,13 @@ dependencies {
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies
+    // exclude log4j dependencies, which conflict with the log4j dependency used in the
+    // quarkus platform
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-api")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+  implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.core:jackson-annotations")
@@ -66,6 +67,8 @@ dependencies {
   )
 
   testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation("org.apache.hadoop:hadoop-aws:3.4.0")
+  testImplementation("software.amazon.awssdk:bundle:2.23.19")
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
@@ -76,7 +79,6 @@ dependencies {
   testImplementation("software.amazon.awssdk:glue")
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
-  testImplementation("software.amazon.awssdk:s3")
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
@@ -102,6 +104,7 @@ tasks.named<Test>("intTest").configure {
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
+
   // Same issue as above: allow a java security manager after Java 21
   // (this setting is for the application under test, while the setting above is for test code).
   systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")

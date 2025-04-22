@@ -22,11 +22,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.spark.sql.AnalysisException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkIT extends SparkIntegrationBase {
+  private String tableRootDir;
+
+  @BeforeEach
+  public void createDefaultResources(@TempDir Path tempDir) {
+    tableRootDir =
+        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("tables").getPath();
+  }
+
+  @AfterEach
+  public void cleanupDeltaData() {
+    File dirToDelete = new File(tableRootDir);
+    deleteDirectory(dirToDelete);
+  }
+
   @Test
   public void testNamespaces() {
     List<Object[]> namespaces = sql("SHOW NAMESPACES");
@@ -106,5 +127,123 @@ public class SparkIT extends SparkIntegrationBase {
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
     assertThat(views).contains(new Object[] {"ns", renamedView, false});
+  }
+
+  @Test
+  public void testTableOperations() {
+    sql("CREATE NAMESPACE ns");
+    sql("USE ns");
+
+    String icebergTable1 = "icebergtb1";
+    String icebergTable2 = "icebergtb2";
+    String deltaTable = "deltatb";
+    String deltaDir = String.format("%s/ns", tableRootDir);
+    // create two iceberg table and one delta table
+    sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable1);
+    sql("INSERT INTO %s VALUES (5, 'a'), (2, 'b')", icebergTable1);
+    sql("CREATE TABLE %s (col1 int) using iceberg", icebergTable2);
+    sql("INSERT INTO %s VALUES (111), (235), (456)", icebergTable2);
+    sql(
+        "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
+        deltaTable, deltaDir, deltaTable);
+
+    // show iceberg tables
+    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable1);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {2, "b"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {5, "a"});
+
+    results = sql("SELECT * FROM %s ORDER BY col1", icebergTable2);
+    assertThat(results.size()).isEqualTo(3);
+
+    // show tables shows all tables
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(3);
+    assertThat(tables)
+        .contains(
+            new Object[] {"ns", icebergTable1, false},
+            new Object[] {"ns", icebergTable2, false},
+            new Object[] {"ns", deltaTable, false});
+
+    sql("DROP TABLE %s", icebergTable1);
+    tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(2);
+    assertThat(tables)
+        .contains(
+            new Object[] {"ns", icebergTable2, false}, new Object[] {"ns", deltaTable, false});
+
+    sql("DROP TABLE %s", icebergTable2);
+    sql("DROP TABLE %s", deltaTable);
+    tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testRenameIcebergTable() {
+    sql("CREATE NAMESPACE ns");
+    sql("USE ns");
+
+    String icebergTable = "iceberg_table";
+    sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable);
+    sql("INSERT INTO %s VALUES (5, 'a'), (2, 'b')", icebergTable);
+
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(1);
+    assertThat(tables).contains(new Object[] {"ns", icebergTable, false});
+
+    String newIcebergTable = "iceberg_table_new";
+    sql("ALTER TABLE %s RENAME TO %s", icebergTable, newIcebergTable);
+    // verify the table can not be queried using old name
+    assertThatThrownBy(() -> sql("SELECT * FROM %s", icebergTable))
+        .isInstanceOf(AnalysisException.class);
+    // verify the table can be queried with new name
+    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", newIcebergTable);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {2, "b"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {5, "a"});
+  }
+
+  @Test
+  public void testMixedTableAndViews() {
+    sql("CREATE NAMESPACE mix_ns");
+    sql("USE mix_ns");
+
+    // create one iceberg table, iceberg view and one delta table
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (col1 int, col2 String)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b')", icebergTable);
+
+    String viewName = "icebergview";
+    sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
+
+    String deltaTable = "deltatb";
+    String deltaDir = String.format("%s/mix_ns", tableRootDir);
+    sql(
+        "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
+        deltaTable, deltaDir, deltaTable);
+
+    // show tables shows all tables
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(2);
+    assertThat(tables)
+        .contains(
+            new Object[] {"mix_ns", icebergTable, false},
+            new Object[] {"mix_ns", deltaTable, false});
+
+    // verify the table and view content
+    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {1, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {2, "b"});
+
+    // verify the table and view content
+    results = sql("SELECT * FROM %s ORDER BY col1", viewName);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {3, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {4, "b"});
+
+    List<Object[]> views = sql("SHOW VIEWS");
+    assertThat(views.size()).isEqualTo(1);
+    assertThat(views).contains(new Object[] {"mix_ns", viewName, false});
   }
 }
