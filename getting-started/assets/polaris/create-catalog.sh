@@ -50,7 +50,7 @@ else
     echo "Using StorageType: $STORAGE_TYPE"
 fi
 
-STORAGE_CONFIG_INFO='{"storageType": "$STORAGE_TYPE", "allowedLocations": ["$STORAGE_LOCATION"]}'
+STORAGE_CONFIG_INFO="{\"storageType\": \"$STORAGE_TYPE\", \"allowedLocations\": [\"$STORAGE_LOCATION\"]}"
 
 if [[ "$STORAGE_TYPE" == "S3" ]]; then
     STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg roleArn "$AWS_ROLE_ARN" '. + {roleArn: $roleArn}')
