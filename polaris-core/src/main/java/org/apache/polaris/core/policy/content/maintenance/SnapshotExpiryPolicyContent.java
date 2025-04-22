@@ -25,24 +25,24 @@ import java.util.Set;
 import org.apache.polaris.core.policy.content.PolicyContentUtil;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 
-public class SnapshotRetentionPolicyContent extends BaseMaintenancePolicyContent {
+public class SnapshotExpiryPolicyContent extends BaseMaintenancePolicyContent {
   private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
   private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
 
   @JsonCreator
-  public SnapshotRetentionPolicyContent(
+  public SnapshotExpiryPolicyContent(
       @JsonProperty(value = "enable", required = true) boolean enable) {
     super(enable);
   }
 
-  public static SnapshotRetentionPolicyContent fromString(String content) {
+  public static SnapshotExpiryPolicyContent fromString(String content) {
     if (Strings.isNullOrEmpty(content)) {
       throw new InvalidPolicyException("Policy is empty");
     }
 
-    SnapshotRetentionPolicyContent policy;
+    SnapshotExpiryPolicyContent policy;
     try {
-      policy = PolicyContentUtil.MAPPER.readValue(content, SnapshotRetentionPolicyContent.class);
+      policy = PolicyContentUtil.MAPPER.readValue(content, SnapshotExpiryPolicyContent.class);
     } catch (Exception e) {
       throw new InvalidPolicyException(e);
     }
