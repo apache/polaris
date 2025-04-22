@@ -61,7 +61,8 @@ public enum AuthenticationType {
   }
 
   /**
-   * Given the code associated to the type, return the associated AuthenticationType. Return NULL_TYPE if not found
+   * Given the code associated to the type, return the associated AuthenticationType. Return
+   * NULL_TYPE if not found
    *
    * @param authTypeCode code associated to the authentication type
    * @return ConnectionType corresponding to that code or null if mapping not found
