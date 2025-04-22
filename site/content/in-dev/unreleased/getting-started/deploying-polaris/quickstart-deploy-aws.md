@@ -32,6 +32,7 @@ The requirements to run the script below are:
   * "rds:CreateDBInstance"
   * "rds:DescribeDBInstances"
   * "rds:CreateDBSubnetGroup"
+  * "sts:AssumeRole" on the same role as the Instance Profile role of the EC2 instance on which you are running this script.
 
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-aws.sh

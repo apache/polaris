@@ -26,7 +26,9 @@ DESCRIBE_INSTANCE=$(aws ec2 describe-instances \
 
 CURRENT_VPC=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."VPC")
 CURRENT_REGION=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."AZ" | sed 's/.$//')
-export AWS_ROLE_ARN=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."RoleArn")
+RAW_ROLE_ARN=$(echo $DESCRIBE_INSTANCE | jq -r .[0].[0]."RoleArn")
+export AWS_ROLE_ARN="${RAW_ROLE_ARN/instance-profile/role}"
+
 
 ALL_SUBNETS=$(aws ec2 describe-subnets \
   --region $CURRENT_REGION \

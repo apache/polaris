@@ -34,7 +34,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
-  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):(role|instance-profile)/.+$";
+  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
 
