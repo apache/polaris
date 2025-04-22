@@ -83,6 +83,7 @@ public interface ReservedProperties {
     Map<String, String> results = new HashMap<>();
     List<String> prefixes = reservedPrefixes();
     for (var entry : properties.entrySet()) {
+      boolean isReserved = false;
       for (String prefix : prefixes) {
         if (entry.getKey().startsWith(prefix)) {
           String message =
@@ -91,10 +92,12 @@ public interface ReservedProperties {
             throw new IllegalArgumentException(message);
           } else {
             LOGGER.debug(message);
+            isReserved = true;
           }
-        } else {
-          results.put(entry.getKey(), properties.get(entry.getValue()));
         }
+      }
+      if (!isReserved) {
+        results.put(entry.getKey(), entry.getValue());
       }
     }
     return results;
