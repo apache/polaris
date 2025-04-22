@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.policy;
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.Closeable;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +54,7 @@ import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 
-public class PolicyCatalogHandler extends CatalogHandler {
+public class PolicyCatalogHandler extends CatalogHandler implements AutoCloseable {
 
   private PolarisMetaStoreManager metaStoreManager;
 
@@ -362,5 +363,12 @@ public class PolicyCatalogHandler extends CatalogHandler {
         null /* secondary */);
 
     initializeCatalog();
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (policyCatalog instanceof Closeable closeable) {
+      closeable.close();
+    }
   }
 }
