@@ -383,7 +383,6 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
-      String etagString, // TODO remove this line
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
