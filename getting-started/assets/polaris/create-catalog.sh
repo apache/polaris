@@ -19,7 +19,7 @@
 
 set -e
 
-token=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
+token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
   --user root:s3cr3t \
   -d grant_type=client_credentials \
   -d scope=PRINCIPAL_ROLE:ALL | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
