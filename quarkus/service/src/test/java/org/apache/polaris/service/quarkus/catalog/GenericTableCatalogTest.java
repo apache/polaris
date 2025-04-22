@@ -584,16 +584,4 @@ public class GenericTableCatalogTest {
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }
-
-  @Test
-  public void testSetReservedProperties() {
-    Namespace namespace = Namespace.of("ns");
-    icebergCatalog.createNamespace(namespace);
-    genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
-
-    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
-    Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
-        .isNotNull();
-  }
 }
