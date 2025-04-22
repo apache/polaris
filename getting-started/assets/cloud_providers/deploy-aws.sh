@@ -34,7 +34,7 @@ ALL_SUBNETS=$(aws ec2 describe-subnets \
   --output json \
   | jq -r '[.[]["SubnetId"]] | join(" ")')
 
-RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 8)
+RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
 SUBNET_GROUP_NAME="polaris-db-subnet-group-$RANDOM_SUFFIX"
 INSTANCE_NAME="polaris-backend-test-$RANDOM_SUFFIX"
 
