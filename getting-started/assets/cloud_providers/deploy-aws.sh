@@ -70,6 +70,7 @@ FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR/{realm}" | 
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
 
 S3_BUCKET_NAME="polaris-test-s3-$RANDOM_SUFFIX"
+echo "S3 Bucket Name: $S3_BUCKET_NAME"
 
 aws s3api create-bucket --bucket $S3_BUCKET_NAME --region $CURRENT_REGION --create-bucket-configuration LocationConstraint=$CURRENT_REGION
 
