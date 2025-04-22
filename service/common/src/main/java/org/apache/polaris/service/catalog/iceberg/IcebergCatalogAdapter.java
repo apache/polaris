@@ -505,10 +505,14 @@ public class IcebergCatalogAdapter
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    CommitTableRequest revisedRequest = (CommitTableRequest) CommitTableRequest.create(
-        commitTableRequest.identifier(),
-        commitTableRequest.requirements(),
-        commitTableRequest.updates().stream().map(reservedProperties::removeReservedProperties).toList());
+    CommitTableRequest revisedRequest =
+        (CommitTableRequest)
+            CommitTableRequest.create(
+                commitTableRequest.identifier(),
+                commitTableRequest.requirements(),
+                commitTableRequest.updates().stream()
+                    .map(reservedProperties::removeReservedProperties)
+                    .toList());
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     return withCatalog(
@@ -516,8 +520,7 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           if (IcebergCatalogHandler.isCreate(revisedRequest)) {
-            return Response.ok(
-                    catalog.updateTableForStagedCreate(tableIdentifier, revisedRequest))
+            return Response.ok(catalog.updateTableForStagedCreate(tableIdentifier, revisedRequest))
                 .build();
           } else {
             return Response.ok(catalog.updateTable(tableIdentifier, revisedRequest)).build();
@@ -651,10 +654,14 @@ public class IcebergCatalogAdapter
       CommitViewRequest commitViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    CommitViewRequest revisedRequest = (CommitViewRequest) CommitViewRequest.create(
-        commitViewRequest.identifier(),
-        commitViewRequest.requirements(),
-        commitViewRequest.updates().stream().map(reservedProperties::removeReservedProperties).toList());
+    CommitViewRequest revisedRequest =
+        (CommitViewRequest)
+            CommitViewRequest.create(
+                commitViewRequest.identifier(),
+                commitViewRequest.requirements(),
+                commitViewRequest.updates().stream()
+                    .map(reservedProperties::removeReservedProperties)
+                    .toList());
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
     return withCatalog(
@@ -669,14 +676,19 @@ public class IcebergCatalogAdapter
       CommitTransactionRequest commitTransactionRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    CommitTransactionRequest revisedRequest = new CommitTransactionRequest(
-        commitTransactionRequest.tableChanges().stream().map(r -> {
-          return UpdateTableRequest.create(
-              r.identifier(),
-              r.requirements(),
-              r.updates().stream().map(reservedProperties::removeReservedProperties).toList());
-        }).toList()
-    );
+    CommitTransactionRequest revisedRequest =
+        new CommitTransactionRequest(
+            commitTransactionRequest.tableChanges().stream()
+                .map(
+                    r -> {
+                      return UpdateTableRequest.create(
+                          r.identifier(),
+                          r.requirements(),
+                          r.updates().stream()
+                              .map(reservedProperties::removeReservedProperties)
+                              .toList());
+                    })
+                .toList());
     return withCatalog(
         securityContext,
         prefix,
