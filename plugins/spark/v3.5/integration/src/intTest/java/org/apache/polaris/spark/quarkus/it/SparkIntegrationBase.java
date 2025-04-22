@@ -55,10 +55,7 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
-        .config("spark.hadoop.fs.s3.endpoint", s3Container.getHttpEndpoint())
-        .config("spark.hadoop.fs.s3.access.key", "fakekey")
-        .config("spark.hadoop.fs.s3.secret.key", "fakesecret");
+        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
   }
 
   @FormatMethod

@@ -154,7 +154,7 @@ public class SparkCatalog
     } else {
       if (PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)) {
         throw new UnsupportedOperationException(
-            "Table with spark managed location is currently not supported by Polaris. Please provide location or path to the table. ");
+            "Table with spark managed location is currently not supported by Polaris. Please provide location or path to the table.");
       }
       if (PolarisCatalogUtils.useDelta(provider)) {
         // For delta table, we load the delta catalog to help dealing with the
