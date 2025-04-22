@@ -627,24 +627,44 @@ public abstract class PolarisAuthzTestBase {
       Runnable action,
       Function<PolarisPrivilege, Boolean> grantAction,
       Function<PolarisPrivilege, Boolean> revokeAction) {
-    for (PolarisPrivilege privilege : insufficientPrivileges) {
-      // Grant the single privilege at a catalog level to cascade to all objects.
-      Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+    doTestInsufficientPrivilegeSets(
+        insufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
+        principalName,
+        action,
+        grantAction,
+        revokeAction);
+  }
 
-      // Should be insufficient
-      try {
-        Assertions.assertThatThrownBy(() -> action.run())
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining(principalName)
-            .hasMessageContaining("is not authorized");
-      } catch (Throwable t) {
-        Assertions.fail(
-            String.format("Expected failure with insufficientPrivilege '%s'", privilege), t);
+  /**
+   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
+   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
+   */
+  protected void doTestInsufficientPrivilegeSets(
+      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
+      String principalName,
+      Runnable action,
+      Function<PolarisPrivilege, Boolean> grantAction,
+      Function<PolarisPrivilege, Boolean> revokeAction) {
+    for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
+      for (PolarisPrivilege privilege : privilegeSet) {
+        // Grant the single privilege at a catalog level to cascade to all objects.
+        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+
+        // Should be insufficient
+        try {
+          Assertions.assertThatThrownBy(() -> action.run())
+              .isInstanceOf(ForbiddenException.class)
+              .hasMessageContaining(principalName)
+              .hasMessageContaining("is not authorized");
+        } catch (Throwable t) {
+          Assertions.fail(
+              String.format("Expected failure with insufficientPrivilege '%s'", privilege), t);
+        }
+
+        // Revoking only matters in case there are some multi-privilege actions being tested with
+        // only granting individual privileges in isolation.
+        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
       }
-
-      // Revoking only matters in case there are some multi-privilege actions being tested with
-      // only granting individual privileges in isolation.
-      Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
     }
   }
 }
