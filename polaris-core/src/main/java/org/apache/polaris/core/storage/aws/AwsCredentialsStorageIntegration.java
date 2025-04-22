@@ -217,8 +217,13 @@ public class AwsCredentialsStorageIntegration
     policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
 
     policyBuilder.addStatement(
-            IamStatement.builder().effect(IamEffect.ALLOW).addAction("kms:GenerateDataKey").addAction("kms:Decrypt").addAction(
-                    "kms:DescribeKey").addResource("*").build());
+        IamStatement.builder()
+            .effect(IamEffect.ALLOW)
+            .addAction("kms:GenerateDataKey")
+            .addAction("kms:Decrypt")
+            .addAction("kms:DescribeKey")
+            .addResource("*")
+            .build());
 
     return policyBuilder.build();
   }
