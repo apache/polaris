@@ -22,7 +22,7 @@ hadoop = "3.4.1"
 iceberg = "1.8.1" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
 quarkus = "3.21.2"
 immutables = "2.10.1"
-picocli = "4.7.6"
+picocli = "4.7.7"
 scala212 = "2.12.19"
 spark35 = "3.5.5"
 slf4j = "2.0.17"
@@ -47,7 +47,7 @@ commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.6" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.37.0" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.38.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.50.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }

@@ -60,6 +60,9 @@ services:
 
   spark-sql:
     image: apache/spark:3.5.5-java17-python3
+    depends_on:
+      polaris-setup:
+        condition: service_completed_successfully
     stdin_open: true
     tty: true
     ports:
@@ -85,6 +88,9 @@ services:
 
   trino:
     image: trinodb/trino:latest
+    depends_on:
+      polaris-setup:
+        condition: service_completed_successfully
     stdin_open: true
     tty: true
     ports:

@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.jpa.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.eclipse.persistence.annotations.PrimaryKey;
 
 @Entity
 @Table(
@@ -32,6 +34,14 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
       @Index(
           name = "POLICY_MAPPING_RECORDS_BY_POLICY_INDEX",
           columnList = "policyCatalogId,policyId,targetCatalogId,targetId")
+    })
+@PrimaryKey(
+    columns = {
+      @Column(name = "targetCatalogId"),
+      @Column(name = "targetId"),
+      @Column(name = "policyTypeCode"),
+      @Column(name = "policyCatalogId"),
+      @Column(name = "policyId")
     })
 public class ModelPolicyMappingRecord {
   // id of the catalog where target entity resides
