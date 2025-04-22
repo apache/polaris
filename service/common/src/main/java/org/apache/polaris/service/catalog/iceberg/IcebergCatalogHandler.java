@@ -245,7 +245,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // For CreateNamespace, we consider this a special case in that the creator is able to
       // retrieve the latest namespace metadata for the duration of the CreateNamespace
       // operation, even if the entityVersion and/or grantsVersion update in the interim.
-      namespaceCatalog.createNamespace(namespace, reservedProperties.removeReservedProperties(request.properties()));
+      namespaceCatalog.createNamespace(
+          namespace, reservedProperties.removeReservedProperties(request.properties()));
       Map<String, String> filteredProperties =
           reservedProperties.removeReservedProperties(
               resolutionManifest
