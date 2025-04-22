@@ -1411,4 +1411,41 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }
+
+  @Test
+  public void testCreateTableWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
+    Assertions.assertThatCode(
+            () -> {
+              restCatalog.createTable(
+                  identifier, SCHEMA, PartitionSpec.unpartitioned(), ImmutableMap.of("polaris.reserved", ""));
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testUpdateTableWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
+    restCatalog.createTable(identifier, SCHEMA);
+    Assertions.assertThatCode(
+            () -> {
+              var txn = restCatalog.newReplaceTableTransaction(
+                  identifier,
+                  SCHEMA,
+                  PartitionSpec.unpartitioned(),
+                  ImmutableMap.of("polaris.reserved", ""),
+                  false
+              );
+              txn.commitTransaction();
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
 }
