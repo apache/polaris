@@ -31,6 +31,25 @@ POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
 FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
 
+STORAGE_ACCOUNT_NAME="polaristest$RANDOM_SUFFIX"
+STORAGE_CONTAINER_NAME="polaris-test-container-$RANDOM_SUFFIX"
+
+az storage account create \
+  --name "$STORAGE_ACCOUNT_NAME" \
+  --resource-group "$CURRENT_RESOURCE_GROUP" \
+  --location "$CURRENT_REGION" \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --enable-hierarchical-namespace false
+
+az storage container create \
+  --account-name "$STORAGE_ACCOUNT_NAME" \
+  --name "$STORAGE_CONTAINER_NAME" \
+  --auth-mode login
+
+export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
+export STORAGE_LOCATION="abfss://$STORAGE_CONTAINER_NAME@$STORAGE_ACCOUNT_NAME.dfs.core.windows.net/quickstart_catalog"
+
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
