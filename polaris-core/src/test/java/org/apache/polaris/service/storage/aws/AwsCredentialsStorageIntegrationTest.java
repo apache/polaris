@@ -147,7 +147,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(4)
+                            .hasSize(5)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -222,7 +222,22 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                    statement ->
+                                            assertThat(statement)
+                                                    .returns(IamEffect.ALLOW, IamStatement::effect)
+                                                    .satisfies(
+                                                            st ->
+                                                                    assertThat(st.resources())
+                                                                            .containsExactlyInAnyOrder(
+                                                                                    IamResource.create("*")
+                                                                            ))
+                                                    .returns(
+                                                            List.of(
+                                                                    IamAction.create("kms:GenerateDataKey"),
+                                                                    IamAction.create("kms:Decrypt"),
+                                                                    IamAction.create("kms:DescribeKey")),
+                                                            IamStatement::actions));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -295,7 +310,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -341,7 +356,22 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                    statement ->
+                                            assertThat(statement)
+                                                    .returns(IamEffect.ALLOW, IamStatement::effect)
+                                                    .satisfies(
+                                                            st ->
+                                                                    assertThat(st.resources())
+                                                                            .containsExactlyInAnyOrder(
+                                                                                    IamResource.create("*")
+                                                                                   ))
+                                                    .returns(
+                                                            List.of(
+                                                                    IamAction.create("kms:GenerateDataKey"),
+                                                                    IamAction.create("kms:Decrypt"),
+                                                                    IamAction.create("kms:DescribeKey")),
+                                                            IamStatement::actions));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -392,7 +422,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -436,7 +466,22 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                    statement ->
+                                            assertThat(statement)
+                                                    .returns(IamEffect.ALLOW, IamStatement::effect)
+                                                    .satisfies(
+                                                            st ->
+                                                                    assertThat(st.resources())
+                                                                            .containsExactlyInAnyOrder(
+                                                                                    IamResource.create("*")
+                                                                            ))
+                                                    .returns(
+                                                            List.of(
+                                                                    IamAction.create("kms:GenerateDataKey"),
+                                                                    IamAction.create("kms:Decrypt"),
+                                                                    IamAction.create("kms:DescribeKey")),
+                                                            IamStatement::actions));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -485,7 +530,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(3)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -503,7 +548,22 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                    statement ->
+                                            assertThat(statement)
+                                                    .returns(IamEffect.ALLOW, IamStatement::effect)
+                                                    .satisfies(
+                                                            st ->
+                                                                    assertThat(st.resources())
+                                                                            .containsExactlyInAnyOrder(
+                                                                                    IamResource.create("*")
+                                                                            ))
+                                                    .returns(
+                                                            List.of(
+                                                                    IamAction.create("kms:GenerateDataKey"),
+                                                                    IamAction.create("kms:Decrypt"),
+                                                                    IamAction.create("kms:DescribeKey")),
+                                                            IamStatement::actions));
                       });
               return ASSUME_ROLE_RESPONSE;
             });

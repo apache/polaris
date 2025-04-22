@@ -141,7 +141,6 @@ public class AwsCredentialsStorageIntegration
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
-  // TODO - add KMS key access
   private IamPolicy policyString(
       String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
@@ -214,7 +213,14 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+
+    policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
+
+    policyBuilder.addStatement(
+            IamStatement.builder().effect(IamEffect.ALLOW).addAction("kms:GenerateDataKey").addAction("kms:Decrypt").addAction(
+                    "kms:DescribeKey").addResource("*").build());
+
+    return policyBuilder.build();
   }
 
   private String getArnPrefixFor(String roleArn) {
