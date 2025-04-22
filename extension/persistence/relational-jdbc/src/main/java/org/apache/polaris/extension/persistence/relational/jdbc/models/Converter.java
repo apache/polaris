@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
-plugins { id("polaris-server") }
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+public interface Converter<T> {
+  /**
+   * Converts a ResultSet to model.
+   *
+   * @param rs : ResultSet from JDBC.
+   * @return Model of Entity
+   * @throws SQLException : Exception while fetching from ResultSet.
+   */
+  T fromResultSet(ResultSet rs) throws SQLException;
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+  /**
+   * Convert a model into a Map with keys as snake case names, where as values as values of member
+   * of model obj.
+   */
+  Map<String, Object> toMap();
 }

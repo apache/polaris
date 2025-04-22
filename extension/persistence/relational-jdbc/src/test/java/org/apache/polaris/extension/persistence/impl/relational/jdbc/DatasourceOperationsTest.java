@@ -22,19 +22,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
-import org.apache.polaris.extension.persistence.relational.jdbc.ResultSetToObjectConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,8 +40,6 @@ public class DatasourceOperationsTest {
   @Mock private Connection mockConnection;
 
   @Mock private Statement mockStatement;
-
-  @Mock private ResultSet mockResultSet;
 
   private DatasourceOperations datasourceOperations;
 
@@ -73,30 +67,6 @@ public class DatasourceOperationsTest {
     when(mockStatement.executeUpdate(query)).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
-  }
-
-  @Test
-  void testExecuteSelect_success() throws Exception {
-    String query = "SELECT * FROM users";
-    when(mockStatement.executeQuery(query)).thenReturn(mockResultSet);
-
-    // Simulate ResultSetToObjectConverter returning dummy data
-    List<Object> dummyResult = List.of(new Object());
-    try (MockedStatic<ResultSetToObjectConverter> mockedConverter =
-        mockStatic(ResultSetToObjectConverter.class)) {
-      mockedConverter
-          .when(
-              () ->
-                  ResultSetToObjectConverter.collect(
-                      mockResultSet, Object.class, Function.identity(), null, Integer.MAX_VALUE))
-          .thenReturn(dummyResult);
-
-      List<Object> result =
-          datasourceOperations.executeSelect(
-              query, Object.class, Function.identity(), null, Integer.MAX_VALUE);
-      assertNotNull(result);
-      assertEquals(1, result.size());
-    }
   }
 
   @Test

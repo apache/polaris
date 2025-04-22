@@ -28,12 +28,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
-import javax.swing.*;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +50,12 @@ public class DatasourceOperations {
     this.datasource = datasource;
   }
 
+  /**
+   * Execute SQL script
+   *
+   * @param scriptFilePath : Path of SQL script.
+   * @throws SQLException : Exception while executing the script.
+   */
   public void executeScript(String scriptFilePath) throws SQLException {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     try (Connection connection = borrowConnection();
@@ -85,17 +92,30 @@ public class DatasourceOperations {
         connection.setAutoCommit(autoCommit);
       }
     } catch (IOException e) {
-      LOGGER.error("Error reading the script file", e);
+      LOGGER.debug("Error reading the script file", e);
       throw new RuntimeException(e);
     } catch (SQLException e) {
-      LOGGER.error("Error executing the script file", e);
+      LOGGER.debug("Error executing the script file", e);
       throw e;
     }
   }
 
+  /**
+   * Executes SELECT Query
+   *
+   * @param query : Query to executed
+   * @param entityClass : Class of the entity being selected
+   * @param transformer : Transformation of entity class to Result class
+   * @param entityFilter : Filter to applied on the Result class
+   * @param limit : Limit to to enforced.
+   * @return List of Result class objects
+   * @param <T> : Entity class
+   * @param <R> : Result class
+   * @throws SQLException : Exception during the query execution.
+   */
   public <T, R> List<R> executeSelect(
       @Nonnull String query,
-      @Nonnull Class<T> targetClass,
+      @Nonnull Class<T> entityClass,
       @Nonnull Function<T, R> transformer,
       Predicate<R> entityFilter,
       int limit)
@@ -103,16 +123,32 @@ public class DatasourceOperations {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(query)) {
-      return ResultSetToObjectConverter.collect(
-          resultSet, targetClass, transformer, entityFilter, limit);
+      List<R> resultList = new ArrayList<>();
+      while (resultSet.next() && resultList.size() < limit) {
+        Converter<T> object =
+            (Converter<T>)
+                entityClass.getDeclaredConstructor().newInstance(); // Create a new instance
+        R entity = transformer.apply(object.fromResultSet(resultSet));
+        if (entityFilter == null || entityFilter.test(entity)) {
+          resultList.add(entity);
+        }
+      }
+      return resultList;
     } catch (SQLException e) {
-      LOGGER.error("Error executing query {}", query, e);
+      LOGGER.debug("Error executing query {}", query, e);
       throw e;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
+  /**
+   * Executes the UPDATE or INSERT Query
+   *
+   * @param query : query to be executed
+   * @return : Number of rows modified / inserted.
+   * @throws SQLException : Exception during Query Execution.
+   */
   public int executeUpdate(String query) throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement()) {
@@ -121,7 +157,7 @@ public class DatasourceOperations {
       try {
         return statement.executeUpdate(query);
       } catch (SQLException e) {
-        LOGGER.error("Error executing query {}", query, e);
+        LOGGER.debug("Error executing query {}", query, e);
         throw e;
       } finally {
         connection.setAutoCommit(autoCommit);
@@ -129,6 +165,12 @@ public class DatasourceOperations {
     }
   }
 
+  /**
+   * Transaction callback to be executed.
+   *
+   * @param callback : TransactionCallback to be executed within transaction
+   * @throws SQLException : Exception caught during transaction execution.
+   */
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
     try (Connection connection = borrowConnection()) {
       boolean autoCommit = connection.getAutoCommit();
@@ -147,7 +189,7 @@ public class DatasourceOperations {
         connection.setAutoCommit(autoCommit);
       }
     } catch (SQLException e) {
-      LOGGER.error("Caught Error while executing transaction", e);
+      LOGGER.debug("Caught Error while executing transaction", e);
       throw e;
     }
   }

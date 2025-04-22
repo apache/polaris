@@ -18,11 +18,15 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-public class ModelEntity {
+public class ModelEntity implements Converter<ModelEntity> {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
   private long catalogId;
@@ -131,6 +135,48 @@ public class ModelEntity {
 
   public static Builder builder() {
     return new Builder();
+  }
+
+  @Override
+  public ModelEntity fromResultSet(ResultSet r) throws SQLException {
+    return ModelEntity.builder()
+        .catalogId(r.getObject("catalog_id", Long.class))
+        .id(r.getObject("id", Long.class))
+        .parentId(r.getObject("parent_id", Long.class))
+        .typeCode(r.getObject("type_code", Integer.class))
+        .name(r.getObject("name", String.class))
+        .entityVersion(r.getObject("entity_version", Integer.class))
+        .subTypeCode(r.getObject("sub_type_code", Integer.class))
+        .createTimestamp(r.getObject("create_timestamp", Long.class))
+        .dropTimestamp(r.getObject("drop_timestamp", Long.class))
+        .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
+        .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
+        .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
+        .properties(r.getObject("properties", String.class))
+        .internalProperties(r.getObject("internal_properties", String.class))
+        .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+        .build();
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("catalog_id", this.getCatalogId());
+    map.put("id", this.getId());
+    map.put("parent_id", this.getParentId());
+    map.put("type_code", this.getTypeCode());
+    map.put("name", this.getName());
+    map.put("entity_version", this.getEntityVersion());
+    map.put("sub_type_code", this.getSubTypeCode());
+    map.put("create_timestamp", this.getCreateTimestamp());
+    map.put("drop_timestamp", this.getDropTimestamp());
+    map.put("purge_timestamp", this.getPurgeTimestamp());
+    map.put("to_purge_timestamp", this.getToPurgeTimestamp());
+    map.put("last_update_timestamp", this.getLastUpdateTimestamp());
+    map.put("properties", this.getProperties());
+    map.put("internal_properties", this.getInternalProperties());
+    map.put("grant_records_version", this.getGrantRecordsVersion());
+    return map;
   }
 
   public static final class Builder {

@@ -18,9 +18,13 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 
-public class ModelGrantRecord {
+public class ModelGrantRecord implements Converter<ModelGrantRecord> {
   // id of the catalog where the securable entity resides, use 0, if this entity is a
   // top-level account entity.
   private long securableCatalogId;
@@ -60,6 +64,28 @@ public class ModelGrantRecord {
 
   public static Builder builder() {
     return new Builder();
+  }
+
+  @Override
+  public ModelGrantRecord fromResultSet(ResultSet rs) throws SQLException {
+    return ModelGrantRecord.builder()
+        .securableCatalogId(rs.getObject("securable_catalog_id", Long.class))
+        .securableId(rs.getObject("securable_id", Long.class))
+        .granteeCatalogId(rs.getObject("grantee_catalog_id", Long.class))
+        .granteeId(rs.getObject("grantee_id", Long.class))
+        .privilegeCode(rs.getObject("privilege_code", Integer.class))
+        .build();
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("securable_catalog_id", this.securableCatalogId);
+    map.put("securable_id", this.securableId);
+    map.put("grantee_catalog_id", this.granteeCatalogId);
+    map.put("grantee_id", this.granteeId);
+    map.put("privilege_code", this.privilegeCode);
+    return map;
   }
 
   public static final class Builder {

@@ -18,9 +18,14 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
-public class ModelPrincipalAuthenticationData {
+public class ModelPrincipalAuthenticationData
+    implements Converter<ModelPrincipalAuthenticationData> {
   // the id of the principal
   private long principalId;
 
@@ -57,6 +62,28 @@ public class ModelPrincipalAuthenticationData {
 
   public static Builder builder() {
     return new Builder();
+  }
+
+  @Override
+  public ModelPrincipalAuthenticationData fromResultSet(ResultSet rs) throws SQLException {
+    return ModelPrincipalAuthenticationData.builder()
+        .principalId(rs.getObject("principal_id", Long.class))
+        .principalClientId(rs.getObject("principal_client_id", String.class))
+        .mainSecretHash(rs.getObject("main_secret_hash", String.class))
+        .secondarySecretHash(rs.getObject("secondary_secret_hash", String.class))
+        .secretSalt(rs.getObject("secret_salt", String.class))
+        .build();
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("principal_id", this.principalId);
+    map.put("principal_client_id", this.principalClientId);
+    map.put("main_secret_hash", this.mainSecretHash);
+    map.put("secondary_secret_hash", this.secondarySecretHash);
+    map.put("secret_salt", this.secretSalt);
+    return map;
   }
 
   public static final class Builder {
