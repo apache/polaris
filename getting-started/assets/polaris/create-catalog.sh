@@ -53,9 +53,9 @@ fi
 STORAGE_CONFIG_INFO='{"storageType": "$STORAGE_TYPE", "allowedLocations": ["$STORAGE_LOCATION"]}'
 
 if [[ "$STORAGE_TYPE" == "S3" ]]; then
-    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg roleArn "$AWS_ROLE_ARN" '. + {roleArn: $AWS_ROLE_ARN}')
+    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg roleArn "$AWS_ROLE_ARN" '. + {roleArn: $roleArn}')
 elif [[ "$STORAGE_TYPE" == "AZURE" ]]; then
-    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg tenantId "$AZURE_TENANT_ID" '. + {tenantId: [$AZURE_TENANT_ID]}')
+    STORAGE_CONFIG_INFO=$(echo "$STORAGE_CONFIG_INFO" | jq --arg tenantId "$AZURE_TENANT_ID" '. + {tenantId: [$tenantId]}')
 fi
 
 echo
