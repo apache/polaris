@@ -19,9 +19,12 @@
 package org.apache.polaris.service.config;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.apache.iceberg.MetadataUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,5 +108,18 @@ public interface ReservedProperties {
         properties.stream().collect(Collectors.toMap(k -> k, k -> ""));
     Map<String, String> filteredMap = removeReservedProperties(propertyMap);
     return filteredMap.keySet().stream().toList();
+  }
+
+  default MetadataUpdate removeReservedProperties(MetadataUpdate update) {
+    return switch (update) {
+      case MetadataUpdate.SetProperties p -> {
+        yield new MetadataUpdate.SetProperties(removeReservedProperties(p.updated()));
+      }
+      case MetadataUpdate.RemoveProperties p -> {
+        List<String> filteredProperties = removeReservedProperties(p.removed().stream().toList());
+        yield new MetadataUpdate.RemoveProperties(new HashSet<>(filteredProperties));
+      }
+      default -> update;
+    };
   }
 }
