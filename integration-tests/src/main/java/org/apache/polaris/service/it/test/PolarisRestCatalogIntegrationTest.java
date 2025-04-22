@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.it.test;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,7 +95,9 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -1339,6 +1342,28 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                 Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+    }
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testCreateGenericTableWithReservedProperties() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    try (Response res =
+             genericTableApi.request(
+                 "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
+                 Map.of("cat", currentCatalogName, "ns", ns))
+                 .post(Entity.json(new CreateGenericTableRequest(
+                     tableIdentifier.name(),
+                     "format",
+                     "doc",
+                     Map.of("polaris.reserved", "true"))))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
     }
 
     genericTableApi.purge(currentCatalogName, namespace);
