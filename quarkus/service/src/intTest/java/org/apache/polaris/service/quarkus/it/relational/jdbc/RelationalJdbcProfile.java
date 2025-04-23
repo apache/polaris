@@ -28,7 +28,9 @@ import java.util.Map;
 public class RelationalJdbcProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of();
+        return Map.of(
+                "polaris.persistence.auto-bootstrap-types", "relational-jdbc"
+        );
     }
 
     @Override

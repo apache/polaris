@@ -114,6 +114,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:dynamodb")
 
   runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation("io.quarkus:quarkus-jdbc-postgresql")
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")

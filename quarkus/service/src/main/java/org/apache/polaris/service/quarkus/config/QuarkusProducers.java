@@ -32,6 +32,7 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
+
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -73,7 +74,6 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
 public class QuarkusProducers {
-
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
   public Clock clock() {
@@ -256,7 +256,7 @@ public class QuarkusProducers {
       @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
-  }
+    }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();

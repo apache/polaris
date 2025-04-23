@@ -19,12 +19,11 @@
 
 package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewAwsIntegrationTest;
 
 @TestProfile(RelationalJdbcProfile.class)
 @QuarkusTest
-public class JdbcQuarkusApplicationIT extends PolarisApplicationIntegrationTest {
+public class JdbcQuarkusRestCatalogViewAwsIT extends PolarisRestCatalogViewAwsIntegrationTest {
 }
