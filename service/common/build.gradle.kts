@@ -90,6 +90,9 @@ dependencies {
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
 
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-smallrye-fault-tolerance")
+
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
