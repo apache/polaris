@@ -71,6 +71,9 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-smallrye-fault-tolerance")
 }
 
 openApiGenerate {

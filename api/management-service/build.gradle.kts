@@ -42,6 +42,9 @@ dependencies {
   compileOnly("io.micrometer:micrometer-core")
 
   implementation(libs.slf4j.api)
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-smallrye-fault-tolerance")
 }
 
 openApiGenerate {

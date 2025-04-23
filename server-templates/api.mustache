@@ -57,6 +57,8 @@ import {{javaxPackage}}.inject.Inject;
 
 import org.apache.polaris.core.context.RealmContext;
 
+import org.eclipse.microprofile.faulttolerance.Timeout;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +83,7 @@ It is updated to remove all swagger annotations
 @Path("{{contextPath}}{{commonPath}}"){{#hasConsumes}}
 @Consumes({ {{#consumes}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/consumes}} }){{/hasConsumes}}{{#hasProduces}}
 @Produces({ {{#produces}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/produces}} }){{/hasProduces}}
+@Timeout
 {{>generatedAnnotation}}
 {{#operations}}
 public class {{classname}}  {
