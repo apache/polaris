@@ -28,8 +28,6 @@ services:
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
-    volumes:
-      - ./credentials:/tmp/credentials/
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
@@ -46,4 +44,3 @@ services:
         condition: service_healthy
     volumes:
       - ./output:/tmp/polaris-regtests/
-      - ./credentials:/tmp/credentials/
