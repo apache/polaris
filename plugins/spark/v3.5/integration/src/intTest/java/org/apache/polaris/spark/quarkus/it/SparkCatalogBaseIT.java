@@ -196,6 +196,9 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
     viewCatalog.dropView(newIdentifier);
     assertThatThrownBy(() -> viewCatalog.loadView(newIdentifier))
         .isInstanceOf(NoSuchViewException.class);
+
+    // drop the namespace
+    namespaceCatalog.dropNamespace(namespace, true);
   }
 
   @Test

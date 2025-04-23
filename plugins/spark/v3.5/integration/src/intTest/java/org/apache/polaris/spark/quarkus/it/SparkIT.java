@@ -109,12 +109,16 @@ public class SparkIT extends SparkIntegrationBase {
     sql("DROP VIEW %s", view2Name);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(0);
+
+    // drop the namespace
+    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
   public void testRenameView() {
-    sql("CREATE NAMESPACE ns");
-    sql("USE ns");
+    String namespace = "ns";
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
 
     String viewName = "originalView";
     String renamedView = "renamedView";
@@ -127,12 +131,17 @@ public class SparkIT extends SparkIntegrationBase {
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
     assertThat(views).contains(new Object[] {"ns", renamedView, false});
+
+    // drop the view and namespace
+    sql("DROP VIEW %s", renamedView);
+    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
   public void testRenameIcebergTable() {
-    sql("CREATE NAMESPACE ns");
-    sql("USE ns");
+    String namespace = "ns";
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
 
     String icebergTable = "iceberg_table";
     sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable);
@@ -152,12 +161,17 @@ public class SparkIT extends SparkIntegrationBase {
     assertThat(results.size()).isEqualTo(2);
     assertThat(results.get(0)).isEqualTo(new Object[] {2, "b"});
     assertThat(results.get(1)).isEqualTo(new Object[] {5, "a"});
+
+    // clean up the table and namespace
+    sql("DROP TABLE %s", newIcebergTable);
+    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
   public void testMixedTableAndViews() {
-    sql("CREATE NAMESPACE mix_ns");
-    sql("USE mix_ns");
+    String namespace = "mix_ns";
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
 
     // create one iceberg table, iceberg view and one delta table
     String icebergTable = "icebergtb";
@@ -196,5 +210,11 @@ public class SparkIT extends SparkIntegrationBase {
     List<Object[]> views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
     assertThat(views).contains(new Object[] {"mix_ns", viewName, false});
+
+    // drop views and tables
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP TABLE %s", deltaTable);
+    sql("DROP VIEW %s", viewName);
+    sql("DROP NAMESPACE %s", namespace);
   }
 }

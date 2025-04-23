@@ -46,7 +46,7 @@ import org.junit.jupiter.api.io.TempDir;
 @QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
   private static final Random RANDOM = new Random();
-  private static final String defaultNs = "delta_ns_" + RANDOM.nextInt(0, 100000);
+  private String defaultNs;
   private String tableRootDir;
 
   private String getTableLocation(String tableName) {
@@ -59,6 +59,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
 
   @BeforeEach
   public void createDefaultResources(@TempDir Path tempDir) {
+    defaultNs = "delta_ns_" + RANDOM.nextInt(0, 100000);
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
@@ -68,8 +69,10 @@ public class SparkDeltaIT extends SparkIntegrationBase {
 
   @AfterEach
   public void cleanupDeltaData() {
+    // clean up delta data
     File dirToDelete = new File(tableRootDir);
     deleteDirectory(dirToDelete);
+    sql("DROP NAMESPACE %s", defaultNs);
   }
 
   @Test
@@ -170,6 +173,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
       }
     }
     assertThat(properties).contains("description=people table,test-owner=test-user");
+    sql("DROP TABLE %s", deltatb);
   }
 
   @Test
@@ -201,6 +205,8 @@ public class SparkDeltaIT extends SparkIntegrationBase {
                     "CREATE TABLE %s (id INT, name STRING) USING DELTA",
                     getTableNameWithRandomSuffix()))
         .isInstanceOf(UnsupportedOperationException.class);
+
+    sql("DROP TABLE %s", deltatb);
   }
 
   @Test
@@ -245,5 +251,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     assertThat(results.get(0)).isEqualTo(new Object[] {"Alice", 30});
     assertThat(results.get(1)).isEqualTo(new Object[] {"Anna", 11});
     assertThat(results.get(2)).isEqualTo(new Object[] {"Bob", 25});
+
+    sql("DROP TABLE %s", deltatb);
   }
 }
