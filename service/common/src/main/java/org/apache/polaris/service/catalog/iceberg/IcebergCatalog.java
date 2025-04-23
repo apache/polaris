@@ -1201,6 +1201,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  /**
+   * An implementation of {@link TableOperations} that integrates with {@link IcebergCatalog}.
+   * Much of this code was originally copied from {@link org.apache.iceberg.BaseMetastoreTableOperations}.
+   * COPIED_COPIED_TO_POLARIS
+   */
   private class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
       implements TableOperations {
     private final TableIdentifier tableIdentifier;
@@ -1566,6 +1571,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  /**
+   * An implementation of {@link ViewOperations} that integrates with {@link IcebergCatalog}.
+   * Much of this code was originally copied from {@link org.apache.iceberg.view.BaseViewOperations}.
+   * COPIED_COPIED_TO_POLARIS
+   */
   private class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
       implements ViewOperations {
     private final TableIdentifier identifier;
@@ -1831,6 +1841,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  /**
+   * An ABC for {@link BasePolarisTableOperations} and {@link BasePolarisViewOperations}.
+   * Much of this code was originally copied from {@link org.apache.iceberg.BaseMetastoreTableOperations}.
+   * COPIED_COPIED_TO_POLARIS
+   */
   private abstract static class PolarisOperationsBase<T> {
 
     protected static final String METADATA_FOLDER_NAME = "metadata";
