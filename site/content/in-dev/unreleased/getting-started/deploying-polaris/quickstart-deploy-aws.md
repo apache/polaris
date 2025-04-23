@@ -27,6 +27,7 @@ Additionally, Polaris will be bootstrapped to use this database and Docker conta
 
 The requirements to run the script below are:
 * There must be at least two subnets created in the VPC and region in which your EC2 instance reside. The span of subnets MUST include at least 2 availability zones (AZs) within the same region. 
+* Your EC2 instance must be enabled with IMDSv1 or IMDSv2 with 2+ hop limit.
 * The AWS identity that you will use to run this script must have the following AWS permissions:
   * "ec2:DescribeInstances"
   * "rds:CreateDBInstance"
