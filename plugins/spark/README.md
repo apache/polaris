@@ -91,4 +91,8 @@ bin/spark-shell \
 
 # Limitations
 The Spark client does have limitations as follows:
-1) Only support create table 
+1) Create table as select (CTAS) is not supported for Delta tables.
+2) Dataframe saveAsTable is not supported for Delta tables, which requires CTAS support.
+3) Create non-iceberg table without explicit location is not supported.
+4) Rename table for non-iceberg table is not supported.
+5) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARITION is not supported for DELTA table.
