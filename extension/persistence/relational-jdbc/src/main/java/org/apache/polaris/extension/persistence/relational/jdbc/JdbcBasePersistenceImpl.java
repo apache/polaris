@@ -95,10 +95,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       } catch (SQLException e) {
         if ((datasourceOperations.isConstraintViolation(e)
             || datasourceOperations.isAlreadyExistsException(e))) {
-          throw new EntityAlreadyExistsException(entity);
+          throw new EntityAlreadyExistsException(entity, e);
         } else {
           throw new RuntimeException(
-              String.format("Failed to write entity due to %s", e.getMessage()));
+              String.format("Failed to write entity due to %s", e.getMessage()), e);
         }
       }
     } else {
@@ -122,7 +122,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         }
       } catch (SQLException e) {
         throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()));
+            String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     }
   }
@@ -169,10 +169,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 } catch (SQLException e) {
                   if ((datasourceOperations.isConstraintViolation(e)
                       || datasourceOperations.isAlreadyExistsException(e))) {
-                    throw new EntityAlreadyExistsException(entity);
+                    throw new EntityAlreadyExistsException(entity, e);
                   } else {
                     throw new RuntimeException(
-                        String.format("Failed to write entity due to %s", e.getMessage()));
+                        String.format("Failed to write entity due to %s", e.getMessage()), e);
                   }
                 }
               } else {
@@ -198,7 +198,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   }
                 } catch (SQLException e) {
                   throw new RuntimeException(
-                      String.format("Failed to write entity due to %s", e.getMessage()));
+                      String.format("Failed to write entity due to %s", e.getMessage()), e);
                 }
               }
             }
@@ -207,7 +207,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()));
+              "Error executing the transaction for writing entities due to %s", e.getMessage()),
+          e);
     }
   }
 
@@ -220,7 +221,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to write to grant records due to %s", e.getMessage()));
+          String.format("Failed to write to grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -239,7 +240,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteQuery(ModelEntity.class, params));
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete entity due to %s", e.getMessage()));
+          String.format("Failed to delete entity due to %s", e.getMessage()), e);
     }
   }
 
@@ -252,7 +253,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete from grant records due to %s", e.getMessage()));
+          String.format("Failed to delete from grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -266,7 +267,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteQueryForEntityGrantRecords(entity, realmId));
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete grant records due to %s", e.getMessage()));
+          String.format("Failed to delete grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -277,7 +278,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
       datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
     } catch (SQLException e) {
-      throw new RuntimeException(String.format("Failed to delete all due to %s", e.getMessage()));
+      throw new RuntimeException(
+          String.format("Failed to delete all due to %s", e.getMessage()), e);
     }
   }
 
@@ -331,7 +333,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       }
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entity due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
     }
   }
 
@@ -346,7 +348,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
     }
   }
 
@@ -440,7 +442,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
     }
   }
 
@@ -494,7 +496,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return results.getFirst();
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve grant record due to %s", e.getMessage()));
+          String.format("Failed to retrieve grant record due to %s", e.getMessage()), e);
     }
   }
 
@@ -524,7 +526,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for securableCatalogId: %s securableId: %s due to %s",
-              securableCatalogId, securableId, e.getMessage()));
+              securableCatalogId, securableId, e.getMessage()),
+          e);
     }
   }
 
@@ -549,7 +552,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for granteeCatalogId: %s granteeId: %s due to %s",
-              granteeCatalogId, granteeId, e.getMessage()));
+              granteeCatalogId, granteeId, e.getMessage()),
+          e);
     }
   }
 
@@ -575,8 +579,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Failed to retrieve entities for catalogId: %s due to %s",
-              catalogId, e.getMessage()));
+              "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
+          e);
     }
   }
 
@@ -602,7 +606,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to retrieve principal secrets for clientId: %s", clientId));
+          String.format("Failed to retrieve principal secrets for clientId: %s", clientId), e);
     }
   }
 
@@ -638,7 +642,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e);
       throw new RuntimeException(
           String.format(
-              "Failed to generate new principal secrets for principalId: %s", principalId));
+              "Failed to generate new principal secrets for principalId: %s", principalId),
+          e);
     }
     // if not found, return null
     return principalSecrets;
@@ -696,7 +701,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to rotatePrincipalSecrets for clientId: %s", clientId));
+          String.format("Failed to rotatePrincipalSecrets for clientId: %s", clientId), e);
     }
 
     // return those
@@ -718,7 +723,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to delete principalSecrets for clientId: %s", clientId));
+          String.format("Failed to delete principalSecrets for clientId: %s", clientId), e);
     }
   }
 
