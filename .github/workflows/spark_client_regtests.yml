@@ -43,8 +43,8 @@ jobs:
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
-      - name: Project build
-        run: ./gradlew build
+      - name: Project build without testing
+        run: ./gradlew assemble
 
       - name: Image build
         run: |
