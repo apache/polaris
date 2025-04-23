@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -28,7 +28,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 
 /** Manage grants for Polaris entities. */
-public interface PolarisGrantManager {
+public interface GrantRecordDao {
   /**
    * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
    * role or granting a principal role to a principal.
