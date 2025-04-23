@@ -96,5 +96,5 @@ Running the test harness will automatically run the idempotent setup script. Fro
 project, just run:
 
 ```shell
-env POLARIS_HOST=localhost ./regtests/run.sh
+env POLARIS_HOST=localhost ./plugins/spark/v3.5/regtests/run.sh
 ```

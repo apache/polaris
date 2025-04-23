@@ -17,10 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# Idempotent setup for regression tests. Run manually or let run.sh auto-run.
+###################################
+# Idempotent setup for spark regression tests. Run manually or let run.sh auto-run.
 #
 # Warning - first time setup may download large amounts of files
 # Warning - may clobber conf/spark-defaults.conf
+# Warning - it will set the SPARK_HOME environment variable with the spark setup
+#
+# The script can be called independently like following
+#   ./setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --jar ${JAR_PATH}
+# Required Parameters:
+#   --sparkVersion   : the spark version to setup
+#   --scalaVersion   : the scala version of spark to setup
+#   --jar            : path to the local Polaris Spark client jar
+#
 
 set -x
 
@@ -131,12 +141,15 @@ spark.sql.variable.substitute true
 spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
 
 spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension
+# this configuration is needed for delta table
 spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
 spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog
-spark.sql.catalog.polaris.type=rest
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
+# this configuration is used
 spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 spark.sql.catalog.polaris.client.region=us-west-2
+# configuration required to ensure DataSourceV2 load works correctly for
+# different table formats
 spark.sql.sources.useV1SourceList=''
 EOF
   echo 'Success!'
