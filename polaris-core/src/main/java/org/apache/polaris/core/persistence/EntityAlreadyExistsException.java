@@ -25,13 +25,14 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
  * creation of a new entity; provides a member holding the conflicting entity.
  */
 public class EntityAlreadyExistsException extends RuntimeException {
-  private PolarisBaseEntity existingEntity;
+  private final PolarisBaseEntity existingEntity;
 
   /**
    * @param existingEntity The conflicting entity that caused creation to fail.
    */
   public EntityAlreadyExistsException(PolarisBaseEntity existingEntity) {
     super(message(existingEntity));
+    this.existingEntity = existingEntity;
   }
 
   public EntityAlreadyExistsException(PolarisBaseEntity existingEntity, Throwable cause) {
