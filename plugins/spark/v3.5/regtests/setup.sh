@@ -133,9 +133,7 @@ cat << EOF >> ${SPARK_CONF}
 
 # POLARIS Spark client test conf
 spark.jars $POLARIS_CLIENT_JAR
-spark.jars.packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_${SCALA_VERSION}:3.2.1
-spark.hadoop.fs.s3.impl org.apache.hadoop.fs.s3a.S3AFileSystem
-spark.hadoop.fs.AbstractFileSystem.s3.impl org.apache.hadoop.fs.s3a.S3A
+spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
 spark.sql.variable.substitute true
 
 spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
