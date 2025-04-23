@@ -66,7 +66,7 @@ azure.auth-type=DEFAULT
 EOF
 
 SPARK_ADDITIONAL_JARS=",org.apache.hadoop:hadoop-azure:3.3.4,org.apache.hadoop:hadoop-azure-datalake:3.3.4,org.apache.iceberg:iceberg-azure-bundle:1.6.1"
-sed "/^\s*--packages/s|\",$|${SPARK_ADDITIONAL_JARS}\",|" getting-started/eclipselink/docker-compose.yml
+sed -i "/^\s*--packages/s|\",$|${SPARK_ADDITIONAL_JARS}\",|" getting-started/eclipselink/docker-compose.yml
 
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
