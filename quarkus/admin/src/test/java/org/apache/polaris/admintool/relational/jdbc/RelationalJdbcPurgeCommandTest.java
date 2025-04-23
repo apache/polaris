@@ -17,24 +17,22 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+package org.apache.polaris.admintool.relational.jdbc;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
+import org.apache.polaris.admintool.PurgeCommandTestBase;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+@TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
+public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
+    public static class Profile extends RelationalJdbcProfile {
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            return ImmutableMap.<String, String>builder()
+                    .putAll(super.getConfigOverrides())
+                    .put("pre-bootstrap", "true")
+                    .build();
+        }
+    }
 }

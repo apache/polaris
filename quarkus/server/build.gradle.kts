@@ -50,6 +50,8 @@ dependencies {
 
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")
+  runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation("io.quarkus:quarkus-jdbc-postgresql")
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))

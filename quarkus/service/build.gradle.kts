@@ -23,10 +23,10 @@ plugins {
   id("polaris-quarkus")
 }
 
-configurations.all {
-  // exclude junit4 dependency for this module
-  exclude(group = "junit", module = "junit")
-}
+//configurations.all {
+//  // exclude junit4 dependency for this module
+//  exclude(group = "junit", module = "junit")
+//}
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -113,6 +113,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
+  runtimeOnly(project(":polaris-relational-jdbc"))
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
@@ -122,6 +123,13 @@ dependencies {
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
+
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi("io.quarkus:quarkus-junit5")
+  testFixturesApi(platform(libs.testcontainers.bom))
+  testFixturesApi("org.testcontainers:testcontainers")
+  testFixturesApi("org.testcontainers:postgresql")
+  testFixturesApi("org.postgresql:postgresql")
 }
 
 tasks.withType(Test::class.java).configureEach {

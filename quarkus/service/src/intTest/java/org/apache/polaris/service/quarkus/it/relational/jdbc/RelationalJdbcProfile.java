@@ -17,24 +17,24 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+import io.quarkus.test.junit.QuarkusTestProfile;
+import org.apache.polaris.service.quarkus.it.PostgresRelationalJdbcLifeCycleManagement;
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
+import java.util.List;
+import java.util.Map;
 
-  implementation(libs.smallrye.common.annotation) // @Identifier
+public class RelationalJdbcProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+        return Map.of();
+    }
 
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+    @Override
+    public List<TestResourceEntry> testResources() {
+        return List.of(
+                new TestResourceEntry(
+                        PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
+    }
 }

@@ -152,8 +152,8 @@ public class ModelEntity implements Converter<ModelEntity> {
         .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
         .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
         .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
-        .properties(r.getObject("properties", String.class))
-        .internalProperties(r.getObject("internal_properties", String.class))
+        .properties(r.getString("properties"))
+        .internalProperties(r.getString("internal_properties"))
         .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
         .build();
   }
