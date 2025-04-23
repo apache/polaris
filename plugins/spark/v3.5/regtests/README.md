@@ -75,26 +75,12 @@ eval $(minikube -p minikube docker-env --unset)
 Regression tests can be run locally as well, using the test harness. For local testing, both
 Scala 2.12 and Scala 2.13 are supported.
 
-Before you run the test, make sure you build the project to generate the Spark client jars.
-```shell
-./gradlew build
-```
-
-In this setup, a Polaris server must be running on localhost:8181 before running tests. The simplest
-way to do this is to run the Polaris server in a separate terminal window:
-
-```shell
-./gradlew run
-```
+To run regression tests locally, run the following:
+- `./gradlew build` -- build the Polaris project and Spark Client jars.
+- `./gradlew run` -- start a Polaris server on localhost:8181.
+- `env POLARIS_HOST=localhost ./plugins/spark/v3.5/regtests/run.sh` -- run regtests.
 
 Note: the regression tests expect Polaris to run with certain options, e.g. with support for `FILE`
 storage, default realm `POLARIS` and root credentials `root:secret`; if you run the above command,
 this will be the case. If you run Polaris in a different way, make sure that Polaris is configured
 appropriately.
-
-Running the test harness will automatically run the idempotent setup script. From the root of the
-project, just run:
-
-```shell
-env POLARIS_HOST=localhost ./plugins/spark/v3.5/regtests/run.sh
-```
