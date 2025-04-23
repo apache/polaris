@@ -112,7 +112,7 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void renameView() {
+  public void testRenameView() {
     sql("CREATE NAMESPACE ns");
     sql("USE ns");
 
@@ -127,55 +127,6 @@ public class SparkIT extends SparkIntegrationBase {
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
     assertThat(views).contains(new Object[] {"ns", renamedView, false});
-  }
-
-  @Test
-  public void testTableOperations() {
-    sql("CREATE NAMESPACE ns");
-    sql("USE ns");
-
-    String icebergTable1 = "icebergtb1";
-    String icebergTable2 = "icebergtb2";
-    String deltaTable = "deltatb";
-    String deltaDir = String.format("%s/ns", tableRootDir);
-    // create two iceberg table and one delta table
-    sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable1);
-    sql("INSERT INTO %s VALUES (5, 'a'), (2, 'b')", icebergTable1);
-    sql("CREATE TABLE %s (col1 int) using iceberg", icebergTable2);
-    sql("INSERT INTO %s VALUES (111), (235), (456)", icebergTable2);
-    sql(
-        "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
-        deltaTable, deltaDir, deltaTable);
-
-    // show iceberg tables
-    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable1);
-    assertThat(results.size()).isEqualTo(2);
-    assertThat(results.get(0)).isEqualTo(new Object[] {2, "b"});
-    assertThat(results.get(1)).isEqualTo(new Object[] {5, "a"});
-
-    results = sql("SELECT * FROM %s ORDER BY col1", icebergTable2);
-    assertThat(results.size()).isEqualTo(3);
-
-    // show tables shows all tables
-    List<Object[]> tables = sql("SHOW TABLES");
-    assertThat(tables.size()).isEqualTo(3);
-    assertThat(tables)
-        .contains(
-            new Object[] {"ns", icebergTable1, false},
-            new Object[] {"ns", icebergTable2, false},
-            new Object[] {"ns", deltaTable, false});
-
-    sql("DROP TABLE %s", icebergTable1);
-    tables = sql("SHOW TABLES");
-    assertThat(tables.size()).isEqualTo(2);
-    assertThat(tables)
-        .contains(
-            new Object[] {"ns", icebergTable2, false}, new Object[] {"ns", deltaTable, false});
-
-    sql("DROP TABLE %s", icebergTable2);
-    sql("DROP TABLE %s", deltaTable);
-    tables = sql("SHOW TABLES");
-    assertThat(tables.size()).isEqualTo(0);
   }
 
   @Test

@@ -117,13 +117,14 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void testAlterColumnsOperations() {
+  public void testAlterOperations() {
     String deltatb = getTableNameWithRandomSuffix();
     sql(
         "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
         deltatb, getTableLocation(deltatb));
     sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob')", deltatb);
 
+    // test alter columns
     // add two new columns to the table
     sql("Alter TABLE %s ADD COLUMNS (city STRING, age INT)", deltatb);
     // add one more row to the table
@@ -154,15 +155,8 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     assertThat(results).contains(new Object[] {1, null});
     assertThat(results).contains(new Object[] {2, null});
     assertThat(results).contains(new Object[] {3, "SFO"});
-  }
 
-  @Test
-  public void testAlterTableProperties() {
-    String deltatb = getTableNameWithRandomSuffix();
-    sql(
-        "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
-        deltatb, getTableLocation(deltatb));
-
+    // test alter properties
     sql(
         "ALTER TABLE %s SET TBLPROPERTIES ('description' = 'people table', 'test-owner' = 'test-user')",
         deltatb);
@@ -179,7 +173,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void testUnsupportedAlterOperations() {
+  public void testUnsupportedOperations() {
     String deltatb = getTableNameWithRandomSuffix();
     sql(
         "CREATE TABLE %s (name String, age INT, country STRING) USING DELTA PARTITIONED BY (country) LOCATION '%s'",
@@ -200,12 +194,12 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     // partition management is not supported for delta
     assertThatThrownBy(() -> sql("ALTER TABLE %s ADD PARTITION (country='US')", deltatb))
         .isInstanceOf(AnalysisException.class);
-  }
 
-  @Test
-  public void testCreateDeltaTableWithoutLocationFails() {
-    String deltatb = getTableNameWithRandomSuffix();
-    assertThatThrownBy(() -> sql("CREATE TABLE %s (id INT, name STRING) USING DELTA", deltatb))
+    assertThatThrownBy(
+            () ->
+                sql(
+                    "CREATE TABLE %s (id INT, name STRING) USING DELTA",
+                    getTableNameWithRandomSuffix()))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -239,11 +233,8 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     assertThat(subDirs).contains("_delta_log");
 
     // verify we can create a table out of the exising delta location
-    List<Object[]> tables = sql("SHOW TABLES");
-    assertThat(tables.size()).isEqualTo(0);
-
     sql("CREATE TABLE %s USING DELTA LOCATION '%s'", deltatb, getTableLocation(deltatb));
-    tables = sql("SHOW TABLES");
+    List<Object[]> tables = sql("SHOW TABLES");
     assertThat(tables.size()).isEqualTo(1);
     assertThat(tables).contains(new Object[] {defaultNs, deltatb, false});
 

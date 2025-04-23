@@ -88,3 +88,7 @@ bin/spark-shell \
 --conf spark.sql.catalog.polaris.type=rest \
 --conf spark.sql.sources.useV1SourceList=''
 ```
+
+# Limitations
+The Spark client does have limitations as follows:
+1) Only support create table 
