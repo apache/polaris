@@ -31,8 +31,16 @@ public class EntityAlreadyExistsException extends RuntimeException {
    * @param existingEntity The conflicting entity that caused creation to fail.
    */
   public EntityAlreadyExistsException(PolarisBaseEntity existingEntity) {
-    super(existingEntity.getName() + ":" + existingEntity.getId());
+    super(message(existingEntity));
+  }
+
+  public EntityAlreadyExistsException(PolarisBaseEntity existingEntity, Throwable cause) {
+    super(message(existingEntity), cause);
     this.existingEntity = existingEntity;
+  }
+
+  private static String message(PolarisBaseEntity existingEntity) {
+    return existingEntity.getName() + ":" + existingEntity.getId();
   }
 
   public PolarisBaseEntity getExistingEntity() {

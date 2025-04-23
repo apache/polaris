@@ -95,9 +95,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       } catch (SQLException e) {
         if ((datasourceOperations.isConstraintViolation(e)
             || datasourceOperations.isAlreadyExistsException(e))) {
-          EntityAlreadyExistsException ee = new EntityAlreadyExistsException(entity);
-          ee.initCause(e);
-          throw ee;
+          throw new EntityAlreadyExistsException(entity, e);
         } else {
           throw new RuntimeException(
               String.format("Failed to write entity due to %s", e.getMessage()), e);
@@ -171,9 +169,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 } catch (SQLException e) {
                   if ((datasourceOperations.isConstraintViolation(e)
                       || datasourceOperations.isAlreadyExistsException(e))) {
-                    EntityAlreadyExistsException ee = new EntityAlreadyExistsException(entity);
-                    ee.initCause(e);
-                    throw ee;
+                    throw new EntityAlreadyExistsException(entity, e);
                   } else {
                     throw new RuntimeException(
                         String.format("Failed to write entity due to %s", e.getMessage()), e);
