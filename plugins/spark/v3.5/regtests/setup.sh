@@ -146,7 +146,7 @@ spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
 spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
 # this configuration is currently only used for iceberg tables, generic tables currently
-# doesn't support credential vending
+# don't support credential vending
 spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 spark.sql.catalog.polaris.client.region=us-west-2
 # configuration required to ensure DataSourceV2 load works correctly for
