@@ -93,8 +93,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         query = generateInsertQuery(modelEntity, realmId);
         datasourceOperations.executeUpdate(query);
       } catch (SQLException e) {
-        if ((datasourceOperations.isConstraintViolation(e)
-            || datasourceOperations.isAlreadyExistsException(e))) {
+        if (datasourceOperations.isConstraintViolation(e)) {
+          PolarisBaseEntity existingEntity =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          throw new EntityAlreadyExistsException(existingEntity, e);
+        } else if (datasourceOperations.isAlreadyExistsException(e)) {
           throw new EntityAlreadyExistsException(entity, e);
         } else {
           throw new RuntimeException(
@@ -138,13 +146,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             for (int i = 0; i < entities.size(); i++) {
               PolarisBaseEntity entity = entities.get(i);
               ModelEntity modelEntity = ModelEntity.fromEntity(entity);
+              boolean isUpdate = originalEntities != null && originalEntities.get(i) != null;
 
               // first, check if the entity has already been created, in which case we will simply
               // return it.
               PolarisBaseEntity entityFound =
                   lookupEntity(
                       callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null) {
+              if (entityFound != null && !isUpdate) {
                 // probably the client retried, simply return it
                 // TODO: Check correctness of returning entityFound vs entity here. It may have
                 // already been updated after the creation.
@@ -158,17 +167,25 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                       entity.getParentId(),
                       entity.getTypeCode(),
                       entity.getName());
-              if (exists != null) {
+              if (exists != null && !isUpdate) {
                 throw new EntityAlreadyExistsException(entity);
               }
               String query;
-              if (originalEntities == null || originalEntities.get(i) == null) {
+              if (!isUpdate) {
                 try {
                   query = generateInsertQuery(modelEntity, realmId);
                   statement.executeUpdate(query);
                 } catch (SQLException e) {
-                  if ((datasourceOperations.isConstraintViolation(e)
-                      || datasourceOperations.isAlreadyExistsException(e))) {
+                  if (datasourceOperations.isConstraintViolation(e)) {
+                    PolarisBaseEntity existingEntity =
+                        lookupEntityByName(
+                            callCtx,
+                            entity.getCatalogId(),
+                            entity.getParentId(),
+                            entity.getTypeCode(),
+                            entity.getName());
+                    throw new EntityAlreadyExistsException(existingEntity, e);
+                  } else if (datasourceOperations.isAlreadyExistsException(e)) {
                     throw new EntityAlreadyExistsException(entity, e);
                   } else {
                     throw new RuntimeException(
@@ -492,6 +509,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         throw new IllegalStateException(
             String.format(
                 "More than one grant record %s for a given Grant record", results.getFirst()));
+      } else if (results.isEmpty()) {
+        return null;
       }
       return results.getFirst();
     } catch (SQLException e) {

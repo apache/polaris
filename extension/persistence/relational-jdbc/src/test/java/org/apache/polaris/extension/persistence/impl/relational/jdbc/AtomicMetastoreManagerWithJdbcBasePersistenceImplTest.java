@@ -49,7 +49,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
     try {
-      datasourceOperations.executeScript("h2/schema-v1-h2.sql");
+      datasourceOperations.executeScript("h2/schema-v1.sql");
     } catch (SQLException e) {
       throw new RuntimeException(String.format("Error executing h2 script: %s", e.getMessage()), e);
     }

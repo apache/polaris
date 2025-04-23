@@ -127,6 +127,7 @@ import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -146,6 +147,10 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 @TestProfile(IcebergCatalogTest.Profile.class)
 public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
+  static {
+    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
+        PreferredAssumptionException.JUNIT5);
+  }
 
   public static class Profile implements QuarkusTestProfile {
 

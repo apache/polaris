@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
+import io.quarkus.arc.All;
+import io.quarkus.arc.InstanceHandle;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
@@ -32,7 +34,10 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -74,6 +79,9 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
 public class QuarkusProducers {
+
+  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
+
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
   public Clock clock() {
@@ -256,9 +264,28 @@ public class QuarkusProducers {
       @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
-    }
+  }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  @Produces
+  public Map<String, DataSource> dataSourceMap(@All List<InstanceHandle<DataSource>> dataSources) {
+    Map<String, DataSource> dataSourceMap = new HashMap<>();
+    for (InstanceHandle<DataSource> handle : dataSources) {
+      String name = handle.getBean().getName();
+      name = name == null ? DEFAULT_DATA_SOURCE_NAME : unquoteDataSourceName(name);
+      dataSourceMap.put(name, handle.get());
+    }
+
+    return dataSourceMap;
+  }
+
+  private static String unquoteDataSourceName(String dataSourceName) {
+    if (dataSourceName.startsWith("\"") && dataSourceName.endsWith("\"")) {
+      dataSourceName = dataSourceName.substring(1, dataSourceName.length() - 1);
+    }
+    return dataSourceName;
   }
 }

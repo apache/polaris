@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewAzureIntegrationTest;
 
 @TestProfile(RelationalJdbcProfile.class)
-@QuarkusTest
-public class JdbcQuarkusRestCatalogViewAzureIT extends PolarisRestCatalogViewAzureIntegrationTest {
-}
+@QuarkusIntegrationTest
+public class JdbcQuarkusRestCatalogViewAzureIT extends PolarisRestCatalogViewAzureIntegrationTest {}

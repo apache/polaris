@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.admintool.relational.jdbc;
 
 import io.quarkus.test.junit.TestProfile;
@@ -26,13 +25,13 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
 public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
-    public static class Profile extends RelationalJdbcProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return ImmutableMap.<String, String>builder()
-                    .putAll(super.getConfigOverrides())
-                    .put("pre-bootstrap", "true")
-                    .build();
-        }
+  public static class Profile extends RelationalJdbcProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("pre-bootstrap", "true")
+          .build();
     }
+  }
 }

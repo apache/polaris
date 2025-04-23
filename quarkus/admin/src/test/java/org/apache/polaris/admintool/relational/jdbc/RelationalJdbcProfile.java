@@ -26,16 +26,16 @@ import java.util.Map;
 import org.apache.polaris.admintool.PostgresRelationalJdbcLifeCycleManagement;
 
 public class RelationalJdbcProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-        return Map.of();
-    }
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return Map.of();
+  }
 
-    @Override
-    public List<TestResourceEntry> testResources() {
-        return List.of(
-                new TestResourceEntry(
-                        PostgresRelationalJdbcLifeCycleManagement.class,
-                        Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
-    }
+  @Override
+  public List<TestResourceEntry> testResources() {
+    return List.of(
+        new TestResourceEntry(
+            PostgresRelationalJdbcLifeCycleManagement.class,
+            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
+  }
 }

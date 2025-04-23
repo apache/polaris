@@ -21,7 +21,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -38,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -47,7 +47,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
@@ -68,13 +67,17 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
+  final Map<String, DataSource> dataSourceMap;
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   // TODO: Pending discussion of if we should have one Database per realm or 1 schema per realm
   // or realm should be a primary key on all the tables.
-  @Inject Instance<DataSource> dataSource;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
 
-  protected JdbcMetaStoreManagerFactory() {}
+  @Inject
+  protected JdbcMetaStoreManagerFactory(Map<String, DataSource> dataSourceMap) {
+    this.dataSourceMap = dataSourceMap;
+  }
 
   protected PrincipalSecretsGenerator secretsGenerator(
       RealmContext realmContext, @Nullable RootCredentialsSet rootCredentialsSet) {
@@ -92,7 +95,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
+    DatasourceOperations databaseOperations =
+        getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -106,13 +110,18 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
+  private DatasourceOperations getDatasourceOperations(
+      boolean isBootstrap, String realmIdentifier) {
+    // Idea is that worst case will do have it under default datasource name.
+    DatasourceOperations databaseOperations =
+        new DatasourceOperations(
+            dataSourceMap.getOrDefault(
+                realmIdentifier, dataSourceMap.get(DEFAULT_DATA_SOURCE_NAME)));
     if (isBootstrap) {
       // TODO: see if we need to take script from Quarkus or can we just
       // use the script committed in the repo.
       try {
-        databaseOperations.executeScript("postgres/schema-v1-postgresql.sql");
+        databaseOperations.executeScript("postgres/schema-v1.sql");
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);

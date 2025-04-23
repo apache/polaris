@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.admintool.relational.jdbc;
 
 import io.quarkus.test.junit.TestProfile;

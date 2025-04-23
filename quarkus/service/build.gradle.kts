@@ -23,11 +23,6 @@ plugins {
   id("polaris-quarkus")
 }
 
-//configurations.all {
-//  // exclude junit4 dependency for this module
-//  exclude(group = "junit", module = "junit")
-//}
-
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-service"))
@@ -114,7 +109,11 @@ dependencies {
   testImplementation("software.amazon.awssdk:dynamodb")
 
   runtimeOnly(project(":polaris-relational-jdbc"))
-  implementation("io.quarkus:quarkus-jdbc-postgresql")
+  implementation("io.quarkus:quarkus-jdbc-postgresql") {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
@@ -125,7 +124,11 @@ dependencies {
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
   testFixturesApi("io.quarkus:quarkus-junit5")
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
