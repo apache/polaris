@@ -125,6 +125,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       String genericTable,
+      String format,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
