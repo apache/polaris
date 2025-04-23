@@ -25,12 +25,6 @@ services:
       - "8182"
     environment:
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-      GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
-      AZURE_TENANT_ID: $AZURE_TENANT_ID
-      AZURE_CLIENT_ID: $AZURE_CLIENT_ID
-      AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
