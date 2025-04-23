@@ -78,7 +78,8 @@ aws s3api create-bucket --bucket $S3_BUCKET_NAME --region $CURRENT_REGION --crea
 
 export STORAGE_LOCATION="s3://$S3_BUCKET_NAME/quickstart_catalog/"
 
-export SPARK_ADDITIONAL_JARS=",org.apache.hadoop:hadoop-azure:3.3.4,org.apache.hadoop:hadoop-azure-datalake:3.3.4,org.apache.iceberg:iceberg-azure-bundle:1.6.1"
+SPARK_ADDITIONAL_JARS=",software.amazon.awssdk:bundle:2.28.17,software.amazon.awssdk:url-connection-client:2.28.17"
+sed "/^\s*--packages/s|\",$|${SPARK_ADDITIONAL_JARS}\",|" getting-started/eclipselink/docker-compose.yml
 
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
