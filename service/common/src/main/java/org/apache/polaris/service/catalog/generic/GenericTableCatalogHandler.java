@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.TARGET_FORMAT_METADATA_PATH_KEY;
+
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -31,6 +33,10 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.conversion.xtable.RemoteXTableConvertor;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConversionUtils;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertTableResponse;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertedTable;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -57,6 +63,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
     this.genericTableCatalog.initialize(catalogName, Map.of());
+    initializeConversionServiceIfEnabled();
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
@@ -82,8 +89,8 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             .setDoc(createdEntity.getDoc())
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
-
-    return LoadGenericTableResponse.builder().setTable(createdTable).build();
+      convertIfRequired(createdEntity, createdTable);
+      return LoadGenericTableResponse.builder().setTable(createdTable).build();
   }
 
   public boolean dropGenericTable(TableIdentifier identifier) {
@@ -106,6 +113,15 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(loadedEntity.getPropertiesAsMap())
             .build();
 
+    convertIfRequired(loadedEntity, loadedTable);
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+  }
+
+  private void convertIfRequired(GenericTableEntity entity, GenericTable table) {
+    if (XTableConversionUtils.requiresConversion(callContext, table.getProperties())) {
+      ConvertTableResponse response = RemoteXTableConvertor.getInstance().execute(entity);
+      ConvertedTable convertedTable = response.getConvertedTables().get(0);
+      table.getProperties().put(TARGET_FORMAT_METADATA_PATH_KEY, convertedTable.getTargetMetadataPath());
+    }
   }
 }

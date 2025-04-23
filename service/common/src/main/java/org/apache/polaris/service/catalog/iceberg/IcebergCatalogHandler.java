@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.TARGET_FORMAT_METADATA_PATH_KEY;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
@@ -55,6 +57,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
@@ -99,6 +102,11 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.catalog.conversion.xtable.RemoteXTableConvertor;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConversionUtils;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertTableResponse;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertedTable;
+import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -251,6 +259,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+    initializeConversionServiceIfEnabled();
   }
 
   public ListNamespacesResponse listNamespaces(Namespace parent) {
@@ -393,8 +402,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withWriteOrder(request.writeOrder())
             .setProperties(reservedProperties.removeReservedProperties(request.properties()))
             .build();
-    return catalogHandlerUtils.createTable(
-        baseCatalog, namespace, requestWithoutReservedProperties);
+
+      LoadTableResponse response = catalogHandlerUtils.createTable(
+              baseCatalog, namespace, requestWithoutReservedProperties);
+      if (XTableConversionUtils.requiresConversion(callContext, response.config())) {
+          ConvertTableResponse convertedTable =
+                  RemoteXTableConvertor.getInstance().execute(new IcebergTableLikeEntity(catalog));
+          response
+                  .config()
+                  .put(TARGET_FORMAT_METADATA_PATH_KEY, convertedTable.getConvertedTables().get(0).getTargetMetadataPath());
+      }
+      return response;
   }
 
   /**
@@ -629,9 +647,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
+    IcebergTableLikeEntity tableEntity = null;
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
-      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      tableEntity = getTableEntity(tableIdentifier);
       if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
         LOGGER
             .atWarn()
@@ -650,7 +669,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     LoadTableResponse rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
-    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+      Optional<LoadTableResponse> optionalLoadTableResponse = Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+      if (tableEntity != null
+              && XTableConversionUtils.requiresConversion(
+              callContext, optionalLoadTableResponse.get().config())) {
+          ConvertTableResponse response = RemoteXTableConvertor.getInstance().execute(tableEntity);
+          optionalLoadTableResponse
+                  .get()
+                  .config()
+                  .put(TARGET_FORMAT_METADATA_PATH_KEY, response.getConvertedTables().get(0).getTargetMetadataPath());
+      }
+      return optionalLoadTableResponse;
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
