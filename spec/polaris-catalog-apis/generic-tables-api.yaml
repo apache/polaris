@@ -116,7 +116,15 @@ paths:
         Load a generic table from the catalog under the given namespace.
       
         The response contains all table information passed during create.
-
+      parameters:
+        - name: format
+          in: query
+          description:
+            When set, Polaris will try to provide the generic table in the requested format. 
+            If a format is specified that the generic table is not available in, the request may fail.
+          required: false
+          schema:
+            type: string
       responses:
         200:
           $ref: '#/components/responses/LoadGenericTableResponse'
