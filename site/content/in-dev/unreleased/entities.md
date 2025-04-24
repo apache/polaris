@@ -46,7 +46,6 @@ In Polaris, namespaces can be nested. For example, `a.b.c.d.e.f.g` is a valid na
 
 For information on managing namespaces with the REST API or for more information on what data can be associated with a namespace, see [the API docs]({{% github-polaris "client/python/docs/CreateNamespaceRequest.md" %}}).
 
-
 ## Table
 
 Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/), [Delta tables](https://docs.databricks.com/aws/en/delta/table-properties), or [Hudi tables](https://hudi.apache.org/docs/next/configurations#TABLE_CONFIG).
@@ -71,20 +70,19 @@ Polaris principal roles are labels that may be granted to [principals](#principa
 
 For information on managing principal roles with the REST API or for more information on what data can be associated with a principal role, see [the API docs]({{% github-polaris "client/python/docs/CreatePrincipalRoleRequest.md" %}}).
 
-
 ## Catalog Role
 
 Polaris catalog roles are labels that may be granted to [catalogs](#catalog). Each catalog may have one or more catalog roles, and the same catalog role may be granted to multiple catalogs. Catalog roles may be assigned based on the nature of data that will reside in a catalog, or by the groups of users and services that might need to access that data. 
 
 Each catalog role may have multiple [privileges](#privilege) granted to it, and each catalog role can be granted to one or more [principal roles](#principal-role). This is the mechanism by which principals are granted access to entities inside a catalog such as namespaces and tables.
 
-## Privilege
-
-Polaris privileges are granted to [catalog roles](#catalog-role) in order to grant principals with a given principal role some degree of access to catalogs with a given catalog role. When a privilege is granted to a catalog role, any principal roles granted that catalog role receive the privilege. In turn, any principals who are granted that principal role receive it. 
-
 ## Policy
 
 Polaris policy is a set of rules governing actions on specified resources under predefined conditions.
+
+## Privilege
+
+Polaris privileges are granted to [catalog roles](#catalog-role) in order to grant principals with a given principal role some degree of access to catalogs with a given catalog role. When a privilege is granted to a catalog role, any principal roles granted that catalog role receive the privilege. In turn, any principals who are granted that principal role receive it. 
 
 A privilege can be scoped to any entity inside a catalog, including the catalog itself.
 

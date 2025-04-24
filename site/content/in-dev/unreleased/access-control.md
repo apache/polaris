@@ -162,9 +162,9 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | -----------------------| ----------- |
 | POLICY_CREATE | Enables creating a policy under specified namespace |
 | POLICY_READ | Enables reading policy content and metadata |
-| POLICY_WRITE | Enables updating the policy details such as  |
-| POLICY_LIST | Enable listing any policy from the catalog |
-| POLICY_DROP | Enable dropping a policy if it is not attached to any resource entity |
+| POLICY_WRITE | Enables updating the policy details such as its content or description |
+| POLICY_LIST | Enables listing any policy from the catalog |
+| POLICY_DROP | Enables dropping a policy if it is not attached to any resource entity |
 | POLICY_FULL_METADATA | Grants all policy privileges. |
 
 ## RBAC example
