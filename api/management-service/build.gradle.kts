@@ -43,8 +43,7 @@ dependencies {
 
   implementation(libs.slf4j.api)
 
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-smallrye-fault-tolerance")
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {
