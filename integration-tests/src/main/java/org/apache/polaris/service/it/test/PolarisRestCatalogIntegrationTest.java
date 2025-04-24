@@ -1214,11 +1214,14 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    GenericTable createResponse =
-        genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
-    Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
-
-    genericTableApi.purge(currentCatalogName, namespace);
+    try {
+      GenericTable createResponse =
+          genericTableApi.createGenericTable(
+              currentCatalogName, tableIdentifier, "format", Map.of());
+      Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
@@ -1227,13 +1230,16 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
 
-    GenericTable loadResponse =
-        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
-    Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+      GenericTable loadResponse =
+          genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
 
-    genericTableApi.purge(currentCatalogName, namespace);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
@@ -1243,17 +1249,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
     TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
 
-    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
-    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
 
-    List<TableIdentifier> identifiers =
-        genericTableApi.listGenericTables(currentCatalogName, namespace);
+      List<TableIdentifier> identifiers =
+          genericTableApi.listGenericTables(currentCatalogName, namespace);
 
-    Assertions.assertThat(identifiers).hasSize(2);
-    Assertions.assertThat(identifiers)
-        .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
-
-    genericTableApi.purge(currentCatalogName, namespace);
+      Assertions.assertThat(identifiers).hasSize(2);
+      Assertions.assertThat(identifiers)
+          .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
@@ -1262,39 +1270,46 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
 
-    GenericTable loadResponse =
-        genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
-    Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+      GenericTable loadResponse =
+          genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
 
-    genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
+      genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
 
-    assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
-        .isInstanceOf(ProcessingException.class);
+      assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+          .isInstanceOf(ProcessingException.class);
 
-    genericTableApi.purge(currentCatalogName, namespace);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
   public void testGrantsOnGenericTable() {
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
-    genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
 
-    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
 
-    Stream<TableGrant> tableGrants =
-        Arrays.stream(TablePrivilege.values())
-            .map(
-                p -> {
-                  return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                });
+      managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
 
-    tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
+      Stream<TableGrant> tableGrants =
+          Arrays.stream(TablePrivilege.values())
+              .map(
+                  p -> {
+                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                  });
 
-    genericTableApi.purge(currentCatalogName, namespace);
+      tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
+
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
@@ -1302,29 +1317,31 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
 
-    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+    try {
+      managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
 
-    Stream<TableGrant> tableGrants =
-        Arrays.stream(TablePrivilege.values())
-            .map(
-                p -> {
-                  return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
-                });
+      Stream<TableGrant> tableGrants =
+          Arrays.stream(TablePrivilege.values())
+              .map(
+                  p -> {
+                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                  });
 
-    tableGrants.forEach(
-        g -> {
-          try (Response response =
-              managementApi
-                  .request(
-                      "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                      Map.of("cat", currentCatalogName, "role", "catalogrole1"))
-                  .put(Entity.json(g))) {
+      tableGrants.forEach(
+          g -> {
+            try (Response response =
+                managementApi
+                    .request(
+                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                        Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                    .put(Entity.json(g))) {
 
-            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-          }
-        });
-
-    genericTableApi.purge(currentCatalogName, namespace);
+              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+            }
+          });
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
@@ -1333,73 +1350,79 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
-    try (Response res =
-        genericTableApi
-            .request(
-                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
-                Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
-            .delete()) {
-      assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+    try {
+      String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+      try (Response res =
+          genericTableApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                  Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
+              .delete()) {
+        assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
     }
-
-    genericTableApi.purge(currentCatalogName, namespace);
   }
 
   @Test
   public void testLoadTableWithSnapshots() {
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
-    restCatalog.createTable(tableIdentifier, SCHEMA);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+      restCatalog.createTable(tableIdentifier, SCHEMA);
 
-    assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
-        .isInstanceOf(RESTException.class)
-        .hasMessageContaining("Unrecognized snapshots")
-        .hasMessageContaining("code=" + BAD_REQUEST.getStatusCode());
-
-    catalogApi.purge(currentCatalogName, namespace);
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
+          .isInstanceOf(RESTException.class)
+          .hasMessageContaining("Unrecognized snapshots")
+          .hasMessageContaining("code=" + BAD_REQUEST.getStatusCode());
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 
   @Test
   public void testLoadTableWithRefFiltering() {
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    restCatalog.createTable(tableIdentifier, SCHEMA);
+      restCatalog.createTable(tableIdentifier, SCHEMA);
 
-    Table table = restCatalog.loadTable(tableIdentifier);
+      Table table = restCatalog.loadTable(tableIdentifier);
 
-    // Create an orphaned snapshot:
-    table.newAppend().appendFile(FILE_A).commit();
-    long snapshotIdA = table.currentSnapshot().snapshotId();
-    table.newAppend().appendFile(FILE_B).commit();
-    table.manageSnapshots().setCurrentSnapshot(snapshotIdA).commit();
+      // Create an orphaned snapshot:
+      table.newAppend().appendFile(FILE_A).commit();
+      long snapshotIdA = table.currentSnapshot().snapshotId();
+      table.newAppend().appendFile(FILE_B).commit();
+      table.manageSnapshots().setCurrentSnapshot(snapshotIdA).commit();
 
-    var allSnapshots =
-        catalogApi
-            .loadTable(currentCatalogName, tableIdentifier, "ALL")
-            .tableMetadata()
-            .snapshots();
-    assertThat(allSnapshots).hasSize(2);
+      var allSnapshots =
+          catalogApi
+              .loadTable(currentCatalogName, tableIdentifier, "ALL")
+              .tableMetadata()
+              .snapshots();
+      assertThat(allSnapshots).hasSize(2);
 
-    var refsSnapshots =
-        catalogApi
-            .loadTable(currentCatalogName, tableIdentifier, "REFS")
-            .tableMetadata()
-            .snapshots();
-    assertThat(refsSnapshots).hasSize(1);
-    assertThat(refsSnapshots.getFirst().snapshotId()).isEqualTo(snapshotIdA);
-
-    catalogApi.purge(currentCatalogName, namespace);
+      var refsSnapshots =
+          catalogApi
+              .loadTable(currentCatalogName, tableIdentifier, "REFS")
+              .tableMetadata()
+              .snapshots();
+      assertThat(refsSnapshots).hasSize(1);
+      assertThat(refsSnapshots.getFirst().snapshotId()).isEqualTo(snapshotIdA);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
   }
 }
