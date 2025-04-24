@@ -57,7 +57,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -145,7 +145,9 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
