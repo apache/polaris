@@ -82,6 +82,10 @@ Each catalog role may have multiple [privileges](#privilege) granted to it, and 
 
 Polaris privileges are granted to [catalog roles](#catalog-role) in order to grant principals with a given principal role some degree of access to catalogs with a given catalog role. When a privilege is granted to a catalog role, any principal roles granted that catalog role receive the privilege. In turn, any principals who are granted that principal role receive it. 
 
+## Policy
+
+Polaris policy is a set of rules governing actions on specified resources under predefined conditions.
+
 A privilege can be scoped to any entity inside a catalog, including the catalog itself.
 
 For a list of supported privileges for each privilege class, see the API docs:

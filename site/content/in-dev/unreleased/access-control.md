@@ -156,6 +156,17 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
 
+### Policy privileges
+
+| Privilege | Description |
+| -----------------------| ----------- |
+| POLICY_CREATE | Enables creating a policy under specified namespace |
+| POLICY_READ | Enables reading policy content and metadata |
+| POLICY_WRITE | Enables updating the policy details such as  |
+| POLICY_LIST | Enable listing any policy from the catalog |
+| POLICY_DROP | Enable dropping a policy if it is not attached to any resource entity |
+| POLICY_FULL_METADATA | Grants all policy privileges. |
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and
