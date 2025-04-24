@@ -72,7 +72,6 @@ cd ~/polaris
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-realm: <realm> root principal credentials: <client-id>:<client-secret>
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
@@ -80,20 +79,14 @@ INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 
 At this point, Polaris is running.
 
-When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
+When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. 
+For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
-When Polaris is launched using an in-memory metastore, the root principal credentials can be found
-in stdout on initial startup. Look for a line that resembles the following:
-
-```
-realm: <realm> root principal credentials: <client-id>:<client-secret>
-```
-
-Be sure to take note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
-
+Unless explicitly specified, Polaris will start with pre-configured credentials for the root principal credentials. These credentials can be found within the [code](https://github.com/apache/polaris/blame/6308ba02e89236a72e8661ca0e4d7494ee3ff946/quarkus/server/build.gradle.kts#L82).
+You can also set these credentials as environment variables for use with the Polaris CLI:
 ```shell
-export CLIENT_ID=<client-id>
-export CLIENT_SECRET=<client-secret>
+export CLIENT_ID=root
+export CLIENT_SECRET=secret
 ```
 
 ### Installing Apache Spark and Trino Locally for Testing
