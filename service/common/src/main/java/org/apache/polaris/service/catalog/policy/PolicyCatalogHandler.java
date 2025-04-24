@@ -33,6 +33,7 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -73,6 +74,7 @@ public class PolicyCatalogHandler extends CatalogHandler implements AutoCloseabl
 
   @Override
   protected void initializeCatalog() {
+    enforcePolicyStoreEnabledOrThrow();
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
   }
 
@@ -363,6 +365,18 @@ public class PolicyCatalogHandler extends CatalogHandler implements AutoCloseabl
         null /* secondary */);
 
     initializeCatalog();
+  }
+
+  public void enforcePolicyStoreEnabledOrThrow() {
+    boolean enabled =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_POLICY_STORE);
+    if (!enabled) {
+      throw new UnsupportedOperationException("Policy store support is not enabled");
+    }
   }
 
   @Override
