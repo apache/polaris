@@ -157,10 +157,7 @@ public class PolicyApi extends RestApi {
   }
 
   public void detachPolicy(
-      String catalog,
-      PolicyIdentifier policyIdentifier,
-      PolicyAttachmentTarget target,
-      Map<String, String> parameters) {
+      String catalog, PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
     String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
     DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(target).build();
     try (Response res =
@@ -187,7 +184,8 @@ public class PolicyApi extends RestApi {
     }
 
     try (Response res =
-        request("polaris/v1/policies/applicable-policies", Map.of(), queryParams).get()) {
+        request("polaris/v1/{cat}/applicable-policies", Map.of("cat", catalog), queryParams)
+            .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(GetApplicablePoliciesResponse.class).getApplicablePolicies().stream()
           .toList();

@@ -127,7 +127,8 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    PolicyType type = PolicyType.fromName(RESTUtil.decodeString(policyType));
+    PolicyType type =
+        policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.listPolicies(ns, type)).build());
   }
@@ -228,9 +229,10 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = decodeNamespace(namespace);
-    String target = RESTUtil.decodeString(targetName);
-    PolicyType type = PolicyType.fromName(RESTUtil.decodeString(policyType));
+    Namespace ns = namespace != null ? decodeNamespace(namespace) : null;
+    String target = targetName != null ? RESTUtil.decodeString(targetName) : null;
+    PolicyType type =
+        policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
     return withCatalog(
         securityContext,
         prefix,
