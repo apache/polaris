@@ -22,7 +22,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.function.Function;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
@@ -39,6 +38,9 @@ import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
+import org.apache.polaris.service.types.ListPoliciesResponse;
+import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.slf4j.Logger;
@@ -71,24 +73,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     this.prefixParser = prefixParser;
   }
 
-  private Response withCatalog(
-      SecurityContext securityContext,
-      String prefix,
-      Function<PolicyCatalogHandler, Response> action) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    try (PolicyCatalogHandler wrapper = newHandlerWrapper(securityContext, catalogName)) {
-      return action.apply(wrapper);
-    } catch (RuntimeException e) {
-      LOGGER.debug("RuntimeException while operating on policy catalog. Propagating to caller.", e);
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error("Error while operating on policy catalog", e);
-      throw new RuntimeException(e);
-    }
-  }
-
-  private PolicyCatalogHandler newHandlerWrapper(
-      SecurityContext securityContext, String catalogName) {
+  private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
     var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
@@ -99,7 +84,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
         entityManager,
         metaStoreManager,
         securityContext,
-        catalogName,
+        prefixParser.prefixToCatalogName(realmContext, prefix),
         polarisAuthorizer);
   }
 
@@ -111,10 +96,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> Response.ok(catalog.createPolicy(ns, createPolicyRequest)).build());
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    LoadPolicyResponse response = handler.createPolicy(ns, createPolicyRequest);
+    return Response.ok(response).build();
   }
 
   @Override
@@ -129,8 +113,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     Namespace ns = decodeNamespace(namespace);
     PolicyType type =
         policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
-    return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.listPolicies(ns, type)).build());
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    ListPoliciesResponse response = handler.listPolicies(ns, type);
+    return Response.ok(response).build();
   }
 
   @Override
@@ -142,8 +127,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
-    return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.loadPolicy(identifier)).build());
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    LoadPolicyResponse response = handler.loadPolicy(identifier);
+    return Response.ok(response).build();
   }
 
   @Override
@@ -156,10 +142,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> Response.ok(catalog.updatePolicy(identifier, updatePolicyRequest)).build());
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    LoadPolicyResponse response = handler.updatePolicy(identifier, updatePolicyRequest);
+    return Response.ok(response).build();
   }
 
   @Override
@@ -172,13 +157,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> {
-          catalog.dropPolicy(identifier, detachAll != null && detachAll);
-          return Response.status(Response.Status.NO_CONTENT).build();
-        });
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    handler.dropPolicy(identifier, detachAll != null && detachAll);
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -191,13 +172,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> {
-          catalog.attachPolicy(identifier, attachPolicyRequest);
-          return Response.status(Response.Status.NO_CONTENT).build();
-        });
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    handler.attachPolicy(identifier, attachPolicyRequest);
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -210,13 +187,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> {
-          catalog.detachPolicy(identifier, detachPolicyRequest);
-          return Response.status(Response.Status.NO_CONTENT).build();
-        });
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    handler.detachPolicy(identifier, detachPolicyRequest);
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -233,9 +206,8 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     String target = targetName != null ? RESTUtil.decodeString(targetName) : null;
     PolicyType type =
         policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> Response.ok(catalog.getApplicablePolicies(ns, target, type)).build());
+    PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    GetApplicablePoliciesResponse response = handler.getApplicablePolicies(ns, target, type);
+    return Response.ok(response).build();
   }
 }
