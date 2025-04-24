@@ -33,6 +33,7 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.validation.api)
+  compileOnly(libs.microprofile.fault.tolerance.api)
   compileOnly(libs.swagger.annotations)
 
   implementation(libs.jakarta.servlet.api)
@@ -42,8 +43,6 @@ dependencies {
   compileOnly("io.micrometer:micrometer-core")
 
   implementation(libs.slf4j.api)
-
-  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {

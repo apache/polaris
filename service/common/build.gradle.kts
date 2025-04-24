@@ -90,7 +90,7 @@ dependencies {
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
 
-  compileOnly(libs.microprofile.fault.tolerance.api)
+  implementation(libs.microprofile.fault.tolerance.api)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
@@ -99,8 +99,6 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   testImplementation(libs.logback.classic)
-
-  testImplementation(libs.microprofile.fault.tolerance.api)
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
