@@ -1203,8 +1203,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   /**
    * An implementation of {@link TableOperations} that integrates with {@link IcebergCatalog}. Much
-   * of this code was originally copied from {@link org.apache.iceberg.BaseMetastoreTableOperations}.
-   * CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.8
+   * of this code was originally copied from {@link
+   * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
+   * Version: 1.8
    */
   private class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
       implements TableOperations {
