@@ -59,13 +59,12 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   private final List<String> scopes;
 
   public OAuthClientCredentialsParametersDpo(
-      @JsonProperty(value = "authenticationTypeCode", required = true) int authenticationTypeCode,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
       @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
       @JsonProperty(value = "clientSecretReference", required = true) @Nonnull
           UserSecretReference clientSecretReference,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
-    super(authenticationTypeCode);
+    super(AuthenticationType.OAUTH.getCode());
 
     this.tokenUri = tokenUri;
     this.clientId = clientId;

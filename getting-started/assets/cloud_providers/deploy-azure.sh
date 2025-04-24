@@ -32,7 +32,6 @@ FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
 
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
-       -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

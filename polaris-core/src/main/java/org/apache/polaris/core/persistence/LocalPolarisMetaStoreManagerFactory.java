@@ -32,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -237,22 +236,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
             PolarisEntityType.PRINCIPAL,
             PolarisEntitySubType.NULL_SUBTYPE,
             PolarisEntityConstants.getRootPrincipalName());
-    PolarisPrincipalSecrets secrets =
-        metaStoreManager
-            .loadPrincipalSecrets(
-                polarisContext,
-                PolarisEntity.of(rootPrincipalLookup.getEntity())
-                    .getInternalPropertiesAsMap()
-                    .get(PolarisEntityConstants.getClientIdPropertyName()))
-            .getPrincipalSecrets();
-    PrincipalSecretsResult rotatedSecrets =
-        metaStoreManager.rotatePrincipalSecrets(
-            polarisContext,
-            secrets.getPrincipalClientId(),
-            secrets.getPrincipalId(),
-            false,
-            secrets.getMainSecretHash());
-    return rotatedSecrets;
+    return metaStoreManager.loadPrincipalSecrets(
+        polarisContext,
+        PolarisEntity.of(rootPrincipalLookup.getEntity())
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getClientIdPropertyName()));
   }
 
   /**

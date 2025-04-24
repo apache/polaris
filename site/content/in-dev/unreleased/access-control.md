@@ -84,11 +84,11 @@ principal roles. Likewise, a principal role can be granted to one or more catalo
 The following table displays examples of catalog roles that you might
 configure in Polaris:
 
-| Example Catalog role | Description |
-| -----------------------| ----------- |
-| Catalog administrators   | A role that has been granted multiple privileges to emulate full access to the catalog.<br /><br />Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.  |
-| Catalog readers      | A role that has been granted read-only privileges to tables in the catalog.<br /><br />Principal roles that have been granted this role are allowed to read from tables in the catalog. |
-| Catalog contributor   | A role that has been granted read and write access privileges to all tables that belong to the catalog.<br /><br />Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
+| Example Catalog role | Description|
+| -----------------------|-----------|
+| Catalog administrators   | A role that has been granted multiple privileges to emulate full access to the catalog.  <br/>Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.  |
+| Catalog readers      | A role that has been granted read-only privileges to tables in the catalog.  <br/>Principal roles that have been granted this role are allowed to read from tables in the catalog. |
+| Catalog contributor   | A role that has been granted read and write access privileges to all tables that belong to the catalog.  <br/>Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
 
 ## RBAC model
 
