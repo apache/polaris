@@ -47,8 +47,8 @@ echo "GCS Bucket Name: $GCS_BUCKET_NAME"
 gcloud storage buckets create "gs://$GCS_BUCKET_NAME" --location=$CURRENT_REGION
 export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
 
-SPARK_ADDITIONAL_JARS=",org.apache.iceberg:iceberg-gcp-bundle:1.7.0"
-sed -i "/^\s*--packages/s|\",$|${SPARK_ADDITIONAL_JARS}\",|" getting-started/eclipselink/docker-compose.yml
+#SPARK_ADDITIONAL_JARS=",org.apache.iceberg:iceberg-gcp-bundle:1.7.0"
+#sed -i "/^\s*--packages/s|\",$|${SPARK_ADDITIONAL_JARS}\",|" getting-started/eclipselink/docker-compose.yml
 
 
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
