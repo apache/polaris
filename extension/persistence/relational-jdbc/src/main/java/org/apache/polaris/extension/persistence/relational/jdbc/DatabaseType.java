@@ -32,4 +32,12 @@ public enum DatabaseType {
   public String getDisplayName() {
     return displayName;
   }
+
+  public static DatabaseType fromDisplayName(String displayName) {
+    return switch (displayName) {
+      case "h2" -> DatabaseType.H2;
+      case "postgresql" -> DatabaseType.POSTGRES;
+      default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
+    };
+  }
 }

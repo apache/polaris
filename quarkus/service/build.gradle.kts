@@ -109,7 +109,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:dynamodb")
 
   runtimeOnly(project(":polaris-relational-jdbc"))
-  implementation("io.quarkus:quarkus-jdbc-postgresql") {
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql") {
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")
     exclude(group = "org.scala-lang", module = "scala-reflect")

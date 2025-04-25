@@ -22,9 +22,11 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -116,7 +118,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     DatasourceOperations databaseOperations = new DatasourceOperations(dataSources.getFirst());
     if (isBootstrap) {
       try {
-        DatabaseType databaseType = databaseOperations.detect();
+        DatabaseType databaseType;
+        try (Connection connection = dataSources.getFirst().getConnection()) {
+          String productName =
+              connection.getMetaData().getDatabaseProductName().toLowerCase(Locale.ROOT);
+          databaseType = DatabaseType.fromDisplayName(productName);
+        }
         databaseOperations.executeScript(
             String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
       } catch (SQLException e) {
