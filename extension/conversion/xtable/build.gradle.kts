@@ -17,6 +17,8 @@
  * under the License.
  */
 
+plugins { id("polaris-server") }
+
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-service-common"))

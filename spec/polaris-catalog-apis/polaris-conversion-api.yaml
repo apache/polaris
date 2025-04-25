@@ -1,0 +1,73 @@
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+
+#   http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing,
+#  software distributed under the License is distributed on an
+#  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#  KIND, either express or implied.  See the License for the
+#  specific language governing permissions and limitations
+#  under the License.
+
+
+openapi: 3.0.3
+info:
+  title: Polaris Conversion Service
+  version: 0.0.1
+  description:
+    Defines a REST interface for table conversion
+servers:
+  - url: "{scheme}://{host}/api/conversion/v1"
+    description: Server URL when the port can be inferred from the scheme
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+# All routes are currently configured using an Authorization header.
+security:
+  - OAuth2: []
+
+paths:
+  /conversion/v1/convert:
+    post:
+      summary: Convert a given GenericTable to the requested format
+      operationId: convertTable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericTable'
+      parameters:
+        - name: freshness
+          in: query
+          required: false
+          description: Requested freshness in seconds
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successfully converted table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericTable'
+        '404':
+          description: Conversion not available
+        '500':
+          description: Internal error
+
+components:
+  schemas:
+    GenericTable:
+      $ref: './generic-tables-api.yaml#/components/schemas/GenericTable'

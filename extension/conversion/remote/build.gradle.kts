@@ -18,6 +18,7 @@
  */
 
 plugins {
+  id("polaris-server")
   alias(libs.plugins.openapi.generator)
 }
 
