@@ -20,11 +20,11 @@ package org.apache.polaris.service.quarkus.auth;
 
 import io.quarkus.security.credential.Credential;
 import io.quarkus.security.identity.SecurityIdentity;
-import org.apache.polaris.service.auth.PrincipalCredential;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 
 /**
- * Convenience sub-interface of Polaris {@link PrincipalCredential} that also implements Quarkus
+ * Convenience sub-interface of Polaris {@link PrincipalAuthInfo} that also implements Quarkus
  * {@link Credential}, thus allowing it to be used as a {@linkplain
  * SecurityIdentity#getCredential(Class) security identity credential}.
  */
-public interface QuarkusPrincipalCredential extends Credential, PrincipalCredential {}
+public interface QuarkusPrincipalAuthInfo extends PrincipalAuthInfo, Credential {}

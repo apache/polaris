@@ -29,7 +29,7 @@ import jakarta.inject.Inject;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalCredential;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that, after Quarkus OIDC or Internal Auth extracted
@@ -41,7 +41,7 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
 
   public static final int PRIORITY = 1000;
 
-  @Inject Authenticator<PrincipalCredential, AuthenticatedPolarisPrincipal> authenticator;
+  @Inject Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator;
 
   @Override
   public int priority() {
@@ -54,13 +54,12 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
     if (identity.isAnonymous()) {
       return Uni.createFrom().item(identity);
     }
-    PrincipalCredential credential = extractTokenCredential(identity);
-    return context.runBlocking(() -> authenticatePolarisPrincipal(identity, credential));
+    PrincipalAuthInfo authInfo = extractPrincipalAuthInfo(identity);
+    return context.runBlocking(() -> authenticatePolarisPrincipal(identity, authInfo));
   }
 
-  private PrincipalCredential extractTokenCredential(SecurityIdentity identity) {
-    QuarkusPrincipalCredential credential =
-        identity.getCredential(QuarkusPrincipalCredential.class);
+  private PrincipalAuthInfo extractPrincipalAuthInfo(SecurityIdentity identity) {
+    QuarkusPrincipalAuthInfo credential = identity.getCredential(QuarkusPrincipalAuthInfo.class);
     if (credential == null) {
       throw new AuthenticationFailedException("No token credential available");
     }
@@ -68,11 +67,11 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
   }
 
   private SecurityIdentity authenticatePolarisPrincipal(
-      SecurityIdentity identity, PrincipalCredential credential) {
+      SecurityIdentity identity, PrincipalAuthInfo authInfo) {
     try {
       AuthenticatedPolarisPrincipal polarisPrincipal =
           authenticator
-              .authenticate(credential)
+              .authenticate(authInfo)
               .orElseThrow(() -> new NotAuthorizedException("Authentication failed"));
       return QuarkusSecurityIdentity.builder(identity).setPrincipal(polarisPrincipal).build();
     } catch (RuntimeException e) {

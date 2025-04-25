@@ -33,7 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.service.quarkus.auth.AuthenticatingAugmentor;
-import org.apache.polaris.service.quarkus.auth.QuarkusPrincipalCredential;
+import org.apache.polaris.service.quarkus.auth.QuarkusPrincipalAuthInfo;
 import org.apache.polaris.service.quarkus.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.quarkus.auth.external.mapping.PrincipalRolesMapper;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -43,7 +43,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
  * authentication mechanism, to Polaris-specific properties (principal and principal roles).
  */
 @ApplicationScoped
-public class PrincipalCredentialAugmentor implements SecurityIdentityAugmentor {
+public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
 
   // must run before the authenticating augmentor
   public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY + 100;
@@ -70,10 +70,10 @@ public class PrincipalCredentialAugmentor implements SecurityIdentityAugmentor {
             .select(Identifier.Literal.of(config.principalRolesMapper().type()))
             .get();
     return Uni.createFrom()
-        .item(() -> setPrincipalCredential(identity, principalMapper, principalRolesMapper));
+        .item(() -> setPrincipalAuthInfo(identity, principalMapper, principalRolesMapper));
   }
 
-  protected SecurityIdentity setPrincipalCredential(
+  protected SecurityIdentity setPrincipalAuthInfo(
       SecurityIdentity identity,
       PrincipalMapper principalMapper,
       PrincipalRolesMapper rolesMapper) {
@@ -81,15 +81,15 @@ public class PrincipalCredentialAugmentor implements SecurityIdentityAugmentor {
         principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
     String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
     Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
-    var credential = new OidcPrincipalCredential(principalId, principalName, principalRoles);
+    var credential = new OidcPrincipalAuthInfo(principalId, principalName, principalRoles);
     // Note: we don't change the identity roles here, this will be done later on
     // by the ActiveRolesAugmentor, which will also validate them
     return QuarkusSecurityIdentity.builder(identity).addCredential(credential).build();
   }
 
-  protected record OidcPrincipalCredential(
+  protected record OidcPrincipalAuthInfo(
       @Nullable Long getPrincipalId,
       @Nullable String getPrincipalName,
       Set<String> getPrincipalRoles)
-      implements QuarkusPrincipalCredential {}
+      implements QuarkusPrincipalAuthInfo {}
 }

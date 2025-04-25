@@ -28,7 +28,6 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.security.Principal;
-import org.apache.polaris.service.quarkus.auth.internal.InternalAuthenticationMechanism.InternalPrincipalCredential;
 
 /** A custom {@link IdentityProvider} that handles internal token authentication requests. */
 @ApplicationScoped
@@ -42,7 +41,8 @@ public class InternalIdentityProvider implements IdentityProvider<TokenAuthentic
   @Override
   public Uni<SecurityIdentity> authenticate(
       TokenAuthenticationRequest request, AuthenticationRequestContext context) {
-    if (!(request.getToken() instanceof InternalPrincipalCredential credential)) {
+    if (!(request.getToken()
+        instanceof InternalAuthenticationMechanism.InternalPrincipalAuthInfo credential)) {
       return Uni.createFrom().nullItem();
     }
     InternalTokenPrincipal principal = new InternalTokenPrincipal(credential.getPrincipalName());

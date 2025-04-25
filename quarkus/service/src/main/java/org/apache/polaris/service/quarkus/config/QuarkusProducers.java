@@ -52,7 +52,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalCredential;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
@@ -195,10 +195,10 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public Authenticator<PrincipalCredential, AuthenticatedPolarisPrincipal> authenticator(
+  public Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator(
       QuarkusAuthenticationRealmConfiguration config,
       @Any
-          Instance<Authenticator<PrincipalCredential, AuthenticatedPolarisPrincipal>>
+          Instance<Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal>>
               authenticators) {
     return authenticators.select(Identifier.Literal.of(config.authenticator().type())).get();
   }

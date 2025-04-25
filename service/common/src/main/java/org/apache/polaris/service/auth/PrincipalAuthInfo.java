@@ -28,7 +28,7 @@ import java.util.Set;
  *
  * @see DefaultAuthenticator
  */
-public interface PrincipalCredential {
+public interface PrincipalAuthInfo {
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable

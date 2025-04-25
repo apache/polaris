@@ -34,14 +34,14 @@ import java.util.OptionalLong;
 import java.util.Set;
 import org.apache.polaris.service.quarkus.auth.external.OidcTenantConfiguration.PrincipalMapper;
 import org.apache.polaris.service.quarkus.auth.external.OidcTenantConfiguration.PrincipalRolesMapper;
-import org.apache.polaris.service.quarkus.auth.external.PrincipalCredentialAugmentor.OidcPrincipalCredential;
+import org.apache.polaris.service.quarkus.auth.external.PrincipalAuthInfoAugmentor.OidcPrincipalAuthInfo;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class PrincipalCredentialAugmentorTest {
+class PrincipalAuthInfoAugmentorTest {
 
-  private PrincipalCredentialAugmentor augmentor;
+  private PrincipalAuthInfoAugmentor augmentor;
   private org.apache.polaris.service.quarkus.auth.external.mapping.PrincipalMapper principalMapper;
   private org.apache.polaris.service.quarkus.auth.external.mapping.PrincipalRolesMapper
       principalRolesMapper;
@@ -69,7 +69,7 @@ class PrincipalCredentialAugmentorTest {
     when(principalRoleMappers.select(Identifier.Literal.of("default")))
         .thenReturn(principalRoleMappers);
     when(principalRoleMappers.get()).thenReturn(principalRolesMapper);
-    augmentor = new PrincipalCredentialAugmentor();
+    augmentor = new PrincipalAuthInfoAugmentor();
     augmentor.principalMappers = principalMappers;
     augmentor.principalRoleMappers = principalRoleMappers;
   }
@@ -123,8 +123,8 @@ class PrincipalCredentialAugmentorTest {
     // Then
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
-    assertThat(result.getCredential(OidcPrincipalCredential.class))
-        .isEqualTo(new OidcPrincipalCredential(123L, "root", Set.of("MAPPED_ROLE1")));
+    assertThat(result.getCredential(OidcPrincipalAuthInfo.class))
+        .isEqualTo(new OidcPrincipalAuthInfo(123L, "root", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }

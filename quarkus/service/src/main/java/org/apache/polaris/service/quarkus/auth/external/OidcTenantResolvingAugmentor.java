@@ -37,8 +37,8 @@ public class OidcTenantResolvingAugmentor implements SecurityIdentityAugmentor {
 
   public static final String TENANT_CONFIG_ATTRIBUTE = "polaris-tenant-config";
 
-  // must run before the principal mapping augmentor
-  public static final int PRIORITY = PrincipalCredentialAugmentor.PRIORITY + 100;
+  // must run before PrincipalAuthInfoAugmentor
+  public static final int PRIORITY = PrincipalAuthInfoAugmentor.PRIORITY + 100;
 
   public static OidcTenantConfiguration getOidcTenantConfig(SecurityIdentity identity) {
     return identity.getAttribute(TENANT_CONFIG_ATTRIBUTE);

@@ -32,14 +32,14 @@ import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalCredential;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class AuthenticatingAugmentorTest {
 
   private AuthenticatingAugmentor augmentor;
-  private Authenticator<PrincipalCredential, AuthenticatedPolarisPrincipal> authenticator;
+  private Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -80,7 +80,7 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentAuthenticationFailure() {
     // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
-    QuarkusPrincipalCredential credential = mock(QuarkusPrincipalCredential.class);
+    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(nonPolarisPrincipal)
@@ -100,7 +100,7 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentRuntimeException() {
     // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
-    QuarkusPrincipalCredential credential = mock(QuarkusPrincipalCredential.class);
+    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(nonPolarisPrincipal)
@@ -122,7 +122,7 @@ public class AuthenticatingAugmentorTest {
     // Given
     AuthenticatedPolarisPrincipal polarisPrincipal = mock(AuthenticatedPolarisPrincipal.class);
     when(polarisPrincipal.getName()).thenReturn("user1");
-    QuarkusPrincipalCredential credential = mock(QuarkusPrincipalCredential.class);
+    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(polarisPrincipal)

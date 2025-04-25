@@ -39,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The default authenticator that resolves a {@link PrincipalCredential} to an {@link
+ * The default authenticator that resolves a {@link PrincipalAuthInfo} to an {@link
  * AuthenticatedPolarisPrincipal}.
  *
  * <p>This authenticator is used in both internal and external authentication scenarios.
@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 @RequestScoped
 @Identifier("default")
 public class DefaultAuthenticator
-    implements Authenticator<PrincipalCredential, AuthenticatedPolarisPrincipal> {
+    implements Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> {
 
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
@@ -58,7 +58,7 @@ public class DefaultAuthenticator
   @Inject CallContext callContext;
 
   @Override
-  public Optional<AuthenticatedPolarisPrincipal> authenticate(PrincipalCredential credentials) {
+  public Optional<AuthenticatedPolarisPrincipal> authenticate(PrincipalAuthInfo credentials) {
     LOGGER.debug("Resolving principal for credentials={}", credentials);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());

@@ -30,7 +30,7 @@ import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import java.security.Principal;
-import org.apache.polaris.service.quarkus.auth.internal.InternalAuthenticationMechanism.InternalPrincipalCredential;
+import org.apache.polaris.service.quarkus.auth.internal.InternalAuthenticationMechanism.InternalPrincipalAuthInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,8 +57,8 @@ public class InternalIdentityProviderTest {
 
   @Test
   public void testAuthenticateWithValidCredential() {
-    // Create a mock InternalPrincipalCredential
-    InternalPrincipalCredential credential = mock(InternalPrincipalCredential.class);
+    // Create a mock InternalPrincipalAuthInfo
+    InternalPrincipalAuthInfo credential = mock(InternalPrincipalAuthInfo.class);
     when(credential.getPrincipalName()).thenReturn("testUser");
 
     // Create a request with the credential and a routing context attribute
@@ -79,7 +79,7 @@ public class InternalIdentityProviderTest {
     assertThat(principal.getName()).isEqualTo("testUser");
 
     // Verify the credential is set
-    assertThat(identity.getCredential(InternalPrincipalCredential.class)).isSameAs(credential);
+    assertThat(identity.getCredential(InternalPrincipalAuthInfo.class)).isSameAs(credential);
 
     // Verify the routing context attribute is set
     assertThat((RoutingContext) identity.getAttribute(RoutingContext.class.getName()))
