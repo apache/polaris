@@ -23,10 +23,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -74,10 +73,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   }
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
-    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        callContext, FeatureConfiguration.ENABLE_POLICY_STORE);
+    validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
         callContext,

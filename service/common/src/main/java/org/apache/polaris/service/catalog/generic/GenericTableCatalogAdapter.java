@@ -23,9 +23,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -63,10 +62,9 @@ public class GenericTableCatalogAdapter
 
   private GenericTableCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
-    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        callContext, FeatureConfiguration.ENABLE_GENERIC_TABLES);
+    validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(
         callContext,
