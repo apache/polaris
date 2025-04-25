@@ -41,6 +41,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -556,7 +557,8 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
-    Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThatCode(() -> icebergCatalog.dropTable(TableIdentifier.of("ns", "t1")))
+        .isInstanceOf(NotFoundException.class);
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }
@@ -568,7 +570,8 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
-    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThatCode(() -> icebergCatalog.dropView(TableIdentifier.of("ns", "t1")))
+        .isInstanceOf(NotFoundException.class);
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }

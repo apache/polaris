@@ -267,14 +267,8 @@ public class PolicyCatalog {
             Map.of(),
             false);
 
-    if (!result.isSuccess()) {
-      throw new IllegalStateException(
-          String.format(
-              "Failed to drop policy %s error status: %s with extraInfo: %s",
-              policyIdentifier, result.getReturnStatus(), result.getExtraInformation()));
-    }
-
-    return true;
+    result.maybeThrowException(callContext);
+    return result.isSuccess();
   }
 
   public boolean attachPolicy(

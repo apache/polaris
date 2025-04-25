@@ -227,4 +227,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " to perform federation to remote catalogs.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DETAILED_PERSISTENCE_EXCEPTIONS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DETAILED_PERSISTENCE_EXCEPTIONS")
+          .description(
+              "If true, APIs like dropTable and dropGenericTable will report more detailed exceptions"
+                  + " when a call to persistence fails. These exceptions may include corrected error codes and may"
+                  + " result in improved retry behavior.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }
