@@ -19,8 +19,9 @@
 package org.apache.polaris.core.policy.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-public class PolicyInUseException extends RuntimeException {
+public class PolicyInUseException extends PolarisException {
   @FormatMethod
   public PolicyInUseException(String message, Object... args) {
     super(String.format(message, args));

@@ -210,8 +210,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       ms.deleteAllEntityPolicyMappingRecordsInCurrentTxn(
           callCtx, entity, mappingOnTarget, mappingOnPolicy);
     } catch (UnsupportedOperationException e) {
-      // Policy mapping persistence not implemented, so there cannot be any mappings, safe to
-      // proceed
+      // Policy mapping persistence not implemented, but we should not block dropping entities
     }
 
     // remove the entity being dropped now
@@ -1390,8 +1389,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
         }
       } catch (UnsupportedOperationException e) {
-        // Policy mapping persistence not implemented, so there cannot be any mappings, safe to
-        // proceed
+        // Policy mapping persistence not implemented, but we should not block dropping entities
       }
     }
 
