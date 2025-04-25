@@ -362,19 +362,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @VisibleForTesting
   public TableOperations newTableOps(
-      TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, updateMetadataOnCommit);
+      TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
+    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
-    boolean updateMetadataOnCommit =
+    boolean makeMetadataCurrentOnCommit =
         getCurrentPolarisContext()
             .getConfigurationStore()
             .getConfiguration(
                 getCurrentPolarisContext(),
                 BehaviorChangeConfiguration.TABLE_OPERATIONS_COMMIT_UPDATE_METADATA);
-    return newTableOps(tableIdentifier, updateMetadataOnCommit);
+    return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
@@ -1224,17 +1224,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       implements TableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
-    private final boolean updateMetadataOnCommit;
+    private final boolean makeMetadataCurrentOnCommit;
 
     private FileIO tableFileIO;
 
     BasePolarisTableOperations(
-        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
+        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
-      this.updateMetadataOnCommit = updateMetadataOnCommit;
+      this.makeMetadataCurrentOnCommit = makeMetadataCurrentOnCommit;
     }
 
     @Override
@@ -1495,7 +1495,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       // We diverge from `BaseMetastoreTableOperations` in the below code block
-      if (updateMetadataOnCommit) {
+      if (makeMetadataCurrentOnCommit) {
         currentMetadata =
             TableMetadata.buildFrom(metadata)
                 .withMetadataLocation(newLocation)

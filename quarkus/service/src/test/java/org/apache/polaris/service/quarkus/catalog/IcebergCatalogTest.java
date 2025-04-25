@@ -1695,7 +1695,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     table.updateProperties().set("foo", "bar").commit();
     Assertions.assertThat(measured.getInputBytes())
-        .as("A table was read and written, but no trip to storage was made")
+        .as("A table was read and written, but a trip to storage was made")
         .isEqualTo(0);
 
     Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
@@ -1848,10 +1848,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   public void testTableOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
-    if (this.requiresNamespaceCreate()) {
-      catalog.createNamespace(NS);
-    }
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
 
+    catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
 
     IcebergCatalog.BasePolarisTableOperations realOps =
