@@ -82,7 +82,7 @@ At this point, Polaris is running.
 When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. 
 For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
-Unless explicitly specified, Polaris will start with pre-configured credentials for the root principal credentials. These credentials can be found within the [code](https://github.com/apache/polaris/blame/6308ba02e89236a72e8661ca0e4d7494ee3ff946/quarkus/server/build.gradle.kts#L82).
+When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `secret` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
 You can also set these credentials as environment variables for use with the Polaris CLI:
 ```shell
 export CLIENT_ID=root
