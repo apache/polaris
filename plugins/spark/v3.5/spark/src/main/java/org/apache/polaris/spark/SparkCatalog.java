@@ -157,7 +157,7 @@ public class SparkCatalog
             "Table with spark managed location is currently not supported by Polaris. Please provide location or path to the table.");
       }
       if (PolarisCatalogUtils.useDelta(provider)) {
-        // For delta table, we load the delta catalog to help dealing with the
+        // For delta tables, we load the delta catalog to help deal with the
         // delta log creation.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.createTable(ident, schema, transforms, properties);

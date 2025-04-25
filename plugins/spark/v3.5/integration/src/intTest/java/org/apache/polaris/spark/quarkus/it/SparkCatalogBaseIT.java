@@ -64,9 +64,11 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testNamespaceOperations() throws Exception {
-    String[][] lv1ns = new String[][] {{"l1ns1"}, {"l1ns2"}};
-    String[][] lv2ns1 = new String[][] {{"l1ns1", "l2ns1"}, {"l1ns1", "l2ns2"}};
-    String[][] lv2ns2 = new String[][] {{"l1ns2", "l2ns3"}};
+    String l1ns1 = getNamespaceName("ns1");
+    String l1ns2 = getNamespaceName("ns2");
+    String[][] lv1ns = new String[][] {{l1ns1}, {l1ns2}};
+    String[][] lv2ns1 = new String[][] {{l1ns1, "l2ns1"}, {l1ns1, "l2ns2"}};
+    String[][] lv2ns2 = new String[][] {{l1ns2, "l2ns3"}};
 
     // create the namespaces
     for (String[] namespace : lv1ns) {
@@ -121,7 +123,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testAlterNamespace() throws Exception {
-    String[] namespace = new String[] {"ns1"};
+    String[] namespace = new String[] {getNamespaceName("ns")};
     Map<String, String> metadata = Maps.newHashMap();
     metadata.put("owner", "user1");
 
@@ -139,7 +141,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testBasicViewOperations() throws Exception {
-    String[] namespace = new String[] {"ns"};
+    String[] namespace = new String[] {getNamespaceName("ns")};
     namespaceCatalog.createNamespace(namespace, Maps.newHashMap());
 
     Identifier viewIdentifier = Identifier.of(namespace, "test-view");
@@ -202,81 +204,18 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
   }
 
   @Test
-  void testListViews() throws Exception {
-    String[] l1ns = new String[] {"ns"};
-    namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
-
-    // create a new namespace under the default NS
-    String[] l2ns = new String[] {"ns", "nsl2"};
-    namespaceCatalog.createNamespace(l2ns, Maps.newHashMap());
-    // create one view under l1
-    String view1Name = "test-view1";
-    String view1SQL = "select id from test-table where id >= 3";
-    viewCatalog.createView(
-        Identifier.of(l1ns, view1Name),
-        view1SQL,
-        catalogName,
-        l1ns,
-        schema,
-        new String[0],
-        new String[0],
-        new String[0],
-        Maps.newHashMap());
-    // create two views under the l2 namespace
-    String[] nsl2ViewNames = new String[] {"test-view2", "test-view3"};
-    String[] nsl2ViewSQLs =
-        new String[] {
-          "select id from test-table where id == 3", "select id from test-table where id < 3"
-        };
-    for (int i = 0; i < nsl2ViewNames.length; i++) {
-      viewCatalog.createView(
-          Identifier.of(l2ns, nsl2ViewNames[i]),
-          nsl2ViewSQLs[i],
-          catalogName,
-          l2ns,
-          schema,
-          new String[0],
-          new String[0],
-          new String[0],
-          Maps.newHashMap());
-    }
-    // list views under l1ns
-    Identifier[] l1Views = viewCatalog.listViews(l1ns);
-    assertThat(l1Views.length).isEqualTo(1);
-    assertThat(l1Views[0].name()).isEqualTo(view1Name);
-
-    // list views under l2ns
-    Identifier[] l2Views = viewCatalog.listViews(l2ns);
-    assertThat(l2Views.length).isEqualTo(nsl2ViewSQLs.length);
-    for (String name : nsl2ViewNames) {
-      assertThat(Arrays.asList(l2Views)).contains(Identifier.of(l2ns, name));
-    }
-
-    // drop namespace fails since there are views under it
-    assertThatThrownBy(() -> namespaceCatalog.dropNamespace(l2ns, true))
-        .isInstanceOf(BadRequestException.class);
-    // drop the views
-    for (String name : nsl2ViewNames) {
-      viewCatalog.dropView(Identifier.of(l2ns, name));
-    }
-    namespaceCatalog.dropNamespace(l2ns, true);
-    viewCatalog.dropView(Identifier.of(l1ns, view1Name));
-    namespaceCatalog.dropNamespace(l1ns, true);
-  }
-
-  @Test
   void testIcebergTableViewMix() throws Exception {
     // initiate two namespaces with nesting
-    String[] l1ns = new String[] {"ns"};
+    String namespace = getNamespaceName("ns");
+    String[] l1ns = new String[] {namespace};
     namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
     // create a new namespace under the ns
-    String[] l2ns = new String[] {"ns", "nsl2"};
+    String[] l2ns = new String[] {namespace, "nsl2"};
     namespaceCatalog.createNamespace(l2ns, Maps.newHashMap());
 
-    StructType iceberg_schema =
-        new StructType().add("isManaged", "boolean").add("people", "string");
+    StructType iceberg_schema = new StructType().add("id", "int").add("people", "string");
 
-    // create two iceberg tables under ns
+    // create two iceberg tables under l1ns
     Identifier l1tb1 = Identifier.of(l1ns, "iceberg_table1");
     tableCatalog.createTable(l1tb1, iceberg_schema, new Transform[0], Maps.newHashMap());
 
@@ -287,7 +226,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
     // create one iceberg view under ns
     Identifier l1view = Identifier.of(l1ns, "test_view1");
-    String view1SQL = "select id from iceberg_table1 where isManaged = 'true'";
+    String view1SQL = "select id from iceberg_table1 where id > 10";
     viewCatalog.createView(
         l1view,
         view1SQL,
@@ -305,7 +244,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
     // create one iceberg view under the nested namespace
     Identifier l2view = Identifier.of(l2ns, "test_view2");
-    String view2SQL = "select id from iceberg_table3 where isManaged = 'false'";
+    String view2SQL = "select id from iceberg_table3 where id < 10";
     viewCatalog.createView(
         l2view,
         view2SQL,

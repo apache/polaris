@@ -31,65 +31,57 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 @QuarkusIntegrationTest
 public class SparkIT extends SparkIntegrationBase {
   private String tableRootDir;
+  private String defaultNs;
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("tables").getPath();
+  public void createDefaultResources() {
+    defaultNs = getNamespaceName("ns");
+    // create a default namespace
+    sql("CREATE NAMESPACE %s", defaultNs);
+    sql("USE NAMESPACE %s", defaultNs);
   }
 
   @AfterEach
   public void cleanupDeltaData() {
-    File dirToDelete = new File(tableRootDir);
-    deleteDirectory(dirToDelete);
+    sql("DROP NAMESPACE %s", defaultNs);
   }
 
   @Test
   public void testNamespaces() {
-    List<Object[]> namespaces = sql("SHOW NAMESPACES");
-    assertThat(namespaces.size()).isEqualTo(0);
+    String l1ns2 = getNamespaceName("ns2");
+    // create another namespace
+    sql("CREATE NAMESPACE %s", l1ns2);
 
-    String[] l1NS = new String[] {"l1ns1", "l1ns2"};
-    for (String ns : l1NS) {
-      sql("CREATE NAMESPACE %s", ns);
-    }
-    namespaces = sql("SHOW NAMESPACES");
+    List<Object[]> namespaces = sql("SHOW NAMESPACES");
     assertThat(namespaces.size()).isEqualTo(2);
-    for (String ns : l1NS) {
-      assertThat(namespaces).contains(new Object[] {ns});
-    }
+    assertThat(namespaces).contains(new Object[] {defaultNs}, new Object[] {l1ns2});
+
     String l2ns = "l2ns";
     // create a nested namespace
-    sql("CREATE NAMESPACE %s.%s", l1NS[0], l2ns);
+    sql("CREATE NAMESPACE %s.%s", defaultNs, l2ns);
     // spark show namespace only shows
     namespaces = sql("SHOW NAMESPACES");
     assertThat(namespaces.size()).isEqualTo(2);
 
     // can not drop l1NS before the nested namespace is dropped
-    assertThatThrownBy(() -> sql("DROP NAMESPACE %s", l1NS[0]))
-        .hasMessageContaining(String.format("Namespace %s is not empty", l1NS[0]));
-    sql("DROP NAMESPACE %s.%s", l1NS[0], l2ns);
+    assertThatThrownBy(() -> sql("DROP NAMESPACE %s", defaultNs))
+        .hasMessageContaining(String.format("Namespace %s is not empty", defaultNs));
+    sql("DROP NAMESPACE %s.%s", defaultNs, l2ns);
 
-    for (String ns : l1NS) {
-      sql("DROP NAMESPACE %s", ns);
-    }
+    sql("DROP NAMESPACE %s", l1ns2);
 
-    // no namespace available after all drop
+    // the default namespace will be cleaned during test cleanup
     namespaces = sql("SHOW NAMESPACES");
-    assertThat(namespaces.size()).isEqualTo(0);
+    assertThat(namespaces.size()).isEqualTo(1);
   }
 
   @Test
   public void testCreatDropView() {
-    String namespace = "ns";
-    // create namespace ns
-    sql("CREATE NAMESPACE %s", namespace);
-    sql("USE %s", namespace);
-
     // create two views under the namespace
     String view1Name = "testView1";
     String view2Name = "testView2";
@@ -97,59 +89,47 @@ public class SparkIT extends SparkIntegrationBase {
     sql("CREATE VIEW %s AS SELECT 10 AS id", view2Name);
     List<Object[]> views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(2);
-    assertThat(views).contains(new Object[] {namespace, view1Name, false});
-    assertThat(views).contains(new Object[] {namespace, view2Name, false});
+    assertThat(views).contains(new Object[] {defaultNs, view1Name, false});
+    assertThat(views).contains(new Object[] {defaultNs, view2Name, false});
 
     // drop the views
     sql("DROP VIEW %s", view1Name);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {namespace, view2Name, false});
+    assertThat(views).contains(new Object[] {defaultNs, view2Name, false});
 
     sql("DROP VIEW %s", view2Name);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(0);
-
-    // drop the namespace
-    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
   public void testRenameView() {
-    String namespace = "ns";
-    sql("CREATE NAMESPACE %s", namespace);
-    sql("USE %s", namespace);
-
     String viewName = "originalView";
     String renamedView = "renamedView";
     sql("CREATE VIEW %s AS SELECT 1 AS id", viewName);
     List<Object[]> views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {"ns", viewName, false});
+    assertThat(views).contains(new Object[] {defaultNs, viewName, false});
 
     sql("ALTER VIEW %s RENAME TO %s", viewName, renamedView);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {"ns", renamedView, false});
+    assertThat(views).contains(new Object[] {defaultNs, renamedView, false});
 
-    // drop the view and namespace
+    // drop the views
     sql("DROP VIEW %s", renamedView);
-    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
   public void testRenameIcebergTable() {
-    String namespace = "ns";
-    sql("CREATE NAMESPACE %s", namespace);
-    sql("USE %s", namespace);
-
     String icebergTable = "iceberg_table";
     sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable);
     sql("INSERT INTO %s VALUES (5, 'a'), (2, 'b')", icebergTable);
 
     List<Object[]> tables = sql("SHOW TABLES");
     assertThat(tables.size()).isEqualTo(1);
-    assertThat(tables).contains(new Object[] {"ns", icebergTable, false});
+    assertThat(tables).contains(new Object[] {defaultNs, icebergTable, false});
 
     String newIcebergTable = "iceberg_table_new";
     sql("ALTER TABLE %s RENAME TO %s", icebergTable, newIcebergTable);
@@ -164,15 +144,10 @@ public class SparkIT extends SparkIntegrationBase {
 
     // clean up the table and namespace
     sql("DROP TABLE %s", newIcebergTable);
-    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
-  public void testMixedTableAndViews() {
-    String namespace = "mix_ns";
-    sql("CREATE NAMESPACE %s", namespace);
-    sql("USE %s", namespace);
-
+  public void testMixedTableAndViews(@TempDir Path tempDir) {
     // create one iceberg table, iceberg view and one delta table
     String icebergTable = "icebergtb";
     sql("CREATE TABLE %s (col1 int, col2 String)", icebergTable);
@@ -182,18 +157,26 @@ public class SparkIT extends SparkIntegrationBase {
     sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
 
     String deltaTable = "deltatb";
-    String deltaDir = String.format("%s/mix_ns", tableRootDir);
+    String deltaDir =
+        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
     sql(
         "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
         deltaTable, deltaDir, deltaTable);
+    sql("INSERT INTO %s VALUES (1, 3), (2, 5), (11, 20)", deltaTable);
+    // join the iceberg and delta table
+    List<Object[]> joinResult =
+        sql(
+            "SELECT icebergtb.col1 as id, icebergtb.col2 as str_col, deltatb.col2 as int_col from icebergtb inner join deltatb on icebergtb.col1 = deltatb.col1 order by id");
+    assertThat(joinResult.get(0)).isEqualTo(new Object[] {1, "a", 3});
+    assertThat(joinResult.get(1)).isEqualTo(new Object[] {2, "b", 5});
 
     // show tables shows all tables
     List<Object[]> tables = sql("SHOW TABLES");
     assertThat(tables.size()).isEqualTo(2);
     assertThat(tables)
         .contains(
-            new Object[] {"mix_ns", icebergTable, false},
-            new Object[] {"mix_ns", deltaTable, false});
+            new Object[] {defaultNs, icebergTable, false},
+            new Object[] {defaultNs, deltaTable, false});
 
     // verify the table and view content
     List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable);
@@ -209,12 +192,15 @@ public class SparkIT extends SparkIntegrationBase {
 
     List<Object[]> views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {"mix_ns", viewName, false});
+    assertThat(views).contains(new Object[] {defaultNs, viewName, false});
 
     // drop views and tables
     sql("DROP TABLE %s", icebergTable);
     sql("DROP TABLE %s", deltaTable);
     sql("DROP VIEW %s", viewName);
-    sql("DROP NAMESPACE %s", namespace);
+
+    // clean up delta directory
+    File dirToDelete = new File(deltaDir);
+    FileUtils.deleteQuietly(dirToDelete);
   }
 }

@@ -55,8 +55,8 @@ public class PolarisCatalogUtils {
    * in the properties.
    */
   public static boolean isTableWithSparkManagedLocation(Map<String, String> properties) {
-    boolean hasLocationClause = properties.get(TableCatalog.PROP_LOCATION) != null;
-    boolean hasPathClause = properties.get(TABLE_PATH_KEY) != null;
+    boolean hasLocationClause = properties.containsKey(TableCatalog.PROP_LOCATION);
+    boolean hasPathClause = properties.containsKey(TABLE_PATH_KEY);
     return !hasLocationClause && !hasPathClause;
   }
 

@@ -21,10 +21,13 @@ package org.apache.polaris.spark.quarkus.it;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -93,28 +96,17 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .toArray(Object[]::new);
   }
 
-  /** Delete the file directory recursively. */
-  protected void deleteDirectory(File directory) {
-    if (directory.exists()) {
-      File[] files = directory.listFiles();
-      if (files != null) {
-        for (File file : files) {
-          if (file.isDirectory()) {
-            deleteDirectory(file);
-          } else {
-            file.delete();
-          }
-        }
-      }
-      directory.delete();
-    }
+  /** List the name of directories under a given path non-recursively. */
+  protected List<String> listDirs(String path) {
+    File directory = new File(path);
+    return FileUtils.listFilesAndDirs(
+            directory, FalseFileFilter.INSTANCE, DirectoryFileFilter.DIRECTORY)
+        .stream()
+        .map(File::getName)
+        .toList();
   }
 
-  protected List<String> listDirectory(String directoryPath) {
-    File directory = new File(directoryPath);
-    if (!directory.exists() || directory.listFiles() == null) {
-      return ImmutableList.of();
-    }
-    return Arrays.stream(directory.listFiles()).map(File::getName).collect(Collectors.toList());
+  protected String getNamespaceName(String prefix) {
+    return prefix + "_" + UUID.randomUUID().toString().replaceAll("-", "");
   }
 }

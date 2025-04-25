@@ -58,7 +58,7 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
 
   @ParameterizedTest
   @ValueSource(strings = {"delta", "csv"})
-  public void testNoneIcebergTableOperationsFails(String provider) throws Exception {
+  public void testNonIcebergTableOperationsFails(String provider) throws Exception {
     String[] l1ns = new String[] {"ns"};
     namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
 

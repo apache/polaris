@@ -42,6 +42,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 @QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
@@ -59,7 +60,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
 
   @BeforeEach
   public void createDefaultResources(@TempDir Path tempDir) {
-    defaultNs = "delta_ns_" + RANDOM.nextInt(0, 100000);
+    defaultNs = getNamespaceName("delta");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
@@ -71,7 +72,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   public void cleanupDeltaData() {
     // clean up delta data
     File dirToDelete = new File(tableRootDir);
-    deleteDirectory(dirToDelete);
+    FileUtils.deleteQuietly(dirToDelete);
     sql("DROP NAMESPACE %s", defaultNs);
   }
 
@@ -83,10 +84,9 @@ public class SparkDeltaIT extends SparkIntegrationBase {
         "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
         deltatb1, getTableLocation(deltatb1));
     sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob')", deltatb1);
-    List<Object[]> results = sql("SELECT * FROM %s ORDER BY id DESC", deltatb1);
-    assertThat(results.size()).isEqualTo(2);
-    assertThat(results.get(0)[1]).isEqualTo("bob");
-    assertThat(results.get(1)[1]).isEqualTo("anna");
+    List<Object[]> results = sql("SELECT * FROM %s WHERE id > 1 ORDER BY id DESC", deltatb1);
+    assertThat(results.size()).isEqualTo(1);
+    assertThat(results.get(0)).isEqualTo(new Object[] {2, "bob"});
 
     // create a detla table with partition
     String deltatb2 = "deltatb2";
@@ -94,16 +94,16 @@ public class SparkDeltaIT extends SparkIntegrationBase {
         "CREATE TABLE %s (name String, age INT, country STRING) USING DELTA PARTITIONED BY (country) LOCATION '%s'",
         deltatb2, getTableLocation(deltatb2));
     sql(
-        "INSERT INTO %s VALUES ('david', 10, 'US'), ('james', 32, 'US'), ('yan', 16, 'CHINA')",
+        "INSERT INTO %s VALUES ('anna', 10, 'US'), ('james', 32, 'US'), ('yan', 16, 'CHINA')",
         deltatb2);
     results = sql("SELECT name, country FROM %s ORDER BY age", deltatb2);
     assertThat(results.size()).isEqualTo(3);
-    assertThat(results.get(0)).isEqualTo(new Object[] {"david", "US"});
+    assertThat(results.get(0)).isEqualTo(new Object[] {"anna", "US"});
     assertThat(results.get(1)).isEqualTo(new Object[] {"yan", "CHINA"});
     assertThat(results.get(2)).isEqualTo(new Object[] {"james", "US"});
 
     // verify the partition dir is created
-    List<String> subDirs = listDirectory(getTableLocation(deltatb2));
+    List<String> subDirs = listDirs(getTableLocation(deltatb2));
     assertThat(subDirs).contains("_delta_log", "country=CHINA", "country=US");
 
     // test listTables
@@ -174,39 +174,53 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     }
     assertThat(properties).contains("description=people table,test-owner=test-user");
     sql("DROP TABLE %s", deltatb);
+
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(0);
   }
 
   @Test
-  public void testUnsupportedOperations() {
+  public void testUnsupportedAlterTableOperations() {
     String deltatb = getTableNameWithRandomSuffix();
     sql(
         "CREATE TABLE %s (name String, age INT, country STRING) USING DELTA PARTITIONED BY (country) LOCATION '%s'",
         deltatb, getTableLocation(deltatb));
 
-    // test rename generic table throws unsupported operation error
+    // ALTER TABLE ... RENAME TO ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s RENAME TO new_delta", deltatb))
         .isInstanceOf(UnsupportedOperationException.class);
 
-    // test table relocation fails with error
+    // ALTER TABLE ... SET LOCATION ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s SET LOCATION '/tmp/new/path'", deltatb))
         .isInstanceOf(DeltaAnalysisException.class);
 
-    // test set table format fails
+    // ALTER TABLE ... SET FILEFORMAT ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s SET FILEFORMAT 'csv'", deltatb))
         .isInstanceOf(ParseException.class);
 
-    // partition management is not supported for delta
+    // ALTER TABLE ... ADD PARTITION ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s ADD PARTITION (country='US')", deltatb))
         .isInstanceOf(AnalysisException.class);
 
+    sql("DROP TABLE %s", deltatb);
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testUnsupportedTableCreateOperations() {
+    String deltatb = getTableNameWithRandomSuffix();
+    // create delta table with no location
+    assertThatThrownBy(() -> sql("CREATE TABLE %s (id INT, name STRING) USING DELTA", deltatb))
+        .isInstanceOf(UnsupportedOperationException.class);
+
+    // CTAS fails
     assertThatThrownBy(
             () ->
                 sql(
-                    "CREATE TABLE %s (id INT, name STRING) USING DELTA",
-                    getTableNameWithRandomSuffix()))
-        .isInstanceOf(UnsupportedOperationException.class);
-
-    sql("DROP TABLE %s", deltatb);
+                    "CREATE TABLE %s USING DELTA LOCATION '%s' AS SELECT 1 AS id",
+                    deltatb, getTableLocation(deltatb)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -235,7 +249,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     df.write().format("delta").save(getTableLocation(deltatb));
 
     // verify the partition dir is created
-    List<String> subDirs = listDirectory(getTableLocation(deltatb));
+    List<String> subDirs = listDirs(getTableLocation(deltatb));
     assertThat(subDirs).contains("_delta_log");
 
     // verify we can create a table out of the exising delta location
@@ -253,5 +267,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     assertThat(results.get(2)).isEqualTo(new Object[] {"Bob", 25});
 
     sql("DROP TABLE %s", deltatb);
+    tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(0);
   }
 }

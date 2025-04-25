@@ -42,14 +42,14 @@ The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after
 # Start Spark with Local Polaris Service using built Jar
 Once the jar is built, we can manually test it with Spark and a local Polaris service.
 
-Following command starts a Polaris server for local testing, it runs on localhost:8181 with default
-realm `POLARIS` and root credentials `root:secret`.
+The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
+realm `POLARIS` and root credentials `root:secret`:
 ```shell
 ./gradlew run
 ```
 
-Once the local server is running, following command can be used to start the spark-shell with the built Spark client
-jar, and uses the local Polaris server as Catalog server.
+Once the local server is running, the following command can be used to start the spark-shell with the built Spark client
+jar, and to use the local Polaris server as a Catalog.
 
 ```shell
 bin/spark-shell \
