@@ -1605,7 +1605,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * of this code was originally copied from {@link org.apache.iceberg.view.BaseViewOperations}.
    * CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.8
    */
-  public class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
+  private class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
       implements ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
