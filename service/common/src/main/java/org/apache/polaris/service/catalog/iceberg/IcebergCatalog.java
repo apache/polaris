@@ -360,9 +360,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return new PolarisIcebergCatalogViewBuilder(identifier);
   }
 
+  @VisibleForTesting
+  public TableOperations newTableOps(
+      TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
+    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, updateMetadataOnCommit);
+  }
+
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier);
+    boolean updateMetadataOnCommit =
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(),
+                BehaviorChangeConfiguration.TABLE_OPERATIONS_COMMIT_UPDATE_METADATA);
+    return newTableOps(tableIdentifier, updateMetadataOnCommit);
   }
 
   @Override
@@ -1207,17 +1219,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
    * Version: 1.8
    */
-  private class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
+  public class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
       implements TableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
+    private final boolean updateMetadataOnCommit;
+
     private FileIO tableFileIO;
 
-    BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
+    BasePolarisTableOperations(
+        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean updateMetadataOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+      this.updateMetadataOnCommit = updateMetadataOnCommit;
     }
 
     @Override
@@ -1476,6 +1492,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + "because it has been concurrently modified to %s",
             tableIdentifier, oldLocation, newLocation, existingLocation);
       }
+
+      // We diverge from `BaseMetastoreTableOperations` in the below code block
+      if (updateMetadataOnCommit) {
+        currentMetadata = TableMetadata
+            .buildFrom(metadata)
+            .withMetadataLocation(newLocation)
+            .discardChanges()
+            .build();
+        currentMetadataLocation = newLocation;
+      }
+
       if (null == existingLocation) {
         createTableLike(tableIdentifier, entity);
       } else {
@@ -1577,7 +1604,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * of this code was originally copied from {@link org.apache.iceberg.view.BaseViewOperations}.
    * CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.8
    */
-  private class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
+  public class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
       implements ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
