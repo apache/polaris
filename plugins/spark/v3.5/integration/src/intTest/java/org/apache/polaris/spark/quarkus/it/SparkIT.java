@@ -35,12 +35,11 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 @QuarkusIntegrationTest
 public class SparkIT extends SparkIntegrationBase {
-  private String tableRootDir;
   private String defaultNs;
 
   @BeforeEach
   public void createDefaultResources() {
-    defaultNs = getNamespaceName("ns");
+    defaultNs = generateName("ns");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
@@ -53,7 +52,7 @@ public class SparkIT extends SparkIntegrationBase {
 
   @Test
   public void testNamespaces() {
-    String l1ns2 = getNamespaceName("ns2");
+    String l1ns2 = generateName("ns2");
     // create another namespace
     sql("CREATE NAMESPACE %s", l1ns2);
 

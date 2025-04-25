@@ -26,7 +26,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.Dataset;
@@ -46,7 +45,6 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 @QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
-  private static final Random RANDOM = new Random();
   private String defaultNs;
   private String tableRootDir;
 
@@ -55,12 +53,12 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   private String getTableNameWithRandomSuffix() {
-    return "deltatb" + RANDOM.nextInt(0, 1000);
+    return generateName("deltatb");
   }
 
   @BeforeEach
   public void createDefaultResources(@TempDir Path tempDir) {
-    defaultNs = getNamespaceName("delta");
+    defaultNs = generateName("delta");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);

@@ -64,8 +64,8 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testNamespaceOperations() throws Exception {
-    String l1ns1 = getNamespaceName("ns1");
-    String l1ns2 = getNamespaceName("ns2");
+    String l1ns1 = generateName("ns1");
+    String l1ns2 = generateName("ns2");
     String[][] lv1ns = new String[][] {{l1ns1}, {l1ns2}};
     String[][] lv2ns1 = new String[][] {{l1ns1, "l2ns1"}, {l1ns1, "l2ns2"}};
     String[][] lv2ns2 = new String[][] {{l1ns2, "l2ns3"}};
@@ -123,7 +123,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testAlterNamespace() throws Exception {
-    String[] namespace = new String[] {getNamespaceName("ns")};
+    String[] namespace = new String[] {generateName("ns")};
     Map<String, String> metadata = Maps.newHashMap();
     metadata.put("owner", "user1");
 
@@ -141,7 +141,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
   @Test
   void testBasicViewOperations() throws Exception {
-    String[] namespace = new String[] {getNamespaceName("ns")};
+    String[] namespace = new String[] {generateName("ns")};
     namespaceCatalog.createNamespace(namespace, Maps.newHashMap());
 
     Identifier viewIdentifier = Identifier.of(namespace, "test-view");
@@ -206,7 +206,7 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
   @Test
   void testIcebergTableViewMix() throws Exception {
     // initiate two namespaces with nesting
-    String namespace = getNamespaceName("ns");
+    String namespace = generateName("ns");
     String[] l1ns = new String[] {namespace};
     namespaceCatalog.createNamespace(l1ns, Maps.newHashMap());
     // create a new namespace under the ns

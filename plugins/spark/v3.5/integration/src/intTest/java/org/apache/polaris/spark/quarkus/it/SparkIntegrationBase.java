@@ -106,7 +106,8 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .toList();
   }
 
-  protected String getNamespaceName(String prefix) {
+  /** Generate a string name with given prefix and a random suffix */
+  protected String generateName(String prefix) {
     return prefix + "_" + UUID.randomUUID().toString().replaceAll("-", "");
   }
 }
