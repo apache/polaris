@@ -724,6 +724,7 @@ public class IcebergCatalogAdapter
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
+                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
                         .build())
                 .build())
         .build();
