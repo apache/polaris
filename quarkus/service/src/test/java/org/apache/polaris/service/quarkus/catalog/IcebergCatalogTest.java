@@ -1881,10 +1881,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
 
       ops.current();
-      int expectedReads = 2;
-      if (updateMetadataOnCommit) {
-        expectedReads = 1;
-      }
+      int expectedReads = updateMetadataOnCommit ? 1 : 2;
       mocked.verify(
           () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
           Mockito.times(expectedReads));

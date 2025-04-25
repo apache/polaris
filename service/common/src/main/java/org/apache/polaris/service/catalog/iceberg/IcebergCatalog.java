@@ -1219,6 +1219,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
    * Version: 1.8
    */
+  @VisibleForTesting
   public class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
       implements TableOperations {
     private final TableIdentifier tableIdentifier;
