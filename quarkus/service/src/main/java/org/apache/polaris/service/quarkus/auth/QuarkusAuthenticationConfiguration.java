@@ -23,21 +23,15 @@ import io.smallrye.config.WithDefaults;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 
 @ConfigMapping(prefix = "polaris.authentication")
-public interface QuarkusAuthenticationConfiguration extends AuthenticationConfiguration {
+public interface QuarkusAuthenticationConfiguration
+    extends AuthenticationConfiguration<QuarkusAuthenticationRealmConfiguration> {
 
   @WithParentName
   @WithUnnamedKey(DEFAULT_REALM_KEY)
   @WithDefaults
   @Override
   Map<String, QuarkusAuthenticationRealmConfiguration> realms();
-
-  @Override
-  default QuarkusAuthenticationRealmConfiguration forRealm(RealmContext realmContext) {
-    return (QuarkusAuthenticationRealmConfiguration)
-        AuthenticationConfiguration.super.forRealm(realmContext);
-  }
 }

@@ -21,17 +21,17 @@ package org.apache.polaris.service.auth;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 
-public interface AuthenticationConfiguration {
+public interface AuthenticationConfiguration<R extends AuthenticationRealmConfiguration> {
 
   String DEFAULT_REALM_KEY = "<default>";
 
-  Map<String, ? extends AuthenticationRealmConfiguration> realms();
+  Map<String, R> realms();
 
-  default AuthenticationRealmConfiguration forRealm(RealmContext realmContext) {
+  default R forRealm(RealmContext realmContext) {
     return forRealm(realmContext.getRealmIdentifier());
   }
 
-  default AuthenticationRealmConfiguration forRealm(String realmIdentifier) {
+  default R forRealm(String realmIdentifier) {
     return realms().containsKey(realmIdentifier)
         ? realms().get(realmIdentifier)
         : realms().get(DEFAULT_REALM_KEY);

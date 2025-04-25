@@ -105,11 +105,8 @@ public class DefaultAuthenticator
     if (!allRoles) {
       activatedPrincipalRoles.addAll(
           credentials.getPrincipalRoles().stream()
-              .map(
-                  s -> // strip the principal_role prefix, if present
-                  s.startsWith(PRINCIPAL_ROLE_PREFIX)
-                          ? s.substring(PRINCIPAL_ROLE_PREFIX.length())
-                          : s)
+              .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
+              .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
               .toList());
     }
 

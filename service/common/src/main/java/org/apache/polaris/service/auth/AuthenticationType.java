@@ -35,10 +35,4 @@ public enum AuthenticationType {
    * is not Polaris, the token will be passed to the external identity provider for validation.
    */
   MIXED,
-
-  /**
-   * Test mode. Polaris will be the only identity provider, but tokens won't be JWTs. Do NOT use in
-   * production!
-   */
-  TEST,
 }

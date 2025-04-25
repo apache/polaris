@@ -67,7 +67,6 @@ public class InternalAuthenticationMechanismTest {
     "INTERNAL , true",
     "EXTERNAL , false",
     "MIXED    , true",
-    "TEST     , false",
   })
   public void testShouldProcess(AuthenticationType type, boolean expectedResult) {
     when(configuration.type()).thenReturn(type);

@@ -30,7 +30,6 @@ import java.util.List;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -77,32 +76,6 @@ public class ProductionReadinessChecks {
       LOGGER.warn(
           "Refer to https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production for more information.");
     }
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkAuthenticationType(
-      AuthenticationConfiguration configuration) {
-    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
-    configuration
-        .realms()
-        .forEach(
-            (realm, config) -> {
-              AuthenticationType authenticationType = config.type();
-              if (authenticationType == AuthenticationType.INTERNAL
-                  || authenticationType == AuthenticationType.MIXED) {
-                errors.add(
-                    Error.of(
-                        "Internal authentication is deprecated since Iceberg 1.6.0.",
-                        "polaris.authentication.%stype".formatted(authRealmSegment(realm))));
-              }
-              if (config.type() == AuthenticationType.TEST) {
-                errors.add(
-                    Error.of(
-                        "Selected authentication type is intended for tests only.",
-                        "polaris.authentication.%stype"));
-              }
-            });
-    return ProductionReadinessCheck.of(errors);
   }
 
   @Produces
