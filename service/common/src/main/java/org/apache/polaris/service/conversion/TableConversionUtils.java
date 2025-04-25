@@ -16,32 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.conversion;
 
+import java.util.HashMap;
 import org.apache.iceberg.Table;
 import org.apache.polaris.service.types.GenericTable;
 
-import java.util.HashMap;
-import java.util.Optional;
-
-/**
- * A collection of utility member and methods related to table conversion.
- */
+/** A collection of utility member and methods related to table conversion. */
 public class TableConversionUtils {
 
-    public static String FORMAT_ICEBERG = "iceberg";
-    public static String PROPERTY_LOCATION = "location";
+  public static String FORMAT_ICEBERG = "iceberg";
+  public static String PROPERTY_LOCATION = "location";
 
-    public static GenericTable convertToGenericTable(Table icebergTable) {
-        HashMap<String, String> properties = new HashMap<>(icebergTable.properties());
-        properties.put(PROPERTY_LOCATION, icebergTable.location());
+  public static GenericTable convertToGenericTable(Table icebergTable) {
+    HashMap<String, String> properties = new HashMap<>(icebergTable.properties());
+    properties.put(PROPERTY_LOCATION, icebergTable.location());
 
-        return new GenericTable(
-            icebergTable.name(),
-            FORMAT_ICEBERG,
-            "Iceberg table " + icebergTable.name(),
-            properties
-        );
-    }
+    return new GenericTable(
+        icebergTable.name(), FORMAT_ICEBERG, "Iceberg table " + icebergTable.name(), properties);
+  }
 }

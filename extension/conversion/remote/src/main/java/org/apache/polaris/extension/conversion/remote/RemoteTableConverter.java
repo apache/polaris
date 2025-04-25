@@ -16,24 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.extension.conversion.remote;
 
+import java.util.Optional;
 import org.apache.polaris.service.conversion.TableConverter;
 import org.apache.polaris.service.types.GenericTable;
 
-import java.util.Optional;
-
 public class RemoteTableConverter implements TableConverter {
 
-    // TODO constructor takes the hostname, etc.
-    public RemoteTableConverter() {
+  // TODO constructor takes the hostname, etc.
+  public RemoteTableConverter() {}
 
-    }
-
-    // TODO call remote service
-    @Override
-    public Optional<GenericTable> convert(GenericTable table, int requestedFreshnessSeconds) {
-        return null;
-    }
+  // TODO call remote service
+  @Override
+  public Optional<GenericTable> convert(GenericTable table, int requestedFreshnessSeconds) {
+    return null;
+  }
 }

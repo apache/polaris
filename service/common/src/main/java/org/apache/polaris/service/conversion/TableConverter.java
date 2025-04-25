@@ -16,37 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.conversion;
 
+import java.util.Optional;
 import org.apache.polaris.service.types.GenericTable;
 
-import java.util.Optional;
-
-/**
- * Implementations are used to convert from one table format to another.
- */
+/** Implementations are used to convert from one table format to another. */
 public interface TableConverter {
 
-    /**
-     * Returns a converted version of the given {@link GenericTable}, or
-     * Optional.empty() if the table can't be converted for some reason.
-     * The converted table should be at most `requestedFreshnessSeconds`
-     * behind the source table.
-     * @param table the table to convert
-     * @param requestedFreshnessSeconds the maximum requested lag between the source
-     *                                  table and the converted table
-     */
-    Optional<GenericTable> convert(
-        GenericTable table,
-        int requestedFreshnessSeconds);
+  /**
+   * Returns a converted version of the given {@link GenericTable}, or Optional.empty() if the table
+   * can't be converted for some reason. The converted table should be at most
+   * `requestedFreshnessSeconds` behind the source table.
+   *
+   * @param table the table to convert
+   * @param requestedFreshnessSeconds the maximum requested lag between the source table and the
+   *     converted table
+   */
+  Optional<GenericTable> convert(GenericTable table, int requestedFreshnessSeconds);
 
-    /**
-     * Returns a converted version of the given {@link GenericTable}, or
-     * Optional.empty() if the table can't be converted for some reason.
-     * @param table the table to convert
-     */
-    default Optional<GenericTable> convert(GenericTable table) {
-        return convert(table, 0);
-    }
+  /**
+   * Returns a converted version of the given {@link GenericTable}, or Optional.empty() if the table
+   * can't be converted for some reason.
+   *
+   * @param table the table to convert
+   */
+  default Optional<GenericTable> convert(GenericTable table) {
+    return convert(table, 0);
+  }
 }
