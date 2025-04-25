@@ -77,6 +77,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -502,6 +503,30 @@ public class PolicyCatalogTest {
     policyCatalog.dropPolicy(POLICY1, false);
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
+  }
+
+  @Test
+  public void testDropPolicyInUse() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    policyCatalog.attachPolicy(POLICY1, target, null);
+
+    assertThatThrownBy(() -> policyCatalog.dropPolicy(POLICY1, false))
+        .isInstanceOf(PolicyInUseException.class);
+
+    // The policy is still attached to the catalog
+    List<ApplicablePolicy> applicablePolicies =
+        policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(1);
+
+    // Drop the policy with detach-all flag
+    policyCatalog.dropPolicy(POLICY1, true);
+
+    // The policy should be detached from the catalog and dropped
+    applicablePolicies = policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(0);
   }
 
   @Test

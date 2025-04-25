@@ -193,6 +193,22 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
     ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
 
+    // TODO: Best-effort cleanup - drop policy mapping records
+    try {
+      final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+          (entity.getType() == PolarisEntityType.POLICY)
+              ? ms.loadAllTargetsOnPolicy(callCtx, entity.getCatalogId(), entity.getId())
+              : List.of();
+      final List<PolarisPolicyMappingRecord> mappingOnTarget =
+          (entity.getType() == PolarisEntityType.POLICY)
+              ? List.of()
+              : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
+      ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
+    } catch (UnsupportedOperationException e) {
+      // Policy mapping persistence not implemented, so there cannot be any mappings, safe to
+      // proceed
+    }
+
     // Now determine the set of entities on the other side of the grants we just removed. Grants
     // from/to these entities has been removed, hence we need to update the grant version of
     // each entity. Collect the id of each.
@@ -1179,6 +1195,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           callCtx, null, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId())) {
         return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
+    } else if (refreshEntityToDrop.getType() == PolarisEntityType.POLICY && !cleanup) {
+      try {
+        //  need to check if the policy is attached to any entity
+        List<PolarisPolicyMappingRecord> records =
+            ms.loadAllPoliciesOnTarget(
+                callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
+        if (!records.isEmpty()) {
+          return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
+        }
+      } catch (UnsupportedOperationException e) {
+        // Policy mapping persistence not implemented, so there cannot be any mappings, safe to
+        // proceed
+      }
     }
 
     // simply delete that entity. Will be removed from entities_active, added to the
@@ -1188,7 +1217,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
-    if (cleanup) {
+    if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
       PolarisBaseEntity taskEntity =
           new PolarisEntity.Builder()
               .setId(ms.generateNewId(callCtx))

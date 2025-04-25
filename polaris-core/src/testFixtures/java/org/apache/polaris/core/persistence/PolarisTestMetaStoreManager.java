@@ -835,6 +835,12 @@ public class PolarisTestMetaStoreManager {
       Assertions.assertThat(dropResult.isSuccess()).isFalse();
       Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isTrue();
       Assertions.assertThat(dropResult.isEntityUnDroppable()).isFalse();
+    } else if (entityToDrop.getType() == PolarisEntityType.POLICY) {
+      // When dropping policy with cleanup = true, we do not need cleanup task
+      Assertions.assertThat(dropResult.isSuccess()).isEqualTo(exists);
+      Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isFalse();
+      Assertions.assertThat(dropResult.isEntityUnDroppable()).isFalse();
+      Assertions.assertThat(dropResult.getCleanupTaskId()).isNull();
     } else {
       Assertions.assertThat(dropResult.isSuccess()).isEqualTo(exists);
       Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isFalse();
@@ -2787,5 +2793,57 @@ public class PolarisTestMetaStoreManager {
 
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
+  }
+
+  void testPolicyMappingCleanup() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    Assertions.assertThat(catalog).isNotNull();
+
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity N1_N2 =
+        this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
+    PolarisBaseEntity N1_N2_T1 =
+        this.ensureExistsByName(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "T1");
+
+    PolarisBaseEntity N1_N2_T3 =
+        this.createEntity(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "T3");
+    PolicyEntity N1_P1 =
+        this.createPolicy(List.of(catalog, N1), "P1", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    PolicyEntity N1_P2 =
+        this.createPolicy(List.of(catalog, N1), "P2", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T3, List.of(catalog, N1), N1_P1);
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T3);
+    Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).hasSize(1);
+
+    // Drop N1_N2_T1, the corresponding policy mapping should be cleaned-up
+    this.dropEntity(List.of(catalog, N1, N1_N2), N1_N2_T3);
+
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    Assertions.assertThat(
+            ms.loadAllTargetsOnPolicy(polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId()))
+        .isEmpty();
+
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P2);
+
+    // Drop N1_P2, the dropEntity helper will have cleanup enabled to detach the policy from all
+    // targets
+    this.dropEntity(List.of(catalog, N1), N1_P2);
+    loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T1);
+    Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).isEmpty();
   }
 }
