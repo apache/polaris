@@ -32,7 +32,6 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -73,8 +72,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   @Override
   protected void initializeCatalog() {
-    FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext, FeatureConfiguration.ENABLE_POLICY_STORE);
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
   }
 
