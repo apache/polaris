@@ -24,6 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -67,16 +68,14 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
-  final Map<String, DataSource> dataSourceMap;
+  final List<DataSource> dataSources;
+
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-  // TODO: Pending discussion of if we should have one Database per realm or 1 schema per realm
-  // or realm should be a primary key on all the tables.
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
 
   @Inject
-  protected JdbcMetaStoreManagerFactory(Map<String, DataSource> dataSourceMap) {
-    this.dataSourceMap = dataSourceMap;
+  protected JdbcMetaStoreManagerFactory(List<DataSource> dataSources) {
+    this.dataSources = dataSources;
   }
 
   protected PrincipalSecretsGenerator secretsGenerator(
@@ -95,8 +94,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations =
-        getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -110,18 +108,17 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(
-      boolean isBootstrap, String realmIdentifier) {
-    // Idea is that worst case will do have it under default datasource name.
-    DatasourceOperations databaseOperations =
-        new DatasourceOperations(
-            dataSourceMap.getOrDefault(
-                realmIdentifier, dataSourceMap.get(DEFAULT_DATA_SOURCE_NAME)));
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
+    // TODO: remove when multiple dataSources are supported.
+    if (dataSources.size() > 1) {
+      throw new IllegalStateException("More than one dataSources configured");
+    }
+    DatasourceOperations databaseOperations = new DatasourceOperations(dataSources.getFirst());
     if (isBootstrap) {
-      // TODO: see if we need to take script from Quarkus or can we just
-      // use the script committed in the repo.
       try {
-        databaseOperations.executeScript("postgres/schema-v1.sql");
+        DatabaseType databaseType = databaseOperations.detect();
+        databaseOperations.executeScript(
+            String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);

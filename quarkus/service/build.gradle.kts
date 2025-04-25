@@ -124,6 +124,7 @@ dependencies {
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
+  testImplementation(project(":polaris-quarkus-test-commons"))
   testFixturesApi(enforcedPlatform(libs.quarkus.bom)) {
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")

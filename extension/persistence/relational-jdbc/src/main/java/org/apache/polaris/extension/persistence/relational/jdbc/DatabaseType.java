@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it.relational.jdbc;
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewGcpIntegrationTest;
+public enum DatabaseType {
+  POSTGRES("postgres"),
+  H2("h2");
 
-@TestProfile(RelationalJdbcProfile.class)
-@QuarkusIntegrationTest
-public class JdbcQuarkusRestCatalogViewGcpIT extends PolarisRestCatalogViewGcpIntegrationTest {}
+  private final String displayName; // Store the user-friendly name
+
+  DatabaseType(String displayName) {
+    this.displayName = displayName;
+  }
+
+  // Method to get the user-friendly display name
+  public String getDisplayName() {
+    return displayName;
+  }
+}

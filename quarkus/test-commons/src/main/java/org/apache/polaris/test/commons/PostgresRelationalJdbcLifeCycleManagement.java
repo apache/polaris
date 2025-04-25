@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+
+package org.apache.polaris.test.commons;
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
@@ -26,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 
 public class PostgresRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
-  private static final String INIT_SCRIPT = "init-script";
+  public static final String INIT_SCRIPT = "init-script";
 
   private PostgreSQLContainer<?> postgres;
   private String initScript;

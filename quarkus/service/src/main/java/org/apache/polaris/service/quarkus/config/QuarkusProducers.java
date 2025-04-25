@@ -34,9 +34,8 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -79,8 +78,6 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
 public class QuarkusProducers {
-
-  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
 
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
@@ -271,21 +268,11 @@ public class QuarkusProducers {
   }
 
   @Produces
-  public Map<String, DataSource> dataSourceMap(@All List<InstanceHandle<DataSource>> dataSources) {
-    Map<String, DataSource> dataSourceMap = new HashMap<>();
+  public List<DataSource> dataSources(@All List<InstanceHandle<DataSource>> dataSources) {
+    List<DataSource> dataSourceList = new ArrayList<>();
     for (InstanceHandle<DataSource> handle : dataSources) {
-      String name = handle.getBean().getName();
-      name = name == null ? DEFAULT_DATA_SOURCE_NAME : unquoteDataSourceName(name);
-      dataSourceMap.put(name, handle.get());
+      dataSourceList.add(handle.get());
     }
-
-    return dataSourceMap;
-  }
-
-  private static String unquoteDataSourceName(String dataSourceName) {
-    if (dataSourceName.startsWith("\"") && dataSourceName.endsWith("\"")) {
-      dataSourceName = dataSourceName.substring(1, dataSourceName.length() - 1);
-    }
-    return dataSourceName;
+    return dataSourceList;
   }
 }

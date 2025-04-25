@@ -20,12 +20,12 @@ package org.apache.polaris.admintool.relational.jdbc;
 
 import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.admintool.PostgresRelationalJdbcLifeCycleManagement;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
-public class RelationalJdbcProfile implements QuarkusTestProfile {
+public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
   @Override
   public Map<String, String> getConfigOverrides() {
     return Map.of();

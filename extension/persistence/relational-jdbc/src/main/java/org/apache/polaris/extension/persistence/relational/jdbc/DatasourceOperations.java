@@ -30,16 +30,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
   private static final String ALREADY_EXISTS_STATE_POSTGRES = "42P07";
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
@@ -48,6 +46,21 @@ public class DatasourceOperations {
 
   public DatasourceOperations(DataSource datasource) {
     this.datasource = datasource;
+  }
+
+  @Nonnull
+  public DatabaseType detect() {
+    try (Connection conn = borrowConnection()) {
+      String productName = conn.getMetaData().getDatabaseProductName().toLowerCase(Locale.ROOT);
+      return switch (productName) {
+        case "h2" -> DatabaseType.H2;
+        case "postgresql" -> DatabaseType.POSTGRES;
+        default ->
+            throw new IllegalStateException("Unsupported DatabaseType: '" + productName + "'");
+      };
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

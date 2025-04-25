@@ -25,7 +25,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
 public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
-  public static class Profile extends RelationalJdbcProfile {
+  public static class Profile extends RelationalJdbcAdminProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()

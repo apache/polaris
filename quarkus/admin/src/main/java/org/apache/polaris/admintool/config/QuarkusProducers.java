@@ -27,9 +27,8 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -41,8 +40,6 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 public class QuarkusProducers {
-
-  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
 
   @Produces
   public MetaStoreManagerFactory metaStoreManagerFactory(
@@ -86,21 +83,11 @@ public class QuarkusProducers {
   }
 
   @Produces
-  public Map<String, DataSource> dataSourceMap(@All List<InstanceHandle<DataSource>> dataSources) {
-    Map<String, DataSource> dataSourceMap = new HashMap<>();
+  public List<DataSource> dataSources(@All List<InstanceHandle<DataSource>> dataSources) {
+    List<DataSource> dataSourceList = new ArrayList<>();
     for (InstanceHandle<DataSource> handle : dataSources) {
-      String name = handle.getBean().getName();
-      name = name == null ? DEFAULT_DATA_SOURCE_NAME : unquoteDataSourceName(name);
-      dataSourceMap.put(name, handle.get());
+      dataSourceList.add(handle.get());
     }
-
-    return dataSourceMap;
-  }
-
-  private static String unquoteDataSourceName(String dataSourceName) {
-    if (dataSourceName.startsWith("\"") && dataSourceName.endsWith("\"")) {
-      dataSourceName = dataSourceName.substring(1, dataSourceName.length() - 1);
-    }
-    return dataSourceName;
+    return dataSourceList;
   }
 }

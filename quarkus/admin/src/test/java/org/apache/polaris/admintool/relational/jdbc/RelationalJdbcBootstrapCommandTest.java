@@ -21,5 +21,5 @@ package org.apache.polaris.admintool.relational.jdbc;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.admintool.BootstrapCommandTestBase;
 
-@TestProfile(RelationalJdbcProfile.class)
+@TestProfile(RelationalJdbcAdminProfile.class)
 public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase {}
