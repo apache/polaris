@@ -231,8 +231,6 @@ INSERT INTO quickstart_table VALUES (1, 'some data');
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
 
-Additionally, a Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
-
 ### Connecting with Trino
 
 Replace the credentials used in the Docker container using the following code:
@@ -301,5 +299,9 @@ Then, use the access token in the Authorization header when accessing Polaris:
 curl -v http://127.0.0.1:8181/api/management/v1/principal-roles -H "Authorization: Bearer $POLARIS_TOKEN"
 curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "Authorization: Bearer $POLARIS_TOKEN"
 ```
+
+## Next Steps
+* Visit [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
+* A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 
 
