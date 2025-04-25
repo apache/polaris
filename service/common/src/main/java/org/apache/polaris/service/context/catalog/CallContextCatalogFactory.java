@@ -26,8 +26,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 public interface CallContextCatalogFactory {
 
-  static final String WAREHOUSE_LOCATION_BASEDIR =
-      "/tmp/iceberg_rest_server_warehouse_data/";
+  static final String WAREHOUSE_LOCATION_BASEDIR = "/tmp/iceberg_rest_server_warehouse_data/";
 
   Catalog createCallContextCatalog(
       CallContext context,
