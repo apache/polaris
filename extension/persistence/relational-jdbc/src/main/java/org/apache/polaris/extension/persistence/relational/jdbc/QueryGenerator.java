@@ -26,10 +26,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.*;
 
 public class QueryGenerator {
 
@@ -53,6 +50,26 @@ public class QueryGenerator {
             + granteeCondition
             + " OR "
             + securableCondition
+            + ") AND realm_id = '"
+            + realmId
+            + "'";
+    return generateDeleteQuery(ModelGrantRecord.class, whereClause);
+  }
+
+  public static String generateDeleteQueryForEntityPolicyMappingRecords(
+      @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
+    String targetCondition =
+        String.format(
+            "target_id = %s AND target_catalog_id = %s", entity.getId(), entity.getCatalogId());
+    String sourceCondition =
+        String.format(
+            "policy_id = %s AND policy_catalog_id = %s", entity.getId(), entity.getCatalogId());
+
+    String whereClause =
+        " WHERE ("
+            + targetCondition
+            + " OR "
+            + sourceCondition
             + ") AND realm_id = '"
             + realmId
             + "'";
@@ -127,8 +144,8 @@ public class QueryGenerator {
   }
 
   public static <T> String generateDeleteQuery(
-      @Nonnull Converter<T> entity, @Nonnull Class<?> entityClass, @Nonnull String realmId) {
-    String tableName = getTableName(entityClass);
+      @Nonnull Converter<T> entity, @Nonnull String realmId) {
+    String tableName = getTableName(entity.getClass());
     Map<String, Object> objMap = entity.toMap();
     objMap.put("realm_id", realmId);
     String whereConditions = generateWhereClause(objMap);
@@ -186,6 +203,8 @@ public class QueryGenerator {
       tableName = "GRANT_RECORDS";
     } else if (entityClass.equals(ModelPrincipalAuthenticationData.class)) {
       tableName = "PRINCIPAL_AUTHENTICATION_DATA";
+    } else if (entityClass.equals(ModelPolicyMappingRecord.class)) {
+      tableName = "POLICY_MAPPING_RECORD";
     } else {
       throw new IllegalArgumentException("Unsupported entity class: " + entityClass.getName());
     }

@@ -47,11 +47,13 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -220,7 +222,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void deleteFromGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
-    String query = generateDeleteQuery(modelGrantRecord, ModelGrantRecord.class, realmId);
+    String query = generateDeleteQuery(modelGrantRecord, realmId);
     try {
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
@@ -698,6 +700,139 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e);
       throw new RuntimeException(
           String.format("Failed to delete principalSecrets for clientId: %s", clientId), e);
+    }
+  }
+
+  @Override
+  public void writeToPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    ModelPolicyMappingRecord modelPolicyMappingRecord =
+        ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+    String query = generateInsertQuery(modelPolicyMappingRecord, realmId);
+    try {
+      datasourceOperations.executeUpdate(query);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void deleteFromPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    ModelPolicyMappingRecord modelPolicyMappingRecord =
+        ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+    String query = generateDeleteQuery(modelPolicyMappingRecord, realmId);
+    try {
+      datasourceOperations.executeUpdate(query);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write to policy records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void deleteAllEntityPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    try {
+      datasourceOperations.executeUpdate(
+          generateDeleteQueryForEntityPolicyMappingRecords(entity, realmId));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete policy mapping records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nullable
+  @Override
+  public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    Map<String, Object> params =
+        Map.of(
+            "target_catalog_id",
+            targetCatalogId,
+            "target_id",
+            targetId,
+            "policy_type_code",
+            policyTypeCode,
+            "policy_id",
+            policyId,
+            "policy_catalog_id",
+            policyCatalogId,
+            "realm_id",
+            realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
+    if (results.size() > 1) {
+      throw new IllegalStateException(
+          String.format(
+              "More than 1 policy %s for a given policy mapping", results.getFirst()));
+    }
+    return results.size() == 1 ? results.getFirst() : null;
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    Map<String, Object> params =
+        Map.of(
+            "target_catalog_id",
+            targetCatalogId,
+            "target_id",
+            targetId,
+            "policy_type_code",
+            policyTypeCode,
+            "realm_id",
+            realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    Map<String, Object> params =
+        Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    Map<String, Object> params =
+        Map.of("policy_catalog_id", policyCatalogId, "policy_id", policyId, "realm_id", realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(String query) {
+    try {
+      List<PolarisPolicyMappingRecord> results =
+              datasourceOperations.executeSelect(
+                      query,
+                      ModelPolicyMappingRecord.class,
+                      ModelPolicyMappingRecord::toPolicyMappingRecord,
+                      null,
+                      Integer.MAX_VALUE);
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+              String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
     }
   }
 
