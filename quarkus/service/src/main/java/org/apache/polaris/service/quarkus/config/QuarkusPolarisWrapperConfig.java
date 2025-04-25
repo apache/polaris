@@ -16,18 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus.config;
 
 import io.smallrye.config.ConfigMapping;
-
 import java.util.Map;
 
-@ConfigMapping(prefix = "polaris.catalog-mode")
-public interface CatalogModeConfig {
+import io.smallrye.config.WithDefault;
+import org.apache.polaris.service.config.PolarisWrapperConfig;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-    String mode();
+@ConfigMapping(prefix = "polaris.wrapper")
+public interface QuarkusPolarisWrapperConfig extends PolarisWrapperConfig {
 
-    @ConfigItem(name = "property")
-    Map<String, String> properties();
+  @Override
+  @WithDefault("none")
+  String type();
+
+  @Override
+  Map<String, String> property();
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.context.catalog;
 
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Catalog;
