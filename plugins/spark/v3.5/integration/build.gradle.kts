@@ -55,7 +55,7 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
-  implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
+  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.core:jackson-annotations")
