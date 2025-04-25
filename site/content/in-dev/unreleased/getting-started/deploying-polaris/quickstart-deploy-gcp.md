@@ -28,6 +28,7 @@ Additionally, Polaris will be bootstrapped to use this database and Docker conta
 The requirements to run the script below are:
 * Install the `gcloud` CLI, if it is not already installed on the GCP VM. Instructions to download the `gcloud` CLI can be found [here](https://cloud.google.com/sdk/docs/install).
 * Ensure the `Cloud SQL Admin API` has been enabled in your project and that your VM's Principal has access to the correct role: `roles/cloudsql.admin`.
+* Ensure the VM's Principal has access to at least Read-only scope on Compute Engine: `compute.readonly`.
 
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-gcp.sh
