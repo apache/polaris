@@ -363,7 +363,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @VisibleForTesting
   public TableOperations newTableOps(
       TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
+    return new BasePolarisTableOperations(
+        catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
@@ -1229,7 +1230,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     private FileIO tableFileIO;
 
     BasePolarisTableOperations(
-        FileIO defaultFileIO, TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
+        FileIO defaultFileIO,
+        TableIdentifier tableIdentifier,
+        boolean makeMetadataCurrentOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
