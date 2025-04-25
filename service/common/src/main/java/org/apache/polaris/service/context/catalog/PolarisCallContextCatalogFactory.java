@@ -49,9 +49,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
 
-  private static final String WAREHOUSE_LOCATION_BASEDIR =
-      "/tmp/iceberg_rest_server_warehouse_data/";
-
   private final RealmEntityManagerFactory entityManagerFactory;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
