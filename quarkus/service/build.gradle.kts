@@ -130,11 +130,11 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-library")
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
-  testFixturesApi("io.quarkus:quarkus-junit5")
-  testFixturesApi(platform(libs.testcontainers.bom))
-  testFixturesApi("org.testcontainers:testcontainers")
-  testFixturesApi("org.testcontainers:postgresql")
-  testFixturesApi("org.postgresql:postgresql")
+  testImplementation("io.quarkus:quarkus-junit5")
+  testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:postgresql")
+  testImplementation("org.postgresql:postgresql")
 }
 
 tasks.withType(Test::class.java).configureEach {
