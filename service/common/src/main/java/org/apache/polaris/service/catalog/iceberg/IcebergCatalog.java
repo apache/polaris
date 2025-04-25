@@ -1495,11 +1495,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // We diverge from `BaseMetastoreTableOperations` in the below code block
       if (updateMetadataOnCommit) {
-        currentMetadata = TableMetadata
-            .buildFrom(metadata)
-            .withMetadataLocation(newLocation)
-            .discardChanges()
-            .build();
+        currentMetadata =
+            TableMetadata.buildFrom(metadata)
+                .withMetadataLocation(newLocation)
+                .discardChanges()
+                .build();
         currentMetadataLocation = newLocation;
       }
 

@@ -1695,8 +1695,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     table.updateProperties().set("foo", "bar").commit();
     Assertions.assertThat(measured.getInputBytes())
-        .as("A table was read and written")
-        .isGreaterThan(0);
+        .as("A table was read and written, but no trip to storage was made")
+        .isEqualTo(0);
 
     Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
     TaskEntity taskEntity =
@@ -1860,7 +1860,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     IcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
 
     try (MockedStatic<TableMetadataParser> mocked =
-             Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
+        Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
       TableMetadata base1 = ops.current();
       mocked.verify(
           () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
