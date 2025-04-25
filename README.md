@@ -71,7 +71,7 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew run` - To run the Polaris server locally; the server is reachable at 
   localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. 
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
-- Set your own credentials using the environment variable `POLARIS_BOOTSTRAP_CREDENTIALS=POLARIS,root,s3cr3t` where:
+- Set your own credentials using the environment variable `export POLARIS_BOOTSTRAP_CREDENTIALS=POLARIS,root,s3cr3t` where:
   - `POLARIS` is the realm
   - `root` is the CLIENT_ID
   - `s3cr3t` is the CLIENT_SECRET
