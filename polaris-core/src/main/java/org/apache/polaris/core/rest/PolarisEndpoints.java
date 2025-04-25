@@ -25,6 +25,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 
 public class PolarisEndpoints {
+  // Generic table endpoints
   public static final Endpoint V1_LIST_GENERIC_TABLES =
       Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLES);
   public static final Endpoint V1_LOAD_GENERIC_TABLE =
@@ -42,6 +43,7 @@ public class PolarisEndpoints {
           .add(V1_LOAD_GENERIC_TABLE)
           .build();
 
+  // Policy store endpoints
   public static final Endpoint V1_LIST_POLICIES =
       Endpoint.create("GET", PolarisResourcePaths.V1_POLICIES);
   public static final Endpoint V1_CREATE_POLICY =

@@ -159,7 +159,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.dropPolicy(identifier, detachAll != null && detachAll);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return Response.noContent().build();
   }
 
   @Override
@@ -174,7 +174,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.attachPolicy(identifier, attachPolicyRequest);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return Response.noContent().build();
   }
 
   @Override
@@ -189,7 +189,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.detachPolicy(identifier, detachPolicyRequest);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return Response.noContent().build();
   }
 
   @Override
