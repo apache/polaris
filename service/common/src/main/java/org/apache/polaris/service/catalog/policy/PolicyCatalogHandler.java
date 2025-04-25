@@ -73,7 +73,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   @Override
   protected void initializeCatalog() {
-    enforcePolicyStoreEnabledOrThrow();
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        callContext, FeatureConfiguration.ENABLE_POLICY_STORE);
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
   }
 
@@ -320,18 +321,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
             throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
         default -> throw new IllegalStateException("Cannot resolve");
       }
-    }
-  }
-
-  public void enforcePolicyStoreEnabledOrThrow() {
-    boolean enabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_POLICY_STORE);
-    if (!enabled) {
-      throw new UnsupportedOperationException("Policy store support is not enabled");
     }
   }
 }
