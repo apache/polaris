@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import java.util.Locale;
+
 public enum DatabaseType {
   POSTGRES("postgres"),
   H2("h2");
@@ -34,10 +36,14 @@ public enum DatabaseType {
   }
 
   public static DatabaseType fromDisplayName(String displayName) {
-    return switch (displayName) {
+    return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
+  }
+
+  public String getInitScriptResource() {
+    return String.format("%s/schema-v1.sql", this.getDisplayName());
   }
 }

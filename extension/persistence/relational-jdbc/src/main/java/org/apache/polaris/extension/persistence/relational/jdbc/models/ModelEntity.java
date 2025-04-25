@@ -152,8 +152,11 @@ public class ModelEntity implements Converter<ModelEntity> {
         .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
         .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
         .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
-        .properties(r.getString("properties"))
-        .internalProperties(r.getString("internal_properties"))
+        .properties(
+            r.getString("properties")) // required for extracting when the underlying type is JSONB
+        .internalProperties(
+            r.getString(
+                "internal_properties")) // required for extracting when the underlying type is JSONB
         .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
         .build();
   }

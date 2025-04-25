@@ -84,7 +84,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    org.junit.jupiter.api.Assumptions.assumeFalse(shouldSkip());
+    Assumptions.assumeThat(shouldSkip()).isFalse();
 
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");

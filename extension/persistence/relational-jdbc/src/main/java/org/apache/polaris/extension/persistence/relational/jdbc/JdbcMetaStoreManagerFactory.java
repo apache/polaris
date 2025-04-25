@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
+import com.google.common.base.Preconditions;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,7 +27,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -112,16 +112,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
     // TODO: remove when multiple dataSources are supported.
-    if (dataSources.size() > 1) {
-      throw new IllegalStateException("More than one dataSources configured");
-    }
+    Preconditions.checkState(dataSources.size() == 1, "More than one dataSources configured");
     DatasourceOperations databaseOperations = new DatasourceOperations(dataSources.getFirst());
     if (isBootstrap) {
       try {
         DatabaseType databaseType;
         try (Connection connection = dataSources.getFirst().getConnection()) {
-          String productName =
-              connection.getMetaData().getDatabaseProductName().toLowerCase(Locale.ROOT);
+          String productName = connection.getMetaData().getDatabaseProductName();
           databaseType = DatabaseType.fromDisplayName(productName);
         }
         databaseOperations.executeScript(
