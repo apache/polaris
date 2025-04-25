@@ -33,6 +33,7 @@ dependencies {
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))
+    api(project(":polaris-persistence-varint"))
 
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
@@ -41,6 +42,7 @@ dependencies {
     api(project(":polaris-service-common"))
 
     api(project(":polaris-eclipselink"))
+    api(project(":polaris-relational-jdbc"))
     api(project(":polaris-jpa-model"))
 
     api(project(":polaris-quarkus-admin"))

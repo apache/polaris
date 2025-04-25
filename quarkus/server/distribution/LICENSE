@@ -212,25 +212,25 @@ License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.19.4
+Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.21.2
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-classloader-commons Version: 3.19.4
+Group: io.quarkus Name: quarkus-classloader-commons Version: 3.21.2
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.19.4
+Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.21.2
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-vertx-latebound-mdc-provider Version: 3.19.4
+Group: io.quarkus Name: quarkus-vertx-latebound-mdc-provider Version: 3.21.2
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -507,7 +507,7 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.51.0
+Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.53.0
 Project URL (from POM): https://github.com/googleapis/sdk-platform-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -609,7 +609,7 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: com.google.guava Name: guava Version: 33.4.0-jre
+Group: com.google.guava Name: guava Version: 33.4.6-jre
 Project URL (from POM): https://github.com/google/guava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -621,31 +621,31 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client Version: 1.46.1
+Group: com.google.http-client Name: google-http-client Version: 1.46.3
 Project URL (from POM): https://github.com/googleapis/google-http-java-client
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client-apache-v2 Version: 1.46.1
+Group: com.google.http-client Name: google-http-client-apache-v2 Version: 1.46.3
 Project URL (from POM): https://github.com/googleapis/google-http-java-client
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client-appengine Version: 1.46.1
+Group: com.google.http-client Name: google-http-client-appengine Version: 1.46.3
 Project URL (from POM): https://github.com/googleapis/google-http-java-client
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client-gson Version: 1.46.1
+Group: com.google.http-client Name: google-http-client-gson Version: 1.46.3
 Project URL (from POM): https://github.com/googleapis/google-http-java-client
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client-jackson2 Version: 1.46.1
+Group: com.google.http-client Name: google-http-client-jackson2 Version: 1.46.3
 Project URL (from POM): https://github.com/googleapis/google-http-java-client
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -711,13 +711,13 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.0
+Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.0.2
 Project URL (from POM): https://bitbucket.org/connect2id/nimbus-jose-jwt
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: oauth2-oidc-sdk Version: 11.18
+Group: com.nimbusds Name: oauth2-oidc-sdk Version: 11.23
 Project URL (from POM): https://bitbucket.org/connect2id/oauth-2.0-sdk-with-openid-connect-extensions
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -915,85 +915,85 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.118.Final
+Group: io.netty Name: netty-buffer Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec Version: 4.1.118.Final
+Group: io.netty Name: netty-codec Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec-dns Version: 4.1.118.Final
+Group: io.netty Name: netty-codec-dns Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec-haproxy Version: 4.1.118.Final
+Group: io.netty Name: netty-codec-haproxy Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec-http Version: 4.1.118.Final
+Group: io.netty Name: netty-codec-http Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec-http2 Version: 4.1.118.Final
+Group: io.netty Name: netty-codec-http2 Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-codec-socks Version: 4.1.118.Final
+Group: io.netty Name: netty-codec-socks Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-common Version: 4.1.118.Final
+Group: io.netty Name: netty-common Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-handler Version: 4.1.118.Final
+Group: io.netty Name: netty-handler Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-handler-proxy Version: 4.1.118.Final
+Group: io.netty Name: netty-handler-proxy Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-resolver Version: 4.1.118.Final
+Group: io.netty Name: netty-resolver Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-resolver-dns Version: 4.1.118.Final
+Group: io.netty Name: netty-resolver-dns Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.118.Final
+Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.118.Final
+Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1011,37 +1011,37 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport Version: 4.1.118.Final
+Group: io.netty Name: netty-transport Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.118.Final
+Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.118.Final
+Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.118.Final
+Group: io.netty Name: netty-transport-native-epoll Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.118.Final
+Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.118.Final
+Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.119.Final
 Project URL (from POM): https://netty.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1251,25 +1251,25 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.arc Name: arc Version: 3.19.4
+Group: io.quarkus.arc Name: arc Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-arc Version: 3.19.4
+Group: io.quarkus Name: quarkus-arc Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-core Version: 3.19.4
+Group: io.quarkus Name: quarkus-core Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-credentials Version: 3.19.4
+Group: io.quarkus Name: quarkus-credentials Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1281,163 +1281,163 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-grpc-common Version: 3.19.4
+Group: io.quarkus Name: quarkus-grpc-common Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-hibernate-validator Version: 3.19.4
+Group: io.quarkus Name: quarkus-hibernate-validator Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-jackson Version: 3.19.4
+Group: io.quarkus Name: quarkus-jackson Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-jsonp Version: 3.19.4
+Group: io.quarkus Name: quarkus-jsonp Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-logging-json Version: 3.19.4
+Group: io.quarkus Name: quarkus-logging-json Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-micrometer Version: 3.19.4
+Group: io.quarkus Name: quarkus-micrometer Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-micrometer-registry-prometheus Version: 3.19.4
+Group: io.quarkus Name: quarkus-micrometer-registry-prometheus Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-mutiny Version: 3.19.4
+Group: io.quarkus Name: quarkus-mutiny Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-netty Version: 3.19.4
+Group: io.quarkus Name: quarkus-netty Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-opentelemetry Version: 3.19.4
+Group: io.quarkus Name: quarkus-opentelemetry Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-reactive-routes Version: 3.19.4
+Group: io.quarkus Name: quarkus-reactive-routes Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-rest Version: 3.19.4
+Group: io.quarkus Name: quarkus-rest Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-rest-common Version: 3.19.4
+Group: io.quarkus Name: quarkus-rest-common Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-rest-jackson Version: 3.19.4
+Group: io.quarkus Name: quarkus-rest-jackson Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-rest-jackson-common Version: 3.19.4
+Group: io.quarkus Name: quarkus-rest-jackson-common Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-security-runtime-spi Version: 3.19.4
+Group: io.quarkus Name: quarkus-security-runtime-spi Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.19.4
+Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-smallrye-health Version: 3.19.4
+Group: io.quarkus Name: quarkus-smallrye-health Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-tls-registry Version: 3.19.4
+Group: io.quarkus Name: quarkus-tls-registry Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-vertx Version: 3.19.4
+Group: io.quarkus Name: quarkus-vertx Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-vertx-http Version: 3.19.4
+Group: io.quarkus Name: quarkus-vertx-http Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-virtual-threads Version: 3.19.4
+Group: io.quarkus Name: quarkus-virtual-threads Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy Name: reactive.resteasy-reactive Version: 3.19.4
+Group: io.quarkus.resteasy Name: reactive.resteasy-reactive Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common Version: 3.19.4
+Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common-types Version: 3.19.4
+Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common-types Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-jackson Version: 3.19.4
+Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-jackson Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-vertx Version: 3.19.4
+Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-vertx Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1449,7 +1449,7 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.vertx.utils Name: quarkus-vertx-utils Version: 3.19.4
+Group: io.quarkus.vertx.utils Name: quarkus-vertx-utils Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1479,25 +1479,25 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config-validator Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config-validator Version: 3.12.4
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1635,77 +1635,77 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-auth-common Version: 4.5.13
+Group: io.vertx Name: vertx-auth-common Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-bridge-common Version: 4.5.13
+Group: io.vertx Name: vertx-bridge-common Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-codegen Version: 4.5.13
+Group: io.vertx Name: vertx-codegen Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-core Version: 4.5.13
+Group: io.vertx Name: vertx-core Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-grpc Version: 4.5.13
+Group: io.vertx Name: vertx-grpc Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-grpc-client Version: 4.5.13
+Group: io.vertx Name: vertx-grpc-client Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-grpc-common Version: 4.5.13
+Group: io.vertx Name: vertx-grpc-common Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-grpc-server Version: 4.5.13
+Group: io.vertx Name: vertx-grpc-server Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-uri-template Version: 4.5.13
+Group: io.vertx Name: vertx-uri-template Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-web Version: 4.5.13
+Group: io.vertx Name: vertx-web Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-web-common Version: 4.5.13
+Group: io.vertx Name: vertx-web-common Version: 4.5.14
 Project URL: https://vertx.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 License (from POM): Eclipse Public License 1.0 - http://www.eclipse.org/legal/epl-v10.html
@@ -1828,13 +1828,13 @@ License (from POM): LGPL, version 2.1 - http://www.gnu.org/licenses/licenses.htm
 
 --------------------------------------------------------------------------------
 
-Group: net.minidev Name: accessors-smart Version: 2.5.1
+Group: net.minidev Name: accessors-smart Version: 2.5.2
 Project URL (from POM): https://urielch.github.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: net.minidev Name: json-smart Version: 2.5.1
+Group: net.minidev Name: json-smart Version: 2.5.2
 Project URL (from POM): https://urielch.github.io/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1936,19 +1936,19 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.client5 Name: httpclient5 Version: 5.4
+Group: org.apache.httpcomponents.client5 Name: httpclient5 Version: 5.4.1
 Project URL (from POM): https://hc.apache.org/httpcomponents-client-5.4.x/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.core5 Name: httpcore5 Version: 5.3
+Group: org.apache.httpcomponents.core5 Name: httpcore5 Version: 5.3.1
 Project URL (from POM): https://hc.apache.org/httpcomponents-core-5.3.x/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.core5 Name: httpcore5-h2 Version: 5.3
+Group: org.apache.httpcomponents.core5 Name: httpcore5-h2 Version: 5.3.1
 Project URL (from POM): https://hc.apache.org/httpcomponents-core-5.3.x/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1966,43 +1966,43 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-api Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-api Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-aws Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-aws Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-azure Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-azure Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-common Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-common Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-core Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-core Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-gcp Version: 1.7.1
+Group: org.apache.iceberg Name: iceberg-gcp Version: 1.8.1
 Project URL (from POM): https://iceberg.apache.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -2056,7 +2056,7 @@ License (from POM): Bouncy Castle Licence - https://www.bouncycastle.org/licence
 
 --------------------------------------------------------------------------------
 
-Group: org.checkerframework Name: checker-qual Version: 3.49.0
+Group: org.checkerframework Name: checker-qual Version: 3.49.1
 Project URL (from POM): https://checkerframework.org/
 License (from POM): MIT License - http://opensource.org/licenses/MIT
 
@@ -2083,6 +2083,12 @@ License (from POM): The BSD License - http://www.opensource.org/licenses/bsd-lic
 Group: org.conscrypt Name: conscrypt-openjdk-uber Version: 2.5.2
 Project URL (from POM): https://conscrypt.org/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.eclipse.angus Name: angus-activation Version: 2.0.2
+Project URL: https://projects.eclipse.org/projects/ee4j.angus
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2164,6 +2170,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: org.eclipse.microprofile.health Name: microprofile-health-api Version: 4.0.1
 Project URL (from POM): http://microprofile.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.eclipse.persistence Name: eclipselink Version: 4.0.6
+Project URL: https://eclipse.dev/eclipselink/
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2289,187 +2301,187 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.31.11
+Group: software.amazon.awssdk Name: annotations Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.11
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: arns Version: 2.31.11
+Group: software.amazon.awssdk Name: arns Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: auth Version: 2.31.11
+Group: software.amazon.awssdk Name: auth Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.11
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.11
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.11
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: checksums Version: 2.31.11
+Group: software.amazon.awssdk Name: checksums Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.11
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.11
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.11
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.11
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.11
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.11
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.11
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: profiles Version: 2.31.11
+Group: software.amazon.awssdk Name: profiles Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.11
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: regions Version: 2.31.11
+Group: software.amazon.awssdk Name: regions Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: retries Version: 2.31.11
+Group: software.amazon.awssdk Name: retries Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.11
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: s3 Version: 2.31.11
+Group: software.amazon.awssdk Name: s3 Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.11
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: sts Version: 2.31.11
+Group: software.amazon.awssdk Name: sts Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.11
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: utils Version: 2.31.11
+Group: software.amazon.awssdk Name: utils Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -2478,5 +2490,11 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
 Project URL (from POM): https://github.com/awslabs/aws-eventstream-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.postgresql Name: postgresql Version: 42.7.5
+Project URL: https://jdbc.postgresql.org/
+License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
 
 --------------------------------------------------------------------------------

@@ -36,6 +36,12 @@ for contribution guidelines.
 
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
+## Polaris Overview
+Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick overview of Polaris.
+
+## Quickstart
+Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
+
 ## Building and Running 
 
 Apache Polaris is organized into the following modules:
@@ -55,6 +61,7 @@ Apache Polaris is organized into the following modules:
 - Persistence modules:
   - `polaris-jpa-model` - The JPA entity definitions
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
+  - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
  
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 

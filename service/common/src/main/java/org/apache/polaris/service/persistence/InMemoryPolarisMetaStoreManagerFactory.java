@@ -79,7 +79,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId));
+      bootstrapRealmsFromEnvironment(List.of(realmId));
     }
     return super.getOrCreateMetaStoreManager(realmContext);
   }
@@ -89,21 +89,21 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId));
+      bootstrapRealmsFromEnvironment(List.of(realmId));
     }
     return super.getOrCreateSessionSupplier(realmContext);
   }
 
-  private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
+  private void bootstrapRealmsFromEnvironment(List<String> realms) {
     RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
     this.bootstrapRealms(realms, rootCredentialsSet);
-    bootstrappedRealms.addAll(realms);
   }
 
   @Override
   public Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
     Map<String, PrincipalSecretsResult> results = super.bootstrapRealms(realms, rootCredentialsSet);
+    bootstrappedRealms.addAll(results.keySet());
 
     Map<String, RootCredentials> presetCredentials = rootCredentialsSet.credentials();
     for (String realmId : realms) {
@@ -113,6 +113,9 @@ public class InMemoryPolarisMetaStoreManagerFactory
       }
 
       PrincipalSecretsResult principalSecrets = results.get(realmId);
+      if (principalSecrets == null) {
+        continue; // already bootstrapped (possible benign race)
+      }
 
       String msg =
           String.format(

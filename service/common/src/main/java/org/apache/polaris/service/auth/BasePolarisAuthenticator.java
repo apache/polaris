@@ -111,8 +111,6 @@ public abstract class BasePolarisAuthenticator
 
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(new PrincipalEntity(principal), activatedPrincipalRoles);
-    LOGGER.debug("Populating authenticatedPrincipal into CallContext: {}", authenticatedPrincipal);
-    callContext.contextVariables().put(CallContext.AUTHENTICATED_PRINCIPAL, authenticatedPrincipal);
     return Optional.of(authenticatedPrincipal);
   }
 }

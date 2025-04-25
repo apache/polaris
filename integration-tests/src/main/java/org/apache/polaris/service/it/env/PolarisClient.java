@@ -106,6 +106,25 @@ public final class PolarisClient implements AutoCloseable {
     return new CatalogApi(client, endpoints, null, endpoints.catalogApiEndpoint());
   }
 
+  public GenericTableApi genericTableApi(PrincipalWithCredentials principal) {
+    return new GenericTableApi(
+        client, endpoints, obtainToken(principal), endpoints.catalogApiEndpoint());
+  }
+
+  public GenericTableApi genericTableApi(ClientCredentials credentials) {
+    return new GenericTableApi(
+        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
+  }
+
+  public PolicyApi policyApi(PrincipalWithCredentials principal) {
+    return new PolicyApi(client, endpoints, obtainToken(principal), endpoints.catalogApiEndpoint());
+  }
+
+  public PolicyApi policyApi(ClientCredentials credentials) {
+    return new PolicyApi(
+        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
+  }
+
   /**
    * Requests an access token from the Polaris server for the client ID/secret pair that is part of
    * the given principal data object.

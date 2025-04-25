@@ -84,11 +84,11 @@ principal roles. Likewise, a principal role can be granted to one or more catalo
 The following table displays examples of catalog roles that you might
 configure in Polaris:
 
-| Example Catalog role | Description |
-| -----------------------| ----------- |
-| Catalog administrators   | A role that has been granted multiple privileges to emulate full access to the catalog.<br /><br />Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.  |
-| Catalog readers      | A role that has been granted read-only privileges to tables in the catalog.<br /><br />Principal roles that have been granted this role are allowed to read from tables in the catalog. |
-| Catalog contributor   | A role that has been granted read and write access privileges to all tables that belong to the catalog.<br /><br />Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
+| Example Catalog role | Description|
+| -----------------------|-----------|
+| Catalog administrators   | A role that has been granted multiple privileges to emulate full access to the catalog.  <br/>Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.  |
+| Catalog readers      | A role that has been granted read-only privileges to tables in the catalog.  <br/>Principal roles that have been granted this role are allowed to read from tables in the catalog. |
+| Catalog contributor   | A role that has been granted read and write access privileges to all tables that belong to the catalog.  <br/>Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
 
 ## RBAC model
 
@@ -117,9 +117,9 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | --------- | ----------- |
 | TABLE_CREATE | Enables registering a table with the catalog. |
 | TABLE_DROP | Enables dropping a table from the catalog. |
-| TABLE_LIST | Enables listing any tables in the catalog. |
-| TABLE_READ_PROPERTIES | Enables reading [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) of the table. |
-| TABLE_WRITE_PROPERTIES | Enables configuring [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) for the table. |
+| TABLE_LIST | Enables listing any table in the catalog. |
+| TABLE_READ_PROPERTIES | Enables reading properties of the table. |
+| TABLE_WRITE_PROPERTIES | Enables configuring properties for the table. |
 | TABLE_READ_DATA | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog. |
 | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
