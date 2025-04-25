@@ -231,7 +231,7 @@ INSERT INTO quickstart_table VALUES (1, 'some data');
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
 
-Additionally, a Getting Started experience for using Spark with Jupyter Notebooks are documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
+Additionally, a Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 
 ### Connecting with Trino
 
