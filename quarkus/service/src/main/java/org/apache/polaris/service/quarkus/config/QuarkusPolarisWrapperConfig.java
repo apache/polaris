@@ -19,11 +19,9 @@
 package org.apache.polaris.service.quarkus.config;
 
 import io.smallrye.config.ConfigMapping;
-import java.util.Map;
-
 import io.smallrye.config.WithDefault;
+import java.util.Map;
 import org.apache.polaris.service.config.PolarisWrapperConfig;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ConfigMapping(prefix = "polaris.wrapper")
 public interface QuarkusPolarisWrapperConfig extends PolarisWrapperConfig {
