@@ -39,7 +39,7 @@ abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) 
     objectFactory.fileProperty().convention {
       val input = file.get().asFile
       val algo = algorithm.get()
-      input.parentFile.resolve("${input.name}-${algo.replace("-", "").lowercase()}")
+      input.parentFile.resolve("${input.name}.${algo.replace("-", "").lowercase()}")
     }
 
   @TaskAction
