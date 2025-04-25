@@ -301,7 +301,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 ```
 
 ## Next Steps
-* Visit [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
+* Visit [Configuring Polaris for Production]({{% relref "../configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 
 
