@@ -95,4 +95,5 @@ The Spark client does have limitations as follows:
 2) Dataframe saveAsTable is not supported for Delta tables, which requires CTAS support.
 3) Create non-iceberg table without explicit location is not supported.
 4) Rename table for non-iceberg table is not supported.
-5) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARITION is not supported for DELTA table.
+5) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
+6) No specific guarantee is provided for table types that are neither ICEBERG or DELTA at this moment.

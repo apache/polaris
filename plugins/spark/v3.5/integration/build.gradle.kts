@@ -104,7 +104,6 @@ tasks.named<Test>("intTest").configure {
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
-
   // Same issue as above: allow a java security manager after Java 21
   // (this setting is for the application under test, while the setting above is for test code).
   systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
