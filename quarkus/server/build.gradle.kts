@@ -51,11 +51,7 @@ dependencies {
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
-  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql") {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
