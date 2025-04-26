@@ -600,13 +600,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -641,13 +635,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -681,13 +669,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -718,13 +700,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -771,13 +747,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -823,13 +793,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(
-                List.of(
-                    Types.NestedField.builder()
-                        .withId(1)
-                        .withName("col1")
-                        .ofType(Types.StringType.get())
-                        .build())),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
