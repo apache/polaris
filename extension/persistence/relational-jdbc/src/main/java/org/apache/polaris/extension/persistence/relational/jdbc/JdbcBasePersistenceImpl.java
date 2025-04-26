@@ -20,6 +20,7 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static org.apache.polaris.extension.persistence.relational.jdbc.QueryGenerator.*;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.SQLException;
@@ -45,9 +46,11 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -706,11 +709,37 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void writeToPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
-    ModelPolicyMappingRecord modelPolicyMappingRecord =
-        ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
-    String query = generateInsertQuery(modelPolicyMappingRecord, realmId);
     try {
-      datasourceOperations.executeUpdate(query);
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
+            Preconditions.checkArgument(
+                policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
+
+            if (policyType.isInheritable()) {
+              List<PolarisPolicyMappingRecord> existingRecords =
+                  loadPoliciesOnTargetByType(
+                      callCtx,
+                      record.getTargetCatalogId(),
+                      record.getTargetId(),
+                      record.getPolicyTypeCode());
+              if (existingRecords.size() > 1) {
+                throw new PolicyMappingAlreadyExistsException(existingRecords.get(0));
+              } else if (existingRecords.size() == 1) {
+                PolarisPolicyMappingRecord existingRecord = existingRecords.get(0);
+                if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
+                    || existingRecord.getPolicyId() != record.getPolicyId()) {
+                  throw new PolicyMappingAlreadyExistsException(existingRecord);
+                }
+              }
+
+              ModelPolicyMappingRecord modelPolicyMappingRecord =
+                  ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+              String query = generateInsertQuery(modelPolicyMappingRecord, realmId);
+              statement.executeUpdate(query);
+            }
+            return true;
+          });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);
@@ -773,8 +802,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
     if (results.size() > 1) {
       throw new IllegalStateException(
-          String.format(
-              "More than 1 policy %s for a given policy mapping", results.getFirst()));
+          String.format("More than 1 policy %s for a given policy mapping", results.getFirst()));
     }
     return results.size() == 1 ? results.getFirst() : null;
   }
@@ -823,16 +851,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(String query) {
     try {
       List<PolarisPolicyMappingRecord> results =
-              datasourceOperations.executeSelect(
-                      query,
-                      ModelPolicyMappingRecord.class,
-                      ModelPolicyMappingRecord::toPolicyMappingRecord,
-                      null,
-                      Integer.MAX_VALUE);
+          datasourceOperations.executeSelect(
+              query,
+              ModelPolicyMappingRecord.class,
+              ModelPolicyMappingRecord::toPolicyMappingRecord,
+              null,
+              Integer.MAX_VALUE);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
-              String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
+          String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
     }
   }
 

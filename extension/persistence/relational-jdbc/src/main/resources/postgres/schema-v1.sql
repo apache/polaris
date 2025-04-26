@@ -91,3 +91,17 @@ CREATE TABLE IF NOT EXISTS principal_authentication_data (
 );
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
+
+DROP TABLE IF EXISTS policy_mapping_record;
+CREATE TABLE IF NOT EXISTS policy_mapping_record (
+    realm_id TEXT NOT NULL,
+    target_catalog_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    policy_type_code INTEGER NOT NULL,
+    policy_catalog_id BIGINT NOT NULL,
+    policy_id BIGINT NOT NULL,
+    parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
+    PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_catalog_id, policy_id, target_catalog_id, target_id);
