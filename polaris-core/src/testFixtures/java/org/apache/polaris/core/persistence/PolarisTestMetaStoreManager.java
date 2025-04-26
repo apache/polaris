@@ -2775,6 +2775,16 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(policyAttachmentResult.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS);
 
+    policyAttachmentResult =
+        polarisMetaStoreManager.attachPolicyToEntity(
+            polarisCallContext,
+            List.of(catalog, N1, N1_N2),
+            N1_N2_T1,
+            List.of(catalog, N1),
+            N1_P1,
+            Map.of("test1", "test1"));
+    Assertions.assertThat(policyAttachmentResult.isSuccess()).isTrue();
+
     LoadPolicyMappingsResult loadPolicyMappingsResult =
         polarisMetaStoreManager.loadPoliciesOnEntityByType(
             polarisCallContext, N1_N2_T1, PredefinedPolicyTypes.DATA_COMPACTION);
