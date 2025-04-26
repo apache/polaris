@@ -104,4 +104,4 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_catalog_id, policy_id, target_catalog_id, target_id);
+CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id);

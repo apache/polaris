@@ -716,6 +716,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             Preconditions.checkArgument(
                 policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
 
+            String query =
+                generateInsertQuery(
+                    ModelPolicyMappingRecord.fromPolicyMappingRecord(record), realmId);
             if (policyType.isInheritable()) {
               List<PolarisPolicyMappingRecord> existingRecords =
                   loadPoliciesOnTargetByType(
@@ -724,18 +727,31 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                       record.getTargetId(),
                       record.getPolicyTypeCode());
               if (existingRecords.size() > 1) {
-                throw new PolicyMappingAlreadyExistsException(existingRecords.get(0));
+                throw new PolicyMappingAlreadyExistsException(existingRecords.getFirst());
               } else if (existingRecords.size() == 1) {
-                PolarisPolicyMappingRecord existingRecord = existingRecords.get(0);
+                PolarisPolicyMappingRecord existingRecord = existingRecords.getFirst();
                 if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
                     || existingRecord.getPolicyId() != record.getPolicyId()) {
                   throw new PolicyMappingAlreadyExistsException(existingRecord);
                 }
+                Map<String, Object> updateClause =
+                    Map.of(
+                        "target_catalog_id",
+                        record.getTargetCatalogId(),
+                        "target_id",
+                        record.getTargetId(),
+                        "policy_type_code",
+                        record.getPolicyTypeCode(),
+                        "policy_id",
+                        record.getPolicyId(),
+                        "policy_catalog_id",
+                        record.getPolicyCatalogId(),
+                        "realm_id",
+                        realmId);
+                query =
+                    generateUpdateQuery(
+                        ModelPolicyMappingRecord.fromPolicyMappingRecord(record), updateClause);
               }
-
-              ModelPolicyMappingRecord modelPolicyMappingRecord =
-                  ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
-              String query = generateInsertQuery(modelPolicyMappingRecord, realmId);
               statement.executeUpdate(query);
             }
             return true;
