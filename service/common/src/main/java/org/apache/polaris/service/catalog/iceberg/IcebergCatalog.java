@@ -360,9 +360,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return new PolarisIcebergCatalogViewBuilder(identifier);
   }
 
+  @VisibleForTesting
+  public TableOperations newTableOps(
+      TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
+    return new BasePolarisTableOperations(
+        catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
+  }
+
   @Override
   protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
-    return new BasePolarisTableOperations(catalogFileIO, tableIdentifier);
+    boolean makeMetadataCurrentOnCommit =
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(),
+                BehaviorChangeConfiguration.TABLE_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT);
+    return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
@@ -1207,17 +1220,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
    * Version: 1.8
    */
-  private class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
+  @VisibleForTesting
+  public class BasePolarisTableOperations extends PolarisOperationsBase<TableMetadata>
       implements TableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
+    private final boolean makeMetadataCurrentOnCommit;
+
     private FileIO tableFileIO;
 
-    BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
+    BasePolarisTableOperations(
+        FileIO defaultFileIO,
+        TableIdentifier tableIdentifier,
+        boolean makeMetadataCurrentOnCommit) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+      this.makeMetadataCurrentOnCommit = makeMetadataCurrentOnCommit;
     }
 
     @Override
@@ -1476,6 +1496,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + "because it has been concurrently modified to %s",
             tableIdentifier, oldLocation, newLocation, existingLocation);
       }
+
+      // We diverge from `BaseMetastoreTableOperations` in the below code block
+      if (makeMetadataCurrentOnCommit) {
+        currentMetadata =
+            TableMetadata.buildFrom(metadata)
+                .withMetadataLocation(newLocation)
+                .discardChanges()
+                .build();
+        currentMetadataLocation = newLocation;
+      }
+
       if (null == existingLocation) {
         createTableLike(tableIdentifier, entity);
       } else {

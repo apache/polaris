@@ -137,6 +137,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import software.amazon.awssdk.core.exception.NonRetryableException;
 import software.amazon.awssdk.core.exception.RetryableException;
@@ -1698,8 +1700,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     table.updateProperties().set("foo", "bar").commit();
     Assertions.assertThat(measured.getInputBytes())
-        .as("A table was read and written")
-        .isGreaterThan(0);
+        .as("A table was read and written, but a trip to storage was made")
+        .isEqualTo(0);
 
     Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
     TaskEntity taskEntity =
@@ -1846,6 +1848,56 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testTableOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    IcebergCatalog.BasePolarisTableOperations realOps =
+        (IcebergCatalog.BasePolarisTableOperations)
+            catalog.newTableOps(TABLE, updateMetadataOnCommit);
+    IcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
+
+    try (MockedStatic<TableMetadataParser> mocked =
+        Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
+      TableMetadata base1 = ops.current();
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+
+      TableMetadata base2 = ops.refresh();
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+
+      Assertions.assertThat(base1.metadataFileLocation()).isEqualTo(base2.metadataFileLocation());
+      Assertions.assertThat(base1).isEqualTo(base2);
+
+      Schema newSchema =
+          new Schema(Types.NestedField.optional(100, "new_col", Types.LongType.get()));
+      TableMetadata newMetadata =
+          TableMetadata.buildFrom(base1).setCurrentSchema(newSchema, 100).build();
+      ops.commit(base2, newMetadata);
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+
+      ops.current();
+      int expectedReads = updateMetadataOnCommit ? 1 : 2;
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          Mockito.times(expectedReads));
+      ops.refresh();
+      mocked.verify(
+          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          Mockito.times(expectedReads));
+    } finally {
+      catalog.dropTable(TABLE, true);
+    }
   }
 
   private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {
