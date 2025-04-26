@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
+import io.quarkus.arc.All;
+import io.quarkus.arc.InstanceHandle;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
@@ -32,6 +34,9 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
+import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -260,5 +265,14 @@ public class QuarkusProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  @Produces
+  public List<DataSource> dataSources(@All List<InstanceHandle<DataSource>> dataSources) {
+    List<DataSource> dataSourceList = new ArrayList<>();
+    for (InstanceHandle<DataSource> handle : dataSources) {
+      dataSourceList.add(handle.get());
+    }
+    return dataSourceList;
   }
 }
