@@ -123,6 +123,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_READ_DATA | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog. |
 | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
+| TABLE_ATTACH_POLICY | Enables attaching policy to a table. Applying policy at a table will override the same policy type defined at namespace and catalog |
+| TABLE_DETACH_POLICY | Enables detaching policy from a table |
 
 ### View privileges
 
@@ -145,6 +147,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | NAMESPACE_READ_PROPERTIES | Enables reading all the namespace properties. |
 | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace properties. |
 | NAMESPACE_FULL_METADATA | Grants all namespace privileges. |
+| NAMESPACE_ATTACH_POLICY | Enables attaching policy to a namespace. A policy applied at this level will override the same policy type define at the parent namespace and catalog and all entities registered under the namespace will inherit this policy unless they have a different policy of the same type. Only inheritable policy such as, table compaction and snapshot expiry policy are allowed in this level. |
+| NAMESPACE_DETACH_POLICY | Enables detaching policy from a namespace. |
 
 ### Catalog privileges
 
@@ -155,6 +159,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | CATALOG_MANAGE_METADATA | Enables full management of the catalog, catalog roles, namespaces, and tables.  |
 | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
+| NAMESPACE_ATTACH_POLICY | Enables attaching policy to a catalog. All entities registered under the namespace will inherit this policy unless they have a different policy of the same type. Only inheritable policy such as, table compaction and snapshot expiry policy are allowed in this level. |
+| CATALOG_DETACH_POLICY | Enables detaching policy from a catalog. |
 
 ### Policy privileges
 
@@ -166,6 +172,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | POLICY_LIST | Enables listing any policy from the catalog |
 | POLICY_DROP | Enables dropping a policy if it is not attached to any resource entity |
 | POLICY_FULL_METADATA | Grants all policy privileges. |
+| POLICY_ATTACH | Enables policy to be attached to entities |
+| POLICY_DETACH | Enables policy to be detached from entities |
 
 ## RBAC example
 

@@ -78,9 +78,9 @@ Each catalog role may have multiple [privileges](#privilege) granted to it, and 
 
 ## Policy
 
-Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for table compaction, snapshot retention, row-level access control, and custom policy definitions. 
+Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions. 
 
-Policy can be applied at catalog level, namespace level, or table level. Policy inheritance can be achieved by attaching one to a higher-level scope, such as namespace or catalog. As a result, tables registered under those entities do not need to be declared individually for the same policy. If a table or a namespace requires a different policy, user can assign a different policy, hence overriding policy declared at the higher level entities.   
+Policy can be applied at catalog level, namespace level, or table level. Policy inheritance can be achieved by attaching one to a higher-level scope, such as namespace or catalog. As a result, tables registered under those entities do not need to be declared individually for the same policy. If a table or a namespace requires a different policy, user can assign a different policy, hence overriding policy of the same type declared at the higher level entities.   
 
 ## Privilege
 
