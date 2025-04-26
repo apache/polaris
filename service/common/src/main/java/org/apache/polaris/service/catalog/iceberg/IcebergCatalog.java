@@ -374,7 +374,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getConfigurationStore()
             .getConfiguration(
                 getCurrentPolarisContext(),
-                BehaviorChangeConfiguration.TABLE_OPERATIONS_COMMIT_UPDATE_METADATA);
+                BehaviorChangeConfiguration.TABLE_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT);
     return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
