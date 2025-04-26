@@ -54,6 +54,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -79,7 +80,8 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.IcebergRestConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -201,6 +203,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           .build());
           federatedCatalog.initialize(
               ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          break;
+        case HADOOP:
+          federatedCatalog = new HadoopCatalog();
+          federatedCatalog.initialize(
+              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse(),
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         default:

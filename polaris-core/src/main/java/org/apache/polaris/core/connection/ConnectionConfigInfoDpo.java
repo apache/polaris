@@ -33,7 +33,10 @@ import java.net.URL;
 import java.util.Map;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,11 +143,12 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       ConnectionConfigInfo connectionConfigurationModel,
       Map<String, UserSecretReference> secretReferences) {
     ConnectionConfigInfoDpo config = null;
+    final AuthenticationParametersDpo authenticationParameters;
     switch (connectionConfigurationModel.getConnectionType()) {
       case ICEBERG_REST:
         IcebergRestConnectionConfigInfo icebergRestConfigModel =
             (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
-        AuthenticationParametersDpo authenticationParameters =
+        authenticationParameters =
             AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
                 icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
         config =
@@ -152,6 +156,19 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
                 icebergRestConfigModel.getRemoteCatalogName());
+        break;
+      case HADOOP:
+        HadoopConnectionConfigInfo hadoopConfigModel =
+            (HadoopConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                hadoopConfigModel.getAuthenticationParameters(), secretReferences);
+        //        config = new HadoopConnectionConfigInfo(
+        //            hadoopConfigModel.getUri(),
+        //            config.asConnectionConfigInfoModel().getConnectionType(),
+        //            authenticationParameters,
+        //            hadoopConfigModel.getWarehouse()
+        //        );
         break;
       default:
         throw new IllegalStateException(

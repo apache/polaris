@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.context.catalog;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.file.Paths;
@@ -37,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-@Identifier("hadoop")
 public class HadoopCallContextCatalogFactory implements CallContextCatalogFactory {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);

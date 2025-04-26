@@ -54,12 +54,10 @@ import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.PolarisWrapperConfig;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
@@ -258,13 +256,6 @@ public class QuarkusProducers {
       @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
-  }
-
-  @Produces
-  @ApplicationScoped
-  public CallContextCatalogFactory callContextCatalogFactory(
-      PolarisWrapperConfig config, @Any Instance<CallContextCatalogFactory> factories) {
-    return factories.select(Identifier.Literal.of(config.type())).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
