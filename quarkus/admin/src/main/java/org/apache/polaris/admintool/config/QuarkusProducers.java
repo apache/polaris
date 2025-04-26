@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.admintool.config;
 
-import io.quarkus.arc.All;
-import io.quarkus.arc.InstanceHandle;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,9 +25,6 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.List;
-import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -80,14 +75,5 @@ public class QuarkusProducers {
   public PolarisConfigurationStore configurationStore() {
     // A configuration store is not required when running the admin tool.
     return new PolarisConfigurationStore() {};
-  }
-
-  @Produces
-  public List<DataSource> dataSources(@All List<InstanceHandle<DataSource>> dataSources) {
-    List<DataSource> dataSourceList = new ArrayList<>();
-    for (InstanceHandle<DataSource> handle : dataSources) {
-      dataSourceList.add(handle.get());
-    }
-    return dataSourceList;
   }
 }

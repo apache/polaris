@@ -18,15 +18,14 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import com.google.common.base.Preconditions;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -70,15 +69,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
-  final List<DataSource> dataSources;
-
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  @Inject
-  protected JdbcMetaStoreManagerFactory(List<DataSource> dataSources) {
-    this.dataSources = dataSources;
-  }
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject Instance<DataSource> dataSource;
+
+  protected JdbcMetaStoreManagerFactory() {}
 
   protected PrincipalSecretsGenerator secretsGenerator(
       RealmContext realmContext, @Nullable RootCredentialsSet rootCredentialsSet) {
@@ -111,13 +107,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    // TODO: remove when multiple dataSources are supported.
-    Preconditions.checkState(dataSources.size() == 1, "More than one dataSources configured");
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSources.getFirst());
+    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
     if (isBootstrap) {
       try {
         DatabaseType databaseType;
-        try (Connection connection = dataSources.getFirst().getConnection()) {
+        try (Connection connection = dataSource.get().getConnection()) {
           String productName = connection.getMetaData().getDatabaseProductName();
           databaseType = DatabaseType.fromDisplayName(productName);
         }
