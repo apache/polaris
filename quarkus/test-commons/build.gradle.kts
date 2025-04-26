@@ -18,23 +18,25 @@
  */
 
 plugins {
-  id("polaris-server")
   alias(libs.plugins.jandex)
+  id("java-test-fixtures")
+}
+
+configurations.all {
+  exclude(group = "org.antlr", module = "antlr4-runtime")
+  exclude(group = "org.scala-lang", module = "scala-library")
+  exclude(group = "org.scala-lang", module = "scala-reflect")
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_21
+  targetCompatibility = JavaVersion.VERSION_21
 }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
-
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation("io.quarkus:quarkus-junit5")
+  implementation(platform(libs.testcontainers.bom))
+  implementation("org.testcontainers:testcontainers")
+  implementation("org.testcontainers:postgresql")
 }

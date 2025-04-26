@@ -16,25 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
-
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
-}
+@TestProfile(RelationalJdbcProfile.class)
+@QuarkusIntegrationTest
+public class JdbcQuarkusViewFileIT extends PolarisRestCatalogViewFileIntegrationTest {}

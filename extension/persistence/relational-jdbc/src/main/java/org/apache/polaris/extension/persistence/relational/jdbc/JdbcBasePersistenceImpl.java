@@ -23,6 +23,7 @@ import static org.apache.polaris.extension.persistence.relational.jdbc.QueryGene
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -86,16 +87,73 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            persistEntity(callCtx, entity, originalEntity, statement);
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Error persisting entity", e);
+    }
+  }
+
+  @Override
+  public void writeEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisBaseEntity> entities,
+      List<PolarisBaseEntity> originalEntities) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            for (int i = 0; i < entities.size(); i++) {
+              PolarisBaseEntity entity = entities.get(i);
+              PolarisBaseEntity originalEntity =
+                  originalEntities != null ? originalEntities.get(i) : null;
+
+              // first, check if the entity has already been created, in which case we will simply
+              // return it.
+              PolarisBaseEntity entityFound =
+                  lookupEntity(
+                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+              if (entityFound != null && originalEntity == null) {
+                // probably the client retried, simply return it
+                // TODO: Check correctness of returning entityFound vs entity here. It may have
+                // already been updated after the creation.
+                continue;
+              }
+              persistEntity(callCtx, entity, originalEntity, statement);
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format(
+              "Error executing the transaction for writing entities due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  private void persistEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      PolarisBaseEntity originalEntity,
+      Statement statement)
+      throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
-    String query;
     if (originalEntity == null) {
       try {
-        query = generateInsertQuery(modelEntity, realmId);
-        datasourceOperations.executeUpdate(query);
+        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
       } catch (SQLException e) {
-        if ((datasourceOperations.isConstraintViolation(e)
-            || datasourceOperations.isAlreadyExistsException(e))) {
-          throw new EntityAlreadyExistsException(entity, e);
+        if (datasourceOperations.isConstraintViolation(e)) {
+          PolarisBaseEntity existingEntity =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          throw new EntityAlreadyExistsException(existingEntity, e);
         } else {
           throw new RuntimeException(
               String.format("Failed to write entity due to %s", e.getMessage()), e);
@@ -112,103 +170,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getEntityVersion(),
               "realm_id",
               realmId);
-      query = generateUpdateQuery(modelEntity, params);
       try {
-        int rowsUpdated = datasourceOperations.executeUpdate(query);
+        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected version %s",
-              entity.getName(), entity.getId(), originalEntity.getEntityVersion());
+              originalEntity.getName(), originalEntity.getId(), originalEntity.getEntityVersion());
         }
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
-    }
-  }
-
-  @Override
-  public void writeEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisBaseEntity> entities,
-      List<PolarisBaseEntity> originalEntities) {
-    try {
-      datasourceOperations.runWithinTransaction(
-          statement -> {
-            for (int i = 0; i < entities.size(); i++) {
-              PolarisBaseEntity entity = entities.get(i);
-              ModelEntity modelEntity = ModelEntity.fromEntity(entity);
-
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
-              PolarisBaseEntity entityFound =
-                  lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
-                continue;
-              }
-              // lookup by name
-              EntityNameLookupRecord exists =
-                  lookupEntityIdAndSubTypeByName(
-                      callCtx,
-                      entity.getCatalogId(),
-                      entity.getParentId(),
-                      entity.getTypeCode(),
-                      entity.getName());
-              if (exists != null) {
-                throw new EntityAlreadyExistsException(entity);
-              }
-              String query;
-              if (originalEntities == null || originalEntities.get(i) == null) {
-                try {
-                  query = generateInsertQuery(modelEntity, realmId);
-                  statement.executeUpdate(query);
-                } catch (SQLException e) {
-                  if ((datasourceOperations.isConstraintViolation(e)
-                      || datasourceOperations.isAlreadyExistsException(e))) {
-                    throw new EntityAlreadyExistsException(entity, e);
-                  } else {
-                    throw new RuntimeException(
-                        String.format("Failed to write entity due to %s", e.getMessage()), e);
-                  }
-                }
-              } else {
-                Map<String, Object> params =
-                    Map.of(
-                        "id",
-                        originalEntities.get(i).getId(),
-                        "catalog_id",
-                        originalEntities.get(i).getCatalogId(),
-                        "entity_version",
-                        originalEntities.get(i).getEntityVersion(),
-                        "realm_id",
-                        realmId);
-                query = generateUpdateQuery(modelEntity, params);
-                try {
-                  int rowsUpdated = statement.executeUpdate(query);
-                  if (rowsUpdated == 0) {
-                    throw new RetryOnConcurrencyException(
-                        "Entity '%s' id '%s' concurrently modified; expected version %s",
-                        entity.getName(),
-                        entity.getId(),
-                        originalEntities.get(i).getEntityVersion());
-                  }
-                } catch (SQLException e) {
-                  throw new RuntimeException(
-                      String.format("Failed to write entity due to %s", e.getMessage()), e);
-                }
-              }
-            }
-            return true;
-          });
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()),
-          e);
     }
   }
 
@@ -492,6 +464,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         throw new IllegalStateException(
             String.format(
                 "More than one grant record %s for a given Grant record", results.getFirst()));
+      } else if (results.isEmpty()) {
+        return null;
       }
       return results.getFirst();
     } catch (SQLException e) {

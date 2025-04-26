@@ -31,6 +31,7 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.extension.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -49,9 +50,13 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
     try {
-      datasourceOperations.executeScript("h2/schema-v1-h2.sql");
+      datasourceOperations.executeScript(
+          String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));
     } catch (SQLException e) {
-      throw new RuntimeException(String.format("Error executing h2 script: %s", e.getMessage()), e);
+      throw new RuntimeException(
+          String.format(
+              "Error executing %s script: %s", DatabaseType.H2.getDisplayName(), e.getMessage()),
+          e);
     }
 
     JdbcBasePersistenceImpl basePersistence =

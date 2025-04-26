@@ -35,13 +35,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
-  private static final String ALREADY_EXISTS_STATE_POSTGRES = "42P07";
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
   private final DataSource datasource;
@@ -187,10 +183,6 @@ public class DatasourceOperations {
 
   public boolean isConstraintViolation(SQLException e) {
     return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
-  }
-
-  public boolean isAlreadyExistsException(SQLException e) {
-    return ALREADY_EXISTS_STATE_POSTGRES.equals(e.getSQLState());
   }
 
   private Connection borrowConnection() throws SQLException {

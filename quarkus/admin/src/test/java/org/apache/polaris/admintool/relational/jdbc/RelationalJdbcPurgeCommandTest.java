@@ -16,25 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.admintool.relational.jdbc;
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
+import org.apache.polaris.admintool.PurgeCommandTestBase;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
-
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+@TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
+public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
+  public static class Profile extends RelationalJdbcAdminProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("pre-bootstrap", "true")
+          .build();
+    }
+  }
 }

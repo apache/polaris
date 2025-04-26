@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.admintool.relational.jdbc;
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+import java.util.List;
+import java.util.Map;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  compileOnly(libs.jakarta.inject.api)
+public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return Map.of();
+  }
 
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+  @Override
+  public List<TestResourceEntry> testResources() {
+    return List.of(
+        new TestResourceEntry(
+            PostgresRelationalJdbcLifeCycleManagement.class,
+            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
+  }
 }
