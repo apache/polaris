@@ -56,16 +56,16 @@ public class PostgresRelationalJdbcLifeCycleManagement
     return Map.of(
         "polaris.persistence.type",
         "relational-jdbc",
-        "quarkus.datasource.db-kind",
+        "quarkus.datasource.realm1.db-kind",
         "pgsql",
-        "quarkus.datasource.jdbc.url",
+            "quarkus.datasource.realm1.active",
+            "true",
+        "quarkus.datasource.realm1.jdbc.url",
         postgres.getJdbcUrl(),
-        "quarkus.datasource.username",
+        "quarkus.datasource.realm1.username",
         postgres.getUsername(),
-        "quarkus.datasource.password",
-        postgres.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
-        "10");
+        "quarkus.datasource.realm1.password",
+        postgres.getPassword());
   }
 
   @Override

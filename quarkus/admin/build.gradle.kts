@@ -44,9 +44,8 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
 
   runtimeOnly(project(":polaris-eclipselink"))
-  runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
-
   implementation("io.quarkus:quarkus-jdbc-postgresql")
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")

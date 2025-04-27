@@ -73,7 +73,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  @Inject Instance<DataSource> dataSource;
+  @Inject JdbcDatasource jdbcDatasource;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -93,7 +93,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -107,12 +107,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap, String realmId) {
+    DataSource datasource = jdbcDatasource.fromRealmId(realmId);
+    DatasourceOperations databaseOperations = new DatasourceOperations(datasource);
     if (isBootstrap) {
       try {
         DatabaseType databaseType;
-        try (Connection connection = dataSource.get().getConnection()) {
+        try (Connection connection = datasource.getConnection()) {
           String productName = connection.getMetaData().getDatabaseProductName();
           databaseType = DatabaseType.fromDisplayName(productName);
         }
