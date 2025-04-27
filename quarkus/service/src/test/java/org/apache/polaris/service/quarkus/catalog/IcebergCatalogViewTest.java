@@ -68,6 +68,8 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +80,9 @@ import org.mockito.Mockito;
 @QuarkusTest
 @TestProfile(IcebergCatalogViewTest.Profile.class)
 public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
 
   public static class Profile implements QuarkusTestProfile {
 

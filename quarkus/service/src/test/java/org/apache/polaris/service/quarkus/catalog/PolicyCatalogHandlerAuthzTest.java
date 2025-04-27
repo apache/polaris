@@ -19,14 +19,19 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import io.quarkus.test.junit.QuarkusTest;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.catalog.policy.PolicyCatalogHandler;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.assertj.core.api.Assertions;
@@ -82,6 +87,17 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    *     together.
    * @param action
    * @param cleanupAction
+   */
+  private void doTestSufficientPrivilegeSets(
+      List<Set<PolarisPrivilege>> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
+    doTestSufficientPrivilegeSets(sufficientPrivileges, action, cleanupAction, PRINCIPAL_NAME);
+  }
+
+  /**
+   * @param sufficientPrivileges each set of concurrent privileges expected to be sufficient
+   *     together.
+   * @param action
+   * @param cleanupAction
    * @param principalName
    */
   private void doTestSufficientPrivilegeSets(
@@ -123,6 +139,11 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestInsufficientPrivileges(insufficientPrivileges, PRINCIPAL_NAME, action);
   }
 
+  private void doTestInsufficientPrivilegeSets(
+      List<Set<PolarisPrivilege>> insufficientPrivilegesSets, Runnable action) {
+    doTestInsufficientPrivilegeSets(insufficientPrivilegesSets, PRINCIPAL_NAME, action);
+  }
+
   /**
    * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
    * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
@@ -131,6 +152,20 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
       List<PolarisPrivilege> insufficientPrivileges, String principalName, Runnable action) {
     doTestInsufficientPrivileges(
         insufficientPrivileges,
+        principalName,
+        action,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  private void doTestInsufficientPrivilegeSets(
+      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
+      String principalName,
+      Runnable action) {
+    doTestInsufficientPrivilegeSets(
+        insufficientPrivilegeSets,
         principalName,
         action,
         (privilege) ->
@@ -300,5 +335,455 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.POLICY_CREATE,
             PolarisPrivilege.POLICY_WRITE),
         () -> newWrapper().dropPolicy(POLICY_NS1_1, true));
+  }
+
+  @Test
+  public void testAttachPolicyToCatalogSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
+        .isTrue();
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.CATALOG_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
+        PRINCIPAL_NAME);
+  }
+
+  @Test
+  public void testAttachPolicyToCatalogInsufficientPrivileges() {
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH),
+            Set.of(PolarisPrivilege.CATALOG_ATTACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest));
+  }
+
+  @Test
+  public void testAttachPolicyToNamespaceSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+            .setPath(Arrays.asList(NS2.levels()))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
+  }
+
+  @Test
+  public void testAttachPolicyToNamespaceInsufficientPrivileges() {
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+            .setPath(Arrays.asList(NS2.levels()))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.CATALOG_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH),
+            Set.of(PolarisPrivilege.NAMESPACE_ATTACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest));
+  }
+
+  @Test
+  public void testAttachPolicyToTableSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(TABLE_NS2_1))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(tableTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(tableTarget).build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
+  }
+
+  @Test
+  public void testAttachPolicyToTableInsufficientPrivileges() {
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(TABLE_NS2_1))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(tableTarget).build();
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.CATALOG_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_ATTACH),
+            Set.of(PolarisPrivilege.TABLE_ATTACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest));
+  }
+
+  @Test
+  public void testDetachPolicyFromCatalogSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
+        .isTrue();
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(catalogTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(catalogTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.CATALOG_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
+        () ->
+            newWrapper(Set.of(PRINCIPAL_ROLE2))
+                .attachPolicy(POLICY_NS1_1, attachPolicyRequest) /* cleanupAction */);
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testDetachPolicyFromCatalogInsufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(catalogTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(catalogTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.TABLE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH),
+            Set.of(PolarisPrivilege.CATALOG_DETACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testDetachPolicyFromNamespaceSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+            .setPath(Arrays.asList(NS2.levels()))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
+        () ->
+            newWrapper(Set.of(PRINCIPAL_ROLE2))
+                .attachPolicy(POLICY_NS1_1, attachPolicyRequest) /* cleanupAction */);
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testDetachPolicyFromNamespaceInsufficientPrivilege() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+            .setPath(Arrays.asList(NS2.levels()))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(namespaceTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(namespaceTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.CATALOG_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.TABLE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH),
+            Set.of(PolarisPrivilege.NAMESPACE_DETACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testDetachPolicyFromTableSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(TABLE_NS2_1))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(tableTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(tableTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.TABLE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
+        () ->
+            newWrapper(Set.of(PRINCIPAL_ROLE2))
+                .attachPolicy(POLICY_NS1_1, attachPolicyRequest) /* cleanupAction */);
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testDetachFromPolicyInsufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
+        .isTrue();
+
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(TABLE_NS2_1))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(tableTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(tableTarget).build();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).attachPolicy(POLICY_NS1_1, attachPolicyRequest);
+
+    doTestInsufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.CATALOG_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.POLICY_DETACH),
+            Set.of(PolarisPrivilege.TABLE_DETACH_POLICY)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnCatalogSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.CATALOG_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(null, null, null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnCatalogInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.TABLE_READ_PROPERTIES),
+        () -> newWrapper().getApplicablePolicies(null, null, null));
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNamespaceSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
+            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(NS1, null, null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNamespaceInSufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.TABLE_READ_PROPERTIES),
+        () -> newWrapper().getApplicablePolicies(NS1, null, null));
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnTableSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () -> newWrapper().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnTableInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.POLICY_READ,
+            PolarisPrivilege.NAMESPACE_READ_PROPERTIES),
+        () ->
+            newWrapper().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null));
   }
 }

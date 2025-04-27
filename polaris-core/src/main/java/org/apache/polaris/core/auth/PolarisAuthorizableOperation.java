@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST_GRANTS;
@@ -33,14 +35,18 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_MANAG
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_ATTACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DETACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
@@ -64,7 +70,9 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_WRI
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROTATE_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
@@ -192,7 +200,15 @@ public enum PolarisAuthorizableOperation {
   DROP_POLICY(POLICY_DROP),
   UPDATE_POLICY(POLICY_WRITE),
   LIST_POLICY(POLICY_LIST),
-  ;
+  ATTACH_POLICY_TO_CATALOG(POLICY_ATTACH, CATALOG_ATTACH_POLICY),
+  ATTACH_POLICY_TO_NAMESPACE(POLICY_ATTACH, NAMESPACE_ATTACH_POLICY),
+  ATTACH_POLICY_TO_TABLE(POLICY_ATTACH, TABLE_ATTACH_POLICY),
+  DETACH_POLICY_FROM_CATALOG(POLICY_DETACH, CATALOG_DETACH_POLICY),
+  DETACH_POLICY_FROM_NAMESPACE(POLICY_DETACH, NAMESPACE_DETACH_POLICY),
+  DETACH_POLICY_FROM_TABLE(POLICY_DETACH, TABLE_DETACH_POLICY),
+  GET_APPLICABLE_POLICIES_ON_CATALOG(CATALOG_READ_PROPERTIES),
+  GET_APPLICABLE_POLICIES_ON_NAMESPACE(NAMESPACE_READ_PROPERTIES),
+  GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES);
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
   private final EnumSet<PolarisPrivilege> privilegesOnSecondary;

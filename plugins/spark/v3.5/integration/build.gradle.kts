@@ -44,10 +44,11 @@ dependencies {
   }
 
   implementation(project(":polaris-quarkus-service"))
-  implementation(project(":polaris-api-management-model"))
-  implementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
-  implementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
+  testImplementation(project(":polaris-api-management-model"))
+  testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
+
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -55,12 +56,12 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  testImplementation(platform(libs.jackson.bom))
+  testImplementation("com.fasterxml.jackson.core:jackson-annotations")
+  testImplementation("com.fasterxml.jackson.core:jackson-core")
+  testImplementation("com.fasterxml.jackson.core:jackson-databind")
 
-  implementation(
+  testImplementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   )
 

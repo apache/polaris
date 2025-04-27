@@ -70,7 +70,7 @@ Simply run the `run.sh` script from the Polaris repo root, making sure to specif
 `--eclipse-link-deps` option:
 
 ```bash
-./run.sh --eclipse-link-deps=org.postgresql:postgresql:42.7.4
+./run.sh
 ```
 
 This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
@@ -86,13 +86,12 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 ```bash
 eval $(minikube -p minikube docker-env)
 
-./gradlew \ 
+./gradlew \
     :polaris-quarkus-server:assemble \
     :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
     :polaris-quarkus-admin:assemble \
     :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
-    -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+    -Dquarkus.container-image.build=true
 ```
 
 ### Installing the chart locally

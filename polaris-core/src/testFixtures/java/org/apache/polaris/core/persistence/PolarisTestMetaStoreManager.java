@@ -193,6 +193,24 @@ public class PolarisTestMetaStoreManager {
   }
 
   /**
+   * Validate that the specified identity identified by the pair catalogId, entityId does not exist.
+   *
+   * @param catalogId catalog id of that entity
+   * @param entityId the entity id
+   * @param expectedType its expected type
+   */
+  private void ensureNotExistsById(long catalogId, long entityId, PolarisEntityType expectedType) {
+
+    PolarisBaseEntity entity =
+        polarisMetaStoreManager
+            .loadEntity(this.polarisCallContext, catalogId, entityId, expectedType)
+            .getEntity();
+
+    // assert entity was not found
+    Assertions.assertThat(entity).isNull();
+  }
+
+  /**
    * Check if the specified grant record exists
    *
    * @param grantRecords list of grant records
@@ -1259,7 +1277,7 @@ public class PolarisTestMetaStoreManager {
     this.createPolicy(List.of(catalog, N7, N7_N8), "POL1", PredefinedPolicyTypes.DATA_COMPACTION);
     this.createPolicy(
         List.of(catalog, N7, N7_N8), "POL2", PredefinedPolicyTypes.METADATA_COMPACTION);
-    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyTypes.SNAPSHOT_RETENTION);
+    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyTypes.SNAPSHOT_EXPIRY);
 
     // the two catalog roles
     PolarisBaseEntity R1 =
@@ -2562,6 +2580,68 @@ public class PolarisTestMetaStoreManager {
 
     // this should work, T7 does not exist
     this.renameEntity(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), "T7");
+  }
+
+  /** Play with looking up entities */
+  public void testLookup() {
+    // load all principals
+    List<EntityNameLookupRecord> principals =
+        polarisMetaStoreManager
+            .listEntities(
+                this.polarisCallContext,
+                null,
+                PolarisEntityType.PRINCIPAL,
+                PolarisEntitySubType.NULL_SUBTYPE)
+            .getEntities();
+
+    // ensure not null, one element only
+    Assertions.assertThat(principals).isNotNull().hasSize(1);
+
+    // get catalog list information
+    EntityNameLookupRecord principalListInfo = principals.get(0);
+
+    PolarisBaseEntity principal =
+        this.ensureExistsById(
+            null,
+            principalListInfo.getId(),
+            true,
+            PolarisEntityConstants.getRootPrincipalName(),
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE);
+
+    this.ensureNotExistsById(
+        PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.PRINCIPAL_ROLE);
+    this.ensureNotExistsById(
+        PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.CATALOG);
+    this.ensureNotExistsById(
+        PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.CATALOG_ROLE);
+
+    // create new catalog
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "test");
+    CreateCatalogResult catalogCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
+    Assertions.assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    // now create all objects
+    PolarisBaseEntity N1 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity N1_N2 =
+        this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
+    PolarisBaseEntity T1 =
+        this.createEntity(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "T1");
+
+    this.ensureNotExistsById(catalog.getId(), T1.getId(), PolarisEntityType.NAMESPACE);
   }
 
   /** Test the set of functions for the entity cache */

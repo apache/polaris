@@ -15,16 +15,12 @@
 -- KIND, either express or implied.  See the License for the
 -- specific language governing permissions and limitations
 -- under the License.
---
 
--- Note: Database and schema creation is not included in this script. Please create the database and
--- schema before running this script. for example in psql:
--- CREATE DATABASE polaris_db;
--- \c polaris_db
--- CREATE SCHEMA polaris_schema;
--- set search_path to polaris_schema;
+CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
+SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
@@ -40,15 +36,16 @@ CREATE TABLE IF NOT EXISTS entities (
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
     grant_records_version INT NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT constraint_name UNIQUE (catalog_id, parent_id, type_code, name)
+    PRIMARY KEY (realm_id, id),
+    CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
 -- TODO: create indexes based on all query pattern.
-CREATE INDEX IF NOT EXISTS idx_entities ON entities (catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
+COMMENT ON COLUMN entities.realm_id IS 'realm_id used for multi-tenancy';
 COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
 COMMENT ON COLUMN entities.id IS 'entity id';
 COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
@@ -65,12 +62,13 @@ COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties 
 COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
 CREATE TABLE IF NOT EXISTS grant_records (
+    realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
     grantee_id BIGINT NOT NULL,
     privilege_code INTEGER,
-    PRIMARY KEY (securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
+    PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
 );
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
@@ -83,12 +81,13 @@ COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
+    realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
     principal_client_id VARCHAR(255) NOT NULL,
     main_secret_hash VARCHAR(255) NOT NULL,
     secondary_secret_hash VARCHAR(255) NOT NULL,
     secret_salt VARCHAR(255) NOT NULL,
-    PRIMARY KEY (principal_client_id)
+    PRIMARY KEY (realm_id, principal_client_id)
 );
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';

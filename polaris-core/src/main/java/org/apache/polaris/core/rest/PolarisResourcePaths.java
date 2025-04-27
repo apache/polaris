@@ -34,6 +34,14 @@ public class PolarisResourcePaths {
   public static final String V1_GENERIC_TABLE =
       "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}";
 
+  // Policy Store endpoints
+  public static final String V1_POLICIES = "/polaris/v1/{prefix}/namespaces/{namespace}/policies";
+  public static final String V1_POLICY =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}";
+  public static final String V1_POLICY_MAPPINGS =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings";
+  public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
+
   private final String prefix;
 
   public PolarisResourcePaths(String prefix) {

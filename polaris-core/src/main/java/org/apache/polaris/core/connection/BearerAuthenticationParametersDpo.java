@@ -38,10 +38,9 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
   private final UserSecretReference bearerTokenReference;
 
   public BearerAuthenticationParametersDpo(
-      @JsonProperty(value = "authenticationTypeCode", required = true) int authenticationTypeCode,
       @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull
           UserSecretReference bearerTokenReference) {
-    super(authenticationTypeCode);
+    super(AuthenticationType.BEARER.getCode());
     this.bearerTokenReference = bearerTokenReference;
   }
 

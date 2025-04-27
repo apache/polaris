@@ -37,9 +37,10 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -57,6 +58,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
 
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
@@ -80,7 +84,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    Assumptions.assumeFalse(shouldSkip());
+    Assumptions.assumeThat(shouldSkip()).isFalse();
 
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");

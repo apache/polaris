@@ -17,8 +17,10 @@
 # under the License.
 #
 
-CURRENT_REGION=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.location')
-CURRENT_RESOURCE_GROUP=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq -r '.compute.resourceGroupName')
+DESCRIBE_INSTANCE=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01")
+CURRENT_RESOURCE_GROUP=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.resourceGroupName')
+CURRENT_REGION=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.location')
+CURRENT_VM_NAME=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.name')
 RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
 INSTANCE_NAME="polaris-backend-test-$RANDOM_SUFFIX"
 
@@ -31,8 +33,39 @@ POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
 FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
 
+STORAGE_ACCOUNT_NAME="polaristest$RANDOM_SUFFIX"
+STORAGE_CONTAINER_NAME="polaris-test-container-$RANDOM_SUFFIX"
+
+az storage account create \
+  --name "$STORAGE_ACCOUNT_NAME" \
+  --resource-group "$CURRENT_RESOURCE_GROUP" \
+  --location "$CURRENT_REGION" \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --enable-hierarchical-namespace false
+
+az storage container create \
+  --account-name "$STORAGE_ACCOUNT_NAME" \
+  --name "$STORAGE_CONTAINER_NAME" \
+  --auth-mode login
+
+ASSIGNEE_PRINCIPAL_ID=$(az vm show --name $CURRENT_VM_NAME --resource-group $CURRENT_RESOURCE_GROUP --query identity.principalId -o tsv)
+SCOPE=$(az storage account show --name $STORAGE_ACCOUNT_NAME --resource-group $CURRENT_RESOURCE_GROUP --query id -o tsv)
+ROLE="Storage Blob Data Contributor"
+az role assignment create \
+  --assignee $ASSIGNEE_PRINCIPAL_ID \
+  --role "$ROLE" \
+  --scope "$SCOPE"
+
+export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
+export STORAGE_LOCATION="abfss://$STORAGE_CONTAINER_NAME@$STORAGE_ACCOUNT_NAME.dfs.core.windows.net/quickstart_catalog"
+
+cat >> getting-started/eclipselink/trino-config/catalog/iceberg.properties << EOF
+fs.native-azure.enabled=true
+azure.auth-type=DEFAULT
+EOF
+
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
-       -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

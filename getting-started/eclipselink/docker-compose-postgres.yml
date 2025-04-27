@@ -43,3 +43,11 @@ services:
       interval: 5s
       timeout: 2s
       retries: 15
+  polaris-bootstrap:
+    depends_on:
+      postgres:
+        condition: service_healthy
+  polaris:
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -42,7 +42,10 @@ import org.slf4j.LoggerFactory;
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link ConnectionType}.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "connectionTypeCode", visible = true)
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "connectionTypeCode")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
 })
@@ -146,7 +149,6 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 icebergRestConfigModel.getAuthenticationParameters(), secretReferences);
         config =
             new IcebergRestConnectionConfigInfoDpo(
-                ConnectionType.ICEBERG_REST.getCode(),
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
                 icebergRestConfigModel.getRemoteCatalogName());
