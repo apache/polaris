@@ -97,4 +97,4 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./trino-config/catalog:/etc/trino/catalog
+      - ../assets/trino-config/catalog:/etc/trino/catalog
