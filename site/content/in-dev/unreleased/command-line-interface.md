@@ -60,7 +60,7 @@ polaris catalogs update --property foo=bar some_other_catalog
 polaris catalogs update another_catalog --property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
-polaris setup create setup_config.yaml
+polaris setup create setup-config.yaml
 ```
 
 ### Authentication
