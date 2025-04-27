@@ -189,7 +189,7 @@ docker attach $(docker ps -q --filter name=spark-sql)
 Once the Spark session starts, we can create a namespace and table within the catalog:
 
 ```sql
-USE polaris;
+USE quickstart_catalog;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema;
 USE NAMESPACE quickstart_namespace.schema;
