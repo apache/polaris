@@ -47,6 +47,7 @@ options:
 5. namespaces
 6. privileges
 7. profiles
+8. setup
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important. 
 
@@ -59,6 +60,7 @@ polaris catalogs update --property foo=bar some_other_catalog
 polaris catalogs update another_catalog --property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
+polaris setup create setup_config.yaml
 ```
 
 ### Authentication
@@ -105,6 +107,7 @@ To find details on the options that can be provided to a particular command or s
 polaris catalogs --help
 polaris principals create --help
 polaris profiles --help
+polaris setup --help
 ```
 
 ### catalogs
@@ -1168,6 +1171,32 @@ polaris profiles update dev
 This section outlines example code for a few common operations as well as for some more complex ones. 
 
 For especially complex operations, you may wish to instead directly use the Python API.
+
+### setup
+
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, and privileges, based on a configuration file. This simplifies the process of setting up a Polaris environment.
+
+`setup` supports the following subcommands:
+
+1. create
+
+#### create
+
+The `create` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+
+```
+input: polaris setup create --help
+options:
+  create
+    Positional arguments:
+      setup_config
+```
+
+##### Examples
+
+```
+polaris setup create setup-config.yaml
+```
 
 ### Creating a principal and a catalog
 

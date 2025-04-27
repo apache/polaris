@@ -1,0 +1,24 @@
+catalogs:
+  - name: "quickstart_catalog"
+    storage_type: "file"
+    default_base_location: "file:///var/tmp/quickstart_catalog/"
+    allowed_locations:
+      - "file:///var/tmp/quickstart_catalog/"
+catalog_roles:
+  - name: quickstart_catalog_role
+    assignments:
+      catalog: quickstart_catalog
+      principal_roles:
+        - quickstart_user_role
+privileges:
+  - catalog_role: quickstart_catalog_role
+    grants:
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: CATALOG_MANAGE_CONTENT
+principals:
+  - name: quickstart_user
+    assignments:
+      - principal_role: quickstart_user_role
+principal_roles:
+  - name: quickstart_user_role

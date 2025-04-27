@@ -1,0 +1,155 @@
+catalogs:
+  - name: "quickstart_catalog"
+    type: internal
+    storage_type: "file"
+    default_base_location: "file:///var/tmp/quickstart_catalog/"
+    allowed_locations:
+      - "file:///var/tmp/quickstart_catalog/"
+    properties:
+      catalog: quickstart_catalog
+  - name: "quickstart_catalog_external"
+    type: external
+    storage_type: "file"
+    default_base_location: "file:///var/tmp/quickstart_catalog_external/"
+    allowed_locations:
+      - "file:///var/tmp/quickstart_catalog_external/"
+    remote_url: "https://example.com/quickstart_catalog_external"
+    properties:
+      catalog: quickstart_catalog_external
+  - name: "quickstart_catalog_s3"
+    type: internal
+    storage_type: "s3"
+    default_base_location: "s3://quickstart-bucket/quickstart_catalog/"
+    allowed_locations:
+      - "s3://quickstart-bucket/quickstart_catalog/"
+    role_arn: "arn:aws:iam::123456789012:role/QuickstartS3Role"
+    external_id: "12345678-1234-1234-1234-123456789abc"
+    user_arn: "arn:aws:iam::123456789012:user/QuickstartUser"
+    region: "us-west-2"
+    properties:
+      catalog: quickstart_catalog_s3
+  - name: "quickstart_catalog_azure"
+    type: internal
+    storage_type: "azure"
+    default_base_location: "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+    allowed_locations:
+      - "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+    tenant_id: "12345678-1234-1234-1234-123456789abc"
+    multi_tenant_app_name: "QuickstartAzureApp"
+    consent_url: "https://login.microsoftonline.com/consent"
+    properties:
+      catalog: quickstart_catalog_azure
+  ## commented out for as implicitly gcs auth is needed
+  # - name: "quickstart_catalog_gcs"
+  #   type: internal
+  #   storage_type: "gcs"
+  #   default_base_location: "gs://quickstart-bucket/quickstart_catalog/"
+  #   allowed_locations:
+  #     - "gs://quickstart-bucket/quickstart_catalog/"
+  #   service_account: "quickstart-service-account@gcs-project.iam.gserviceaccount.com"
+catalog_roles:
+  - name: quickstart_catalog_role
+    assignments:
+      catalog: quickstart_catalog
+      principal_roles:
+        - quickstart_user_role
+    properties:
+      catalog_role: quickstart_catalog_role
+  - name: readonly_catalog_role
+    assignments:
+      catalog: quickstart_catalog
+      principal_roles:
+        - readonly_user_role
+    properties:
+      catalog_role: readonly_catalog_role
+  - name: dev_catalog_role
+    assignments:
+      catalog: quickstart_catalog
+      principal_roles:
+        - dev_user_role
+    properties:
+      catalog_role: dev_catalog_role      
+namespaces:
+  - name: dev_namespace
+    catalog: quickstart_catalog
+    properties:
+      namespace: dev_namespace
+  - name: dev_namespace.sub_namespace
+    catalog: quickstart_catalog
+privileges:
+  - catalog_role: quickstart_catalog_role
+    grants:
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: CATALOG_MANAGE_CONTENT
+  - catalog_role: readonly_catalog_role
+    grants:
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: TABLE_READ_DATA
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: TABLE_FULL_METADATA
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: VIEW_FULL_METADATA
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: NAMESPACE_FULL_METADATA
+      - level: catalog
+        catalog: quickstart_catalog
+        privilege: CATALOG_READ_PROPERTIES
+  - catalog_role: dev_catalog_role
+    grants:
+      - level: namespace
+        catalog: quickstart_catalog
+        namespace: dev_namespace
+        privilege: TABLE_READ_DATA
+      - level: namespace
+        catalog: quickstart_catalog
+        namespace: dev_namespace
+        privilege: TABLE_WRITE_DATA
+      - level: namespace
+        catalog: quickstart_catalog
+        namespace: dev_namespace
+        privilege: TABLE_FULL_METADATA
+      ## commented out for as table/view doesn't exist out of box
+      # - level: table
+      #   catalog: quickstart_catalog
+      #   namespace: dev_namespace.sub_namespace
+      #   privilege: TABLE_FULL_METADATA
+      #   table: dev_table
+      # - level: view
+      #   catalog: quickstart_catalog
+      #   namespace: dev_namespace.sub_namespace
+      #   privilege: VIEW_FULL_METADATA
+      #   view: dev_view
+principals:
+  - name: quickstart_user
+    type: service
+    properties:
+      principal: quickstart_user
+    assignments:
+      - principal_role: quickstart_user_role
+  - name: readonly_user
+    type: service
+    properties:
+      principal: readonly_user
+    assignments:
+      - principal_role: readonly_user_role
+  - name: dev_user
+    type: service
+    properties:
+      principal: dev_user
+    assignments:
+      - principal_role: dev_user_role
+principal_roles:
+  - name: quickstart_user_role
+    properties:
+      principal_role: quickstart_user_role
+  - name: readonly_user_role
+    properties:
+      principal_role: readonly_user_role
+  - name: dev_user_role
+    properties:
+      principal_role: dev_user_role

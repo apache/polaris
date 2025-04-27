@@ -60,6 +60,7 @@ class Commands:
     PRIVILEGES = 'privileges'
     NAMESPACES = 'namespaces'
     PROFILES = 'profiles'
+    SETUP = 'setup'
 
 
 class Subcommands:
@@ -137,6 +138,7 @@ class Arguments:
     REGION = 'region'
     PROFILE = 'profile'
     PROXY = 'proxy'
+    SETUP_CONFIG = 'setup_config'
 
 
 class Hints:

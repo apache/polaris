@@ -131,6 +131,13 @@ class Command(ABC):
                 subcommand,
                 profile_name=options_get(Arguments.PROFILE)
             )
+        elif options.command == Commands.SETUP:
+            from cli.command.setup import SetupCommand
+            subcommand = options_get(f'{Commands.SETUP}_subcommand')
+            command = SetupCommand(
+                subcommand,
+                setup_config=options_get(Arguments.SETUP_CONFIG)
+            )
 
         if command is not None:
             command.validate()

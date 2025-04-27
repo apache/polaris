@@ -238,5 +238,8 @@ class OptionTree:
                 Option(Subcommands.UPDATE, input_name=Arguments.PROFILE),
                 Option(Subcommands.GET, input_name=Arguments.PROFILE),
                 Option(Subcommands.LIST),
+            ]),
+            Option(Commands.SETUP, 'perform setup', children=[
+                Option(Subcommands.CREATE, input_name=Arguments.SETUP_CONFIG)
             ])
         ]
