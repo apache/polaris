@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
@@ -84,6 +85,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.SnapshotUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -930,27 +932,21 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     throw new ValidationFailureException(e);
                   }
 
-                  if (!hasJustMainBranch(base)) {
-                    // There can be cases when the snapshot we want to rollback
-                    // is being referenced by another branch and just checking
-                    // the tip of these branches is not sufficient.
-                    // TODO: handle cases when tables have >1 branches.
-                    throw new ValidationFailureException(e);
-                  }
-
                   // snapshot-id the client expects the table current_snapshot_id
                   long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
                   // table current_snapshot_id.
                   long currentSnapshotId = base.currentSnapshot().snapshotId();
                   List<MetadataUpdate> metadataUpdates =
                       generateUpdatesToRemoveNoopSnapshot(
-                          ops, currentSnapshotId, expectedCurrentSnapshotId);
+                          base,
+                          currentSnapshotId,
+                          expectedCurrentSnapshotId,
+                          setSnapshotRef.name());
 
                   if (metadataUpdates == null || metadataUpdates.isEmpty()) {
                     // Nothing can be done as this implies that there were not all
                     // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
-                    // currentSnapshotId.
-                    // hence re-throw the exception caught.
+                    // currentSnapshotId. hence re-throw the exception caught.
                     throw new ValidationFailureException(e);
                   }
 
@@ -961,21 +957,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
                   // apply the remove snapshots update in the current metadata.
                   // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
-                  // remove,
-                  // as otherwise the remove will drop.
+                  // remove, as otherwise the remove will drop the reference.
                   // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
                   // just something good to do, and not leave for Remove Orphans.
                   metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
                   // Ref rolled back update correctly to snapshot to be committed parent now.
                   newBase = metadataBuilder.build();
                   // move the lastSequenceNumber back, to apply snapshot properly on the
-                  // current-metadata
-                  // Seq number are considered increasing monotonically, snapshot over snapshot, the
-                  // client
-                  // generates the manifest list and hence the sequence number can't be changed for
-                  // a snapshot
-                  // the only possible option then is to change the sequenceNumber tracked by
-                  // metadata.json
+                  // current-metadata Seq number are considered increasing monotonically
+                  // snapshot over snapshot, the client generates the manifest list and hence
+                  // the sequence number can't be changed for a snapshot the only possible option
+                  // then is to change the sequenceNumber tracked by metadata.json
                   Class<?> clazz = newBase.getClass();
                   try {
                     Field field = clazz.getDeclaredField("lastSequenceNumber");
@@ -1026,12 +1018,37 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   private static List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
-      TableOperations ops, long currentSnapshotId, long expectedCurrentSnapshotId) {
+      TableMetadata base,
+      long currentSnapshotId,
+      long expectedCurrentSnapshotId,
+      String updateRefName) {
+    // find the all the snapshots we want to retain which are not the part of current branch.
+    Set<Long> idsToRetain = Sets.newHashSet();
+    for (Map.Entry<String, SnapshotRef> ref : base.refs().entrySet()) {
+      String refName = ref.getKey();
+      SnapshotRef snapshotRef = ref.getValue();
+      if (refName.equals(updateRefName)) {
+        continue;
+      }
+      idsToRetain.add(ref.getValue().snapshotId());
+      // check all other branches
+      if (snapshotRef.isBranch()) {
+        for (Snapshot ancestor :
+            SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
+          idsToRetain.add(ancestor.snapshotId());
+        }
+      } else if (snapshotRef.isTag()) {
+        idsToRetain.add(snapshotRef.snapshotId());
+      }
+    }
+
     List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
     Long snapshotId = currentSnapshotId;
     while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
-      Snapshot snap = ops.current().snapshot(snapshotId);
-      if (!DataOperations.REPLACE.equals(snap.operation())) {
+      Snapshot snap = base.snapshot(snapshotId);
+      if (!DataOperations.REPLACE.equals(snap.operation()) || idsToRetain.contains(snapshotId)) {
+        // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
+        // reference either by branch or a tag.
         break;
       }
       updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
