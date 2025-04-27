@@ -58,7 +58,7 @@ catalogs:
     consent_url: "https://login.microsoftonline.com/consent"
     properties:
       catalog: quickstart_catalog_azure
-  ## commented out for as implicitly gcs auth is needed
+  ## commented out as implicitly gcs auth is needed
   # - name: "quickstart_catalog_gcs"
   #   type: internal
   #   storage_type: "gcs"
@@ -132,7 +132,7 @@ privileges:
         catalog: quickstart_catalog
         namespace: dev_namespace
         privilege: TABLE_FULL_METADATA
-      ## commented out for as table/view doesn't exist out of box
+      ## commented out as table/view doesn't exist out of box
       # - level: table
       #   catalog: quickstart_catalog
       #   namespace: dev_namespace.sub_namespace
