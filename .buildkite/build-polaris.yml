@@ -1,6 +1,3 @@
-env:
-  ENABLE_FIVETRAN_CD: "true"
-
 steps:
   - label: "Build and validate Polaris"
     key: "polaris-build"
