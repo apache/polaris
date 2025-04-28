@@ -18,11 +18,15 @@
  */
 package org.apache.polaris.service.it.test;
 
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -32,11 +36,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -54,9 +60,11 @@ import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
@@ -82,14 +90,18 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.GenericTable;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -109,6 +121,7 @@ import org.junit.jupiter.api.io.TempDir;
  *     <ul>
  *       <li>{@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
+ *     CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.7.1
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog> {
@@ -127,12 +140,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   private PrincipalWithCredentials principalCredentials;
   private CatalogApi catalogApi;
+  private GenericTableApi genericTableApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private Map<String, String> restCatalogConfig;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
+
+  private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
+      Map.of(
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
+          "catalog-default-key1",
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
+          "catalog-default-key2",
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "override-key3",
+          "catalog-default-key3",
+          org.apache.iceberg.CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key3",
+          "catalog-override-key3",
+          org.apache.iceberg.CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
+          "catalog-override-key4");
 
   private static final String[] DEFAULT_CATALOG_PROPERTIES = {
     "allow.unstructured.table.location", "true",
@@ -166,6 +193,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     externalCatalogBase = testRootUri.resolve("external-catalog");
   }
 
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
+
   @AfterAll
   static void close() throws Exception {
     client.close();
@@ -178,6 +209,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
+    genericTableApi = client.genericTableApi(principalCredentials);
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
@@ -216,7 +248,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    restCatalogConfig =
+    Map<String, String> dynamicConfig =
         testInfo
             .getTestMethod()
             .map(m -> m.getAnnotation(RestCatalogConfig.class))
@@ -234,6 +266,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                   return config;
                 })
             .orElse(ImmutableMap.of());
+
+    restCatalogConfig =
+        ImmutableMap.<String, String>builder()
+            .putAll(DEFAULT_REST_CATALOG_CONFIG)
+            .putAll(dynamicConfig)
+            .build();
 
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
@@ -562,7 +600,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -597,7 +635,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -631,7 +669,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -662,7 +700,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -709,7 +747,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -755,7 +793,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -1192,6 +1230,224 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                 Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
             .head()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testCreateGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    try {
+      GenericTable createResponse =
+          genericTableApi.createGenericTable(
+              currentCatalogName, tableIdentifier, "format", Map.of());
+      Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testLoadGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+      GenericTable loadResponse =
+          genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testListGenericTables() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
+    TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
+
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier1, "format", Map.of());
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier2, "format", Map.of());
+
+      List<TableIdentifier> identifiers =
+          genericTableApi.listGenericTables(currentCatalogName, namespace);
+
+      Assertions.assertThat(identifiers).hasSize(2);
+      Assertions.assertThat(identifiers)
+          .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testDropGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    try {
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+      GenericTable loadResponse =
+          genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
+      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+
+      genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
+
+      assertThatCode(() -> genericTableApi.getGenericTable(currentCatalogName, tableIdentifier))
+          .isInstanceOf(ProcessingException.class);
+
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testGrantsOnGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "format", Map.of());
+
+      managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+
+      Stream<TableGrant> tableGrants =
+          Arrays.stream(TablePrivilege.values())
+              .map(
+                  p -> {
+                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                  });
+
+      tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, "catalogrole1", g));
+
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testGrantsOnNonExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+
+    try {
+      managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
+
+      Stream<TableGrant> tableGrants =
+          Arrays.stream(TablePrivilege.values())
+              .map(
+                  p -> {
+                    return new TableGrant(List.of("ns1"), "tbl1", p, GrantResource.TypeEnum.TABLE);
+                  });
+
+      tableGrants.forEach(
+          g -> {
+            try (Response response =
+                managementApi
+                    .request(
+                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                        Map.of("cat", currentCatalogName, "role", "catalogrole1"))
+                    .put(Entity.json(g))) {
+
+              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+            }
+          });
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testDropNonExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    try {
+      String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+      try (Response res =
+          genericTableApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                  Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns))
+              .delete()) {
+        assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testLoadTableWithSnapshots() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+      restCatalog.createTable(tableIdentifier, SCHEMA);
+
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "ALL"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "all"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "refs"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "REFS"))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
+          .isInstanceOf(RESTException.class)
+          .hasMessageContaining("Unrecognized snapshots")
+          .hasMessageContaining("code=" + BAD_REQUEST.getStatusCode());
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
+    }
+  }
+
+  @Test
+  public void testLoadTableWithRefFiltering() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+      restCatalog.createTable(tableIdentifier, SCHEMA);
+
+      Table table = restCatalog.loadTable(tableIdentifier);
+
+      // Create an orphaned snapshot:
+      table.newAppend().appendFile(FILE_A).commit();
+      long snapshotIdA = table.currentSnapshot().snapshotId();
+      table.newAppend().appendFile(FILE_B).commit();
+      table.manageSnapshots().setCurrentSnapshot(snapshotIdA).commit();
+
+      var allSnapshots =
+          catalogApi
+              .loadTable(currentCatalogName, tableIdentifier, "ALL")
+              .tableMetadata()
+              .snapshots();
+      assertThat(allSnapshots).hasSize(2);
+
+      var refsSnapshots =
+          catalogApi
+              .loadTable(currentCatalogName, tableIdentifier, "REFS")
+              .tableMetadata()
+              .snapshots();
+      assertThat(refsSnapshots).hasSize(1);
+      assertThat(refsSnapshots.getFirst().snapshotId()).isEqualTo(snapshotIdA);
+    } finally {
+      genericTableApi.purge(currentCatalogName, namespace);
     }
   }
 }

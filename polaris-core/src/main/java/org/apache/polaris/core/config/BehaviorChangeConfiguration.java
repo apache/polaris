@@ -52,4 +52,22 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
                   + " unlimited locations")
           .defaultValue(-1)
           .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Boolean> ENTITY_CACHE_SOFT_VALUES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENTITY_CACHE_SOFT_VALUES")
+          .description("Whether or not to use soft values in the entity cache")
+          .defaultValue(false)
+          .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Boolean>
+      TABLE_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT =
+          PolarisConfiguration.<Boolean>builder()
+              .key("TABLE_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT")
+              .description(
+                  "If true, BasePolarisTableOperations should mark the metadata that is passed into"
+                      + " `commit` as current, and re-use it to skip a trip to object storage to re-construct"
+                      + " the committed metadata again.")
+              .defaultValue(true)
+              .buildBehaviorChangeConfiguration();
 }

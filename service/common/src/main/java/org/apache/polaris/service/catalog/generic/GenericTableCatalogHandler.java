@@ -19,13 +19,12 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.TreeSet;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
@@ -53,21 +52,8 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     this.metaStoreManager = metaStoreManager;
   }
 
-  public void enforceGenericTablesEnabledOrThrow() {
-    boolean enabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
-    if (!enabled) {
-      throw new UnsupportedOperationException("Generic table support is not enabled");
-    }
-  }
-
   @Override
   protected void initializeCatalog() {
-    enforceGenericTablesEnabledOrThrow();
     this.genericTableCatalog =
         new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
   }
@@ -77,7 +63,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     return ListGenericTablesResponse.builder()
-        .setIdentifiers(new TreeSet<>(genericTableCatalog.listGenericTables(parent)))
+        .setIdentifiers(new LinkedHashSet<>(genericTableCatalog.listGenericTables(parent)))
         .build();
   }
 

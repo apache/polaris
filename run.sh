@@ -25,7 +25,7 @@
 usage() {
   echo "Usage: $0 [--eclipse-link-deps=<deps>] [-h|--help]"
   echo "  --eclipse-link-deps=<deps>  EclipseLink dependencies to use, e.g."
-  echo "                              --eclipse-link-deps=org.postgresql:postgresql:42.7.4"
+  echo "                              --eclipse-link-deps=com.h2database:h2:2.3.232"
   echo "  -h, --help                  Display this help message"
   exit 1
 }

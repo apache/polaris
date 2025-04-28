@@ -37,6 +37,7 @@ val policyManagementModels =
     "CreatePolicyRequest",
     "LoadPolicyResponse",
     "Policy",
+    "ApplicablePolicy",
     "PolicyAttachmentTarget",
     "AttachPolicyRequest",
     "DetachPolicyRequest",
@@ -70,6 +71,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {
