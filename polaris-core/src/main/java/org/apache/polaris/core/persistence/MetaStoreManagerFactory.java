@@ -18,36 +18,29 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
-/**
- * Configuration interface for configuring the {@link PolarisMetaStoreManager} via Dropwizard
- * configuration
- */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-public interface MetaStoreManagerFactory extends Discoverable {
+/** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
+public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmContext realmContext);
+  Supplier<? extends BasePersistence> getOrCreateSessionSupplier(RealmContext realmContext);
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
-  void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegrationProvider);
+  EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
-  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
-
-  Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
+  Map<String, PrincipalSecretsResult> bootstrapRealms(
+      Iterable<String> realms, RootCredentialsSet rootCredentialsSet);
 
   /** Purge all metadata for the realms provided */
-  void purgeRealms(List<String> realms);
+  Map<String, BaseResult> purgeRealms(Iterable<String> realms);
 }

@@ -19,9 +19,9 @@
 package org.apache.polaris.core.storage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Locale;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Support for file:// URLs in storage configuration. This is pretty-much only used for testing.
@@ -31,7 +31,7 @@ import org.jetbrains.annotations.NotNull;
 public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   public FileStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations) {
     super(StorageType.FILE, allowedLocations);
   }

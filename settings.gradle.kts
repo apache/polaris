@@ -57,6 +57,51 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
+val ideaActive = System.getProperty("idea.active").toBoolean()
+
+// load the polaris spark plugin projects
+val polarisSparkDir = "plugins/spark"
+val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
+val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
+
+// records the spark projects that maps to the same project dir
+val noSourceChecksProjects = mutableSetOf<String>()
+
+for (sparkVersion in sparkVersions) {
+  val scalaVersions = sparkScalaVersions["scalaVersions"].toString().split(",").map { it.trim() }
+  var first = true
+  for (scalaVersion in scalaVersions) {
+    val sparkArtifactId = "polaris-spark-${sparkVersion}_${scalaVersion}"
+    val sparkIntArtifactId = "polaris-spark-integration-${sparkVersion}_${scalaVersion}"
+    polarisProject(
+      "polaris-spark-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}/spark"),
+    )
+    polarisProject(
+      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}/integration"),
+    )
+    if (first) {
+      first = false
+    } else {
+      noSourceChecksProjects.add(":$sparkArtifactId")
+      noSourceChecksProjects.add(":$sparkIntArtifactId")
+    }
+    // Skip all duplicated spark client projects while using Intelij IDE.
+    // This is to avoid problems during dependency analysis and sync when
+    // using Intelij, like "Multiple projects in this build have project directory".
+    if (ideaActive) {
+      break
+    }
+  }
+}
+
+gradle.beforeProject {
+  if (noSourceChecksProjects.contains(this.path)) {
+    project.extra["duplicated-project-sources"] = true
+  }
+}
+
 pluginManagement {
   repositories {
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
@@ -72,4 +117,12 @@ dependencyResolutionManagement {
   }
 }
 
-gradle.beforeProject { version = baseVersion }
+dependencyResolutionManagement {
+  // version catalog used by the polaris plugin code, such as polaris-spark-3.5
+  versionCatalogs { create("pluginlibs") { from(files("plugins/pluginlibs.versions.toml")) } }
+}
+
+gradle.beforeProject {
+  version = baseVersion
+  group = "org.apache.polaris"
+}

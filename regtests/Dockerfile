@@ -17,14 +17,15 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.1-python3
+FROM docker.io/apache/spark:3.5.5-java17-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
+ENV LANGUAGE='en_US:en'
 
 USER root
 RUN apt update
-RUN apt-get install -y diffutils wget curl python3.8-venv
+RUN apt-get install -y diffutils wget curl python3.10-venv
 RUN mkdir -p /home/spark &&  \
     chown -R spark /home/spark && \
     mkdir -p /tmp/polaris-regtests && \
@@ -35,23 +36,24 @@ USER spark
 ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Copy and run setup.sh separately so that test sources can change, but the setup script run is still cached
-WORKDIR /home/spark/regtests
-COPY ./setup.sh /home/spark/regtests/setup.sh
-COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
-COPY ./client/python /home/spark/regtests/client/python
-COPY ./polaris-reg-test /home/spark/polaris
+WORKDIR /home/spark/polaris
+COPY ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
+COPY ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
+COPY ./client/python /home/spark/polaris/client/python
+COPY ./polaris /home/spark/polaris/polaris
+COPY ./regtests/requirements.txt /tmp/
 
-RUN python3 -m venv /home/spark/polaris-venv && \
-    . /home/spark/polaris-venv/bin/activate && \
-    pip install poetry==1.5.0 && \
+RUN python3 -m venv /home/spark/polaris/polaris-venv && \
+    . /home/spark/polaris/polaris-venv/bin/activate && \
+    pip install -r /tmp/requirements.txt && \
     deactivate \
-RUN ./setup.sh
+    ./regtests/setup.sh
 
-COPY --chown=spark . /home/spark/regtests
+COPY --chown=spark ./regtests /home/spark/polaris/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
 USER root
-RUN chmod -R go+rwx /home/spark/regtests
+RUN chmod -R go+rwx /home/spark/polaris
 USER spark
 
-CMD ["./run.sh"]
+ENTRYPOINT ["./regtests/run.sh"]

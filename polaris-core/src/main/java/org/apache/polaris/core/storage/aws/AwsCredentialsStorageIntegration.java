@@ -18,17 +18,21 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.config.PolarisConfiguration.loadConfig;
+
+import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -51,11 +55,11 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull AwsStorageConfigurationInfo storageConfig,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     AssumeRoleResponse response =
         stsClient.assumeRole(
             AssumeRoleRequest.builder()
@@ -69,6 +73,7 @@ public class AwsCredentialsStorageIntegration
                             allowedReadLocations,
                             allowedWriteLocations)
                         .toJson())
+                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);
@@ -76,13 +81,34 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(
         PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
+    Optional.ofNullable(response.credentials().expiration())
+        .ifPresent(
+            i -> {
+              credentialMap.put(
+                  PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+              credentialMap.put(
+                  PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  String.valueOf(i.toEpochMilli()));
+            });
+
+    if (storageConfig.getRegion() != null) {
+      credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
+    }
+
+    if (storageConfig.getAwsPartition().equals("aws-us-gov")
+        && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+    }
+
     return credentialMap;
   }
 
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
-   * locations are empty, a non-empty policy will be generated that grants GetObject and (optionally
+   * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
@@ -105,7 +131,6 @@ public class AwsCredentialsStorageIntegration
             location -> {
               URI uri = URI.create(location);
               allowGetObjectStatementBuilder.addResource(
-                  // TODO add support for CN and GOV
                   IamResource.create(
                       arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
@@ -141,7 +166,6 @@ public class AwsCredentialsStorageIntegration
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            // TODO add support for CN and GOV
             allowPutObjectStatementBuilder.addResource(
                 IamResource.create(
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
@@ -174,13 +198,13 @@ public class AwsCredentialsStorageIntegration
     }
   }
 
-  private static @NotNull String parseS3Path(URI uri) {
+  private static @Nonnull String parseS3Path(URI uri) {
     String bucket = StorageUtil.getBucket(uri);
     String path = trimLeadingSlash(uri.getPath());
     return String.join("/", bucket, path);
   }
 
-  private static @NotNull String trimLeadingSlash(String path) {
+  private static @Nonnull String trimLeadingSlash(String path) {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }

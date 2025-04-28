@@ -23,7 +23,7 @@ import org.nosphere.apache.rat.RatTask
 buildscript {
   repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
   dependencies {
-    classpath("com.diffplug.spotless:spotless-plugin-gradle:${libs.plugins.spotless.get().version}")
+    classpath("org.kordamp.gradle:jandex-gradle-plugin:${libs.plugins.jandex.get().version}")
   }
 }
 
@@ -32,6 +32,8 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
+  // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
+  alias(libs.plugins.jandex) apply false
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -67,6 +69,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("LICENSE")
   excludes.add("NOTICE")
 
+  // Manifest files do not allow comments
+  excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
+
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
   excludes.add(".git")
@@ -84,8 +89,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
 
   excludes.add("logs/**")
-  excludes.add("polaris-service/src/**/banner.txt")
-  excludes.add("polaris-service/logs")
+  excludes.add("service/common/src/**/banner.txt")
+  excludes.add("quarkus/admin/src/**/banner.txt")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
@@ -102,14 +107,12 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("regtests/.env")
   excludes.add("regtests/derby.log")
   excludes.add("regtests/metastore_db/**")
-  excludes.add("regtests/client/python/.openapi-generator/**")
+  excludes.add("client/python/.openapi-generator/**")
   excludes.add("regtests/output/**")
 
   excludes.add("**/*.ipynb")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
-
-  excludes.add("**/*.md")
 
   excludes.add("**/*.png")
   excludes.add("**/*.svg")
@@ -121,6 +124,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/go.sum")
 
   excludes.add("**/kotlin-compiler*")
+  excludes.add("**/build-logic/.kotlin/**")
+
+  excludes.add("plugins/**/*.ref")
 }
 
 // Pass environment variables:
@@ -151,6 +157,39 @@ nexusPublishing {
       nexusUrl = URI.create("https://repository.apache.org/service/local/")
       snapshotRepositoryUrl =
         URI.create("https://repository.apache.org/content/repositories/snapshots/")
+    }
+  }
+}
+
+copiedCodeChecks {
+  addDefaultContentTypes()
+
+  licenseFile = project.layout.projectDirectory.file("LICENSE")
+
+  scanDirectories {
+    register("build-logic") { srcDir("build-logic/src") }
+    register("misc") {
+      srcDir(".github")
+      srcDir("codestyle")
+      srcDir("getting-started")
+      srcDir("k8")
+      srcDir("regtests")
+      srcDir("server-templates")
+      srcDir("spec")
+    }
+    register("gradle") {
+      srcDir("gradle")
+      exclude("wrapper/*.jar")
+      exclude("wrapper/*.sha256")
+    }
+    register("site") {
+      srcDir("site")
+      exclude("build/**")
+      exclude(".hugo_build.lock")
+    }
+    register("root") {
+      srcDir(".")
+      include("*")
     }
   }
 }

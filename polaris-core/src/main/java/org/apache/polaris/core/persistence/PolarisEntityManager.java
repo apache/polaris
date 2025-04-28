@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -31,8 +33,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Wraps logic of handling name-caching and entity-caching against a concrete underlying entity
@@ -51,37 +51,35 @@ public class PolarisEntityManager {
   /**
    * @param metaStoreManager the metastore manager for the current realm
    * @param credentialCache the storage credential cache for the current realm
+   * @param entityCache the entity cache to use (it may be {@code null}).
    */
   public PolarisEntityManager(
-      PolarisMetaStoreManager metaStoreManager, StorageCredentialCache credentialCache) {
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
+      @Nonnull StorageCredentialCache credentialCache,
+      @Nullable EntityCache entityCache) {
     this.metaStoreManager = metaStoreManager;
-    this.entityCache = new EntityCache(metaStoreManager);
     this.credentialCache = credentialCache;
+    this.entityCache = entityCache;
   }
 
   public Resolver prepareResolver(
-      @NotNull CallContext callContext,
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull CallContext callContext,
+      @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     return new Resolver(
         callContext.getPolarisCallContext(),
         metaStoreManager,
-        authenticatedPrincipal.getPrincipalEntity().getId(),
-        null, /* callerPrincipalName */
-        authenticatedPrincipal.getActivatedPrincipalRoleNames().isEmpty()
-            ? null
-            : authenticatedPrincipal.getActivatedPrincipalRoleNames(),
+        securityContext,
         entityCache,
         referenceCatalogName);
   }
 
   public PolarisResolutionManifest prepareResolutionManifest(
-      @NotNull CallContext callContext,
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull CallContext callContext,
+      @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest manifest =
-        new PolarisResolutionManifest(
-            callContext, this, authenticatedPrincipal, referenceCatalogName);
+        new PolarisResolutionManifest(callContext, this, securityContext, referenceCatalogName);
     manifest.setSimulatedResolvedRootContainerEntity(
         getSimulatedResolvedRootContainerEntity(callContext));
     return manifest;

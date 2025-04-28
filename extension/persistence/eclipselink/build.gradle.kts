@@ -24,14 +24,18 @@ fun isValidDep(dep: String): Boolean {
 
 plugins {
   id("polaris-server")
-  `java-library`
+  alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-jpa-model"))
+
   implementation(libs.eclipselink)
-  implementation(platform(libs.dropwizard.bom))
-  implementation("io.dropwizard:dropwizard-jackson")
+
+  implementation(libs.slf4j.api)
+
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
     val dependenciesList = it.split(",")
@@ -45,23 +49,37 @@ dependencies {
     }
   }
 
-  compileOnly(libs.jetbrains.annotations)
+  // only for @VisibleForTesting
+  compileOnly(libs.guava)
+
+  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.config.core) // @ConfigMapping
+
+  compileOnly(platform(libs.jackson.bom))
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly("com.fasterxml.jackson.core:jackson-core")
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
-
-  testImplementation(platform(libs.junit.bom))
-  testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(libs.assertj.core)
-  testImplementation(libs.mockito.core)
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.register<Jar>("archiveConf") {
-  archiveFileName = "conf.jar"
-  destinationDirectory = layout.buildDirectory.dir("conf")
-
+tasks.register<Jar>("createTestConfJar") {
+  archiveFileName = "test-conf.jar"
+  destinationDirectory = layout.buildDirectory.dir("conf/eclipselink")
   from("src/main/resources/META-INF/") { include("persistence.xml") }
 }
 
-tasks.named("test") { dependsOn("archiveConf") }
+sourceSets { test { resources.srcDir(layout.buildDirectory.dir("conf")) } }
+
+tasks.named("processTestResources") { dependsOn("createTestConfJar") }
+
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
+
+tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }

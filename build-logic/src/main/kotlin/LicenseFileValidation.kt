@@ -58,7 +58,7 @@ class LicenseFileValidation : DependencyFilter {
   override fun filter(data: ProjectData?): ProjectData {
     data!!
 
-    val rootLicenseFile = data.project.rootProject.file("LICENSE").readText()
+    val rootLicenseFile = data.project.rootProject.file("LICENSE-BINARY-DIST").readText()
 
     val licenseReport = data.project.extensions.getByType(LicenseReportExtension::class.java)
 

@@ -26,13 +26,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,9 +114,9 @@ public class PolarisObjectMapperUtil {
     return retProperties;
   }
 
-  static class TaskExecutionState {
-    final String executor;
-    final long lastAttemptStartTime;
+  public static class TaskExecutionState {
+    public final String executor;
+    public final long lastAttemptStartTime;
     final int attemptCount;
 
     TaskExecutionState(String executor, long lastAttemptStartTime, int attemptCount) {
@@ -146,7 +146,7 @@ public class PolarisObjectMapperUtil {
    * @param entity entity
    * @return TaskExecutionState
    */
-  static @Nullable TaskExecutionState parseTaskState(PolarisBaseEntity entity) {
+  public static @Nullable TaskExecutionState parseTaskState(PolarisBaseEntity entity) {
     JsonFactory jfactory = new JsonFactory();
     try (JsonParser jParser = jfactory.createParser(entity.getProperties())) {
       String executorId = null;

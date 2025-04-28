@@ -23,7 +23,6 @@ import java.io.File
 import javax.inject.Inject
 import org.gradle.api.Project
 import org.gradle.api.model.ObjectFactory
-import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.property
 
 /**
@@ -36,14 +35,10 @@ import org.gradle.kotlin.dsl.property
 abstract class PublishingHelperExtension
 @Inject
 constructor(objectFactory: ObjectFactory, project: Project) {
-  // optional customization of the pom.xml <name> element
-  val mavenName = objectFactory.property<String>().convention(project.provider { project.name })
-
-  val licenseUrl =
-    objectFactory.property<String>().convention("https://www.apache.org/licenses/LICENSE-2.0.txt")
-
   // the following are only relevant on the root project
-  val asfProjectName = objectFactory.property<String>()
+  val asfProjectName = objectFactory.property<String>().convention(project.name)
+  val overrideName = objectFactory.property<String>()
+  val overrideDescription = objectFactory.property<String>()
   val baseName =
     objectFactory
       .property<String>()
@@ -54,17 +49,8 @@ constructor(objectFactory: ObjectFactory, project: Project) {
     objectFactory
       .fileProperty()
       .convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz") })
-  val sourceTarballDigest =
-    objectFactory
-      .fileProperty()
-      .convention(project.provider { distributionDir.get().file("${baseName.get()}.sha512") })
 
   val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
-
-  // override the list of developers (P)PMC members + committers, necessary for podlings
-  val podlingPpmcAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
-  val podlingMentorsAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
-  val podlingCommitterAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
 
   fun distributionFile(ext: String): File =
     distributionDir.get().file("${baseName.get()}.$ext").asFile

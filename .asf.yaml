@@ -31,21 +31,25 @@ github:
     - apache
 
   enabled_merge_buttons:
-    merge: true
+    merge: false
     squash: true
-    rebase: true
+    rebase: false
+
+  del_branch_on_merge: true
 
   protected_branches:
     main:
       required_pull_request_reviews:
         require_code_owner_reviews: false
+        dismiss_stale_reviews: true
+        require_last_push_approval: false
         required_approving_review_count: 1
 
       required_linear_history: true
 
       required_status_checks:
         # strict means "Require branches to be up to date before merging".
-        strict: true
+        strict: false
         # Contexts are the names of checks that must pass. This is the value
         # of the job's `name` property if it's present.
         contexts:
@@ -59,13 +63,24 @@ github:
     wiki: false
     issues: true
     projects: true
+    discussions: true
+
   ghp_branch: gh-pages
   ghp_path: /
+
+  collaborators:
+    # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
+    - renovate-bot
+    - singhpk234
+    - gh-yzou
+    - nssalian
+    - adnanhemani
 
 notifications:
   commits:      commits@polaris.apache.org
   issues:       issues@polaris.apache.org
   pullrequests: issues@polaris.apache.org
+  discussions:  issues@polaris.apache.org
   jira_options: link label
 
 publish:

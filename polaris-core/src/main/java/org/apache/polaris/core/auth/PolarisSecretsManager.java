@@ -18,13 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -35,9 +31,9 @@ public interface PolarisSecretsManager {
    * @param clientId principal client id
    * @return the secrets associated to that principal, including the entity id of the principal
    */
-  @NotNull
+  @Nonnull
   PrincipalSecretsResult loadPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId);
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
 
   /**
    * Rotate secrets
@@ -51,53 +47,11 @@ public interface PolarisSecretsManager {
    * @param oldSecretHash main secret hash for the principal
    * @return the secrets associated to that principal amd the id of the principal
    */
-  @NotNull
+  @Nonnull
   PrincipalSecretsResult rotatePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String clientId,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @NotNull String oldSecretHash);
-
-  /** the result of load/rotate principal secrets */
-  class PrincipalSecretsResult extends BaseResult {
-
-    // principal client identifier and associated secrets. Null if error
-    private final PolarisPrincipalSecrets principalSecrets;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public PrincipalSecretsResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.principalSecrets = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param principalSecrets and associated secret information
-     */
-    public PrincipalSecretsResult(@NotNull PolarisPrincipalSecrets principalSecrets) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.principalSecrets = principalSecrets;
-    }
-
-    @JsonCreator
-    private PrincipalSecretsResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("principalSecrets") @NotNull PolarisPrincipalSecrets principalSecrets) {
-      super(returnStatus, extraInformation);
-      this.principalSecrets = principalSecrets;
-    }
-
-    public PolarisPrincipalSecrets getPrincipalSecrets() {
-      return principalSecrets;
-    }
-  }
+      @Nonnull String oldSecretHash);
 }

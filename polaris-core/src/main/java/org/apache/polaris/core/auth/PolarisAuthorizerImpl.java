@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
@@ -39,7 +41,9 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_USAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST;
@@ -47,6 +51,14 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST_GRA
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_ATTACH;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DETACH;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_FULL_METADATA;
@@ -69,7 +81,9 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_WRI
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROTATE_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
@@ -91,12 +105,15 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERT
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -105,8 +122,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -456,10 +471,57 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
         List.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE, CATALOG_MANAGE_ACCESS));
+
+    // Policy privileges
+    SUPER_PRIVILEGES.putAll(
+        POLICY_CREATE,
+        List.of(
+            POLICY_CREATE, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_WRITE,
+        List.of(
+            POLICY_WRITE, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_DROP,
+        List.of(
+            POLICY_DROP, POLICY_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_READ,
+        List.of(
+            POLICY_READ,
+            POLICY_WRITE,
+            POLICY_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_LIST,
+        List.of(
+            POLICY_LIST,
+            POLICY_CREATE,
+            POLICY_READ,
+            POLICY_WRITE,
+            POLICY_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(POLICY_ATTACH, List.of(POLICY_ATTACH, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(POLICY_DETACH, List.of(POLICY_DETACH, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_ATTACH_POLICY, List.of(CATALOG_ATTACH_POLICY, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        NAMESPACE_ATTACH_POLICY, List.of(NAMESPACE_ATTACH_POLICY, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ATTACH_POLICY, List.of(TABLE_ATTACH_POLICY, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_DETACH_POLICY, List.of(CATALOG_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        NAMESPACE_DETACH_POLICY, List.of(NAMESPACE_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_DETACH_POLICY, List.of(TABLE_DETACH_POLICY, CATALOG_MANAGE_CONTENT));
   }
 
   private final PolarisConfigurationStore featureConfig;
 
+  @Inject
   public PolarisAuthorizerImpl(PolarisConfigurationStore featureConfig) {
     this.featureConfig = featureConfig;
   }
@@ -485,9 +547,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
@@ -500,15 +562,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
         featureConfig.getConfiguration(
             CallContext.getCurrentContext().getPolarisCallContext(),
-            PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal
             .getPrincipalEntity()
@@ -535,9 +597,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * the operation.
    */
   public boolean isAuthorized(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     return isAuthorized(
@@ -549,9 +611,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   public boolean isAuthorized(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     Set<Long> entityIdSet =
@@ -598,7 +660,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * errors/exceptions.
    */
   public boolean hasTransitivePrivilege(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {

@@ -20,7 +20,10 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,18 +35,20 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -63,7 +68,6 @@ public class CatalogEntity extends PolarisEntity {
   // translated into "s3://my-bucket/base/location/ns1/ns2/table1".
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
-  public static final String REMOTE_URL = "remoteUrl";
 
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
@@ -77,16 +81,12 @@ public class CatalogEntity extends PolarisEntity {
   }
 
   public static CatalogEntity fromCatalog(Catalog catalog) {
-
     Builder builder =
         new Builder()
             .setName(catalog.getName())
             .setProperties(catalog.getProperties().toMap())
             .setCatalogType(catalog.getType().name());
     Map<String, String> internalProperties = new HashMap<>();
-    if (catalog instanceof ExternalCatalog) {
-      internalProperties.put(REMOTE_URL, ((ExternalCatalog) catalog).getRemoteUrl());
-    }
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
@@ -118,12 +118,12 @@ public class CatalogEntity extends PolarisEntity {
         : ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(getName())
-            .setRemoteUrl(getInternalPropertiesAsMap().get(REMOTE_URL))
             .setProperties(catalogProps)
             .setCreateTimestamp(getCreateTimestamp())
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setConnectionConfigInfo(getConnectionInfo(internalProperties))
             .build();
   }
 
@@ -138,6 +138,7 @@ public class CatalogEntity extends PolarisEntity {
             .setUserArn(awsConfig.getUserARN())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
+            .setRegion(awsConfig.getRegion())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -168,6 +169,15 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
+  private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
+    if (internalProperties.containsKey(
+        PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
+      ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
+      return configInfo.asConnectionConfigInfoModel();
+    }
+    return null;
+  }
+
   public String getDefaultBaseLocation() {
     return getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY);
   }
@@ -190,6 +200,21 @@ public class CatalogEntity extends PolarisEntity {
     return Optional.ofNullable(getInternalPropertiesAsMap().get(CATALOG_TYPE_PROPERTY))
         .map(Catalog.TypeEnum::valueOf)
         .orElse(null);
+  }
+
+  public boolean isPassthroughFacade() {
+    return getInternalPropertiesAsMap()
+        .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {
+    String configStr =
+        getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+    if (configStr != null) {
+      return ConnectionConfigInfoDpo.deserialize(new PolarisDefaultDiagServiceImpl(), configStr);
+    }
+    return null;
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
@@ -236,6 +261,7 @@ public class CatalogEntity extends PolarisEntity {
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
+        validateMaxAllowedLocations(allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -244,18 +270,19 @@ public class CatalogEntity extends PolarisEntity {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId());
+                    awsConfigModel.getExternalId(),
+                    awsConfigModel.getRegion());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureconfigInfo =
+            AzureStorageConfigurationInfo azureConfigInfo =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureconfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureconfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureconfigInfo;
+            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
+            config = azureConfigInfo;
             break;
           case GCS:
             GcpStorageConfigurationInfo gcpConfig =
@@ -277,13 +304,39 @@ public class CatalogEntity extends PolarisEntity {
       return this;
     }
 
+    /** Validate the number of allowed locations not exceeding the max value. */
+    private void validateMaxAllowedLocations(Collection<String> allowedLocations) {
+      int maxAllowedLocations =
+          BehaviorChangeConfiguration.loadConfig(
+              BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+      if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Number of configured locations (%s) exceeds the limit of %s",
+                allowedLocations.size(), maxAllowedLocations));
+      }
+    }
+
+    public Builder setConnectionConfigInfoDpoWithSecrets(
+        ConnectionConfigInfo connectionConfigurationModel,
+        Map<String, UserSecretReference> secretReferences) {
+      if (connectionConfigurationModel != null) {
+        ConnectionConfigInfoDpo config =
+            ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                connectionConfigurationModel, secretReferences);
+        internalProperties.put(
+            PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
+      }
+      return this;
+    }
+
     @Override
     public CatalogEntity build() {
       return new CatalogEntity(buildBase());
     }
   }
 
-  protected static @NotNull String getDefaultBaseLocation(Catalog catalog) {
+  protected static @Nonnull String getDefaultBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }

@@ -19,7 +19,7 @@
 # under the License.
 #
 
-SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
+SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
@@ -29,11 +29,6 @@ curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: app
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/spark_sql_views_catalog/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
-
-# For now, also explicitly assign the catalog_admin to the service_admin. Remove once GS fully rolled out for auto-assign.
-curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/spark_sql_views_catalog \
-  -d '{"name": "catalog_admin"}' > /dev/stderr
 
 curl -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/config?warehouse=spark_sql_views_catalog"

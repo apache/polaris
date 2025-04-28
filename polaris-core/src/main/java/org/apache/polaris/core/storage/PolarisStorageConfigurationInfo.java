@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,18 +36,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +78,8 @@ public abstract class PolarisStorageConfigurationInfo {
   private final StorageType storageType;
 
   public PolarisStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations) {
     this(storageType, allowedLocations, true);
   }
@@ -125,7 +125,7 @@ public abstract class PolarisStorageConfigurationInfo {
    * @return the PolarisStorageConfiguration object
    */
   public static PolarisStorageConfigurationInfo deserialize(
-      @NotNull PolarisDiagnostics diagnostics, final @NotNull String jsonStr) {
+      @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     } catch (JsonProcessingException exception) {
@@ -168,7 +168,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getConfiguration(
                           CallContext.getCurrentContext().getPolarisCallContext(),
                           catalog,
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                          FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {
@@ -198,14 +198,14 @@ public abstract class PolarisStorageConfigurationInfo {
         .map(
             p ->
                 Stream.of(
-                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList()))
         .orElse(List.of());
   }
 
-  private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       List<PolarisEntity> entityPath) {
     for (int i = entityPath.size() - 1; i >= 0; i--) {
       PolarisEntity e = entityPath.get(i);
@@ -230,14 +230,6 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
-  /** Validate the number of allowed locations not exceeding the max value. */
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
-      throw new IllegalArgumentException(
-          "Number of allowed locations exceeds " + maxAllowedLocations);
-    }
-  }
-
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3("s3://"),
@@ -259,18 +251,5 @@ public abstract class PolarisStorageConfigurationInfo {
     public List<String> getPrefixes() {
       return prefixes;
     }
-  }
-
-  /** Enum property for describe storage integration for config purpose. */
-  public enum DescribeProperty {
-    STORAGE_PROVIDER,
-    STORAGE_ALLOWED_LOCATIONS,
-    STORAGE_AWS_ROLE_ARN,
-    STORAGE_AWS_IAM_USER_ARN,
-    STORAGE_AWS_EXTERNAL_ID,
-    STORAGE_GCP_SERVICE_ACCOUNT,
-    AZURE_TENANT_ID,
-    AZURE_CONSENT_URL,
-    AZURE_MULTI_TENANT_APP_NAME,
   }
 }

@@ -51,11 +51,30 @@
       automerge: false, // just be explicit (false is the default)
     },
 
-    // Reduce awssdk update frequency noise (awssdk has daily releases)
+    // Reduce update frequency for a few dependencies that have a quite high release frequency.
+    //   awssdk (release frequency: daily)
     {
       matchManagers: ["gradle"],
       matchPackagePrefixes: ["software.amazon.awssdk"],
       extends: ["schedule:weekly"],
+    },
+    //   boto3 (release frequency: multiple times per week)
+    {
+      matchManagers: ["pip_requirements", "pip_setup", "poetry"],
+      matchPackagePrefixes: ["boto3"],
+      extends: ["schedule:weekly"],
+    },
+
+    // Quarkus platform + plugin together
+    {
+      groupName: "Quarkus Platform and Group",
+      matchManagers: ["gradle"],
+      matchPackageNames: [
+        "io.quarkus.platform:quarkus-bom",
+        "io.quarkus.platform:quarkus-amazon-services-bom",
+        "io.quarkus.platform:quarkus-google-cloud-services-bom",
+        "io.quarkus:io.quarkus.gradle.plugin",
+      ],
     },
 
     // Turn off major & minor version updates on version-branches
@@ -71,4 +90,7 @@
   // concurrent PRs limit.
   prConcurrentLimit: 50,
   prHourlyLimit: 5,
+
+  // add renovate-polaris label to easily filter PRs/email
+  labels: ["renovate-polaris"],
 }

@@ -17,8 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Command Line Interface
-title: Apache Polaris (Incubating) CLI
+title: Command Line Interface
 type: docs
 weight: 300
 ---
@@ -33,8 +32,11 @@ polaris [options] COMMAND ...
 options:
 --host
 --port
+--base-url
 --client-id
 --client-secret
+--access-token
+--profile
 ```
 
 `COMMAND` must be one of the following:
@@ -44,6 +46,7 @@ options:
 4. catalog-roles
 5. namespaces
 6. privileges
+7. profiles
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important. 
 
@@ -55,6 +58,7 @@ polaris catalogs delete some_catalog_name
 polaris catalogs update --property foo=bar some_other_catalog
 polaris catalogs update another_catalog --property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
+polaris profiles list
 ```
 
 ### Authentication
@@ -67,7 +71,13 @@ polaris --client-id 4b5ed1ca908c3cc2 --client-secret 07ea8e4edefb9a9e57c247e8d1a
 
 If `--client-id` and `--client-secret` are not provided, the Polaris CLI will try to read the client ID and client secret from environment variables called `CLIENT_ID` and `CLIENT_SECRET` respectively. If these flags are not provided and the environment variables are not set, the CLI will fail.
 
+Alternatively, the `--access-token` option can be used instead of `--client-id` and `--client-secret`, but both authentication methods cannot be used simultaneously.
+
+Additionally, the `--profile` option can be used to specify a saved profile instead of providing authentication details directly. If `--profile` is not provided, the CLI will check the `CLIENT_PROFILE` environment variable. Profiles store authentication details and connection settings, simplifying repeated CLI usage.
+
 If the `--host` and `--port` options are not provided, the CLI will default to communicating with `localhost:8181`.
+
+Alternatively, the `--base-url` option can be used instead of `--host` and `--port`, but both options cannot be used simultaneously. This allows specifying arbitrary Polaris URLs, including HTTPS ones, that have additional base prefixes before the `/api/*/v1` subpaths.
 
 ### PATH
 
@@ -87,11 +97,14 @@ Alternatively, you can run the CLI by providing a path to it, such as with the f
 
 Each of the commands `catalogs`, `principals`, `principal-roles`, `catalog-roles`, and `privileges` is used to manage a different type of entity within Polaris.
 
+In addition to these, the `profiles` command is available for managing stored authentication profiles, allowing login credentials to be configured for reuse. This provides an alternative to passing authentication details with every command.
+
 To find details on the options that can be provided to a particular command or subcommand ad-hoc, you may wish to use the `--help` flag. For example:
 
 ```
 polaris catalogs --help
 polaris principals create --help
+polaris profiles --help
 ```
 
 ### catalogs
@@ -147,6 +160,11 @@ polaris catalogs create \
   --allowed-location s3://other-bucket/third_location \
   --role-arn ${ROLE_ARN} \
   my_other_catalog
+  
+polaris catalogs create \
+  --storage-type file \
+  --default-base-location file:///example/tmp \
+  quickstart_catalog
 ```
 
 #### delete
@@ -243,6 +261,7 @@ The `principals` command is used to manage principals within Polaris.
 4. list
 5. rotate-credentials
 6. update
+7. access
 
 #### create
 
@@ -357,6 +376,24 @@ options:
 polaris principals update --property key=value --property other_key=other_value some_user
 
 polaris principals update --property are_other_keys_removed=yes some_user
+```
+
+#### access
+
+The `access` subcommand retrieves entities relation about a principal.
+
+```
+input: polaris principals access --help
+options:
+  access
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals access quickstart_user
 ```
 
 ### Principal Roles
@@ -1024,6 +1061,106 @@ polaris privileges \
   --view v \
   --cascade \
   VIEW_FULL_METADATA
+```
+
+### profiles
+
+The `profiles` command is used to manage stored authentication profiles in Polaris. Profiles allow authentication credentials to be saved and reused, eliminating the need to pass credentials with every command.
+
+`profiles` supports the following subcommands:
+
+1. create
+2. delete
+3. get
+4. list
+5. update
+
+#### create
+
+The `create` subcommand is used to create a new authentication profile.
+
+```
+input: polaris profiles create --help
+options:
+  create
+    Positional arguments:
+      profile
+```
+
+##### Examples
+
+```
+polaris profiles create dev
+```
+
+#### delete
+
+The `delete` subcommand removes a stored profile.
+
+```
+input: polaris profiles delete --help
+options:
+  delete
+    Positional arguments:
+      profile
+```
+
+##### Examples
+
+```
+polaris profiles delete dev
+```
+
+#### get
+
+The `get` subcommand removes a stored profile.
+
+```
+input: polaris profiles get --help
+options:
+  get
+    Positional arguments:
+      profile
+```
+
+##### Examples
+
+```
+polaris profiles get dev
+```
+
+#### list
+
+The `list` subcommand displays all stored profiles.
+
+```
+input: polaris profiles list --help
+options:
+  list
+```
+
+##### Examples
+
+```
+polaris profiles list
+```
+
+#### update
+
+The `update` subcommand modifies an existing profile.
+
+```
+input: polaris profiles update --help
+options:
+  update
+    Positional arguments:
+      profile
+```
+
+##### Examples
+
+```
+polaris profiles update dev
 ```
 
 ## Examples

@@ -18,6 +18,7 @@
 #
 
 """Spark connector with different catalog types."""
+import os
 from typing import Any, Dict, List, Optional, Union
 
 from pyspark.errors import PySparkRuntimeError
@@ -43,15 +44,16 @@ class IcebergSparkSession:
       self,
       bearer_token: str = None,
       credentials: str = None,
-      aws_region: str = "us-west-2",
+      aws_region: str = None,
       catalog_name: str = None,
       polaris_url: str = None,
-      realm: str = 'default-realm'
+      realm: str = 'POLARIS'
   ):
     """Constructor for Iceberg Spark session. Sets the member variables."""
     self.bearer_token = bearer_token
     self.credentials = credentials
-    self.aws_region = aws_region
+    if aws_region is None:
+      self.aws_region = os.environ.get('AWS_REGION', 'us-west-2')
     self.catalog_name = catalog_name
     self.polaris_url = polaris_url
     self.realm = realm
@@ -72,7 +74,7 @@ class IcebergSparkSession:
     """Initial method for Iceberg Spark session. Creates a Spark session with specified configs.
     """
     packages = [
-      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
+      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0",
       "org.apache.hadoop:hadoop-aws:3.4.0",
       "software.amazon.awssdk:bundle:2.23.19",
       "software.amazon.awssdk:url-connection-client:2.23.19",

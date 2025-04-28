@@ -27,9 +27,9 @@ import subprocess
 import sys
 from typing import Callable
 
-CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../client/python'
+CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../../client/python'
 ROLE_ARN = 'arn:aws:iam::123456789012:role/my-role'
-POLARIS_HOST = os.getenv('POLARIS_HOST') or 'polaris'
+POLARIS_HOST = os.getenv('POLARIS_HOST', 'localhost')
 POLARIS_URL = f'http://{POLARIS_HOST}:8181/api/catalog/v1/oauth/tokens'
 
 def get_salt(length=8) -> str:
@@ -38,7 +38,7 @@ def get_salt(length=8) -> str:
 
 
 def root_cli(*args):
-    return cli('principal:root;realm:default-realm')(*args)
+    return cli(os.getenv('REGTEST_ROOT_BEARER_TOKEN'))(*args)
 
 
 def cli(access_token):
@@ -46,7 +46,7 @@ def cli(access_token):
         def f() -> str:
             result = subprocess.run([
                 'bash',
-                f'{CLI_PYTHONPATH}/../../../polaris',
+                f'{CLI_PYTHONPATH}/../../polaris',
                 '--access-token',
                 access_token,
                 '--host',
@@ -373,13 +373,73 @@ def test_update_catalog():
                      checker=lambda s: 'foo' not in s and 'prop2' not in s and
                                        '"prop3": "3333"' in s and '"prop4": "4444"' in s)
 
+        # Update to add a property whose value is a key-value list
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'listprop=k1=v1,k2=v2'
+        ), checker=lambda s: s == '')
+
+        # Previous properties still exist, and the new property is parsed properly
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: '"prop3": "3333"' in s and '"prop4": "4444"' in s and
+                                       '"listprop": "k1=v1,k2=v2"' in s)
+
+        # Update to set a region
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--region',
+            'new-test-region'
+        ), checker=lambda s: s == '')
+
+        # Original fake-location should still be present in storage_config_info.allowed_locations
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and '"region": "new-test-region"' in s)
+
+        # Update to add an allowed location
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--allowed-location',
+            f's3://extra-allowed-location-{SALT}'
+        ), checker=lambda s: s == '')
+
+        # All allowed locations present and region still present
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and
+                                       's3://extra-allowed-location-' in s and
+                                       '"region": "new-test-region"' in s)
+
+        # Add allowed location and change region at same time
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--allowed-location',
+            f's3://fourth-allowed-location-{SALT}',
+            '--region',
+            'us-east-2'
+        ), checker=lambda s: s == '')
+
+        # All allowed locations present and new region set
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and
+                                       's3://extra-allowed-location-' in s and
+                                       's3://fourth-allowed-location-' in s and
+                                       '"region": "us-east-2"' in s)
+
     finally:
         sys.path.pop(0)
     pass
 
 def test_update_principal():
     """
-    Test updating properties on a principal 
+    Test updating properties on a principal
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)
@@ -450,7 +510,7 @@ def test_update_principal():
 
 def test_update_principal_role():
     """
-    Test updating properties on a principal_role 
+    Test updating properties on a principal_role
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)
@@ -521,7 +581,7 @@ def test_update_principal_role():
 
 def test_update_catalog_role():
     """
-    Test updating properties on a catalog_role 
+    Test updating properties on a catalog_role
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)

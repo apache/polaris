@@ -24,6 +24,7 @@ import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
 import org.gradle.api.Project
 import org.gradle.api.services.BuildServiceRegistration
+import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
@@ -40,50 +41,48 @@ internal fun configureOnRootProject(project: Project) =
     val isRelease = project.hasProperty("release")
     val isSigning = isRelease || project.hasProperty("signArtifacts")
 
-    val sourceTarball = tasks.register("sourceTarball")
-    sourceTarball.configure() {
+    val sourceTarball = tasks.register<Exec>("sourceTarball")
+    sourceTarball.configure {
       group = "build"
       description =
         "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
 
-      doFirst {
-        val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        mkdir(e.distributionDir)
-        exec {
-          executable = "git"
-          args(
-            "archive",
-            "--prefix=${e.baseName.get()}/",
-            "--format=tar.gz",
-            "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
-            "HEAD"
-          )
-          workingDir(project.projectDir)
+      val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+      doFirst { mkdir(e.distributionDir) }
+
+      executable = "git"
+      args(
+        "archive",
+        "--prefix=${e.baseName.get()}/",
+        "--format=tar.gz",
+        "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
+        "HEAD",
+      )
+      workingDir(project.projectDir)
+    }
+
+    val digestSourceTarball =
+      tasks.register<GenerateDigest>("digestSourceTarball") {
+        description = "Generate the source tarball digest"
+        mustRunAfter(sourceTarball)
+        file.set {
+          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+          e.sourceTarball.get().asFile
         }
       }
-    }
-
-    val digestSourceTarball = tasks.register("digestSourceTarball")
-    digestSourceTarball.configure {
-      mustRunAfter(sourceTarball)
-
-      doFirst {
-        val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        generateDigest(e.sourceTarball.get().asFile, e.sourceTarballDigest.get().asFile, "SHA-512")
-      }
-    }
 
     sourceTarball.configure { finalizedBy(digestSourceTarball) }
 
     if (isSigning) {
-      val signSourceTarball = tasks.register<Sign>("signSourceTarball")
-      signSourceTarball.configure {
-        mustRunAfter(sourceTarball)
-        doFirst {
-          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-          sign(e.sourceTarball.get().asFile)
+      val signSourceTarball =
+        tasks.register<Sign>("signSourceTarball") {
+          description = "Sign the source tarball"
+          mustRunAfter(sourceTarball)
+          doFirst {
+            val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+            sign(e.sourceTarball.get().asFile)
+          }
         }
-      }
       sourceTarball.configure { finalizedBy(signSourceTarball) }
     }
 
@@ -133,8 +132,7 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val (asfPrj, _) = fetchAsfProject(asfName)
-        val asfProjectName = asfPrj["name"] as String
+        val asfProjectName = "Apache Polaris"
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 

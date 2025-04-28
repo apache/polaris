@@ -18,20 +18,20 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -48,7 +48,8 @@ class InMemoryStorageIntegrationTest {
                     "s3://bucket/path/to/warehouse",
                     "s3://bucket/anotherpath/to/warehouse",
                     "s3://bucket2/warehouse/"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -71,6 +72,21 @@ class InMemoryStorageIntegrationTest {
             Map.of(
                 PolarisStorageActions.READ,
                 new PolarisStorageIntegration.ValidationResult(false, "")));
+  }
+
+  @Test
+  public void testAwsAccountIdParsing() {
+    AwsStorageConfigurationInfo awsConfig =
+        new AwsStorageConfigurationInfo(
+            PolarisStorageConfigurationInfo.StorageType.S3,
+            List.of("s3://bucket/path/to/warehouse"),
+            "arn:aws:iam::012345678901:role/jdoe",
+            "us-east-2");
+
+    String expectedAccountId = "012345678901";
+    String actualAccountId = awsConfig.getAwsAccountId();
+
+    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
   }
 
   @Test
@@ -136,7 +152,8 @@ class InMemoryStorageIntegrationTest {
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -169,7 +186,8 @@ class InMemoryStorageIntegrationTest {
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
@@ -190,11 +208,11 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-        @NotNull PolarisDiagnostics diagnostics,
-        @NotNull PolarisStorageConfigurationInfo storageConfig,
+        @Nonnull PolarisDiagnostics diagnostics,
+        @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
-        @NotNull Set<String> allowedReadLocations,
-        @NotNull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedReadLocations,
+        @Nonnull Set<String> allowedWriteLocations) {
       return null;
     }
   }

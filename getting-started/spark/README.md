@@ -22,10 +22,22 @@
 This getting started guide provides a `docker-compose` file to set up [Apache Spark](https://spark.apache.org/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Spark. 
 A Jupyter notebook is used to run PySpark.
 
-## Run the `docker-compose` file
-To start the `docker-compose` file, run this command from the repo's root directory:
+## Build the Polaris image
+
+If a Polaris image is not already present locally, build one with the following command:
+
+```shell
+./gradlew \
+  :polaris-quarkus-server:assemble \
+  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 ```
-docker-compose -f getting-started/spark/docker-compose.yml up 
+
+## Run the `docker-compose` file
+
+To start the `docker-compose` file, run this command from the repo's root directory:
+```shell
+docker-compose -f getting-started/spark/docker-compose.yml up
 ```
 
 This will spin up 2 container services
@@ -37,9 +49,6 @@ In the Jupyter notebook container log, look for the URL to access the Jupyter no
 
 Open the Jupyter notebook in a browser.
 Navigate to [`notebooks/SparkPolaris.ipynb`](http://127.0.0.1:8888/lab/tree/notebooks/SparkPolaris.ipynb) <!-- markdown-link-check-disable-line -->
-
-## Change the Polaris credential
-The Polaris service will create a new root crendential on startup, find this credential in the Polaris service log and change the `polaris_credential` variable in the first cell of the jupyter notebook
 
 ## Run the Jupyter notebook
 You can now run all cells in the notebook or write your own code!

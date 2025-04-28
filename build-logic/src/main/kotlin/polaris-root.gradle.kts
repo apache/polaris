@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import copiedcode.CopiedCodeCheckerPlugin
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
@@ -30,11 +31,15 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
-spotless {
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
+apply<CopiedCodeCheckerPlugin>()
+
+if (!project.extra.has("duplicated-project-sources")) {
+  spotless {
+    kotlinGradle {
+      ktfmt().googleStyle()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+      target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
+    }
   }
 }
 
@@ -44,6 +49,19 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
       isDownloadJavadoc = false // was 'true', but didn't work
       isDownloadSources = false // was 'true', but didn't work
       inheritOutputDirs = true
+
+      excludeDirs =
+        excludeDirs +
+          setOf(
+            projectDir.resolve("build-logic/.kotlin"),
+            projectDir.resolve("integration-tests/build"),
+            projectDir.resolve("site/resources/_gen"),
+            projectDir.resolve("site/build"),
+            projectDir.resolve("logs"),
+            projectDir.resolve("polaris-venv"),
+            projectDir.resolve(".idea"),
+          ) +
+          allprojects.map { prj -> prj.layout.buildDirectory.asFile.get() }
     }
 
     project.settings {
@@ -63,20 +81,5 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 }
 
 extensions.getByType<PublishingHelperExtension>().apply {
-  asfProjectName = "polaris"
-
   mailingLists.addAll("dev", "issues", "commits")
-
-  podlingPpmcAsfIds.addAll(
-    "anoop",
-    "ashvin",
-    "jackye",
-    "jbonofre",
-    "russellspitzer",
-    "snazy",
-    "takidau",
-    "vvcephei"
-  )
-  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll("adutra", "annafil", "emaynard", "collado", "yufei", "ebyhr")
 }

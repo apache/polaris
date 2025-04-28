@@ -37,9 +37,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -76,32 +76,32 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** validate that the root catalog was properly constructed */
   @Test
-  void validateBootstrap() {
+  protected void validateBootstrap() {
     // allocate test driver
     polarisTestMetaStoreManager.validateBootstrap();
   }
 
   @Test
-  void testCreateTestCatalog() {
+  protected void testCreateTestCatalog() {
     // allocate test driver
     polarisTestMetaStoreManager.testCreateTestCatalog();
   }
 
   @Test
-  void testCreateTestCatalogWithRetry() {
+  protected void testCreateTestCatalogWithRetry() {
     // allocate test driver
     polarisTestMetaStoreManager.forceRetry();
     polarisTestMetaStoreManager.testCreateTestCatalog();
   }
 
   @Test
-  void testBrowse() {
+  protected void testBrowse() {
     // allocate test driver
     polarisTestMetaStoreManager.testBrowse();
   }
 
   @Test
-  void testCreateEntities() {
+  protected void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -122,7 +122,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .extracting(PolarisEntity::toCore)
           .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-      List<PolarisEntityActiveRecord> listedEntities =
+      List<EntityNameLookupRecord> listedEntities =
           metaStoreManager
               .listEntities(
                   polarisTestMetaStoreManager.polarisCallContext,
@@ -134,14 +134,14 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .isNotNull()
           .hasSize(2)
           .containsExactly(
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task1.getCatalogId(),
                   task1.getId(),
                   task1.getParentId(),
                   task1.getName(),
                   task1.getTypeCode(),
                   task1.getSubTypeCode()),
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task2.getCatalogId(),
                   task2.getId(),
                   task2.getParentId(),
@@ -152,7 +152,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testCreateEntitiesAlreadyExisting() {
+  protected void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -196,7 +196,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testCreateEntitiesWithConflict() {
+  protected void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
         CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
@@ -240,48 +240,60 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .setName(taskName)
         .withData("data")
         .setId(id)
-        .withTaskType(AsyncTaskType.FILE_CLEANUP)
+        .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
         .setCreateTimestamp(Instant.now().toEpochMilli())
         .build();
   }
 
   /** Test that entity updates works well */
   @Test
-  void testUpdateEntities() {
+  protected void testUpdateEntities() {
     // allocate test driver
     polarisTestMetaStoreManager.testUpdateEntities();
   }
 
   /** Test that entity drop works well */
   @Test
-  void testDropEntities() {
+  protected void testDropEntities() {
     // allocate test driver
     polarisTestMetaStoreManager.testDropEntities();
   }
 
   /** Test that granting/revoking privileges works well */
   @Test
-  void testPrivileges() {
+  protected void testPrivileges() {
     // allocate test driver
     polarisTestMetaStoreManager.testPrivileges();
   }
 
   /** test entity rename */
   @Test
-  void testRename() {
+  protected void testRename() {
     // allocate test driver
     polarisTestMetaStoreManager.testRename();
   }
 
+  /** test entity lookup */
+  @Test
+  protected void testLookup() {
+    polarisTestMetaStoreManager.testLookup();
+  }
+
   /** Test the set of functions for the entity cache */
   @Test
-  void testEntityCache() {
+  protected void testEntityCache() {
     // allocate test driver
     polarisTestMetaStoreManager.testEntityCache();
   }
 
+  /** Test that attaching/detaching policies works well */
   @Test
-  void testLoadTasks() {
+  protected void testPolicyMapping() {
+    polarisTestMetaStoreManager.testPolicyMapping();
+  }
+
+  @Test
+  protected void testLoadTasks() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
@@ -367,7 +379,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testLoadTasksInParallel() throws Exception {
+  protected void testLoadTasksInParallel() throws Exception {
     for (int i = 0; i < 100; i++) {
       polarisTestMetaStoreManager.createEntity(
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
@@ -375,7 +387,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
     List<Future<Set<String>>> futureList = new ArrayList<>();
-    List<Set<String>> responses;
     ExecutorService executorService = Executors.newCachedThreadPool();
     try {
       for (int i = 0; i < 3; i++) {
@@ -399,21 +410,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
                   return taskNames;
                 }));
       }
-      responses =
-          futureList.stream()
-              .map(
-                  f -> {
-                    try {
-                      return f.get();
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
     } finally {
       executorService.shutdown();
-      Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
+      Assertions.assertThat(executorService.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
     }
+    List<Set<String>> responses =
+        futureList.stream()
+            .map(
+                f -> {
+                  try {
+                    return f.get(30, TimeUnit.SECONDS);
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
     Assertions.assertThat(responses)
         .hasSize(3)
         .satisfies(l -> Assertions.assertThat(l.stream().flatMap(Set::stream)).hasSize(100));
@@ -428,7 +439,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** Test generateNewEntityId() function that generates unique ids by creating Tasks in parallel */
   @Test
-  void testCreateTasksInParallel() throws Exception {
+  protected void testCreateTasksInParallel() throws Exception {
     List<Future<List<Long>>> futureList = new ArrayList<>();
     Random rand = new Random();
     ExecutorService executorService = Executors.newCachedThreadPool();

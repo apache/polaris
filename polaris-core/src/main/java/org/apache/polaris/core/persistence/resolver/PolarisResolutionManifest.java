@@ -20,13 +20,13 @@ package org.apache.polaris.core.persistence.resolver;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -34,11 +34,9 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +53,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private final SecurityContext securityContext;
   private final String catalogName;
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
@@ -81,15 +79,20 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   public PolarisResolutionManifest(
       CallContext callContext,
       PolarisEntityManager entityManager,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
       String catalogName) {
     this.entityManager = entityManager;
     this.callContext = callContext;
-    this.authenticatedPrincipal = authenticatedPrincipal;
     this.catalogName = catalogName;
-    this.primaryResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+    this.primaryResolver = entityManager.prepareResolver(callContext, securityContext, catalogName);
     this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+    this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
+    this.securityContext = securityContext;
+    diagnostics.check(
+        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        "invalid_principal_type_for_resolution_manifest",
+        "principal={}",
+        securityContext.getUserPrincipal());
 
     // TODO: Make the rootContainer lookup no longer optional in the persistence store.
     // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
@@ -141,15 +144,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
-    // activated principal roles are known, add them to the call context
-    if (primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
-      List<PrincipalRoleEntity> activatedPrincipalRoles =
-          primaryResolver.getResolvedCallerPrincipalRoles().stream()
-              .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
-              .collect(Collectors.toList());
-      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
-    }
     return primaryResolverStatus;
+  }
+
+  public boolean getIsPassthroughFacade() {
+    return primaryResolver.getIsPassthroughFacade();
   }
 
   @Override
@@ -172,8 +171,9 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    *     "optional", or if it was resolved but the subType doesn't match the specified subType.
    */
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
-    return getResolvedPath(key, subType, false);
+  public PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
+    return getResolvedPath(key, entityType, subType, false);
   }
 
   /**
@@ -193,7 +193,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolver(callContext, securityContext, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 
@@ -202,23 +202,27 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       return null;
     }
 
-    List<EntityCacheEntry> resolvedPath = passthroughResolver.getResolvedPath();
-    if (requestedPath.isOptional()) {
+    List<ResolvedPolarisEntity> resolvedPath = passthroughResolver.getResolvedPath();
+    // If the catalog is a passthrough facade, we can go ahead and just return only as much of
+    // the parent path as was successfully found.
+    // TODO: For passthrough facade semantics, consider whether this should be where we generate
+    // the JIT-created entities that would get committed after we find them in the remote
+    // catalog.
+    if (requestedPath.isOptional() && !getIsPassthroughFacade()) {
       if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
         LOGGER.debug(
             "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
             key,
-            resolvedPath.stream().map(ResolvedPolarisEntity::new).collect(Collectors.toList()),
+            resolvedPath,
             requestedPath.getEntityNames());
         return null;
       }
     }
 
     List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
-    resolvedEntities.add(
-        new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
-    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    resolvedEntities.add(passthroughResolver.getResolvedReferenceCatalog());
+    resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
     LOGGER.debug(
         "Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
     return new PolarisResolvedPathWrapper(resolvedEntities);
@@ -230,7 +234,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    */
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntitySubType subType) {
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(key);
     if (resolvedPath == null) {
       return null;
@@ -246,11 +250,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   public Set<PolarisBaseEntity> getAllActivatedCatalogRoleAndPrincipalRoles() {
     Set<PolarisBaseEntity> activatedRoles = new HashSet<>();
     primaryResolver.getResolvedCallerPrincipalRoles().stream()
-        .map(EntityCacheEntry::getEntity)
+        .map(ResolvedPolarisEntity::getEntity)
         .forEach(activatedRoles::add);
     if (primaryResolver.getResolvedCatalogRoles() != null) {
       primaryResolver.getResolvedCatalogRoles().values().stream()
-          .map(EntityCacheEntry::getEntity)
+          .map(ResolvedPolarisEntity::getEntity)
           .forEach(activatedRoles::add);
     }
     return activatedRoles;
@@ -259,7 +263,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   public Set<PolarisBaseEntity> getAllActivatedPrincipalRoleEntities() {
     Set<PolarisBaseEntity> activatedEntities = new HashSet<>();
     primaryResolver.getResolvedCallerPrincipalRoles().stream()
-        .map(EntityCacheEntry::getEntity)
+        .map(ResolvedPolarisEntity::getEntity)
         .forEach(activatedEntities::add);
     return activatedEntities;
   }
@@ -273,14 +277,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       return null;
     }
-    EntityCacheEntry resolvedCacheEntry =
+    ResolvedPolarisEntity resolvedEntity =
         primaryResolver.getResolvedEntity(
             PolarisEntityType.ROOT, PolarisEntityConstants.getRootContainerName());
-    if (resolvedCacheEntry == null) {
+    if (resolvedEntity == null) {
       LOGGER.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
       return simulatedResolvedRootContainerEntity;
     }
-    return new ResolvedPolarisEntity(resolvedCacheEntry);
+    return resolvedEntity;
   }
 
   public PolarisResolvedPathWrapper getResolvedRootContainerEntityAsPath() {
@@ -293,8 +297,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     // a callsite failed to incorporate a reference catalog into its authorization flow but is
     // still trying to perform operations on the (nonexistence) reference catalog.
     diagnostics.checkNotNull(catalogName, "null_catalog_name_for_resolved_reference_catalog");
-    EntityCacheEntry resolvedCachedCatalog = primaryResolver.getResolvedReferenceCatalog();
-    if (resolvedCachedCatalog == null) {
+    ResolvedPolarisEntity resolvedReferenceCatalog = primaryResolver.getResolvedReferenceCatalog();
+    if (resolvedReferenceCatalog == null) {
       return null;
     }
     if (prependRootContainer) {
@@ -303,11 +307,9 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       // TODO: Throw appropriate Catalog NOT_FOUND exception before any call to
       // getResolvedReferenceCatalogEntity().
       return new PolarisResolvedPathWrapper(
-          List.of(
-              getResolvedRootContainerEntity(), new ResolvedPolarisEntity(resolvedCachedCatalog)));
+          List.of(getResolvedRootContainerEntity(), resolvedReferenceCatalog));
     } else {
-      return new PolarisResolvedPathWrapper(
-          List.of(new ResolvedPolarisEntity(resolvedCachedCatalog)));
+      return new PolarisResolvedPathWrapper(List.of(resolvedReferenceCatalog));
     }
   }
 
@@ -319,7 +321,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         key,
         pathLookup);
     int index = pathLookup.get(key);
-    List<EntityCacheEntry> resolved = primaryResolver.getResolvedPaths().get(index);
+    List<ResolvedPolarisEntity> resolved = primaryResolver.getResolvedPaths().get(index);
     if (resolved.isEmpty()) {
       return PolarisEntitySubType.NULL_SUBTYPE;
     }
@@ -348,8 +350,13 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // Return null for a partially-resolved "optional" path.
     ResolverPath requestedPath = addedPaths.get(index);
-    List<EntityCacheEntry> resolvedPath = primaryResolver.getResolvedPaths().get(index);
-    if (requestedPath.isOptional()) {
+    List<ResolvedPolarisEntity> resolvedPath = primaryResolver.getResolvedPaths().get(index);
+    // If the catalog is a passthrough facade, we can go ahead and just return only as much of
+    // the parent path as was successfully found.
+    // TODO: For passthrough facade semantics, consider whether this should be where we generate
+    // the JIT-created entities that would get committed after we find them in the remote
+    // catalog.
+    if (requestedPath.isOptional() && !getIsPassthroughFacade()) {
       if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
         return null;
       }
@@ -359,8 +366,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (prependRootContainer) {
       resolvedEntities.add(getResolvedRootContainerEntity());
     }
-    resolvedEntities.add(new ResolvedPolarisEntity(primaryResolver.getResolvedReferenceCatalog()));
-    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
+    resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 
@@ -369,12 +376,21 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    *     "optional", or if it was resolved but the subType doesn't match the specified subType.
    */
   public PolarisResolvedPathWrapper getResolvedPath(
-      Object key, PolarisEntitySubType subType, boolean prependRootContainer) {
+      Object key,
+      PolarisEntityType entityType,
+      PolarisEntitySubType subType,
+      boolean prependRootContainer) {
     PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
     if (resolvedPath == null) {
       return null;
     }
-    if (resolvedPath.getRawLeafEntity() != null
+    // In the case of a passthrough facade, we may have only resolved part of the parent path
+    // in which case the subtype wouldn't match; return the path anyways in this case.
+    //
+    // TODO: Reconcile how we'll handle "TABLE_NOT_FOUND" or "VIEW_NOT_FOUND" semantics
+    // against the remote catalog.
+    if (!getIsPassthroughFacade()
+        && resolvedPath.getRawLeafEntity() != null
         && subType != PolarisEntitySubType.ANY_SUBTYPE
         && resolvedPath.getRawLeafEntity().getSubType() != subType) {
       return null;
@@ -398,15 +414,15 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       return null;
     }
 
-    EntityCacheEntry resolvedCacheEntry = primaryResolver.getResolvedEntity(entityType, entityName);
-    if (resolvedCacheEntry == null) {
+    ResolvedPolarisEntity resolvedEntity =
+        primaryResolver.getResolvedEntity(entityType, entityName);
+    if (resolvedEntity == null) {
       return null;
     }
 
     ResolvedPolarisEntity resolvedRootContainerEntity = getResolvedRootContainerEntity();
     return resolvedRootContainerEntity == null
-        ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry)))
-        : new PolarisResolvedPathWrapper(
-            List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry)));
+        ? new PolarisResolvedPathWrapper(List.of(resolvedEntity))
+        : new PolarisResolvedPathWrapper(List.of(resolvedRootContainerEntity, resolvedEntity));
   }
 }

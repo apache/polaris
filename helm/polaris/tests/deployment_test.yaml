@@ -175,37 +175,6 @@ tests:
           content:
             foo: bar
 
-  # spec.template.spec.initContainers
-  - it: should not set initContainers by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.initContainers
-  - it: should set initContainers if persistence is enabled
-    set:
-      persistenceConfigSecret: polaris-persistence-secret
-      polarisServerConfig:
-        metaStoreManager:
-          conf-file: /eclipselink-config/conf.jar!/persistence.xml
-      toolsImage:
-        repository: test-repo
-        pullPolicy: Always
-    asserts:
-      - exists:
-          path: spec.template.spec.initContainers
-      - contains:
-          path: spec.template.spec.initContainers
-          content:
-            name: init-config
-            image: test-repo:latest
-            imagePullPolicy: Always
-            command: [ "jar" ]
-            args: [ "-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml" ]
-            volumeMounts:
-              - name: eclipselink-config-volume
-                mountPath: /eclipselink-config
-              - name: secret-volume
-                mountPath: /secret
-
   # spec.template.spec.imagePullSecrets
   - it: should not set imagePullSecrets by default
     asserts:
@@ -263,19 +232,23 @@ tests:
           value: polaris-sa
 
   # spec.template.spec.securityContext
-  - it: should not set securityContext by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.securityContext
-  - it: should set securityContext
-    set:
-      podSecurityContext:
-        runAsUser: 1000
+  - it: should set securityContext by default
     asserts:
       - isSubset:
           path: spec.template.spec.securityContext
           content:
-            runAsUser: 1000
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+  - it: should set custom securityContext
+    set:
+      podSecurityContext:
+        fsGroup: 1234
+    asserts:
+      - isSubset:
+          path: spec.template.spec.securityContext
+          content:
+            fsGroup: 1234
 
   # spec.template.spec.containers
   - it: should set container name
@@ -285,19 +258,31 @@ tests:
           value: polaris
 
   # spec.template.spec.containers[0].securityContext
-  - it: should not set container securityContext by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.containers[0].securityContext
-  - it: should set container securityContext
-    set:
-      securityContext:
-        runAsUser: 1000
+  - it: should set container securityContext by default
     asserts:
       - isSubset:
           path: spec.template.spec.containers[0].securityContext
           content:
-            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10000
+            capabilities:
+              drop: [ "ALL" ]
+            seccompProfile:
+              type: RuntimeDefault
+  - it: should set custom container securityContext
+    set:
+      containerSecurityContext:
+        allowPrivilegeEscalation: true
+        runAsNonRoot: false
+        runAsUser: 1234
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].securityContext
+          content:
+            allowPrivilegeEscalation: true
+            runAsNonRoot: false
+            runAsUser: 1234
 
   # spec.template.spec.containers[0].image
   - it: should set container image
@@ -360,45 +345,41 @@ tests:
     asserts:
       - lengthEqual:
           path: spec.template.spec.volumes
-          count: 1
+          count: 2 # config-volume + temp-dir
       - lengthEqual:
           path: spec.template.spec.containers[0].volumeMounts
-          count: 1
+          count: 2 # config-volume + temp-dir
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: config-volume
-            mountPath: /app/config/polaris-server.yml
-            subPath: polaris-server.yml
-  - it: should set persistence volumes if persistence is enabled
+            mountPath: /deployments/config
+            readOnly: true
+
+  - it: should evaluate template expressions in persistence secret name
     set:
-      persistenceConfigSecret: polaris-persistence-secret
-      polarisServerConfig:
-        metaStoreManager:
-          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+      persistence:
+        type: eclipse-link
+        eclipseLink:
+          secret:
+            name: "{{ .Release.Name }}-persistence-secret"
     asserts:
-      - lengthEqual:
-          path: spec.template.spec.volumes
-          count: 3
-      - lengthEqual:
-          path: spec.template.spec.containers[0].volumeMounts
-          count: 2
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: eclipselink-config-volume
-            emptyDir: { }
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: secret-volume
-            secret:
-              secretName: polaris-persistence-secret
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: eclipselink-config-volume
-            mountPath: /eclipselink-config
+            name: config-volume
+            projected:
+              sources:
+                  - configMap:
+                      items:
+                        - key: application.properties
+                          path: application.properties
+                      name: polaris-release
+                  - secret:
+                      items:
+                        - key: persistence.xml
+                          path: persistence.xml
+                      name: polaris-release-persistence-secret
 
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default
@@ -409,38 +390,346 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            name: polaris-service
+            name: polaris-http
             containerPort: 8181
             protocol: TCP
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            name: polaris-metrics
+            name: polaris-mgmt
             containerPort: 8182
             protocol: TCP
+
+  - it: should set custom container ports
+    set:
+      service:
+        ports:
+          - name: polaris-custom
+            port: 18181
+      managementService:
+        ports:
+          - name: mgmt-custom
+            port: 18182
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: extra-port
+              port: 18183
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-custom
+            containerPort: 18181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: mgmt-custom
+            containerPort: 18182
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: extra-port
+            containerPort: 18183
+            protocol: TCP
+
+  - it: should use targetPort if defined
+    set:
+      service:
+        ports:
+          - name: polaris-custom
+            port: 18181
+            targetPort: 8181
+      managementService:
+        ports:
+          - name: mgmt-custom
+            port: 18182
+            targetPort: 8182
+      extraServices:
+        - nameSuffix: "-extra"
+          ports:
+            - name: extra-port
+              port: 18183
+              targetPort: 8183
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-custom
+            containerPort: 8181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: mgmt-custom
+            containerPort: 8182
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: extra-port
+            containerPort: 8183
+            protocol: TCP
+
+  - it: should fail if port name is not unique (#1)
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+          - name: polaris-http
+            port: 18181
+    asserts:
+      - failedTemplate:
+          errorPattern: "service.ports\\[\\d\\]: port name already taken: polaris-http"
+
+  - it: should fail if port name is not unique (#2)
+    set:
+      managementService:
+        ports:
+          - name: polaris-mgmt
+            port: 8182
+          - name: polaris-mgmt
+            port: 18182
+    asserts:
+      - failedTemplate:
+          errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris-mgmt"
+
+  - it: should fail if port name is not unique (#3)
+    set:
+      service:
+        ports:
+          - name: polaris
+            port: 8181
+      managementService:
+        ports:
+          - name: polaris
+            port: 8182
+    asserts:
+      - failedTemplate:
+          errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris"
+
+  - it: should not fail when extra service references the same port name and number
+    set:
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-http
+              port: 8181
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 2
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http
+            containerPort: 8181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-mgmt
+            containerPort: 8182
+            protocol: TCP
+
+  - it: should fail when extra service references the same port name with different number (#1)
+    set:
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-http
+              port: 9999
+    asserts:
+        - failedTemplate:
+            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-http, expected 8181, got 9999"
+
+  - it: should fail when extra service references the same port name with different number (#2)
+    set:
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-mgmt
+              port: 9999
+    asserts:
+        - failedTemplate:
+            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-mgmt, expected 8182, got 9999"
+
+  - it: should fail when extra service references the same port name with different number (#3)
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+          - name: polaris-https
+            port: 8043
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-https
+              port: 9999
+    asserts:
+        - failedTemplate:
+            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-https, expected 8043, got 9999"
+
+  - it: should fail when extra service references the same port name with different protocol
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-http
+              port: 8181
+              protocol: UDP
+    asserts:
+        - failedTemplate:
+            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong protocol for port polaris-http, expected TCP, got UDP"
+
+  - it: should create 2 ports with same number
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+          - name: polaris-http2
+            port: 8181
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http
+            containerPort: 8181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http2
+            containerPort: 8181
+            protocol: TCP
+  - it: should create 2 ports with same number using targetPort
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 18181
+            targetPort: 8181
+          - name: polaris-http2
+            port: 18181
+            targetPort: 8181
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http
+            containerPort: 8181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http2
+            containerPort: 8181
+            protocol: TCP
+  - it: should set port protocols
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+            protocol: UDP
+      managementService:
+        ports:
+          - name: polaris-mgmt
+            port: 8182
+            protocol: UDP
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-extra
+              port: 8183
+              protocol: UDP
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-http
+            containerPort: 8181
+            protocol: UDP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-mgmt
+            containerPort: 8182
+            protocol: UDP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-extra
+            containerPort: 8183
+            protocol: UDP
 
   # spec.template.spec.containers[0].livenessProbe
   - it: should set container livenessProbe by default
     set:
+      managementService:
+        ports:
+          - name: mgmt-custom
+            port: 9999
       livenessProbe:
         initialDelaySeconds: 11
         periodSeconds: 22
         successThreshold: 33
         failureThreshold: 44
         timeoutSeconds: 55
+        terminationGracePeriodSeconds: 66
     asserts:
-      - isSubset:
+      - equal:
           path: spec.template.spec.containers[0].livenessProbe
-          content:
+          value:
+            httpGet:
+              path: /q/health/live
+              port: mgmt-custom
+              scheme: HTTP
             initialDelaySeconds: 11
             periodSeconds: 22
             successThreshold: 33
             failureThreshold: 44
             timeoutSeconds: 55
+            terminationGracePeriodSeconds: 66
 
   # spec.template.spec.containers[0].readinessProbe
   - it: should set container readinessProbe by default
     set:
+      managementService:
+        ports:
+          - name: mgmt-custom
+            port: 9999
       readinessProbe:
         initialDelaySeconds: 11
         periodSeconds: 22
@@ -448,9 +737,13 @@ tests:
         failureThreshold: 44
         timeoutSeconds: 55
     asserts:
-      - isSubset:
+      - equal:
           path: spec.template.spec.containers[0].readinessProbe
-          content:
+          value:
+            httpGet:
+              path: /q/health/ready
+              port: mgmt-custom
+              scheme: HTTP
             initialDelaySeconds: 11
             periodSeconds: 22
             successThreshold: 33
@@ -548,3 +841,221 @@ tests:
               operator: "Equal"
               value: "value"
               effect: "NoSchedule"
+
+  - it: should set storage credentials
+    set:
+      storage:
+        secret:
+          name: polaris-storage-secret
+          awsAccessKeyId: awsAccessKeyId
+          awsSecretAccessKey: awsSecretAccessKey
+          gcpToken: gcpToken
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: polaris.storage.aws.access-key
+            valueFrom:
+              secretKeyRef:
+                name: polaris-storage-secret
+                key: awsAccessKeyId
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: polaris.storage.aws.secret-key
+            valueFrom:
+              secretKeyRef:
+                name: polaris-storage-secret
+                key: awsSecretAccessKey
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: polaris.storage.gcp.token
+            valueFrom:
+              secretKeyRef:
+                name: polaris-storage-secret
+                key: gcpToken
+
+  - it: should set extra env
+    set:
+      extraEnv:
+        - name: foo
+          value: bar
+        - name: baz
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: foo
+            value: bar
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: baz
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: key
+
+  - it: should set extra env + storage credentials
+    set:
+      storage:
+        secret:
+          name: polaris-storage-secret
+          awsAccessKeyId: awsAccessKeyId
+      extraEnv:
+        - name: foo
+          value: bar
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+              name: foo
+              value: bar
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: polaris.storage.aws.access-key
+            valueFrom:
+              secretKeyRef:
+                name: polaris-storage-secret
+                key: awsAccessKeyId
+
+  - it: should not set any environment variables by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+
+  - it: should configure config volume
+    set:
+      image.configDir: /config/dir
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+
+  - it: should configure config volume with token broker secret
+    set:
+      image.configDir: /config/dir
+      authentication:
+        tokenBroker:
+          secret:
+            name: polaris-token-broker
+            publicKey: public.key
+            privateKey: private.key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+                - secret:
+                    name: polaris-token-broker
+                    items:
+                      - key: public.key
+                        path: public.pem
+                      - key: private.key
+                        path: private.pem
+
+  - it: should configure config volume with persistence secret
+    set:
+      image.configDir: /config/dir
+      persistence:
+        type: eclipse-link
+        eclipseLink:
+          secret:
+            name: polaris-persistence
+            key: custom.xml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+                - secret:
+                    name: polaris-persistence
+                    items:
+                      - key: custom.xml
+                        path: persistence.xml
+
+  - it: should configure volume for file logging
+    set:
+      logging.file.enabled: true
+      logging.file.logsDir: /custom/logs
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: logs-storage
+            mountPath: /custom/logs
+            readOnly: false
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: logs-storage
+            persistentVolumeClaim:
+              claimName: polaris-release-logs
+
+  - it: should include extra volumes and volume mounts
+    set:
+      extraVolumes:
+        - name: extra-volume
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: extra-volume
+          mountPath: /extra
+          readOnly: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: extra-volume
+            mountPath: /extra
+            readOnly: false
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: extra-volume
+            emptyDir: {}

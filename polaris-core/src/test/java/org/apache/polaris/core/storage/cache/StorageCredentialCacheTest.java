@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage.cache;
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -36,17 +37,16 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
-import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisCredentialVendor.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -65,12 +65,12 @@ public class StorageCredentialCacheTest {
     // diag services
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     // the entity store, use treemap implementation
-    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
+    TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     // to interact with the metastore
-    PolarisMetaStoreSession metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    TransactionalPersistence metaStore =
+        new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
+    metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = new StorageCredentialCache();
   }
 
@@ -85,6 +85,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -92,7 +93,7 @@ public class StorageCredentialCacheTest {
     PolarisEntity polarisEntity =
         new PolarisEntity(
             new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     Assertions.assertThatThrownBy(
             () ->
                 storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -116,6 +117,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -124,7 +126,7 @@ public class StorageCredentialCacheTest {
         .thenReturn(mockedScopedCreds.get(1));
     PolarisBaseEntity baseEntity =
         new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name");
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
 
     // add an item to the cache
@@ -158,6 +160,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -166,7 +169,7 @@ public class StorageCredentialCacheTest {
         .thenReturn(mockedScopedCreds.get(2));
     PolarisBaseEntity baseEntity =
         new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name");
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
     StorageCredentialCacheKey cacheKey =
         new StorageCredentialCacheKey(
@@ -215,6 +218,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -302,6 +306,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -393,6 +398,7 @@ public class StorageCredentialCacheTest {
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
                       .put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
                       .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;
@@ -416,22 +422,110 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
-  @NotNull
+  @Nonnull
   private static List<PolarisEntity> getPolarisEntities() {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     PolarisEntity polarisEntity2 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                2, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                2, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     PolarisEntity polarisEntity3 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    List<PolarisEntity> entityList = Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
-    return entityList;
+    return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
+  }
+
+  @Test
+  public void testAzureCredentialFormatting() {
+    storageCredentialCache = new StorageCredentialCache();
+    List<ScopedCredentialsResult> mockedScopedCreds =
+        List.of(
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
+                        .put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "some_account")
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())),
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
+                        .put(
+                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            "some_account." + AzureLocation.ADLS_ENDPOINT)
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())),
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
+                        .put(
+                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            "some_account." + AzureLocation.BLOB_ENDPOINT)
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())));
+
+    Mockito.when(
+            metaStoreManager.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyLong(),
+                Mockito.anyLong(),
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet()))
+        .thenReturn(mockedScopedCreds.get(0))
+        .thenReturn(mockedScopedCreds.get(1))
+        .thenReturn(mockedScopedCreds.get(2));
+    List<PolarisEntity> entityList = getPolarisEntities();
+
+    Map<String, String> noSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(0),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(noSuffixResult.size()).isEqualTo(2);
+    Assertions.assertThat(noSuffixResult).containsKey("adls.sas-token.some_account");
+
+    Map<String, String> adlsSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(1),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(adlsSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(adlsSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(adlsSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
+
+    Map<String, String> blobSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(2),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(blobSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(blobSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(blobSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.BLOB_ENDPOINT);
   }
 }

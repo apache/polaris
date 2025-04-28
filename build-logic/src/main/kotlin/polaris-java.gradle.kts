@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import java.util.Properties
+import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -24,30 +26,44 @@ import org.gradle.kotlin.dsl.named
 import publishing.PublishingHelperPlugin
 
 plugins {
-  id("jacoco")
-  id("java")
-  id("com.diffplug.spotless")
+  jacoco
+  `java-library`
+  `java-test-fixtures`
+  `jvm-test-suite`
+  id("polaris-spotless")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
 
 apply<PublishingHelperPlugin>()
 
+if (project.extra.has("duplicated-project-sources")) {
+  // skip the style check for duplicated projects
+  tasks.withType<Checkstyle>().configureEach { enabled = false }
+}
+
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
-  options.errorprone.error(
-    "DefaultCharset",
-    "FallThrough",
-    "MissingCasesInEnumSwitch",
-    "MissingOverride",
-    "ModifiedButNotUsed",
-    "OrphanedFormatString",
-    "PatternMatchingInstanceof",
-    "StringCaseLocaleUsage",
-  )
+  options.errorprone.excludedPaths =
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
+  val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
+  inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
+  options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
 }
+
+private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity> =
+  rulesFile.reader().use {
+    val rules = Properties()
+    rules.load(it)
+    rules
+      .mapKeys { e -> (e.key as String).trim() }
+      .mapValues { e -> (e.value as String).trim() }
+      .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
+      .mapValues { e -> CheckSeverity.valueOf(e.value) }
+      .toMap()
+  }
 
 tasks.register("compileAll").configure {
   group = "build"
@@ -61,39 +77,93 @@ tasks.register("format").configure {
   dependsOn("spotlessApply")
 }
 
-tasks.named<Test>("test").configure {
-  useJUnitPlatform()
-  jvmArgs("-Duser.language=en")
+tasks.named<Test>("test").configure { jvmArgs("-Duser.language=en") }
+
+testing {
+  suites {
+    withType<JvmTestSuite> {
+      val libs = versionCatalogs.named("libs")
+
+      useJUnitJupiter(
+        libs
+          .findLibrary("junit-bom")
+          .orElseThrow { GradleException("junit-bom not declared in libs.versions.toml") }
+          .map { it.version!! }
+      )
+
+      dependencies {
+        implementation(project())
+        implementation(testFixtures(project()))
+        runtimeOnly(
+          libs.findLibrary("logback-classic").orElseThrow {
+            GradleException("logback-classic not declared in libs.versions.toml")
+          }
+        )
+        implementation(
+          libs.findLibrary("assertj-core").orElseThrow {
+            GradleException("assertj-core not declared in libs.versions.toml")
+          }
+        )
+        implementation(
+          libs.findLibrary("mockito-core").orElseThrow {
+            GradleException("mockito-core not declared in libs.versions.toml")
+          }
+        )
+      }
+
+      // Special handling for test-suites with names containing `manualtest`, which are intended to
+      // be run on demand rather than implicitly via `check`.
+      if (!name.lowercase().contains("manualtest")) {
+        targets.all {
+          if (testTask.name != "test") {
+            testTask.configure { shouldRunAfter("test") }
+            tasks.named("check").configure { dependsOn(testTask) }
+          }
+        }
+      }
+    }
+  }
 }
 
-spotless {
-  val disallowWildcardImports = { text: String ->
-    val regex = "~/import .*\\.\\*;/".toRegex()
-    if (regex.matches(text)) {
-      throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+dependencies {
+  val libs = versionCatalogs.named("libs")
+  testFixturesImplementation(
+    platform(
+      libs.findLibrary("junit-bom").orElseThrow {
+        GradleException("junit-bom not declared in libs.versions.toml")
+      }
+    )
+  )
+  testFixturesImplementation("org.junit.jupiter:junit-jupiter")
+  testFixturesImplementation(
+    libs.findLibrary("assertj-core").orElseThrow {
+      GradleException("assertj-core not declared in libs.versions.toml")
     }
-    text
-  }
-  java {
-    target("src/main/java/**/*.java", "src/testFixtures/java/**/*.java", "src/test/java/**/*.java")
-    googleJavaFormat()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
-    endWithNewline()
-    custom("disallowWildcardImports", disallowWildcardImports)
-    toggleOffOn()
-  }
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts")
-  }
-  format("xml") {
-    target("src/**/*.xml", "src/**/*.xsd")
-    targetExclude("codestyle/copyright-header.xml")
-    eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-      .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
-    // getting the license-header delimiter right is a bit tricky.
-    // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+  )
+  testFixturesImplementation(
+    libs.findLibrary("mockito-core").orElseThrow {
+      GradleException("mockito-core not declared in libs.versions.toml")
+    }
+  )
+}
+
+tasks.withType<Test>().configureEach {
+  systemProperty("file.encoding", "UTF-8")
+  systemProperty("user.language", "en")
+  systemProperty("user.country", "US")
+  systemProperty("user.variant", "")
+}
+
+tasks.withType<Jar>().configureEach {
+  manifest {
+    attributes(
+      // Do not add any (more or less) dynamic information to jars, because that makes Gradle's
+      // caching way less efficient. Note that version and Git information are already added to jar
+      // manifests for release(-like) builds.
+      "Implementation-Title" to "Apache Polaris(TM) (incubating)",
+      "Implementation-Vendor" to "Apache Software Foundation",
+      "Implementation-URL" to "https://polaris.apache.org/",
+    )
   }
 }
 
@@ -108,4 +178,38 @@ tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
+  if (plugins.hasPlugin("org.kordamp.gradle.jandex")) {
+    dependsOn("jandex")
+  }
+}
+
+tasks.register("printRuntimeClasspath").configure {
+  group = "help"
+  description = "Print the classpath as a path string to be used when running tools like 'jol'"
+  inputs.files(configurations.named("runtimeClasspath"))
+  doLast {
+    val cp = configurations.getByName("runtimeClasspath")
+    val def = configurations.getByName("runtimeElements")
+    logger.lifecycle("${def.outgoing.artifacts.files.asPath}:${cp.asPath}")
+  }
+}
+
+configurations.all {
+  rootProject
+    .file("gradle/banned-dependencies.txt")
+    .readText(Charsets.UTF_8)
+    .trim()
+    .lines()
+    .map { it.trim() }
+    .filterNot { it.isBlank() || it.startsWith("#") }
+    .forEach { line ->
+      val idx = line.indexOf(':')
+      if (idx == -1) {
+        exclude(group = line)
+      } else {
+        val group = line.substring(0, idx)
+        val module = line.substring(idx + 1)
+        exclude(group = group, module = module)
+      }
+    }
 }

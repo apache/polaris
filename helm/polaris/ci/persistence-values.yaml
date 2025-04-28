@@ -18,16 +18,22 @@
 #
 
 image:
-  repository: polaris
-  tag: latest
   pullPolicy: Never
 
-bootstrapMetastoreManager: true
+authentication:
+  tokenBroker:
+    secret:
+      name: polaris-token-broker
 
-persistenceConfigSecret: polaris-persistence
+logging:
+  file:
+    enabled: true
+    json: true
+    storage:
+      size: 50Mi
 
-polarisServerConfig:
-  metaStoreManager:
-    type: eclipse-link
-    persistence-unit: polaris
-    conf-file: /eclipselink-config/conf.jar!/persistence.xml
+persistence:
+  type: eclipse-link
+  eclipseLink:
+    secret:
+      name: polaris-persistence

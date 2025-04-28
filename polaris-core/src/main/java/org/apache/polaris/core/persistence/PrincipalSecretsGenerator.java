@@ -18,28 +18,23 @@
  */
 package org.apache.polaris.core.persistence;
 
-import java.util.Locale;
-import java.util.function.Function;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.Optional;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 
 /**
  * An interface for generating principal secrets. It enables detaching the secret generation logic
  * from services that actually manage principal objects (create, remove, rotate secrets, etc.)
  *
  * <p>The implementation statically available from {@link #bootstrap(String)} allows one-time client
- * ID and secret overrides via environment variables, which can be useful for bootstrapping new
- * realms.
+ * ID and secret overrides via system properties or environment variables, which can be useful for
+ * bootstrapping new realms.
  *
- * <p>The environment variable name follow this pattern:
- *
- * <ul>
- *   <li>{@code POLARIS_BOOTSTRAP_<REALM-NAME>_<PRINCIPAL-NAME>_CLIENT_ID}
- *   <li>{@code POLARIS_BOOTSTRAP_<REALM-NAME>_<PRINCIPAL-NAME>_CLIENT_SECRET}
- * </ul>
- *
- * For example: {@code POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_ID} and {@code
- * POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_SECRET}.
+ * <p>See {@link RootCredentialsSet} for more information on the expected environment variable name,
+ * and the format of the bootstrap credentials.
  */
 @FunctionalInterface
 public interface PrincipalSecretsGenerator {
@@ -60,26 +55,40 @@ public interface PrincipalSecretsGenerator {
    * @param principalId the ID of the related principal. This ID is part of the returned data.
    * @return a new {@link PolarisPrincipalSecrets} instance for the specified principal.
    */
-  PolarisPrincipalSecrets produceSecrets(@NotNull String principalName, long principalId);
+  PolarisPrincipalSecrets produceSecrets(@Nonnull String principalName, long principalId);
 
   static PrincipalSecretsGenerator bootstrap(String realmName) {
-    return bootstrap(realmName, System.getenv()::get);
+    return bootstrap(realmName, RootCredentialsSet.fromEnvironment());
   }
 
-  static PrincipalSecretsGenerator bootstrap(String realmName, Function<String, String> config) {
-    return (principalName, principalId) -> {
-      String propId = String.format("POLARIS_BOOTSTRAP_%s_%s_CLIENT_ID", realmName, principalName);
-      String propSecret =
-          String.format("POLARIS_BOOTSTRAP_%s_%s_CLIENT_SECRET", realmName, principalName);
+  static PrincipalSecretsGenerator bootstrap(
+      String realmName, @Nullable RootCredentialsSet rootCredentialsSet) {
+    return (principalName, principalId) ->
+        Optional.ofNullable(rootCredentialsSet)
+            .flatMap(
+                credentialsSet -> getSecrets(realmName, principalName, principalId, credentialsSet))
+            .orElseGet(() -> RANDOM_SECRETS.produceSecrets(principalName, principalId));
+  }
 
-      String clientId = config.apply(propId.toUpperCase(Locale.ROOT));
-      String secret = config.apply(propSecret.toUpperCase(Locale.ROOT));
-      // use config values at most once (do not interfere with secret rotation)
-      if (clientId != null && secret != null) {
-        return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
-      } else {
-        return RANDOM_SECRETS.produceSecrets(principalName, principalId);
-      }
-    };
+  /**
+   * Get the secrets for the specified principal in the specified realm, if available among the
+   * credentials that were supplied for bootstrap. Only credentials for the root principal are
+   * supported.
+   */
+  private static Optional<PolarisPrincipalSecrets> getSecrets(
+      String realmName,
+      String principalName,
+      long principalId,
+      RootCredentialsSet rootCredentialsSet) {
+    if (principalName.equals(PolarisEntityConstants.getRootPrincipalName())) {
+      return Optional.ofNullable(rootCredentialsSet.credentials().get(realmName))
+          .map(
+              credentials -> {
+                String clientId = credentials.clientId();
+                String secret = credentials.clientSecret();
+                return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
+              });
+    }
+    return Optional.empty();
   }
 }

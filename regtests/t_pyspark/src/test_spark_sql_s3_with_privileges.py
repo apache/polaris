@@ -40,7 +40,6 @@ from polaris.management import ApiClient as ManagementApiClient
 from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest, UpdateCatalogRequest
-from polaris.management.exceptions import ForbiddenException
 
 
 @pytest.fixture
@@ -51,8 +50,8 @@ def snowman(polaris_url, polaris_catalog_url, root_client, snowflake_catalog):
   :param snowflake_catalog:
   :return:
   """
-  snowman_name = "snowman"
-  table_writer_rolename = "table_writer"
+  snowman_name = f"snowman_{str(uuid.uuid4())[-10:]}"
+  table_writer_rolename = f"table_writer_{str(uuid.uuid4())[-10:]}"
   snowflake_writer_rolename = "snowflake_writer"
   try:
     snowman = create_principal(polaris_url, polaris_catalog_url, root_client, snowman_name)
@@ -155,64 +154,65 @@ def snowman_catalog_client(polaris_catalog_url, snowman):
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=snowman.principal.client_id,
                               client_secret=snowman.credentials.client_secret,
                               grant_type='client_credentials',
-                              _headers={'realm': 'default-realm'})
+                              _headers={'realm': 'POLARIS'})
 
   return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
                                                           host=polaris_catalog_url)))
 
+
 @pytest.fixture
 def creator_catalog_client(polaris_catalog_url, creator):
-    """
-    Create an iceberg catalog client with TABLE_CREATE credentials
-    :param polaris_catalog_url:
-    :param creator:
-    :return:
-    """
-    client = CatalogApiClient(Configuration(username=creator.principal.client_id,
-                                            password=creator.credentials.client_secret,
-                                            host=polaris_catalog_url))
-    oauth_api = IcebergOAuth2API(client)
-    token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=creator.principal.client_id,
-                                client_secret=creator.credentials.client_secret,
-                                grant_type='client_credentials',
-                                _headers={'realm': 'default-realm'})
+  """
+  Create an iceberg catalog client with TABLE_CREATE credentials
+  :param polaris_catalog_url:
+  :param creator:
+  :return:
+  """
+  client = CatalogApiClient(Configuration(username=creator.principal.client_id,
+                                          password=creator.credentials.client_secret,
+                                          host=polaris_catalog_url))
+  oauth_api = IcebergOAuth2API(client)
+  token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=creator.principal.client_id,
+                              client_secret=creator.credentials.client_secret,
+                              grant_type='client_credentials',
+                              _headers={'realm': 'POLARIS'})
 
-    return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
-                                                            host=polaris_catalog_url)))
+  return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
+                                                          host=polaris_catalog_url)))
 
 
 @pytest.fixture
 def creator(polaris_url, polaris_catalog_url, root_client, snowflake_catalog):
-    """
-    create the creator principal with only TABLE_CREATE privileges
-    :param root_client:
-    :param snowflake_catalog:
-    :return:
-    """
-    creator_name = "creator"
-    principal_role = "creator_principal_role"
-    catalog_role = "creator_catalog_role"
-    try:
-        creator = create_principal(polaris_url, polaris_catalog_url, root_client, creator_name)
-        creator_principal_role = create_principal_role(root_client, principal_role)
-        creator_catalog_role = create_catalog_role(root_client, snowflake_catalog, catalog_role)
+  """
+  create the creator principal with only TABLE_CREATE privileges
+  :param root_client:
+  :param snowflake_catalog:
+  :return:
+  """
+  creator_name = "creator"
+  principal_role = "creator_principal_role"
+  catalog_role = "creator_catalog_role"
+  try:
+    creator = create_principal(polaris_url, polaris_catalog_url, root_client, creator_name)
+    creator_principal_role = create_principal_role(root_client, principal_role)
+    creator_catalog_role = create_catalog_role(root_client, snowflake_catalog, catalog_role)
 
-        root_client.assign_catalog_role_to_principal_role(principal_role_name=creator_principal_role.name,
-                                                          catalog_name=snowflake_catalog.name,
-                                                          grant_catalog_role_request=GrantCatalogRoleRequest(
-                                                              catalog_role=creator_catalog_role))
-        root_client.add_grant_to_catalog_role(snowflake_catalog.name, creator_catalog_role.name,
-                                              AddGrantRequest(grant=CatalogGrant(catalog_name=snowflake_catalog.name,
-                                                                                 type='catalog',
-                                                                                 privilege=CatalogPrivilege.TABLE_CREATE)))
-        root_client.assign_principal_role(creator.principal.name,
-                                          grant_principal_role_request=GrantPrincipalRoleRequest(
-                                              principal_role=creator_principal_role))
-        yield creator
-    finally:
-        root_client.delete_principal(creator_name)
-        root_client.delete_principal_role(principal_role_name=principal_role)
-        root_client.delete_catalog_role(catalog_role_name=catalog_role, catalog_name=snowflake_catalog.name)
+    root_client.assign_catalog_role_to_principal_role(principal_role_name=creator_principal_role.name,
+                                                      catalog_name=snowflake_catalog.name,
+                                                      grant_catalog_role_request=GrantCatalogRoleRequest(
+                                                        catalog_role=creator_catalog_role))
+    root_client.add_grant_to_catalog_role(snowflake_catalog.name, creator_catalog_role.name,
+                                          AddGrantRequest(grant=CatalogGrant(catalog_name=snowflake_catalog.name,
+                                                                             type='catalog',
+                                                                             privilege=CatalogPrivilege.TABLE_CREATE)))
+    root_client.assign_principal_role(creator.principal.name,
+                                      grant_principal_role_request=GrantPrincipalRoleRequest(
+                                        principal_role=creator_principal_role))
+    yield creator
+  finally:
+    root_client.delete_principal(creator_name)
+    root_client.delete_principal_role(principal_role_name=principal_role)
+    root_client.delete_catalog_role(catalog_role_name=catalog_role, catalog_name=snowflake_catalog.name)
 
 
 @pytest.fixture
@@ -230,13 +230,14 @@ def reader_catalog_client(polaris_catalog_url, reader):
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=reader.principal.client_id,
                               client_secret=reader.credentials.client_secret,
                               grant_type='client_credentials',
-                              _headers={'realm': 'default-realm'})
+                              _headers={'realm': 'POLARIS'})
 
   return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
                                                           host=polaris_catalog_url)))
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
   """
   Basic spark test - using snowman, create namespaces and a table. Insert into the table and read records back.
@@ -292,14 +293,16 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('USE db1.schema')
-    spark.sql('DROP TABLE iceberg_table')
+    spark.sql('DROP TABLE iceberg_table PURGE')
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
-def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url,
+                                                            snowman, reader):
   """
   Basic spark test - using snowman, create a namespace and try to create a table outside of the namespace. This should fail
 
@@ -327,8 +330,10 @@ def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowfla
       assert "is not in the list of allowed locations" in e.java_exception.getMessage()
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
-def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
+                                                     reader):
   """
   Basic spark test - using snowman, create a namespace and try to create a table outside of the namespace. This should fail
 
@@ -351,12 +356,23 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
     spark.sql(f"CREATE TABLE table_in_custom_namespace_location (col1 int, col2 string)")
     assert spark.sql("SELECT * FROM table_in_custom_namespace_location").count() == 0
     # check the metadata and assert the custom namespace location is used
-    entries = spark.sql(f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
+    entries = spark.sql(
+      f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
     assert namespace_location in entries[0][0]
+    try:
+        assert spark.sql("SELECT * FROM table_in_custom_namespace_location").count() == 0
+        # check the metadata and assert the custom namespace location is used
+        entries = spark.sql(
+            f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
+        assert namespace_location in entries[0][0]
+    finally:
+        spark.sql('DROP TABLE table_in_custom_namespace_location PURGE')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
-def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
+                                                      reader):
   """
   Basic spark test - using snowman, create a namespace and try to create a table outside of the namespace. This should fail
 
@@ -374,15 +390,19 @@ def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_cat
     table_location = snowflake_catalog.properties.default_base_location + '/db1/custom_schema_location/table_outside_namespace'
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('CREATE NAMESPACE db1')
-    spark.sql(f"CREATE NAMESPACE db1.schema LOCATION '{snowflake_catalog.properties.default_base_location}/db1/custom_schema_location'")
+    spark.sql(
+      f"CREATE NAMESPACE db1.schema LOCATION '{snowflake_catalog.properties.default_base_location}/db1/custom_schema_location'")
     spark.sql('SHOW NAMESPACES')
     spark.sql('USE db1.schema')
     # this is supported because it is inside of the custom namespace location
     spark.sql(f"CREATE TABLE iceberg_table_outside_namespace (col1 int, col2 string) LOCATION '{table_location}'")
+    spark.sql("drop table iceberg_table_outside_namespace PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
-def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catalog, polaris_catalog_url, snowman,
+                                                    reader):
   """
   Basic spark test - using snowman, create a namespace and try to create a table outside of the namespace. This should fail
 
@@ -405,15 +425,18 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
     spark.sql('USE db1.schema')
     spark.sql(f"CREATE TABLE my_iceberg_table (col1 int, col2 string) LOCATION '{table_location}'")
     try:
-      spark.sql(f"CREATE VIEW disallowed_view (int, string) TBLPROPERTIES ('location'= '{table_location}') AS SELECT * FROM my_iceberg_table")
+      spark.sql(
+        f"CREATE VIEW disallowed_view (int, string) TBLPROPERTIES ('location'= '{table_location}') AS SELECT * FROM my_iceberg_table")
       pytest.fail("Expected to fail when creating table outside of namespace directory")
     except Py4JJavaError as e:
       assert "conflicts with existing table or namespace at location" in e.java_exception.getMessage()
+    spark.sql("drop table my_iceberg_table PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                  snowman_catalog_client, test_bucket):
+                                                  snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
   to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
@@ -474,14 +497,14 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                       aws_session_token=response.config['s3.session-token'])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
     assert objects is not None
     assert 'Contents' in objects
-    assert len(objects['Contents']) >= 4  # idk, it varies - at least one file for each inser and one for the update
+    assert len(objects['Contents']) >= 4  # it varies - at least one file for each insert and one for the update
     print(f"Found {len(objects['Contents'])} data files in S3 before drop")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -501,21 +524,22 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     while 'Contents' in objects and len(objects['Contents']) > 0 and attempts < 60:
       time.sleep(1)  # seconds, not milliseconds ;)
       objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                                Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
       attempts = attempts + 1
 
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found metadata files {objects['Contents']}")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found data files {objects['Contents']}")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                  snowman_catalog_client, test_bucket):
+                                                        snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Update the catalog configuration to support unstructured table locations. Using snowman, create namespaces and a
   table configured to use object-store layout in a folder under the catalog root, outside of the default table
@@ -532,8 +556,9 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
   """
   snowflake_catalog.properties.additional_properties['allow.unstructured.table.location'] = 'true'
   root_client.update_catalog(catalog_name=snowflake_catalog.name,
-                             update_catalog_request=UpdateCatalogRequest(properties=snowflake_catalog.properties.to_dict(),
-                                                                         current_entity_version=snowflake_catalog.entity_version))
+                             update_catalog_request=UpdateCatalogRequest(
+                               properties=snowflake_catalog.properties.to_dict(),
+                               current_entity_version=snowflake_catalog.entity_version))
   with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
@@ -543,7 +568,8 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     spark.sql('CREATE NAMESPACE db1.schema')
     spark.sql('SHOW NAMESPACES')
     spark.sql('USE db1.schema')
-    spark.sql(f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/polaris_test/snowflake_catalog/{table_name}data')")
+    spark.sql(
+      f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data')")
     spark.sql('SHOW TABLES')
 
     # several inserts and an update, which should cause earlier files to show up as deleted in the later manifests
@@ -581,22 +607,27 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
                       aws_session_token=response.config['s3.session-token'])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/{table_name}data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data/')
     assert objects is not None
     assert len(objects['CommonPrefixes']) >= 3
 
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
     objs_to_delete = []
+
     for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                Prefix=f'{prefix["Prefix"]}schema/{table_name}/')
+      # Don't utilize delimiter so all files (recursive) are returned
+      data_objects = s3.list_objects(Bucket=test_bucket,
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data/')
       assert data_objects is not None
       print(data_objects)
       assert 'Contents' in data_objects
-      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
+      for obj in data_objects['Contents']:
+          filePathMap = {'Key': obj['Key']}
+          assert f'/schema/{table_name}/' in filePathMap['Key']
+          objs_to_delete.append(filePathMap)
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -612,9 +643,10 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
                       Delete={'Objects': objs_to_delete})
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                  snowman_catalog_client, test_bucket):
+                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table configured to use object-store layout, using a folder under the default
   table directory structure. Insert into the table in multiple operations and update existing records
@@ -638,8 +670,9 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     spark.sql('CREATE NAMESPACE db1.schema')
     spark.sql('SHOW NAMESPACES')
     spark.sql('USE db1.schema')
-    table_base_dir = f'polaris_test/snowflake_catalog/db1/schema/{table_name}/obj_layout/'
-    spark.sql(f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{table_base_dir}')")
+    table_base_dir = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/obj_layout/'
+    spark.sql(
+      f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{table_base_dir}')")
     spark.sql('SHOW TABLES')
 
     # several inserts and an update, which should cause earlier files to show up as deleted in the later manifests
@@ -684,15 +717,17 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
     objs_to_delete = []
     for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                Prefix=f'{prefix["Prefix"]}')
+      # Files may be under further subdirectories, so omit the
+      # delimiter so that all files (recursive) are returned.
+      data_objects = s3.list_objects(Bucket=test_bucket,
+                                     Prefix=f'{prefix["Prefix"]}')
       assert data_objects is not None
       print(data_objects)
       assert 'Contents' in data_objects
       objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -708,7 +743,8 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
                       Delete={'Objects': objs_to_delete})
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 # @pytest.mark.skip(reason="This test is flaky")
 def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_url, snowman):
   """
@@ -763,11 +799,13 @@ def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_u
     view_records = spark.sql(f"SELECT * FROM {table_name}_view").collect()
     assert len(view_records) == 6
     assert view_records[5][0] == 'changed string'
+    spark.sql(f"drop table {table_name} PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, polaris_catalog_url,
-                                                snowman, snowman_catalog_client, test_bucket):
+                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Create two tables using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
   for the first table.
@@ -792,9 +830,9 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
 
   table2_metadata = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                       "iceberg_table_2",
-                                                      "s3_direct_with_write_table2").metadata_location
+                                                      "vended-credentials").metadata_location
   response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                               "s3_direct_with_write")
+                                               "vended-credentials")
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -806,13 +844,13 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                     aws_session_token=response.config['s3.session-token'])
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/')
   assert objects is not None
   assert 'CommonPrefixes' in objects
   assert len(objects['CommonPrefixes']) > 0
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
   assert objects is not None
   assert 'Contents' in objects
   assert len(objects['Contents']) > 0
@@ -827,13 +865,13 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
   put_object = s3.put_object(Bucket=test_bucket, Key=f"{metadata_file['Key']}.bak",
                              Body=metadata_contents['Body'].read())
   assert put_object is not None
-  assert 'VersionId' in put_object
-  assert put_object['VersionId'] is not None
+  assert 'ETag' in put_object
+  assert put_object['ETag'] is not None
 
   # list files in the other table's directory. The access policy should restrict this
   try:
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
     pytest.fail('Expected exception listing file outside of table directory')
   except botocore.exceptions.ClientError as error:
     print(error)
@@ -849,16 +887,17 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('USE db1.schema')
-    spark.sql('DROP TABLE iceberg_table')
-    spark.sql('DROP TABLE iceberg_table_2')
+    spark.sql('DROP TABLE iceberg_table PURGE')
+    spark.sql('DROP TABLE iceberg_table_2 PURGE')
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalog, polaris_catalog_url,
-                                                   snowman, reader_catalog_client, test_bucket):
+                                                   snowman, reader_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Create two tables using Spark. Then call the loadTable api directly with test_reader token to fetch the vended
   credentials for the first table.
@@ -884,10 +923,10 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
 
   table2_metadata = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                      "iceberg_table_2",
-                                                     "s3_direct_with_write_table2").metadata_location
+                                                     "vended-credentials").metadata_location
 
   response = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                              "s3_direct_without_write")
+                                              "vended-credentials")
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -899,7 +938,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
                     aws_session_token=response.config['s3.session-token'])
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
   assert objects is not None
   assert 'Contents' in objects
   assert len(objects['Contents']) > 0
@@ -922,7 +961,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
   # list files in the other table's directory. The access policy should restrict this
   try:
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
     pytest.fail('Expected exception listing file outside of table directory')
   except botocore.exceptions.ClientError as error:
     print(error)
@@ -945,31 +984,32 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_direct_without_read(
-        snowflake_catalog, snowman_catalog_client, creator_catalog_client, test_bucket):
+    snowflake_catalog, snowman_catalog_client, creator_catalog_client, test_bucket):
   """
   Create a table using `creator`, which does not have TABLE_READ_DATA and expect a `ForbiddenException`
   """
   snowman_catalog_client.create_namespace(
-      prefix=snowflake_catalog.name,
-      create_namespace_request=CreateNamespaceRequest(
-          namespace=["some_schema"]
-      )
+    prefix=snowflake_catalog.name,
+    create_namespace_request=CreateNamespaceRequest(
+      namespace=["some_schema"]
+    )
   )
 
   try:
     creator_catalog_client.create_table(
-        prefix=snowflake_catalog.name,
-        namespace="some_schema",
-        x_iceberg_access_delegation="true",
-        create_table_request=CreateTableRequest(
-            name="some_table",
-            var_schema=ModelSchema(
-                  type = 'struct',
-                  fields = [],
-            )
+      prefix=snowflake_catalog.name,
+      namespace="some_schema",
+      x_iceberg_access_delegation="true",
+      create_table_request=CreateTableRequest(
+        name="some_table",
+        var_schema=ModelSchema(
+          type='struct',
+          fields=[],
         )
+      )
     )
     pytest.fail("Expected exception when creating a table without TABLE_WRITE")
   except Exception as e:
@@ -983,129 +1023,130 @@ def test_spark_credentials_s3_direct_without_read(
 
 def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
   principal = Principal(name=principal_name, type="SERVICE")
-  try:
-    principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
+  principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
 
-    token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
+  token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
                                                   password=principal_result.credentials.client_secret,
                                                   host=polaris_catalog_url))
-    oauth_api = IcebergOAuth2API(token_client)
-    token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
+  oauth_api = IcebergOAuth2API(token_client)
+  token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
                                 client_secret=principal_result.credentials.client_secret,
                                 grant_type='client_credentials',
-                                _headers={'realm': 'default-realm'})
-    rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
+                                _headers={'realm': 'POLARIS'})
+  rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
                                                       host=polaris_url))
-    rotate_api = PolarisDefaultApi(rotate_client)
+  rotate_api = PolarisDefaultApi(rotate_client)
 
-    rotate_credentials = rotate_api.rotate_credentials(principal_name=principal_name)
-    return rotate_credentials
-  except ApiException as e:
-    if e.status == 409:
-      return rotate_api.rotate_credentials(principal_name=principal_name)
-    else:
-      raise e
+  rotate_credentials = rotate_api.rotate_credentials(principal_name=principal_name)
+  return rotate_credentials
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, snowflake_catalog, polaris_catalog_url,
-                                                snowman, snowman_catalog_client, test_bucket):
-    """
-    Create a table using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
-    for the table.
-    Verify that the credentials returned to snowman can only work for the location that ending with metadata or data directory
-    :param root_client:
-    :param snowflake_catalog:
-    :param polaris_catalog_url:
-    :param snowman_catalog_client:
-    :param reader_catalog_client:
-    :return:
-    """
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
-                             catalog_name=snowflake_catalog.name,
-                             polaris_url=polaris_catalog_url) as spark:
-        spark.sql(f'USE {snowflake_catalog.name}')
-        spark.sql('CREATE NAMESPACE db1')
-        spark.sql('CREATE NAMESPACE db1.schema')
-        spark.sql('USE db1.schema')
-        spark.sql('CREATE TABLE iceberg_table_scope_loc(col1 int, col2 string)')
-        spark.sql(f'''CREATE TABLE iceberg_table_scope_loc_slashes (col1 int, col2 string) LOCATION \'s3://{test_bucket}/polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes///////\'''')
+                                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
+  """
+  Create a table using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
+  for the table.
+  Verify that the credentials returned to snowman can only work for the location that ending with metadata or data directory
+  :param root_client:
+  :param snowflake_catalog:
+  :param polaris_catalog_url:
+  :param snowman_catalog_client:
+  :param reader_catalog_client:
+  :return:
+  """
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                           catalog_name=snowflake_catalog.name,
+                           polaris_url=polaris_catalog_url) as spark:
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('CREATE NAMESPACE db1')
+    spark.sql('CREATE NAMESPACE db1.schema')
+    spark.sql('USE db1.schema')
+    spark.sql('CREATE TABLE iceberg_table_scope_loc(col1 int, col2 string)')
+    spark.sql(
+      f'''CREATE TABLE iceberg_table_scope_loc_slashes (col1 int, col2 string) LOCATION \'s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes///////\'''')
 
-    prefix1 = 'polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc'
-    prefix2 = 'polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
-    response1 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
-                                                        "iceberg_table_scope_loc",
-                                                        "s3_scoped_table_locations")
-    response2 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
-                                                        "iceberg_table_scope_loc_slashes",
-                                                        "s3_scoped_table_locations_with_slashes")
-    assert response1 is not None
-    assert response2 is not None
-    assert response1.metadata_location.startswith(f"s3://{test_bucket}/{prefix1}/metadata/")
-    # ensure that the slashes are removed before "/metadata/"
-    assert response2.metadata_location.startswith(f"s3://{test_bucket}/{prefix2}/metadata/")
+  prefix1 = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc'
+  prefix2 = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
+  response1 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                "iceberg_table_scope_loc",
+                                                "vended-credentials")
+  response2 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                "iceberg_table_scope_loc_slashes",
+                                                "vended-credentials")
+  assert response1 is not None
+  assert response2 is not None
+  assert response1.metadata_location.startswith(f"s3://{test_bucket}/{prefix1}/metadata/")
+  # ensure that the slashes are removed before "/metadata/"
+  assert response2.metadata_location.startswith(f"s3://{test_bucket}/{prefix2}/metadata/")
 
-    s3_1 = boto3.client('s3',
+  s3_1 = boto3.client('s3',
                       aws_access_key_id=response1.config['s3.access-key-id'],
                       aws_secret_access_key=response1.config['s3.secret-access-key'],
                       aws_session_token=response1.config['s3.session-token'])
 
-    s3_2 = boto3.client('s3',
-                        aws_access_key_id=response2.config['s3.access-key-id'],
-                        aws_secret_access_key=response2.config['s3.secret-access-key'],
-                        aws_session_token=response2.config['s3.session-token'])
-    for client,prefix in [(s3_1,prefix1), (s3_2, prefix2)]:
-        objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
-                                      Prefix=f'{prefix}/metadata/')
-        assert objects is not None
-        assert 'Contents' in objects , f'list metadata files failed in prefix: {prefix}/metadata/'
+  s3_2 = boto3.client('s3',
+                      aws_access_key_id=response2.config['s3.access-key-id'],
+                      aws_secret_access_key=response2.config['s3.secret-access-key'],
+                      aws_session_token=response2.config['s3.session-token'])
+  for client, prefix in [(s3_1, prefix1), (s3_2, prefix2)]:
+    objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
+                                  Prefix=f'{prefix}/metadata/')
+    assert objects is not None
+    assert 'Contents' in objects, f'list metadata files failed in prefix: {prefix}/metadata/'
 
-        objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
-                                      Prefix=f'{prefix}/data/')
-        assert objects is not None
-        # no insert executed, so should not have any data files
-        assert 'Contents' not in objects , f'No contents should be in prefix: {prefix}/data/'
+    objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
+                                  Prefix=f'{prefix}/data/')
+    assert objects is not None
+    # no insert executed, so should not have any data files
+    assert 'Contents' not in objects, f'No contents should be in prefix: {prefix}/data/'
 
-        objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
+    objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                   Prefix=f'{prefix}/')
-        assert objects is not None
-        assert 'CommonPrefixes' in objects , f'list prefixes failed in prefix: {prefix}/'
-        assert len(objects['CommonPrefixes']) > 0
+    assert objects is not None
+    assert 'CommonPrefixes' in objects, f'list prefixes failed in prefix: {prefix}/'
+    assert len(objects['CommonPrefixes']) > 0
 
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
-                             catalog_name=snowflake_catalog.name,
-                             polaris_url=polaris_catalog_url) as spark:
-        spark.sql(f'USE {snowflake_catalog.name}')
-        spark.sql('USE db1.schema')
-        spark.sql('DROP TABLE iceberg_table_scope_loc PURGE')
-        spark.sql('DROP TABLE iceberg_table_scope_loc_slashes PURGE')
-        spark.sql(f'USE {snowflake_catalog.name}')
-        spark.sql('DROP NAMESPACE db1.schema')
-        spark.sql('DROP NAMESPACE db1')
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                           catalog_name=snowflake_catalog.name,
+                           polaris_url=polaris_catalog_url) as spark:
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('USE db1.schema')
+    spark.sql('DROP TABLE iceberg_table_scope_loc PURGE')
+    spark.sql('DROP TABLE iceberg_table_scope_loc_slashes PURGE')
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('DROP NAMESPACE db1.schema')
+    spark.sql('DROP NAMESPACE db1')
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
-    """
-    Create a table using CTAS and ensure that credentials are vended
-    :param root_client:
-    :param snowflake_catalog:
-    :return:
-    """
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
-                             catalog_name=snowflake_catalog.name,
-                             polaris_url=polaris_catalog_url) as spark:
-        table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
-        spark.sql(f'USE {snowflake_catalog.name}')
-        spark.sql('CREATE NAMESPACE db1')
-        spark.sql('CREATE NAMESPACE db1.schema')
-        spark.sql('USE db1.schema')
-        spark.sql(f'CREATE TABLE {table_name}_t1 (col1 int)')
-        spark.sql('SHOW TABLES')
+  """
+  Create a table using CTAS and ensure that credentials are vended
+  :param root_client:
+  :param snowflake_catalog:
+  :return:
+  """
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                           catalog_name=snowflake_catalog.name,
+                           polaris_url=polaris_catalog_url) as spark:
+    table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('CREATE NAMESPACE db1')
+    spark.sql('CREATE NAMESPACE db1.schema')
+    spark.sql('USE db1.schema')
+    spark.sql(f'CREATE TABLE {table_name}_t1 (col1 int)')
+    spark.sql('SHOW TABLES')
 
-        # Insert some data
-        spark.sql(f"INSERT INTO {table_name}_t1 VALUES (10)")
+    # Insert some data
+    spark.sql(f"INSERT INTO {table_name}_t1 VALUES (10)")
 
-        # Run CTAS
-        spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
+    # Run CTAS
+    spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
+    spark.sql(f"drop table {table_name}_t1 PURGE")
+    spark.sql(f"drop table {table_name}_t2 PURGE")
 
 
 def create_catalog_role(api, catalog, role_name):
