@@ -420,6 +420,7 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
+    // TODO: combine existence check and write into one statement
     ModelPolicyMappingRecord model =
         lookupPolicyMappingRecord(
             session,
