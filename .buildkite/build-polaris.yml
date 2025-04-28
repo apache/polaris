@@ -1,0 +1,43 @@
+env:
+  ENABLE_FIVETRAN_CD: "true"
+
+steps:
+  - label: "Build and validate Polaris"
+    key: "polaris-build"
+    agents:
+      queue: "large"
+    priority: 10
+    commands: |
+      .buildkite/scripts/build-polaris.sh
+
+  - block: "Deploy Polaris Staging"
+    key: "deploy-polaris-staging" # Add a valid key for the block step
+    prompt: "Fill out the details for release"
+    fields:
+      - text: "Release Name"
+        key: "release-name"
+
+  - label: "Trigger Build Pipeline"
+    trigger: "deploy-polaris-staging"
+    build:
+      branch: "stable"
+      env:
+        POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
+    depends_on:
+      - "deploy-polaris-staging" # Reference the block step by its key
+
+  - block: "Deploy Polaris Production"
+    key: "deploy-polaris-production" # Add a valid key for the block step
+    prompt: "Fill out the details for release"
+    fields:
+      - text: "Release Name"
+        key: "release-name"
+
+  - label: "Trigger Build Pipeline"
+    trigger: "deploy-polaris-production"
+    build:
+      branch: "stable"
+      env:
+        POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
+    depends_on:
+      - "deploy-polaris-production" # Reference the block step by its key
