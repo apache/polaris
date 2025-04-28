@@ -127,6 +127,13 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/build-logic/.kotlin/**")
 }
 
+tasks.register<Exec>("regeneratePythonClient") {
+  description = "Regenerates the python client"
+
+  workingDir = project.projectDir
+  commandLine("bash", "client/templates/regenerate.sh")
+}
+
 // Pass environment variables:
 //    ORG_GRADLE_PROJECT_apacheUsername
 //    ORG_GRADLE_PROJECT_apachePassword
