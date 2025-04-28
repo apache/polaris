@@ -22,6 +22,7 @@ steps:
     build:
       branch: "stable"
       env:
+        REPOSITORY: "${REPOSITORY}"
         POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
     depends_on:
       - "deploy-polaris-staging" # Reference the block step by its key
@@ -38,6 +39,7 @@ steps:
     build:
       branch: "stable"
       env:
+        REPOSITORY: "${REPOSITORY}"
         POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
     depends_on:
       - "deploy-polaris-production" # Reference the block step by its key
