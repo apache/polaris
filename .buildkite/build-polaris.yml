@@ -3,7 +3,6 @@ steps:
     key: "polaris-build"
     agents:
       queue: "large"
-    priority: 10
     commands: |
       .buildkite/scripts/build-polaris.sh
 
