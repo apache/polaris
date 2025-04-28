@@ -721,8 +721,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
             Preconditions.checkArgument(
                 policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
-
-            String query =
+            String insertQuery =
                 generateInsertQuery(
                     ModelPolicyMappingRecord.fromPolicyMappingRecord(record), realmId);
             if (policyType.isInheritable()) {
@@ -754,11 +753,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                         record.getPolicyCatalogId(),
                         "realm_id",
                         realmId);
-                query =
+                String updateQuery =
                     generateUpdateQuery(
                         ModelPolicyMappingRecord.fromPolicyMappingRecord(record), updateClause);
+                statement.executeUpdate(updateQuery);
+              } else {
+                statement.executeUpdate(insertQuery);
               }
-              statement.executeUpdate(query);
+            } else {
+              statement.executeUpdate(insertQuery);
             }
             return true;
           });
@@ -771,8 +774,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteFromPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
-    ModelPolicyMappingRecord modelPolicyMappingRecord =
-        ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+    var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     String query = generateDeleteQuery(modelPolicyMappingRecord, realmId);
     try {
       datasourceOperations.executeUpdate(query);
@@ -822,10 +824,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             realmId);
     String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
     List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
-    if (results.size() > 1) {
-      throw new IllegalStateException(
-          String.format("More than 1 policy %s for a given policy mapping", results.getFirst()));
-    }
+    Preconditions.checkState(results.size() <= 1, "More than one policy mapping records found");
     return results.size() == 1 ? results.getFirst() : null;
   }
 
