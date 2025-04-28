@@ -21,7 +21,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -73,7 +72,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  @Inject JdbcDatasource jdbcDatasource;
+  @Inject DatasourceSupplier jdbcDatasource;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -93,7 +92,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
+    DatasourceOperations databaseOperations =
+        getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->

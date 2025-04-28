@@ -28,7 +28,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
 import java.util.List;
-
+import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -36,10 +36,9 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.extension.persistence.relational.jdbc.JdbcDatasource;
+import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSupplier;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import javax.sql.DataSource;
 
 public class QuarkusProducers {
 
@@ -85,7 +84,9 @@ public class QuarkusProducers {
   }
 
   @Produces
-  public JdbcDatasource jdbcDatasource(@All List<InstanceHandle<DataSource>> dataSources) {
-    return new QuarkusJdbcDataSource(dataSources);
+  public DatasourceSupplier jdbcDatasource(
+      RelationalJdbcConfiguration relationalJdbcConfiguration,
+      @All List<InstanceHandle<DataSource>> dataSources) {
+    return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, dataSources);
   }
 }

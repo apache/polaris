@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import javax.sql.DataSource;
 
-public interface JdbcDatasource {
-    DataSource fromRealmId(String realmId);
+public interface DatasourceSupplier {
+  DataSource fromRealmId(String realmId);
 }

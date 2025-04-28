@@ -21,21 +21,31 @@ package org.apache.polaris.test.commons;
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+
+import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 public class PostgresRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
   public static final String INIT_SCRIPT = "init-script";
+  public static final String DATABASES = "databases";
 
   private PostgreSQLContainer<?> postgres;
   private String initScript;
+  private List<String> databases;
   private DevServicesContext context;
 
   @Override
   public void init(Map<String, String> initArgs) {
     initScript = initArgs.get(INIT_SCRIPT);
+    String databases = initArgs.get(DATABASES);
+    this.databases = databases == null ? new ArrayList<>() : Arrays.asList(databases.split(","));
   }
 
   @Override
@@ -53,25 +63,36 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
-    // Use Map.ofEntries to create the map with more than 10 entries
-    return Map.ofEntries(
-            Map.entry("polaris.persistence.type", "relational-jdbc"),
-            Map.entry("quarkus.datasource.realm1.db-kind", "pgsql"),
-            Map.entry("quarkus.datasource.realm1.active", "true"),
-            Map.entry("quarkus.datasource.realm1.jdbc.url", postgres.getJdbcUrl()),
-            Map.entry("quarkus.datasource.realm1.username", postgres.getUsername()),
-            Map.entry("quarkus.datasource.realm1.password", postgres.getPassword()),
-            Map.entry("quarkus.datasource.realm2.db-kind", "pgsql"),
-            Map.entry("quarkus.datasource.realm2.active", "true"),
-            Map.entry("quarkus.datasource.realm2.jdbc.url", postgres.getJdbcUrl().replace("realm1", "realm2")),
-            Map.entry("quarkus.datasource.realm2.username", postgres.getUsername()),
-            Map.entry("quarkus.datasource.realm2.password", postgres.getPassword()),
-            Map.entry("quarkus.datasource.realm3.db-kind", "pgsql"),
-            Map.entry("quarkus.datasource.realm3.active", "true"),
-            Map.entry("quarkus.datasource.realm3.jdbc.url", postgres.getJdbcUrl().replace("realm1", "realm3")),
-            Map.entry("quarkus.datasource.realm3.username", postgres.getUsername()),
-            Map.entry("quarkus.datasource.realm3.password", postgres.getPassword())
-    );
+    Map<String, String> props = new HashMap<>();
+    props.put("polaris.persistence.type", "relational-jdbc");
+
+    if (!databases.isEmpty()) {
+      for (String database : databases) {
+        // polaris.relation.jdbc.datasource.realm=realm_ds
+        props.put(String.format("polaris.relation.jdbc.datasource.%s", database), database + "_ds");
+        props.put(String.format("quarkus.datasource.%s.db-kind", database + "_ds"), "pgsql");
+        props.put(String.format("quarkus.datasource.%s.active", database + "_ds"), "true");
+        props.put(String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"), postgres.getJdbcUrl().replace("realm1", database));
+        props.put(String.format("quarkus.datasource.%s.username", database + "_ds"), postgres.getUsername());
+        props.put(String.format("quarkus.datasource.%s.password", database + "_ds"), postgres.getPassword());
+      }
+    } else {
+      return Map.of(
+              "polaris.persistence.type",
+              "relational-jdbc",
+              "quarkus.datasource.db-kind",
+              "pgsql",
+              "quarkus.datasource.jdbc.url",
+              postgres.getJdbcUrl(),
+              "quarkus.datasource.username",
+              postgres.getUsername(),
+              "quarkus.datasource.password",
+              postgres.getPassword(),
+              "quarkus.datasource.jdbc.initial-size",
+              "10");
+    }
+
+    return props;
   }
 
   @Override

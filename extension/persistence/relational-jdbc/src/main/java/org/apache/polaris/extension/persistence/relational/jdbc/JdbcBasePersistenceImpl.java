@@ -315,6 +315,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         return results.getFirst();
       }
     } catch (SQLException e) {
+      // This look-up is used for checking if the realm is bootstrap or not.
+      // If we have 1 DB per realm it might happen that the realm is not boostrap
+      // at all.
+      if (datasourceOperations.isTableNotExists(e)) {
+        return null;
+      }
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
     }

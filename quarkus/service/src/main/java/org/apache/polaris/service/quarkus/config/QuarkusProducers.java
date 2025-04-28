@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
+import io.quarkus.arc.All;
+import io.quarkus.arc.InstanceHandle;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
@@ -32,6 +34,8 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
+import java.util.List;
+import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -49,6 +53,8 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSupplier;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
@@ -256,6 +262,13 @@ public class QuarkusProducers {
       @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
+  }
+
+  @Produces
+  public DatasourceSupplier datasourceSupplier(
+      RelationalJdbcConfiguration relationalJdbcConfiguration,
+      @All List<InstanceHandle<DataSource>> datasourceSuppliers) {
+    return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, datasourceSuppliers);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

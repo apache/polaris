@@ -38,7 +38,8 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter
 
 public class DatasourceOperations {
 
-  private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+  private static final String CONSTRAINT_VIOLATION_SQL_CODE_POSTGRES = "23505";
+  private static final String TABLE_DOES_NOT_EXIST_SQL_CODE_POSTGRES = "42P01";
 
   private final DataSource datasource;
 
@@ -182,7 +183,11 @@ public class DatasourceOperations {
   }
 
   public boolean isConstraintViolation(SQLException e) {
-    return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+    return CONSTRAINT_VIOLATION_SQL_CODE_POSTGRES.equals(e.getSQLState());
+  }
+
+  public boolean isTableNotExists(SQLException e) {
+    return TABLE_DOES_NOT_EXIST_SQL_CODE_POSTGRES.equals(e.getSQLState());
   }
 
   private Connection borrowConnection() throws SQLException {

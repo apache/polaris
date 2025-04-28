@@ -36,6 +36,10 @@ public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
     return List.of(
         new TestResourceEntry(
             PostgresRelationalJdbcLifeCycleManagement.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/jdbc/init.sql")));
+            Map.of(
+                INIT_SCRIPT,
+                "org/apache/polaris/admintool/jdbc/init.sql",
+                "databases",
+                "realm1,realm2,realm3")));
   }
 }
