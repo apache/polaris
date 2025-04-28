@@ -253,7 +253,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
       datasourceOperations.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
+      datasourceOperations.executeUpdate(
+          generateDeleteAll(ModelPrincipalAuthenticationData.class, realmId));
+      datasourceOperations.executeUpdate(
+          generateDeleteAll(ModelPolicyMappingRecord.class, realmId));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
