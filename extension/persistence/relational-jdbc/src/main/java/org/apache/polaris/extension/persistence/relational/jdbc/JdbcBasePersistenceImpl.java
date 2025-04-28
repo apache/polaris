@@ -721,47 +721,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
             Preconditions.checkArgument(
                 policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
-            String insertQuery =
+            String insertPolicyMappingQuery =
                 generateInsertQuery(
                     ModelPolicyMappingRecord.fromPolicyMappingRecord(record), realmId);
             if (policyType.isInheritable()) {
-              List<PolarisPolicyMappingRecord> existingRecords =
-                  loadPoliciesOnTargetByType(
-                      callCtx,
-                      record.getTargetCatalogId(),
-                      record.getTargetId(),
-                      record.getPolicyTypeCode());
-              if (existingRecords.size() > 1) {
-                throw new PolicyMappingAlreadyExistsException(existingRecords.getFirst());
-              } else if (existingRecords.size() == 1) {
-                PolarisPolicyMappingRecord existingRecord = existingRecords.getFirst();
-                if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
-                    || existingRecord.getPolicyId() != record.getPolicyId()) {
-                  throw new PolicyMappingAlreadyExistsException(existingRecord);
-                }
-                Map<String, Object> updateClause =
-                    Map.of(
-                        "target_catalog_id",
-                        record.getTargetCatalogId(),
-                        "target_id",
-                        record.getTargetId(),
-                        "policy_type_code",
-                        record.getPolicyTypeCode(),
-                        "policy_id",
-                        record.getPolicyId(),
-                        "policy_catalog_id",
-                        record.getPolicyCatalogId(),
-                        "realm_id",
-                        realmId);
-                String updateQuery =
-                    generateUpdateQuery(
-                        ModelPolicyMappingRecord.fromPolicyMappingRecord(record), updateClause);
-                statement.executeUpdate(updateQuery);
-              } else {
-                statement.executeUpdate(insertQuery);
-              }
+              return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, statement);
             } else {
-              statement.executeUpdate(insertQuery);
+              statement.executeUpdate(insertPolicyMappingQuery);
             }
             return true;
           });
@@ -769,6 +735,51 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);
     }
+  }
+
+  private boolean handleInheritablePolicy(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisPolicyMappingRecord record,
+      @Nonnull String insertQuery,
+      Statement statement)
+      throws SQLException {
+    List<PolarisPolicyMappingRecord> existingRecords =
+        loadPoliciesOnTargetByType(
+            callCtx, record.getTargetCatalogId(), record.getTargetId(), record.getPolicyTypeCode());
+    if (existingRecords.size() > 1) {
+      throw new PolicyMappingAlreadyExistsException(existingRecords.getFirst());
+    } else if (existingRecords.size() == 1) {
+      PolarisPolicyMappingRecord existingRecord = existingRecords.getFirst();
+      if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
+          || existingRecord.getPolicyId() != record.getPolicyId()) {
+        // Only one policy of the same type can be attached to an entity when the policy is
+        // inheritable.
+        throw new PolicyMappingAlreadyExistsException(existingRecord);
+      }
+      Map<String, Object> updateClause =
+          Map.of(
+              "target_catalog_id",
+              record.getTargetCatalogId(),
+              "target_id",
+              record.getTargetId(),
+              "policy_type_code",
+              record.getPolicyTypeCode(),
+              "policy_id",
+              record.getPolicyId(),
+              "policy_catalog_id",
+              record.getPolicyCatalogId(),
+              "realm_id",
+              realmId);
+      // In case of the mapping exist, update the policy mapping with the new parameters.
+      String updateQuery =
+          generateUpdateQuery(
+              ModelPolicyMappingRecord.fromPolicyMappingRecord(record), updateClause);
+      statement.executeUpdate(updateQuery);
+    } else {
+      // record doesn't exist do an insert.
+      statement.executeUpdate(insertQuery);
+    }
+    return true;
   }
 
   @Override
