@@ -65,6 +65,7 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -193,20 +194,24 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
     ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
 
-    // Best-effort cleanup - drop policy mapping records
-    // TODO: Support some more formal garbage-collection mechanism similar to above
-    try {
-      final List<PolarisPolicyMappingRecord> mappingOnPolicy =
-          (entity.getType() == PolarisEntityType.POLICY)
-              ? ms.loadAllTargetsOnPolicy(callCtx, entity.getCatalogId(), entity.getId())
-              : List.of();
-      final List<PolarisPolicyMappingRecord> mappingOnTarget =
-          (entity.getType() == PolarisEntityType.POLICY)
-              ? List.of()
-              : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
-      ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
-    } catch (UnsupportedOperationException e) {
-      // Policy mapping persistence not implemented, but we should not block dropping entities
+    if (entity.getType() == PolarisEntityType.POLICY
+        || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
+      // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
+      // records related
+      // TODO: Support some more formal garbage-collection mechanism similar to above
+      try {
+        final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? ms.loadAllTargetsOnPolicy(callCtx, entity.getCatalogId(), entity.getId())
+                : List.of();
+        final List<PolarisPolicyMappingRecord> mappingOnTarget =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? List.of()
+                : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
+        ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
+      } catch (UnsupportedOperationException e) {
+        // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
     }
 
     // Now determine the set of entities on the other side of the grants we just removed. Grants

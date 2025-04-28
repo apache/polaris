@@ -66,6 +66,7 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -195,22 +196,26 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       ms.writeEntityInCurrentTxn(callCtx, entityGrantChanged, false, originalEntity);
     }
 
-    // delete all policy mapping records
-    try {
-      final List<PolarisPolicyMappingRecord> mappingOnPolicy =
-          (entity.getType() == PolarisEntityType.POLICY)
-              ? ms.loadAllTargetsOnPolicyInCurrentTxn(
-                  callCtx, entity.getCatalogId(), entity.getId())
-              : List.of();
-      final List<PolarisPolicyMappingRecord> mappingOnTarget =
-          (entity.getType() == PolarisEntityType.POLICY)
-              ? List.of()
-              : ms.loadAllPoliciesOnTargetInCurrentTxn(
-                  callCtx, entity.getCatalogId(), entity.getId());
-      ms.deleteAllEntityPolicyMappingRecordsInCurrentTxn(
-          callCtx, entity, mappingOnTarget, mappingOnPolicy);
-    } catch (UnsupportedOperationException e) {
-      // Policy mapping persistence not implemented, but we should not block dropping entities
+    if (entity.getType() == PolarisEntityType.POLICY
+        || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
+      // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
+      // records related
+      try {
+        final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? ms.loadAllTargetsOnPolicyInCurrentTxn(
+                    callCtx, entity.getCatalogId(), entity.getId())
+                : List.of();
+        final List<PolarisPolicyMappingRecord> mappingOnTarget =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? List.of()
+                : ms.loadAllPoliciesOnTargetInCurrentTxn(
+                    callCtx, entity.getCatalogId(), entity.getId());
+        ms.deleteAllEntityPolicyMappingRecordsInCurrentTxn(
+            callCtx, entity, mappingOnTarget, mappingOnPolicy);
+      } catch (UnsupportedOperationException e) {
+        // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
     }
 
     // remove the entity being dropped now
