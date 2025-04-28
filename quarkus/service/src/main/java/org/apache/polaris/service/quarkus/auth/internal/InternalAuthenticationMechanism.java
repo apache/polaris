@@ -69,8 +69,7 @@ public class InternalAuthenticationMechanism implements HttpAuthenticationMechan
   public Uni<SecurityIdentity> authenticate(
       RoutingContext context, IdentityProviderManager identityProviderManager) {
 
-    if (configuration.type() != AuthenticationType.INTERNAL
-        && configuration.type() != AuthenticationType.MIXED) {
+    if (configuration.type() == AuthenticationType.EXTERNAL) {
       return Uni.createFrom().nullItem();
     }
 
