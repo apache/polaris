@@ -87,7 +87,8 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    ModelEntity model = lookupEntity(session, entity.getCatalogId(), entity.getId());
+    ModelEntity model =
+        lookupEntity(session, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
     if (model != null) {
       // Update if the same entity already exists
       model.update(entity);
@@ -132,11 +133,11 @@ public class PolarisEclipseLinkStore {
     session.persist(ModelGrantRecord.fromGrantRecord(grantRec));
   }
 
-  void deleteFromEntities(EntityManager session, long catalogId, long entityId) {
+  void deleteFromEntities(EntityManager session, long catalogId, long entityId, int typeCode) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    ModelEntity model = lookupEntity(session, catalogId, entityId);
+    ModelEntity model = lookupEntity(session, catalogId, entityId, typeCode);
     diagnosticServices.check(model != null, "entity_not_found");
 
     session.remove(model);
@@ -206,14 +207,15 @@ public class PolarisEclipseLinkStore {
     LOGGER.debug("All entities deleted.");
   }
 
-  ModelEntity lookupEntity(EntityManager session, long catalogId, long entityId) {
+  ModelEntity lookupEntity(EntityManager session, long catalogId, long entityId, long typeCode) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
     return session
         .createQuery(
-            "SELECT m from ModelEntity m where m.catalogId=:catalogId and m.id=:id",
+            "SELECT m from ModelEntity m where m.catalogId=:catalogId and m.id=:id and m.typeCode=:typeCode",
             ModelEntity.class)
+        .setParameter("typeCode", typeCode)
         .setParameter("catalogId", catalogId)
         .setParameter("id", entityId)
         .getResultStream()

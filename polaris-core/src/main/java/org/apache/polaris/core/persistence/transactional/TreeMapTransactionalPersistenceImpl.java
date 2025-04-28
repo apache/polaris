@@ -223,7 +223,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public @Nullable PolarisBaseEntity lookupEntityInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
-    return this.store.getSliceEntities().read(this.store.buildKeyComposite(catalogId, entityId));
+    PolarisBaseEntity entity =
+        this.store.getSliceEntities().read(this.store.buildKeyComposite(catalogId, entityId));
+    if (entity != null && entity.getTypeCode() != typeCode) {
+      return null;
+    }
+    return entity;
   }
 
   /** {@inheritDoc} */

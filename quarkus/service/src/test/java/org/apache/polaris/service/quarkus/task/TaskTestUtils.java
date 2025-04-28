@@ -100,7 +100,7 @@ public class TaskTestUtils {
     tmBuilder
         .setLocation("path/to/table")
         .addSchema(
-            new Schema(List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))))
+            new Schema(List.of(Types.NestedField.required(1, "field1", Types.StringType.get()))))
         .addSortOrder(SortOrder.unsorted())
         .assignUUID(UUID.randomUUID().toString())
         .addPartitionSpec(PartitionSpec.unpartitioned());
