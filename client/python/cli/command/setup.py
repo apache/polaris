@@ -987,7 +987,7 @@ class SetupCommand(Command):
         """
         Execute the setup command based on the subcommand.
         """
-        if self.setup_subcommand == Subcommands.CREATE:
+        if self.setup_subcommand == Subcommands.APPLY:
             logger.info("=== Starting Setup Process ===")
 
             # Step 1: Create principals

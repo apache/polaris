@@ -82,6 +82,7 @@ class Subcommands:
     GRANT = 'grant'
     REVOKE = 'revoke'
     ACCESS = 'access'
+    APPLY = 'apply'
 
 
 class Actions:

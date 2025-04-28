@@ -240,6 +240,6 @@ class OptionTree:
                 Option(Subcommands.LIST),
             ]),
             Option(Commands.SETUP, 'perform setup', children=[
-                Option(Subcommands.CREATE, input_name=Arguments.SETUP_CONFIG)
+                Option(Subcommands.APPLY, input_name=Arguments.SETUP_CONFIG)
             ])
         ]

@@ -60,7 +60,7 @@ polaris catalogs update --property foo=bar some_other_catalog
 polaris catalogs update another_catalog --property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
-polaris setup create setup-config.yaml
+polaris setup apply setup-config.yaml
 ```
 
 ### Authentication
@@ -1178,14 +1178,14 @@ The `setup` command is used to automate the creation of various entities in Pola
 
 `setup` supports the following subcommands:
 
-1. create
+1. apply
 
-#### create
+#### apply
 
-The `create` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
 
 ```
-input: polaris setup create --help
+input: polaris setup apply --help
 options:
   create
     Positional arguments:
@@ -1195,7 +1195,7 @@ options:
 ##### Examples
 
 ```
-polaris setup create setup-config.yaml
+polaris setup apply setup-config.yaml
 ```
 
 ### Creating a principal and a catalog
