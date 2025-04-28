@@ -90,12 +90,9 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-<<<<<<< HEAD
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.PolarisPage;
-=======
 import org.apache.polaris.core.secrets.UserSecretsManager;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -175,7 +172,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return isCreate;
   }
 
-<<<<<<< HEAD
   public ListNamespacesResponseWithPageToken listNamespaces(Namespace parent, PageToken pageToken) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
@@ -188,7 +184,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           PolarisPage.fromData(
               CatalogHandlers.listNamespaces(namespaceCatalog, parent).namespaces()));
     }
-=======
+  }
+
   private UserSecretsManager getUserSecretsManager() {
     return userSecretsManager;
   }
@@ -238,7 +235,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451
   }
 
   public ListNamespacesResponse listNamespaces(Namespace parent) {

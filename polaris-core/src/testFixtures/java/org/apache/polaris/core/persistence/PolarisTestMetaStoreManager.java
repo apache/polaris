@@ -2602,7 +2602,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                ReadEverythingPageToken.get())
             .getEntities();
 
     // ensure not null, one element only

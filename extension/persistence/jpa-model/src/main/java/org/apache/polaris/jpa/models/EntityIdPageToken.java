@@ -89,16 +89,16 @@ public class EntityIdPageToken extends PageToken {
     if (newData == null || newData.size() < this.pageSize) {
       return DONE;
     } else {
-      var head = newData.get(0);
+      var head = newData.getFirst();
       if (head instanceof ModelEntity) {
-        return new EntityIdPageToken(
-            ((ModelEntity) newData.get(newData.size() - 1)).getId(), this.pageSize);
+        return new EntityIdPageToken(((ModelEntity) newData.getLast()).getId(), this.pageSize);
       } else if (head instanceof PolarisBaseEntity) {
+        // Assumed to be sorted with the greatest entity ID last
         return new EntityIdPageToken(
-            ((PolarisBaseEntity) newData.get(newData.size() - 1)).getId(), this.pageSize);
+            ((PolarisBaseEntity) newData.getLast()).getId(), this.pageSize);
       } else {
         throw new IllegalArgumentException(
-            "Cannot build a page token from: " + newData.get(0).getClass().getSimpleName());
+            "Cannot build a page token from: " + newData.getFirst().getClass().getSimpleName());
       }
     }
   }

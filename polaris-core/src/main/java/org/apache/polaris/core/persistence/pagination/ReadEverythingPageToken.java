@@ -86,7 +86,7 @@ public class ReadEverythingPageToken extends PageToken {
   /** {@link ReadEverythingPageToken} does not support page size */
   @Override
   public PageToken withPageSize(Integer pageSize) {
-    if (pageSize == null) {
+    if (pageSize == null || pageSize == Integer.MAX_VALUE) {
       return ReadEverythingPageToken.get();
     } else {
       throw new UnsupportedOperationException();

@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
 public class DatasourceOperations {
@@ -95,8 +96,8 @@ public class DatasourceOperations {
    * @param query : Query to executed
    * @param entityClass : Class of the entity being selected
    * @param transformer : Transformation of entity class to Result class
-   * @param entityFilter : Filter to applied on the Result class
-   * @param limit : Limit to to enforced.
+   * @param entityFilter : Client-side filter to applied on the Result class
+   * @param pageToken : Page token to be enforced.
    * @return List of Result class objects
    * @param <T> : Entity class
    * @param <R> : Result class
@@ -107,13 +108,13 @@ public class DatasourceOperations {
       @Nonnull Class<T> entityClass,
       @Nonnull Function<T, R> transformer,
       Predicate<R> entityFilter,
-      int limit)
+      PageToken pageToken)
       throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(query)) {
-      List<R> resultList = new ArrayList<>();
-      while (resultSet.next() && resultList.size() < limit) {
+      List<R> resultList = new ArrayList<>(PageToken.DEFAULT_PAGE_SIZE);
+      while (resultSet.next() && resultList.size() < pageToken.pageSize) {
         Converter<T> object =
             (Converter<T>)
                 entityClass.getDeclaredConstructor().newInstance(); // Create a new instance

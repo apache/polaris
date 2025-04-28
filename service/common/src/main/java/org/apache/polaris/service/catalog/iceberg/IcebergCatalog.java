@@ -502,15 +502,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-<<<<<<< HEAD
     return listTables(namespace, ReadEverythingPageToken.get()).data;
   }
 
   public PolarisPage<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace) && !namespace.isEmpty()) {
-=======
-    if (!namespaceExists(namespace)) {
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
     }
@@ -873,15 +869,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-<<<<<<< HEAD
     return listViews(namespace, ReadEverythingPageToken.get()).data;
   }
 
   public PolarisPage<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace) && !namespace.isEmpty()) {
-=======
-    if (!namespaceExists(namespace)) {
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
     }

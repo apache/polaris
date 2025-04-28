@@ -26,13 +26,19 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.jpa.models.EntityIdPageToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryGenerator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryGenerator.class);
 
   public static String generateSelectQuery(
       @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
@@ -217,5 +223,18 @@ public class QueryGenerator {
     tableName = "POLARIS_SCHEMA." + tableName;
 
     return tableName;
+  }
+
+  public static String updateQueryWithPageToken(String existingQuery, PageToken pageToken) {
+    if (pageToken instanceof ReadEverythingPageToken) {
+      return existingQuery;
+    } else if (pageToken instanceof EntityIdPageToken) {
+      long previousPageEntityId = ((EntityIdPageToken) pageToken).id;
+      return String.format("%s AND id > %d ORDER BY id ASC", existingQuery, previousPageEntityId);
+    } else {
+      // The caller of this method is supposed to already have validated the PageToken!
+      LOGGER.error("Unsupported page token: {}", pageToken);
+      return existingQuery;
+    }
   }
 }
