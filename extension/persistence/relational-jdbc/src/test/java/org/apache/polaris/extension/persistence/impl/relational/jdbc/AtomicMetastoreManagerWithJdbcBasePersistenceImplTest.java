@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.persistence.impl.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -35,7 +34,6 @@ import org.apache.polaris.extension.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.h2.jdbcx.JdbcConnectionPool;
-import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
@@ -68,12 +66,5 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())));
-  }
-
-  @Override
-  @Test
-  protected void testPolicyMapping() {
-    // TODO: add Policy support.
-    assertThrows(UnsupportedOperationException.class, super::testPolicyMapping);
   }
 }
