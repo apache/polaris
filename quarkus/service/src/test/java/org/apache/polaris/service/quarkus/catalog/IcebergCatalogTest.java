@@ -180,6 +180,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
+  public static Map<String, String> TABLE_PREFIXES =
+      Map.of(
+          CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
+          "catalog-default-key1",
+          CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
+          "catalog-default-key2",
+          CatalogProperties.TABLE_DEFAULT_PREFIX + "override-key3",
+          "catalog-default-key3",
+          CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key3",
+          "catalog-override-key3",
+          CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
+          "catalog-override-key4");
+
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -344,6 +357,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
             .putAll(additionalProperties);
     icebergCatalog.initialize(CATALOG_NAME, propertiesBuilder.buildKeepingLast());
     return icebergCatalog;

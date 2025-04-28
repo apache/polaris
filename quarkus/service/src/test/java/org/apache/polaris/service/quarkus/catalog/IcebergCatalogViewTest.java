@@ -104,6 +104,14 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
   public static final String CATALOG_NAME = "polaris-catalog";
 
+  public static Map<String, String> VIEW_PREFIXES =
+      Map.of(
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key1", "catalog-default-key1",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key2", "catalog-default-key2",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key3", "catalog-default-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3", "catalog-override-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4", "catalog-override-key4");
+
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
@@ -211,15 +219,12 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             Mockito.mock(),
             fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL,
-            "org.apache.iceberg.inmemory.InMemoryFileIO",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
-            "catalog-default-key1",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
-            "catalog-default-key2"));
+    Map<String, String> properties =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build();
+    this.catalog.initialize(CATALOG_NAME, properties);
   }
 
   @AfterEach
