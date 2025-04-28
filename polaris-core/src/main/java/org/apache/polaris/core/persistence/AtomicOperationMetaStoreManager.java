@@ -198,7 +198,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
       // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
       // records related
-      // TODO: Support some more formal garbage-collection mechanism similar to above
+      // TODO: Support some more formal garbage-collection mechanism similar to grant records case
+      // above
       try {
         final List<PolarisPolicyMappingRecord> mappingOnPolicy =
             (entity.getType() == PolarisEntityType.POLICY)
