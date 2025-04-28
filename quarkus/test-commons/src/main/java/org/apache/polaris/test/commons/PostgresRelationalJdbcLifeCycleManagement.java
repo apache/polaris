@@ -53,19 +53,25 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
-    return Map.of(
-        "polaris.persistence.type",
-        "relational-jdbc",
-        "quarkus.datasource.realm1.db-kind",
-        "pgsql",
-            "quarkus.datasource.realm1.active",
-            "true",
-        "quarkus.datasource.realm1.jdbc.url",
-        postgres.getJdbcUrl(),
-        "quarkus.datasource.realm1.username",
-        postgres.getUsername(),
-        "quarkus.datasource.realm1.password",
-        postgres.getPassword());
+    // Use Map.ofEntries to create the map with more than 10 entries
+    return Map.ofEntries(
+            Map.entry("polaris.persistence.type", "relational-jdbc"),
+            Map.entry("quarkus.datasource.realm1.db-kind", "pgsql"),
+            Map.entry("quarkus.datasource.realm1.active", "true"),
+            Map.entry("quarkus.datasource.realm1.jdbc.url", postgres.getJdbcUrl()),
+            Map.entry("quarkus.datasource.realm1.username", postgres.getUsername()),
+            Map.entry("quarkus.datasource.realm1.password", postgres.getPassword()),
+            Map.entry("quarkus.datasource.realm2.db-kind", "pgsql"),
+            Map.entry("quarkus.datasource.realm2.active", "true"),
+            Map.entry("quarkus.datasource.realm2.jdbc.url", postgres.getJdbcUrl().replace("realm1", "realm2")),
+            Map.entry("quarkus.datasource.realm2.username", postgres.getUsername()),
+            Map.entry("quarkus.datasource.realm2.password", postgres.getPassword()),
+            Map.entry("quarkus.datasource.realm3.db-kind", "pgsql"),
+            Map.entry("quarkus.datasource.realm3.active", "true"),
+            Map.entry("quarkus.datasource.realm3.jdbc.url", postgres.getJdbcUrl().replace("realm1", "realm3")),
+            Map.entry("quarkus.datasource.realm3.username", postgres.getUsername()),
+            Map.entry("quarkus.datasource.realm3.password", postgres.getPassword())
+    );
   }
 
   @Override

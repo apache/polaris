@@ -16,26 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.relational.jdbc;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
 
-import java.util.List;
-import java.util.Map;
-import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+-- Note: the database names must follow the pattern polaris_{realm}. That's the pattern
+-- specified by the persistence.xml file used in tests.
 
-public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of();
-  }
+CREATE DATABASE realm2;
+GRANT ALL PRIVILEGES ON DATABASE realm2 TO polaris;
 
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new TestResourceEntry(
-            PostgresRelationalJdbcLifeCycleManagement.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/jdbc/init.sql")));
-  }
-}
+CREATE DATABASE realm3;
+GRANT ALL PRIVILEGES ON DATABASE realm3 TO polaris;
