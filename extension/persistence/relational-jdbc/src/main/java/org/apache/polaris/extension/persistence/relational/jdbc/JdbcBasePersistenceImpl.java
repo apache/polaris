@@ -251,12 +251,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     try {
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
-      datasourceOperations.executeUpdate(
-          generateDeleteAll(ModelPrincipalAuthenticationData.class, realmId));
-      datasourceOperations.executeUpdate(
-          generateDeleteAll(ModelPolicyMappingRecord.class, realmId));
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            statement.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
+            statement.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
+            statement.executeUpdate(
+                generateDeleteAll(ModelPrincipalAuthenticationData.class, realmId));
+            statement.executeUpdate(generateDeleteAll(ModelPolicyMappingRecord.class, realmId));
+            return true;
+          });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
