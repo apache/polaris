@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
@@ -29,6 +30,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public interface PolarisAuthorizer {
 
   void authorizeOrThrow(
+      @Nonnull CallContext callContext,
       @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
@@ -36,6 +38,7 @@ public interface PolarisAuthorizer {
       @Nullable PolarisResolvedPathWrapper secondary);
 
   void authorizeOrThrow(
+      @Nonnull CallContext callContext,
       @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
