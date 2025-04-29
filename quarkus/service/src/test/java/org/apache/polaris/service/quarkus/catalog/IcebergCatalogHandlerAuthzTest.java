@@ -50,6 +50,7 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -110,6 +111,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         callContext,
         entityManager,
         metaStoreManager,
+        userSecretsManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
@@ -248,6 +250,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -280,6 +283,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -1724,12 +1728,14 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .build();
     adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setName(externalCatalog)
-            .setDefaultBaseLocation(storageLocation)
-            .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-            .setCatalogType("EXTERNAL")
-            .build());
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setName(externalCatalog)
+                .setDefaultBaseLocation(storageLocation)
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setCatalogType("EXTERNAL")
+                .build()
+                .asCatalog()));
     adminService.createCatalogRole(
         externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
     adminService.createCatalogRole(
@@ -1799,6 +1805,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
               }
             },
             managerFactory,
+            userSecretsManagerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(
                 realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {})) {

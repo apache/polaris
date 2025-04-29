@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -53,15 +54,18 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final UserSecretsManagerFactory userSecretsManagerFactory;
 
   @Inject
   public PolarisCallContextCatalogFactory(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      UserSecretsManagerFactory userSecretsManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
   }

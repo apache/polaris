@@ -1405,8 +1405,8 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: org.eclipse.angus Name: angus-activation Version: 2.0.2
-Project URL (from POM): https://github.com/eclipse-ee4j/angus-activation
-License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+Project URL: https://github.com/eclipse-ee4j/angus-activation
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1428,10 +1428,9 @@ License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2
 
 --------------------------------------------------------------------------------
 
-org.eclipse.persistence.eclipselink-4.0.5.jar
-Project URL (from POM): http://www.eclipse.org/eclipselink
-License (from POM): Eclipse Public License 2.0 - http://www.eclipse.org/legal/epl-2.0
-License (from POM): Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+Group: org.eclipse.persistence Name: eclipselink Version: 4.0.6
+Project URL: https://eclipse.dev/eclipselink/
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1532,187 +1531,187 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.31.21
+Group: software.amazon.awssdk Name: annotations Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.21
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: arns Version: 2.31.21
+Group: software.amazon.awssdk Name: arns Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: auth Version: 2.31.21
+Group: software.amazon.awssdk Name: auth Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.21
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.21
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.21
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: checksums Version: 2.31.21
+Group: software.amazon.awssdk Name: checksums Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.21
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.21
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.21
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.21
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.21
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.21
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.21
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: profiles Version: 2.31.21
+Group: software.amazon.awssdk Name: profiles Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.21
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: regions Version: 2.31.21
+Group: software.amazon.awssdk Name: regions Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: retries Version: 2.31.21
+Group: software.amazon.awssdk Name: retries Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.21
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: s3 Version: 2.31.21
+Group: software.amazon.awssdk Name: s3 Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.21
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: sts Version: 2.31.21
+Group: software.amazon.awssdk Name: sts Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.21
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: utils Version: 2.31.21
+Group: software.amazon.awssdk Name: utils Version: 2.31.26
 Project URL (from POM): https://aws.amazon.com/sdkforjava
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1721,5 +1720,11 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
 Project URL (from POM): https://github.com/awslabs/aws-eventstream-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.postgresql Name: postgresql Version: 42.7.5
+Project URL: https://jdbc.postgresql.org/
+License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
 
 --------------------------------------------------------------------------------

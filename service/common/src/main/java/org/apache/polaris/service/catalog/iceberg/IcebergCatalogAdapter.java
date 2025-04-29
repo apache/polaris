@@ -66,6 +66,7 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -132,6 +133,7 @@ public class IcebergCatalogAdapter
   private final CallContextCatalogFactory catalogFactory;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
+  private final UserSecretsManager userSecretsManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
 
@@ -142,6 +144,7 @@ public class IcebergCatalogAdapter
       CallContextCatalogFactory catalogFactory,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
+      UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser) {
     this.realmContext = realmContext;
@@ -149,6 +152,7 @@ public class IcebergCatalogAdapter
     this.catalogFactory = catalogFactory;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
+    this.userSecretsManager = userSecretsManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
 
@@ -178,16 +182,13 @@ public class IcebergCatalogAdapter
 
   private IcebergCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
+    validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,
+        userSecretsManager,
         securityContext,
         catalogFactory,
         catalogName,
@@ -719,6 +720,7 @@ public class IcebergCatalogAdapter
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
+                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
                         .build())
                 .build())
         .build();

@@ -24,12 +24,11 @@ weight: 700
 
 This page documents important configurations for connecting to a production database through [EclipseLink](https://eclipse.dev/eclipselink/).
 
-## Building Polaris with EclipseLink
+## Polaris EclipseLink
 
-Polaris doesn't ship with any JDBC driver. You must specify them when building Polaris with
-EclipseLink by using Gradle's project property:
-`-PeclipseLinkDeps=<jdbc-driver-artifact1>,<jdbc-driver-artifact2>,...`. See below examples for H2
-and Postgres.
+Polaris includes EclipseLink plugin by default with PostgreSQL driver.
+
+In order to add other JDBC drivers, you have to build Polaris using the `eclipseLinkDeps` build property.
 
 ## Polaris Server Configuration
 
@@ -104,6 +103,8 @@ java -Dpolaris.persistence.type=eclipse-link \
 
 ### Using Postgres
 
+PostgreSQL is included by default in the Polaris server distribution.
+
 The following shows a sample configuration for integrating Polaris with Postgres.
 
 ```xml
@@ -128,17 +129,4 @@ The following shows a sample configuration for integrating Polaris with Postgres
     <property name="eclipselink.transaction.join-existing" value="true"/>
   </properties>
 </persistence-unit>
-```
-
-To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
-
-```shell
-./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
-java -Dpolaris.persistence.type=eclipse-link \
-     -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
-     -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-     -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
