@@ -193,14 +193,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
-      List<ConnectionType> supportedConnectionTypes = callContext
-          .getPolarisCallContext()
-          .getConfigurationStore()
-          .getConfiguration(callContext.getPolarisCallContext(), FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
-          .stream()
-          .map(s -> s.toUpperCase(Locale.ROOT))
-          .map(ConnectionType::valueOf)
-          .toList();
+      List<ConnectionType> supportedConnectionTypes =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(),
+                  FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+              .stream()
+              .map(s -> s.toUpperCase(Locale.ROOT))
+              .map(ConnectionType::valueOf)
+              .toList();
       if (!supportedConnectionTypes.contains(connectionType)) {
         throw new IllegalStateException("Unsupported connection type: " + connectionType);
       }
