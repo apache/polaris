@@ -93,11 +93,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
-      datasourceOperations.runWithinTransaction(
-          statement -> {
-            persistEntity(callCtx, entity, originalEntity, statement);
-            return true;
-          });
+      persistEntity(callCtx, entity, originalEntity, datasourceOperations);
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);
     }
@@ -143,12 +139,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       PolarisBaseEntity originalEntity,
-      Statement statement)
+      Object executor)
       throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     if (originalEntity == null) {
       try {
-        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
+        execute(executor, generateInsertQuery(modelEntity, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isConstraintViolation(e)) {
           PolarisBaseEntity existingEntity =
@@ -176,7 +172,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "realm_id",
               realmId);
       try {
-        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
+        int rowsUpdated = execute(executor, generateUpdateQuery(modelEntity, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected version %s",
@@ -186,6 +182,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
+    }
+  }
+
+  private int execute(Object executor, String query) throws SQLException {
+    if (executor instanceof Statement) {
+      // used for running in transaction
+      return ((Statement) executor).executeUpdate(query);
+    } else if (executor instanceof DatasourceOperations) {
+      return ((DatasourceOperations) executor).executeUpdate(query);
+    } else {
+      throw new IllegalArgumentException("Unsupported executor: " + executor);
     }
   }
 
