@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.config;
+package org.apache.polaris.commons;
 
 import io.quarkus.arc.InstanceHandle;
 import java.util.List;
@@ -25,8 +25,8 @@ import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSuppli
 import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 public class QuarkusDatasourceSupplier implements DatasourceSupplier {
-  private final List<InstanceHandle<DataSource>> dataSources;
-  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
+  private List<InstanceHandle<DataSource>> dataSources;
+  private RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
 

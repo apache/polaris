@@ -35,6 +35,8 @@ java {
 
 dependencies {
   implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation("io.quarkus:quarkus-arc")
+  implementation(project(":polaris-relational-jdbc"))
   implementation("io.quarkus:quarkus-junit5")
   implementation(platform(libs.testcontainers.bom))
   implementation("org.testcontainers:testcontainers")

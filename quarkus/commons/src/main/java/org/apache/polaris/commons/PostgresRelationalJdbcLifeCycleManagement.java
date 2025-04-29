@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.test.commons;
+package org.apache.polaris.commons;
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -53,7 +50,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
   public Map<String, String> start() {
     postgres =
         new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"))
-            .withDatabaseName("polaris_db")
+            .withDatabaseName("realm1")
             .withUsername("polaris")
             .withPassword("polaris");
 
@@ -72,24 +69,30 @@ public class PostgresRelationalJdbcLifeCycleManagement
         props.put(String.format("polaris.relation.jdbc.datasource.%s", database), database + "_ds");
         props.put(String.format("quarkus.datasource.%s.db-kind", database + "_ds"), "pgsql");
         props.put(String.format("quarkus.datasource.%s.active", database + "_ds"), "true");
-        props.put(String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"), postgres.getJdbcUrl().replace("realm1", database));
-        props.put(String.format("quarkus.datasource.%s.username", database + "_ds"), postgres.getUsername());
-        props.put(String.format("quarkus.datasource.%s.password", database + "_ds"), postgres.getPassword());
+        props.put(
+            String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"),
+            postgres.getJdbcUrl().replace("realm1", database));
+        props.put(
+            String.format("quarkus.datasource.%s.username", database + "_ds"),
+            postgres.getUsername());
+        props.put(
+            String.format("quarkus.datasource.%s.password", database + "_ds"),
+            postgres.getPassword());
       }
     } else {
       return Map.of(
-              "polaris.persistence.type",
-              "relational-jdbc",
-              "quarkus.datasource.db-kind",
-              "pgsql",
-              "quarkus.datasource.jdbc.url",
-              postgres.getJdbcUrl(),
-              "quarkus.datasource.username",
-              postgres.getUsername(),
-              "quarkus.datasource.password",
-              postgres.getPassword(),
-              "quarkus.datasource.jdbc.initial-size",
-              "10");
+          "polaris.persistence.type",
+          "relational-jdbc",
+          "quarkus.datasource.db-kind",
+          "pgsql",
+          "quarkus.datasource.jdbc.url",
+          postgres.getJdbcUrl(),
+          "quarkus.datasource.username",
+          postgres.getUsername(),
+          "quarkus.datasource.password",
+          postgres.getPassword(),
+          "quarkus.datasource.jdbc.initial-size",
+          "10");
     }
 
     return props;

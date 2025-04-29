@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.test.commons;
+package org.apache.polaris.commons;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;

@@ -124,7 +124,7 @@ dependencies {
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(project(":polaris-quarkus-test-commons"))
+  implementation(project(":polaris-quarkus-commons"))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
