@@ -20,6 +20,7 @@
 -->
 # TimerResult
 
+
 ## Properties
 
 Name | Type | Description | Notes

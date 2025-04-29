@@ -20,6 +20,7 @@
 -->
 # ListType
 
+
 ## Properties
 
 Name | Type | Description | Notes

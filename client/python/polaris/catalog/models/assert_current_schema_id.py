@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,19 +36,18 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertCurrentSchemaId(TableRequirement):
+class AssertCurrentSchemaId(BaseModel):
     """
     The table's current schema id must match the requirement's `current-schema-id`
     """ # noqa: E501
     type: StrictStr
     current_schema_id: StrictInt = Field(alias="current-schema-id")
-    __properties: ClassVar[List[str]] = ["type"]
+    __properties: ClassVar[List[str]] = ["type", "current-schema-id"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -107,7 +107,8 @@ class AssertCurrentSchemaId(TableRequirement):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type")
+            "type": obj.get("type"),
+            "current-schema-id": obj.get("current-schema-id")
         })
         return _obj
 

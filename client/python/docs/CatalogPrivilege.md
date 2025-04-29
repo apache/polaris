@@ -20,6 +20,7 @@
 -->
 # CatalogPrivilege
 
+
 ## Enum
 
 * `CATALOG_MANAGE_ACCESS` (value: `'CATALOG_MANAGE_ACCESS'`)

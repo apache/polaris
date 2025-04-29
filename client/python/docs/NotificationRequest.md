@@ -20,12 +20,13 @@
 -->
 # NotificationRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **notification_type** | [**NotificationType**](NotificationType.md) |  | 
-**payload** | [**TableUpdateNotification**](TableUpdateNotification.md) |  | [optional] 
+**payload** | [**TableUpdateNotification**](TableUpdateNotification.md) |  | 
 
 ## Example
 

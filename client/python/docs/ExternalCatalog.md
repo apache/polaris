@@ -26,7 +26,7 @@ An externally managed catalog
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**remote_url** | **str** | URL to the remote catalog API | [optional] 
+**connection_config_info** | [**ConnectionConfigInfo**](ConnectionConfigInfo.md) |  | [optional] 
 
 ## Example
 

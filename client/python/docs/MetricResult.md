@@ -20,6 +20,7 @@
 -->
 # MetricResult
 
+
 ## Properties
 
 Name | Type | Description | Notes

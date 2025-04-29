@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -31,116 +32,212 @@
 
 
 from __future__ import annotations
-import pprint
-import re  # noqa: F401
 import json
+import pprint
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, field_validator
+from typing import Any, List, Optional
+from polaris.catalog.models.assert_create import AssertCreate
+from polaris.catalog.models.assert_current_schema_id import AssertCurrentSchemaId
+from polaris.catalog.models.assert_default_sort_order_id import AssertDefaultSortOrderId
+from polaris.catalog.models.assert_default_spec_id import AssertDefaultSpecId
+from polaris.catalog.models.assert_last_assigned_field_id import AssertLastAssignedFieldId
+from polaris.catalog.models.assert_last_assigned_partition_id import AssertLastAssignedPartitionId
+from polaris.catalog.models.assert_ref_snapshot_id import AssertRefSnapshotId
+from polaris.catalog.models.assert_table_uuid import AssertTableUUID
+from pydantic import StrictStr, Field
+from typing import Union, List, Set, Optional, Dict
+from typing_extensions import Literal, Self
 
-from importlib import import_module
-from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List, Union
-from typing import Optional, Set
-from typing_extensions import Self
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from polaris.catalog.models.assert_create import AssertCreate
-    from polaris.catalog.models.assert_current_schema_id import AssertCurrentSchemaId
-    from polaris.catalog.models.assert_default_sort_order_id import AssertDefaultSortOrderId
-    from polaris.catalog.models.assert_default_spec_id import AssertDefaultSpecId
-    from polaris.catalog.models.assert_last_assigned_field_id import AssertLastAssignedFieldId
-    from polaris.catalog.models.assert_last_assigned_partition_id import AssertLastAssignedPartitionId
-    from polaris.catalog.models.assert_ref_snapshot_id import AssertRefSnapshotId
-    from polaris.catalog.models.assert_table_uuid import AssertTableUUID
+TABLEREQUIREMENT_ONE_OF_SCHEMAS = ["AssertCreate", "AssertCurrentSchemaId", "AssertDefaultSortOrderId", "AssertDefaultSpecId", "AssertLastAssignedFieldId", "AssertLastAssignedPartitionId", "AssertRefSnapshotId", "AssertTableUUID"]
 
 class TableRequirement(BaseModel):
     """
     TableRequirement
-    """ # noqa: E501
-    type: StrictStr
-    __properties: ClassVar[List[str]] = ["type"]
+    """
+    # data type: AssertCreate
+    oneof_schema_1_validator: Optional[AssertCreate] = None
+    # data type: AssertTableUUID
+    oneof_schema_2_validator: Optional[AssertTableUUID] = None
+    # data type: AssertRefSnapshotId
+    oneof_schema_3_validator: Optional[AssertRefSnapshotId] = None
+    # data type: AssertLastAssignedFieldId
+    oneof_schema_4_validator: Optional[AssertLastAssignedFieldId] = None
+    # data type: AssertCurrentSchemaId
+    oneof_schema_5_validator: Optional[AssertCurrentSchemaId] = None
+    # data type: AssertLastAssignedPartitionId
+    oneof_schema_6_validator: Optional[AssertLastAssignedPartitionId] = None
+    # data type: AssertDefaultSpecId
+    oneof_schema_7_validator: Optional[AssertDefaultSpecId] = None
+    # data type: AssertDefaultSortOrderId
+    oneof_schema_8_validator: Optional[AssertDefaultSortOrderId] = None
+    actual_instance: Optional[Union[AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID]] = None
+    one_of_schemas: Set[str] = { "AssertCreate", "AssertCurrentSchemaId", "AssertDefaultSortOrderId", "AssertDefaultSpecId", "AssertLastAssignedFieldId", "AssertLastAssignedPartitionId", "AssertRefSnapshotId", "AssertTableUUID" }
 
     model_config = ConfigDict(
-        populate_by_name=True,
         validate_assignment=True,
         protected_namespaces=(),
     )
 
 
-    # JSON field name that stores the object type
-    __discriminator_property_name: ClassVar[str] = 'type'
-
-    # discriminator mappings
-    __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'assert-create': 'AssertCreate','assert-current-schema-id': 'AssertCurrentSchemaId','assert-default-sort-order-id': 'AssertDefaultSortOrderId','assert-default-spec-id': 'AssertDefaultSpecId','assert-last-assigned-field-id': 'AssertLastAssignedFieldId','assert-last-assigned-partition-id': 'AssertLastAssignedPartitionId','assert-ref-snapshot-id': 'AssertRefSnapshotId','assert-table-uuid': 'AssertTableUUID'
+    discriminator_value_class_map: Dict[str, str] = {
     }
 
-    @classmethod
-    def get_discriminator_value(cls, obj: Dict[str, Any]) -> Optional[str]:
-        """Returns the discriminator value (object type) of the data"""
-        discriminator_value = obj[cls.__discriminator_property_name]
-        if discriminator_value:
-            return cls.__discriminator_value_class_map.get(discriminator_value)
+    def __init__(self, *args, **kwargs) -> None:
+        if args:
+            if len(args) > 1:
+                raise ValueError("If a position argument is used, only 1 is allowed to set `actual_instance`")
+            if kwargs:
+                raise ValueError("If a position argument is used, keyword arguments cannot be used.")
+            super().__init__(actual_instance=args[0])
         else:
-            return None
+            super().__init__(**kwargs)
 
-    def to_str(self) -> str:
-        """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.model_dump(by_alias=True))
+    @field_validator('actual_instance')
+    def actual_instance_must_validate_oneof(cls, v):
+        instance = TableRequirement.model_construct()
+        error_messages = []
+        match = 0
+        # validate data type: AssertCreate
+        if not isinstance(v, AssertCreate):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertCreate`")
+        else:
+            match += 1
+        # validate data type: AssertTableUUID
+        if not isinstance(v, AssertTableUUID):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertTableUUID`")
+        else:
+            match += 1
+        # validate data type: AssertRefSnapshotId
+        if not isinstance(v, AssertRefSnapshotId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertRefSnapshotId`")
+        else:
+            match += 1
+        # validate data type: AssertLastAssignedFieldId
+        if not isinstance(v, AssertLastAssignedFieldId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertLastAssignedFieldId`")
+        else:
+            match += 1
+        # validate data type: AssertCurrentSchemaId
+        if not isinstance(v, AssertCurrentSchemaId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertCurrentSchemaId`")
+        else:
+            match += 1
+        # validate data type: AssertLastAssignedPartitionId
+        if not isinstance(v, AssertLastAssignedPartitionId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertLastAssignedPartitionId`")
+        else:
+            match += 1
+        # validate data type: AssertDefaultSpecId
+        if not isinstance(v, AssertDefaultSpecId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertDefaultSpecId`")
+        else:
+            match += 1
+        # validate data type: AssertDefaultSortOrderId
+        if not isinstance(v, AssertDefaultSortOrderId):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertDefaultSortOrderId`")
+        else:
+            match += 1
+        if match > 1:
+            # more than 1 match
+            raise ValueError("Multiple matches found when setting `actual_instance` in TableRequirement with oneOf schemas: AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID. Details: " + ", ".join(error_messages))
+        elif match == 0:
+            # no match
+            raise ValueError("No match found when setting `actual_instance` in TableRequirement with oneOf schemas: AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID. Details: " + ", ".join(error_messages))
+        else:
+            return v
+
+    @classmethod
+    def from_dict(cls, obj: Union[str, Dict[str, Any]]) -> Self:
+        return cls.from_json(json.dumps(obj))
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        """Returns the object represented by the json string"""
+        instance = cls.model_construct()
+        error_messages = []
+        match = 0
+
+        # deserialize data into AssertCreate
+        try:
+            instance.actual_instance = AssertCreate.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertTableUUID
+        try:
+            instance.actual_instance = AssertTableUUID.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertRefSnapshotId
+        try:
+            instance.actual_instance = AssertRefSnapshotId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertLastAssignedFieldId
+        try:
+            instance.actual_instance = AssertLastAssignedFieldId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertCurrentSchemaId
+        try:
+            instance.actual_instance = AssertCurrentSchemaId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertLastAssignedPartitionId
+        try:
+            instance.actual_instance = AssertLastAssignedPartitionId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertDefaultSpecId
+        try:
+            instance.actual_instance = AssertDefaultSpecId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into AssertDefaultSortOrderId
+        try:
+            instance.actual_instance = AssertDefaultSortOrderId.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+
+        if match > 1:
+            # more than 1 match
+            raise ValueError("Multiple matches found when deserializing the JSON string into TableRequirement with oneOf schemas: AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID. Details: " + ", ".join(error_messages))
+        elif match == 0:
+            # no match
+            raise ValueError("No match found when deserializing the JSON string into TableRequirement with oneOf schemas: AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID. Details: " + ", ".join(error_messages))
+        else:
+            return instance
 
     def to_json(self) -> str:
-        """Returns the JSON representation of the model using alias"""
-        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
-        return json.dumps(self.to_dict())
+        """Returns the JSON representation of the actual instance"""
+        if self.actual_instance is None:
+            return "null"
 
-    @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID]]:
-        """Create an instance of TableRequirement from a JSON string"""
-        return cls.from_dict(json.loads(json_str))
+        if hasattr(self.actual_instance, "to_json") and callable(self.actual_instance.to_json):
+            return self.actual_instance.to_json()
+        else:
+            return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return the dictionary representation of the model using alias.
+    def to_dict(self) -> Optional[Union[Dict[str, Any], AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID]]:
+        """Returns the dict representation of the actual instance"""
+        if self.actual_instance is None:
+            return None
 
-        This has the following differences from calling pydantic's
-        `self.model_dump(by_alias=True)`:
+        if hasattr(self.actual_instance, "to_dict") and callable(self.actual_instance.to_dict):
+            return self.actual_instance.to_dict()
+        else:
+            # primitive type
+            return self.actual_instance
 
-        * `None` is only added to the output dict for nullable fields that
-          were set at model initialization. Other fields with value `None`
-          are ignored.
-        """
-        excluded_fields: Set[str] = set([
-        ])
-
-        _dict = self.model_dump(
-            by_alias=True,
-            exclude=excluded_fields,
-            exclude_none=True,
-        )
-        return _dict
-
-    @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[AssertCreate, AssertCurrentSchemaId, AssertDefaultSortOrderId, AssertDefaultSpecId, AssertLastAssignedFieldId, AssertLastAssignedPartitionId, AssertRefSnapshotId, AssertTableUUID]]:
-        """Create an instance of TableRequirement from a dict"""
-        # look up the object type based on discriminator mapping
-        object_type = cls.get_discriminator_value(obj)
-        if object_type ==  'AssertCreate':
-            return import_module("polaris.catalog.models.assert_create").AssertCreate.from_dict(obj)
-        if object_type ==  'AssertCurrentSchemaId':
-            return import_module("polaris.catalog.models.assert_current_schema_id").AssertCurrentSchemaId.from_dict(obj)
-        if object_type ==  'AssertDefaultSortOrderId':
-            return import_module("polaris.catalog.models.assert_default_sort_order_id").AssertDefaultSortOrderId.from_dict(obj)
-        if object_type ==  'AssertDefaultSpecId':
-            return import_module("polaris.catalog.models.assert_default_spec_id").AssertDefaultSpecId.from_dict(obj)
-        if object_type ==  'AssertLastAssignedFieldId':
-            return import_module("polaris.catalog.models.assert_last_assigned_field_id").AssertLastAssignedFieldId.from_dict(obj)
-        if object_type ==  'AssertLastAssignedPartitionId':
-            return import_module("polaris.catalog.models.assert_last_assigned_partition_id").AssertLastAssignedPartitionId.from_dict(obj)
-        if object_type ==  'AssertRefSnapshotId':
-            return import_module("polaris.catalog.models.assert_ref_snapshot_id").AssertRefSnapshotId.from_dict(obj)
-        if object_type ==  'AssertTableUUID':
-            return import_module("polaris.catalog.models.assert_table_uuid").AssertTableUUID.from_dict(obj)
-
-        raise ValueError("TableRequirement failed to lookup discriminator value from " +
-                            json.dumps(obj) + ". Discriminator property name: " + cls.__discriminator_property_name +
-                            ", mapping: " + json.dumps(cls.__discriminator_value_class_map))
+    def to_str(self) -> str:
+        """Returns the string representation of the actual instance"""
+        return pprint.pformat(self.model_dump())
 
 

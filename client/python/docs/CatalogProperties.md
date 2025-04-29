@@ -20,6 +20,7 @@
 -->
 # CatalogProperties
 
+
 ## Properties
 
 Name | Type | Description | Notes

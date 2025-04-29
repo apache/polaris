@@ -20,6 +20,7 @@
 -->
 # TableUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -45,6 +46,7 @@ Name | Type | Description | Notes
 **updates** | **Dict[str, str]** |  | 
 **removals** | **List[str]** |  | 
 **statistics** | [**StatisticsFile**](StatisticsFile.md) |  | 
+**spec_ids** | **List[int]** |  | 
 
 ## Example
 

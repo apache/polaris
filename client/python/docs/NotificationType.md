@@ -20,6 +20,7 @@
 -->
 # NotificationType
 
+
 ## Enum
 
 * `UNKNOWN` (value: `'UNKNOWN'`)
@@ -29,6 +30,8 @@
 * `UPDATE` (value: `'UPDATE'`)
 
 * `DROP` (value: `'DROP'`)
+
+* `VALIDATE` (value: `'VALIDATE'`)
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

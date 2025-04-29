@@ -133,6 +133,20 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
   fi
 done
 
+echo "License fix complete"
+
+
+DELETE_PATHS=(
+  "python/test/__init__.py"
+)
+
+for path in "${DELETE_PATHS[@]}"; do
+  rm -f "$path"
+done
+
+echo "Deletion complete"
+
+
 echo "Regeneration complete"
 
 popd > /dev/null

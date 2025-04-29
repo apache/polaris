@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -31,95 +32,114 @@
 
 
 from __future__ import annotations
-import pprint
-import re  # noqa: F401
 import json
+import pprint
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, field_validator
+from typing import Any, List, Optional
+from polaris.catalog.models.assert_view_uuid import AssertViewUUID
+from pydantic import StrictStr, Field
+from typing import Union, List, Set, Optional, Dict
+from typing_extensions import Literal, Self
 
-from importlib import import_module
-from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List, Union
-from typing import Optional, Set
-from typing_extensions import Self
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from polaris.catalog.models.assert_view_uuid import AssertViewUUID
+VIEWREQUIREMENT_ONE_OF_SCHEMAS = ["AssertViewUUID"]
 
 class ViewRequirement(BaseModel):
     """
     ViewRequirement
-    """ # noqa: E501
-    type: StrictStr
-    __properties: ClassVar[List[str]] = ["type"]
+    """
+    # data type: AssertViewUUID
+    oneof_schema_1_validator: Optional[AssertViewUUID] = None
+    actual_instance: Optional[Union[AssertViewUUID]] = None
+    one_of_schemas: Set[str] = { "AssertViewUUID" }
 
     model_config = ConfigDict(
-        populate_by_name=True,
         validate_assignment=True,
         protected_namespaces=(),
     )
 
 
-    # JSON field name that stores the object type
-    __discriminator_property_name: ClassVar[str] = 'type'
-
-    # discriminator mappings
-    __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'assert-view-uuid': 'AssertViewUUID'
+    discriminator_value_class_map: Dict[str, str] = {
     }
 
-    @classmethod
-    def get_discriminator_value(cls, obj: Dict[str, Any]) -> Optional[str]:
-        """Returns the discriminator value (object type) of the data"""
-        discriminator_value = obj[cls.__discriminator_property_name]
-        if discriminator_value:
-            return cls.__discriminator_value_class_map.get(discriminator_value)
+    def __init__(self, *args, **kwargs) -> None:
+        if args:
+            if len(args) > 1:
+                raise ValueError("If a position argument is used, only 1 is allowed to set `actual_instance`")
+            if kwargs:
+                raise ValueError("If a position argument is used, keyword arguments cannot be used.")
+            super().__init__(actual_instance=args[0])
         else:
-            return None
+            super().__init__(**kwargs)
 
-    def to_str(self) -> str:
-        """Returns the string representation of the model using alias"""
-        return pprint.pformat(self.model_dump(by_alias=True))
+    @field_validator('actual_instance')
+    def actual_instance_must_validate_oneof(cls, v):
+        instance = ViewRequirement.model_construct()
+        error_messages = []
+        match = 0
+        # validate data type: AssertViewUUID
+        if not isinstance(v, AssertViewUUID):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AssertViewUUID`")
+        else:
+            match += 1
+        if match > 1:
+            # more than 1 match
+            raise ValueError("Multiple matches found when setting `actual_instance` in ViewRequirement with oneOf schemas: AssertViewUUID. Details: " + ", ".join(error_messages))
+        elif match == 0:
+            # no match
+            raise ValueError("No match found when setting `actual_instance` in ViewRequirement with oneOf schemas: AssertViewUUID. Details: " + ", ".join(error_messages))
+        else:
+            return v
+
+    @classmethod
+    def from_dict(cls, obj: Union[str, Dict[str, Any]]) -> Self:
+        return cls.from_json(json.dumps(obj))
+
+    @classmethod
+    def from_json(cls, json_str: str) -> Self:
+        """Returns the object represented by the json string"""
+        instance = cls.model_construct()
+        error_messages = []
+        match = 0
+
+        # deserialize data into AssertViewUUID
+        try:
+            instance.actual_instance = AssertViewUUID.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+
+        if match > 1:
+            # more than 1 match
+            raise ValueError("Multiple matches found when deserializing the JSON string into ViewRequirement with oneOf schemas: AssertViewUUID. Details: " + ", ".join(error_messages))
+        elif match == 0:
+            # no match
+            raise ValueError("No match found when deserializing the JSON string into ViewRequirement with oneOf schemas: AssertViewUUID. Details: " + ", ".join(error_messages))
+        else:
+            return instance
 
     def to_json(self) -> str:
-        """Returns the JSON representation of the model using alias"""
-        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
-        return json.dumps(self.to_dict())
+        """Returns the JSON representation of the actual instance"""
+        if self.actual_instance is None:
+            return "null"
 
-    @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[AssertViewUUID]]:
-        """Create an instance of ViewRequirement from a JSON string"""
-        return cls.from_dict(json.loads(json_str))
+        if hasattr(self.actual_instance, "to_json") and callable(self.actual_instance.to_json):
+            return self.actual_instance.to_json()
+        else:
+            return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return the dictionary representation of the model using alias.
+    def to_dict(self) -> Optional[Union[Dict[str, Any], AssertViewUUID]]:
+        """Returns the dict representation of the actual instance"""
+        if self.actual_instance is None:
+            return None
 
-        This has the following differences from calling pydantic's
-        `self.model_dump(by_alias=True)`:
+        if hasattr(self.actual_instance, "to_dict") and callable(self.actual_instance.to_dict):
+            return self.actual_instance.to_dict()
+        else:
+            # primitive type
+            return self.actual_instance
 
-        * `None` is only added to the output dict for nullable fields that
-          were set at model initialization. Other fields with value `None`
-          are ignored.
-        """
-        excluded_fields: Set[str] = set([
-        ])
-
-        _dict = self.model_dump(
-            by_alias=True,
-            exclude=excluded_fields,
-            exclude_none=True,
-        )
-        return _dict
-
-    @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[AssertViewUUID]]:
-        """Create an instance of ViewRequirement from a dict"""
-        # look up the object type based on discriminator mapping
-        object_type = cls.get_discriminator_value(obj)
-        if object_type ==  'AssertViewUUID':
-            return import_module("polaris.catalog.models.assert_view_uuid").AssertViewUUID.from_dict(obj)
-
-        raise ValueError("ViewRequirement failed to lookup discriminator value from " +
-                            json.dumps(obj) + ". Discriminator property name: " + cls.__discriminator_property_name +
-                            ", mapping: " + json.dumps(cls.__discriminator_value_class_map))
+    def to_str(self) -> str:
+        """Returns the string representation of the actual instance"""
+        return pprint.pformat(self.model_dump())
 
 

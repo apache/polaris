@@ -20,6 +20,7 @@
 -->
 # NullOrder
 
+
 ## Enum
 
 * `NULLS_MINUS_FIRST` (value: `'nulls-first'`)

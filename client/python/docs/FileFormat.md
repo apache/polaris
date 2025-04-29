@@ -20,6 +20,7 @@
 -->
 # FileFormat
 
+
 ## Enum
 
 * `AVRO` (value: `'avro'`)

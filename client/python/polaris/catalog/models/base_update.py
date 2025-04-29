@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -49,6 +50,7 @@ if TYPE_CHECKING:
     from polaris.catalog.models.add_partition_spec_update import AddPartitionSpecUpdate
     from polaris.catalog.models.add_view_version_update import AddViewVersionUpdate
     from polaris.catalog.models.assign_uuid_update import AssignUUIDUpdate
+    from polaris.catalog.models.remove_partition_specs_update import RemovePartitionSpecsUpdate
     from polaris.catalog.models.remove_partition_statistics_update import RemovePartitionStatisticsUpdate
     from polaris.catalog.models.remove_properties_update import RemovePropertiesUpdate
     from polaris.catalog.models.remove_snapshot_ref_update import RemoveSnapshotRefUpdate
@@ -84,7 +86,7 @@ class BaseUpdate(BaseModel):
 
     # discriminator mappings
     __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'add-schema': 'AddSchemaUpdate','add-snapshot': 'AddSnapshotUpdate','add-sort-order': 'AddSortOrderUpdate','add-spec': 'AddPartitionSpecUpdate','add-view-version': 'AddViewVersionUpdate','assign-uuid': 'AssignUUIDUpdate','remove-partition-statistics': 'RemovePartitionStatisticsUpdate','remove-properties': 'RemovePropertiesUpdate','remove-snapshot-ref': 'RemoveSnapshotRefUpdate','remove-snapshots': 'RemoveSnapshotsUpdate','remove-statistics': 'RemoveStatisticsUpdate','set-current-schema': 'SetCurrentSchemaUpdate','set-current-view-version': 'SetCurrentViewVersionUpdate','set-default-sort-order': 'SetDefaultSortOrderUpdate','set-default-spec': 'SetDefaultSpecUpdate','set-location': 'SetLocationUpdate','set-partition-statistics': 'SetPartitionStatisticsUpdate','set-properties': 'SetPropertiesUpdate','set-snapshot-ref': 'SetSnapshotRefUpdate','set-statistics': 'SetStatisticsUpdate','upgrade-format-version': 'UpgradeFormatVersionUpdate'
+        'add-schema': 'AddSchemaUpdate','add-snapshot': 'AddSnapshotUpdate','add-sort-order': 'AddSortOrderUpdate','add-spec': 'AddPartitionSpecUpdate','add-view-version': 'AddViewVersionUpdate','assign-uuid': 'AssignUUIDUpdate','remove-partition-specs': 'RemovePartitionSpecsUpdate','remove-partition-statistics': 'RemovePartitionStatisticsUpdate','remove-properties': 'RemovePropertiesUpdate','remove-snapshot-ref': 'RemoveSnapshotRefUpdate','remove-snapshots': 'RemoveSnapshotsUpdate','remove-statistics': 'RemoveStatisticsUpdate','set-current-schema': 'SetCurrentSchemaUpdate','set-current-view-version': 'SetCurrentViewVersionUpdate','set-default-sort-order': 'SetDefaultSortOrderUpdate','set-default-spec': 'SetDefaultSpecUpdate','set-location': 'SetLocationUpdate','set-partition-statistics': 'SetPartitionStatisticsUpdate','set-properties': 'SetPropertiesUpdate','set-snapshot-ref': 'SetSnapshotRefUpdate','set-statistics': 'SetStatisticsUpdate','upgrade-format-version': 'UpgradeFormatVersionUpdate'
     }
 
     @classmethod
@@ -106,7 +108,7 @@ class BaseUpdate(BaseModel):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AddPartitionSpecUpdate, AddViewVersionUpdate, AssignUUIDUpdate, RemovePartitionStatisticsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetCurrentViewVersionUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPartitionStatisticsUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
+    def from_json(cls, json_str: str) -> Optional[Union[AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AddPartitionSpecUpdate, AddViewVersionUpdate, AssignUUIDUpdate, RemovePartitionSpecsUpdate, RemovePartitionStatisticsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetCurrentViewVersionUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPartitionStatisticsUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
         """Create an instance of BaseUpdate from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
@@ -131,7 +133,7 @@ class BaseUpdate(BaseModel):
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AddPartitionSpecUpdate, AddViewVersionUpdate, AssignUUIDUpdate, RemovePartitionStatisticsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetCurrentViewVersionUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPartitionStatisticsUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
+    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AddPartitionSpecUpdate, AddViewVersionUpdate, AssignUUIDUpdate, RemovePartitionSpecsUpdate, RemovePartitionStatisticsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetCurrentViewVersionUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPartitionStatisticsUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
         """Create an instance of BaseUpdate from a dict"""
         # look up the object type based on discriminator mapping
         object_type = cls.get_discriminator_value(obj)
@@ -147,6 +149,8 @@ class BaseUpdate(BaseModel):
             return import_module("polaris.catalog.models.add_view_version_update").AddViewVersionUpdate.from_dict(obj)
         if object_type ==  'AssignUUIDUpdate':
             return import_module("polaris.catalog.models.assign_uuid_update").AssignUUIDUpdate.from_dict(obj)
+        if object_type ==  'RemovePartitionSpecsUpdate':
+            return import_module("polaris.catalog.models.remove_partition_specs_update").RemovePartitionSpecsUpdate.from_dict(obj)
         if object_type ==  'RemovePartitionStatisticsUpdate':
             return import_module("polaris.catalog.models.remove_partition_statistics_update").RemovePartitionStatisticsUpdate.from_dict(obj)
         if object_type ==  'RemovePropertiesUpdate':

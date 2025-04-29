@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -48,7 +49,7 @@ class BlobMetadata(BaseModel):
     snapshot_id: StrictInt = Field(alias="snapshot-id")
     sequence_number: StrictInt = Field(alias="sequence-number")
     fields: List[StrictInt]
-    properties: Optional[Dict[str, Any]] = None
+    properties: Optional[Dict[str, StrictStr]] = None
     __properties: ClassVar[List[str]] = ["type", "snapshot-id", "sequence-number", "fields", "properties"]
 
     model_config = ConfigDict(

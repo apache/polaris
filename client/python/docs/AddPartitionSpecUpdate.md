@@ -20,6 +20,7 @@
 -->
 # AddPartitionSpecUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes

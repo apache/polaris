@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -48,7 +49,7 @@ class AzureStorageConfigInfo(StorageConfigInfo):
     tenant_id: StrictStr = Field(description="the tenant id that the storage accounts belong to", alias="tenantId")
     multi_tenant_app_name: Optional[StrictStr] = Field(default=None, description="the name of the azure client application", alias="multiTenantAppName")
     consent_url: Optional[StrictStr] = Field(default=None, description="URL to the Azure permissions request page", alias="consentUrl")
-    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations"]
+    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations", "tenantId", "multiTenantAppName", "consentUrl"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -100,8 +101,6 @@ class AzureStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
-        # IMPORTANT: The following may require manual repair to add subtype-specific properties
-        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
             "allowedLocations": obj.get("allowedLocations"),

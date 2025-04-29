@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -29,6 +30,7 @@
     Do not edit the class manually.
 """  # noqa: E501
 
+
 from __future__ import annotations
 import pprint
 import re  # noqa: F401
@@ -40,27 +42,22 @@ from polaris.management.models.storage_config_info import StorageConfigInfo
 from typing import Optional, Set
 from typing_extensions import Self
 
-
 class AwsStorageConfigInfo(StorageConfigInfo):
     """
     aws storage configuration info
-    """  # noqa: E501
-    role_arn: StrictStr = Field(description="the aws role arn that grants privileges on the S3 buckets",
-                                alias="roleArn")
-    external_id: Optional[StrictStr] = Field(default=None,
-                                             description="an optional external id used to establish a trust relationship with AWS in the trust policy",
-                                             alias="externalId")
-    user_arn: Optional[StrictStr] = Field(default=None, description="the aws user arn used to assume the aws role",
-                                          alias="userArn")
-    region: Optional[StrictStr] = Field(default=None, description="the aws region where data is stored",
-                                          alias="region")
-    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations"]
+    """ # noqa: E501
+    role_arn: StrictStr = Field(description="the aws role arn that grants privileges on the S3 buckets", alias="roleArn")
+    external_id: Optional[StrictStr] = Field(default=None, description="an optional external id used to establish a trust relationship with AWS in the trust policy", alias="externalId")
+    user_arn: Optional[StrictStr] = Field(default=None, description="the aws user arn used to assume the aws role", alias="userArn")
+    region: Optional[StrictStr] = Field(default=None, description="the aws region where data is stored")
+    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations", "roleArn", "externalId", "userArn", "region"]
 
     model_config = ConfigDict(
         populate_by_name=True,
         validate_assignment=True,
         protected_namespaces=(),
     )
+
 
     def to_str(self) -> str:
         """Returns the string representation of the model using alias"""
@@ -105,8 +102,6 @@ class AwsStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
-        # IMPORTANT: The following may require manual repair to add subtype-specific properties
-        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
             "allowedLocations": obj.get("allowedLocations"),
@@ -116,3 +111,5 @@ class AwsStorageConfigInfo(StorageConfigInfo):
             "region": obj.get("region")
         })
         return _obj
+
+

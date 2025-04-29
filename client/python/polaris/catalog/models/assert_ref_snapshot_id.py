@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,20 +36,19 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertRefSnapshotId(TableRequirement):
+class AssertRefSnapshotId(BaseModel):
     """
     The table branch or tag identified by the requirement's `ref` must reference the requirement's `snapshot-id`; if `snapshot-id` is `null` or missing, the ref must not already exist
     """ # noqa: E501
     type: StrictStr
     ref: StrictStr
     snapshot_id: StrictInt = Field(alias="snapshot-id")
-    __properties: ClassVar[List[str]] = ["type"]
+    __properties: ClassVar[List[str]] = ["type", "ref", "snapshot-id"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -108,7 +108,9 @@ class AssertRefSnapshotId(TableRequirement):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type")
+            "type": obj.get("type"),
+            "ref": obj.get("ref"),
+            "snapshot-id": obj.get("snapshot-id")
         })
         return _obj
 

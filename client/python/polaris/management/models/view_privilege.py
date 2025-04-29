@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,6 @@ class ViewPrivilege(str, Enum):
     allowed enum values
     """
     CATALOG_MANAGE_ACCESS = 'CATALOG_MANAGE_ACCESS'
-    VIEW_CREATE = 'VIEW_CREATE'
     VIEW_DROP = 'VIEW_DROP'
     VIEW_LIST = 'VIEW_LIST'
     VIEW_READ_PROPERTIES = 'VIEW_READ_PROPERTIES'

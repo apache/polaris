@@ -594,7 +594,7 @@ void (empty response body)
 
 
 
-Delete an existing catalog. This is a cascading operation that deletes all metadata, including principals, roles and grants. If the catalog is an internal catalog, all tables and namespaces are dropped without purge.
+Delete an existing catalog. The catalog must be empty.
 
 ### Example
 
@@ -1194,7 +1194,7 @@ Name | Type | Description  | Notes
 
 
 
-List the PrincipalRoles to whome the tagetcatalog role has been assigned
+List the PrincipalRoles to which the target catalog role has been assigned
 
 ### Example
 
@@ -1261,7 +1261,7 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | List the PrincipalRoles to whome the tagetcatalog role has been assigned |  -  |
+**200** | List the PrincipalRoles to which the target catalog role has been assigned |  -  |
 **403** | The caller does not have permission to list principal roles |  -  |
 **404** | The catalog or catalog role does not exist |  -  |
 

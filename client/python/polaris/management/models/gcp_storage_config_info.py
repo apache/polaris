@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -46,7 +47,7 @@ class GcpStorageConfigInfo(StorageConfigInfo):
     gcp storage configuration info
     """ # noqa: E501
     gcs_service_account: Optional[StrictStr] = Field(default=None, description="a Google cloud storage service account", alias="gcsServiceAccount")
-    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations"]
+    __properties: ClassVar[List[str]] = ["storageType", "allowedLocations", "gcsServiceAccount"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -98,8 +99,6 @@ class GcpStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
-        # IMPORTANT: The following may require manual repair to add subtype-specific properties
-        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
             "allowedLocations": obj.get("allowedLocations"),

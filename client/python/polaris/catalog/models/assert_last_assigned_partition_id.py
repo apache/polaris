@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,19 +36,18 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertLastAssignedPartitionId(TableRequirement):
+class AssertLastAssignedPartitionId(BaseModel):
     """
     The table's last assigned partition id must match the requirement's `last-assigned-partition-id`
     """ # noqa: E501
     type: StrictStr
     last_assigned_partition_id: StrictInt = Field(alias="last-assigned-partition-id")
-    __properties: ClassVar[List[str]] = ["type"]
+    __properties: ClassVar[List[str]] = ["type", "last-assigned-partition-id"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -107,7 +107,8 @@ class AssertLastAssignedPartitionId(TableRequirement):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type")
+            "type": obj.get("type"),
+            "last-assigned-partition-id": obj.get("last-assigned-partition-id")
         })
         return _obj
 

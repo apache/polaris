@@ -20,6 +20,7 @@
 -->
 # SQLViewRepresentation
 
+
 ## Properties
 
 Name | Type | Description | Notes

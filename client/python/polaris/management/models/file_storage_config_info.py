@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -43,7 +44,7 @@ from typing_extensions import Self
 
 class FileStorageConfigInfo(StorageConfigInfo):
     """
-    gcp storage configuration info
+    file storage configuration info
     """ # noqa: E501
     __properties: ClassVar[List[str]] = ["storageType", "allowedLocations"]
 

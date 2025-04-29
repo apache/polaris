@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,19 +36,18 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from polaris.catalog.models.view_requirement import ViewRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertViewUUID(ViewRequirement):
+class AssertViewUUID(BaseModel):
     """
     The view UUID must match the requirement's `uuid`
     """ # noqa: E501
     type: StrictStr
     uuid: StrictStr
-    __properties: ClassVar[List[str]] = ["type"]
+    __properties: ClassVar[List[str]] = ["type", "uuid"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -107,7 +107,8 @@ class AssertViewUUID(ViewRequirement):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type")
+            "type": obj.get("type"),
+            "uuid": obj.get("uuid")
         })
         return _obj
 
