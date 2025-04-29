@@ -18,10 +18,13 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
 /**
  * A common interface for adapters between the REST interface and {@link CatalogHandler}
@@ -30,5 +33,12 @@ import org.apache.iceberg.rest.RESTUtil;
 public interface CatalogAdapter {
   default Namespace decodeNamespace(String namespace) {
     return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
+  }
+
+  default void validatePrincipal(SecurityContext securityContext) {
+    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    if (authenticatedPrincipal == null) {
+      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
+    }
   }
 }

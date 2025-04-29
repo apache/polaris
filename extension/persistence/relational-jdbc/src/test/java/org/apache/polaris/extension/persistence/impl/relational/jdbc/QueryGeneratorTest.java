@@ -151,9 +151,7 @@ public class QueryGeneratorTest {
     ModelEntity entityToDelete = ModelEntity.builder().name("test").entityVersion(1).build();
     String expectedQuery =
         "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
-    assertEquals(
-        expectedQuery,
-        QueryGenerator.generateDeleteQuery(entityToDelete, ModelEntity.class, REALM_ID));
+    assertEquals(expectedQuery, QueryGenerator.generateDeleteQuery(entityToDelete, REALM_ID));
   }
 
   @Test
@@ -161,9 +159,7 @@ public class QueryGeneratorTest {
     ModelEntity entityToDelete = ModelEntity.builder().name("test").dropTimestamp(0L).build();
     String expectedQuery =
         "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 0 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
-    assertEquals(
-        expectedQuery,
-        QueryGenerator.generateDeleteQuery(entityToDelete, ModelEntity.class, REALM_ID));
+    assertEquals(expectedQuery, QueryGenerator.generateDeleteQuery(entityToDelete, REALM_ID));
   }
 
   @Test

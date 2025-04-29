@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.policy;
+package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import jakarta.enterprise.context.RequestScoped;
-import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
-@RequestScoped
-public class PolicyServiceImpl implements PolarisCatalogPolicyApiService {}
+@TestProfile(RelationalJdbcProfile.class)
+@QuarkusIntegrationTest
+public class JdbcQuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {}

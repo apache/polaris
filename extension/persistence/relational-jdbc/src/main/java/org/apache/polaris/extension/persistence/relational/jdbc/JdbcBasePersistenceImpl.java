@@ -20,9 +20,11 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static org.apache.polaris.extension.persistence.relational.jdbc.QueryGenerator.*;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,13 +46,17 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,16 +92,73 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            persistEntity(callCtx, entity, originalEntity, statement);
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Error persisting entity", e);
+    }
+  }
+
+  @Override
+  public void writeEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisBaseEntity> entities,
+      List<PolarisBaseEntity> originalEntities) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            for (int i = 0; i < entities.size(); i++) {
+              PolarisBaseEntity entity = entities.get(i);
+              PolarisBaseEntity originalEntity =
+                  originalEntities != null ? originalEntities.get(i) : null;
+
+              // first, check if the entity has already been created, in which case we will simply
+              // return it.
+              PolarisBaseEntity entityFound =
+                  lookupEntity(
+                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+              if (entityFound != null && originalEntity == null) {
+                // probably the client retried, simply return it
+                // TODO: Check correctness of returning entityFound vs entity here. It may have
+                // already been updated after the creation.
+                continue;
+              }
+              persistEntity(callCtx, entity, originalEntity, statement);
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format(
+              "Error executing the transaction for writing entities due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  private void persistEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      PolarisBaseEntity originalEntity,
+      Statement statement)
+      throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
-    String query;
     if (originalEntity == null) {
       try {
-        query = generateInsertQuery(modelEntity, realmId);
-        datasourceOperations.executeUpdate(query);
+        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
       } catch (SQLException e) {
-        if ((datasourceOperations.isConstraintViolation(e)
-            || datasourceOperations.isAlreadyExistsException(e))) {
-          throw new EntityAlreadyExistsException(entity, e);
+        if (datasourceOperations.isConstraintViolation(e)) {
+          PolarisBaseEntity existingEntity =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          throw new EntityAlreadyExistsException(existingEntity, e);
         } else {
           throw new RuntimeException(
               String.format("Failed to write entity due to %s", e.getMessage()), e);
@@ -112,103 +175,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getEntityVersion(),
               "realm_id",
               realmId);
-      query = generateUpdateQuery(modelEntity, params);
       try {
-        int rowsUpdated = datasourceOperations.executeUpdate(query);
+        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected version %s",
-              entity.getName(), entity.getId(), originalEntity.getEntityVersion());
+              originalEntity.getName(), originalEntity.getId(), originalEntity.getEntityVersion());
         }
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
-    }
-  }
-
-  @Override
-  public void writeEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisBaseEntity> entities,
-      List<PolarisBaseEntity> originalEntities) {
-    try {
-      datasourceOperations.runWithinTransaction(
-          statement -> {
-            for (int i = 0; i < entities.size(); i++) {
-              PolarisBaseEntity entity = entities.get(i);
-              ModelEntity modelEntity = ModelEntity.fromEntity(entity);
-
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
-              PolarisBaseEntity entityFound =
-                  lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
-                continue;
-              }
-              // lookup by name
-              EntityNameLookupRecord exists =
-                  lookupEntityIdAndSubTypeByName(
-                      callCtx,
-                      entity.getCatalogId(),
-                      entity.getParentId(),
-                      entity.getTypeCode(),
-                      entity.getName());
-              if (exists != null) {
-                throw new EntityAlreadyExistsException(entity);
-              }
-              String query;
-              if (originalEntities == null || originalEntities.get(i) == null) {
-                try {
-                  query = generateInsertQuery(modelEntity, realmId);
-                  statement.executeUpdate(query);
-                } catch (SQLException e) {
-                  if ((datasourceOperations.isConstraintViolation(e)
-                      || datasourceOperations.isAlreadyExistsException(e))) {
-                    throw new EntityAlreadyExistsException(entity, e);
-                  } else {
-                    throw new RuntimeException(
-                        String.format("Failed to write entity due to %s", e.getMessage()), e);
-                  }
-                }
-              } else {
-                Map<String, Object> params =
-                    Map.of(
-                        "id",
-                        originalEntities.get(i).getId(),
-                        "catalog_id",
-                        originalEntities.get(i).getCatalogId(),
-                        "entity_version",
-                        originalEntities.get(i).getEntityVersion(),
-                        "realm_id",
-                        realmId);
-                query = generateUpdateQuery(modelEntity, params);
-                try {
-                  int rowsUpdated = statement.executeUpdate(query);
-                  if (rowsUpdated == 0) {
-                    throw new RetryOnConcurrencyException(
-                        "Entity '%s' id '%s' concurrently modified; expected version %s",
-                        entity.getName(),
-                        entity.getId(),
-                        originalEntities.get(i).getEntityVersion());
-                  }
-                } catch (SQLException e) {
-                  throw new RuntimeException(
-                      String.format("Failed to write entity due to %s", e.getMessage()), e);
-                }
-              }
-            }
-            return true;
-          });
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()),
-          e);
     }
   }
 
@@ -248,7 +225,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void deleteFromGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
-    String query = generateDeleteQuery(modelGrantRecord, ModelGrantRecord.class, realmId);
+    String query = generateDeleteQuery(modelGrantRecord, realmId);
     try {
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
@@ -274,9 +251,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     try {
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
-      datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            statement.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
+            statement.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
+            statement.executeUpdate(
+                generateDeleteAll(ModelPrincipalAuthenticationData.class, realmId));
+            statement.executeUpdate(generateDeleteAll(ModelPolicyMappingRecord.class, realmId));
+            return true;
+          });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
@@ -492,6 +475,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         throw new IllegalStateException(
             String.format(
                 "More than one grant record %s for a given Grant record", results.getFirst()));
+      } else if (results.isEmpty()) {
+        return null;
       }
       return results.getFirst();
     } catch (SQLException e) {
@@ -724,6 +709,190 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e);
       throw new RuntimeException(
           String.format("Failed to delete principalSecrets for clientId: %s", clientId), e);
+    }
+  }
+
+  @Override
+  public void writeToPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
+            Preconditions.checkArgument(
+                policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
+            String insertPolicyMappingQuery =
+                generateInsertQuery(
+                    ModelPolicyMappingRecord.fromPolicyMappingRecord(record), realmId);
+            if (policyType.isInheritable()) {
+              return handleInheritablePolicy(callCtx, record, insertPolicyMappingQuery, statement);
+            } else {
+              statement.executeUpdate(insertPolicyMappingQuery);
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write to policy mapping records due to %s", e.getMessage()), e);
+    }
+  }
+
+  private boolean handleInheritablePolicy(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisPolicyMappingRecord record,
+      @Nonnull String insertQuery,
+      Statement statement)
+      throws SQLException {
+    List<PolarisPolicyMappingRecord> existingRecords =
+        loadPoliciesOnTargetByType(
+            callCtx, record.getTargetCatalogId(), record.getTargetId(), record.getPolicyTypeCode());
+    if (existingRecords.size() > 1) {
+      throw new PolicyMappingAlreadyExistsException(existingRecords.getFirst());
+    } else if (existingRecords.size() == 1) {
+      PolarisPolicyMappingRecord existingRecord = existingRecords.getFirst();
+      if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
+          || existingRecord.getPolicyId() != record.getPolicyId()) {
+        // Only one policy of the same type can be attached to an entity when the policy is
+        // inheritable.
+        throw new PolicyMappingAlreadyExistsException(existingRecord);
+      }
+      Map<String, Object> updateClause =
+          Map.of(
+              "target_catalog_id",
+              record.getTargetCatalogId(),
+              "target_id",
+              record.getTargetId(),
+              "policy_type_code",
+              record.getPolicyTypeCode(),
+              "policy_id",
+              record.getPolicyId(),
+              "policy_catalog_id",
+              record.getPolicyCatalogId(),
+              "realm_id",
+              realmId);
+      // In case of the mapping exist, update the policy mapping with the new parameters.
+      String updateQuery =
+          generateUpdateQuery(
+              ModelPolicyMappingRecord.fromPolicyMappingRecord(record), updateClause);
+      statement.executeUpdate(updateQuery);
+    } else {
+      // record doesn't exist do an insert.
+      statement.executeUpdate(insertQuery);
+    }
+    return true;
+  }
+
+  @Override
+  public void deleteFromPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
+    String query = generateDeleteQuery(modelPolicyMappingRecord, realmId);
+    try {
+      datasourceOperations.executeUpdate(query);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write to policy records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void deleteAllEntityPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    try {
+      datasourceOperations.executeUpdate(
+          generateDeleteQueryForEntityPolicyMappingRecords(entity, realmId));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete policy mapping records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nullable
+  @Override
+  public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    Map<String, Object> params =
+        Map.of(
+            "target_catalog_id",
+            targetCatalogId,
+            "target_id",
+            targetId,
+            "policy_type_code",
+            policyTypeCode,
+            "policy_id",
+            policyId,
+            "policy_catalog_id",
+            policyCatalogId,
+            "realm_id",
+            realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
+    Preconditions.checkState(results.size() <= 1, "More than one policy mapping records found");
+    return results.size() == 1 ? results.getFirst() : null;
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    Map<String, Object> params =
+        Map.of(
+            "target_catalog_id",
+            targetCatalogId,
+            "target_id",
+            targetId,
+            "policy_type_code",
+            policyTypeCode,
+            "realm_id",
+            realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    Map<String, Object> params =
+        Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    Map<String, Object> params =
+        Map.of("policy_catalog_id", policyCatalogId, "policy_id", policyId, "realm_id", realmId);
+    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    return fetchPolicyMappingRecords(query);
+  }
+
+  private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(String query) {
+    try {
+      List<PolarisPolicyMappingRecord> results =
+          datasourceOperations.executeSelect(
+              query,
+              ModelPolicyMappingRecord.class,
+              ModelPolicyMappingRecord::toPolicyMappingRecord,
+              null,
+              Integer.MAX_VALUE);
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
     }
   }
 

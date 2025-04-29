@@ -57,7 +57,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -68,6 +68,8 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +80,9 @@ import org.mockito.Mockito;
 @QuarkusTest
 @TestProfile(IcebergCatalogViewTest.Profile.class)
 public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -98,6 +103,14 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   }
 
   public static final String CATALOG_NAME = "polaris-catalog";
+
+  public static Map<String, String> VIEW_PREFIXES =
+      Map.of(
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key1", "catalog-default-key1",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key2", "catalog-default-key2",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key3", "catalog-default-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3", "catalog-override-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4", "catalog-override-key4");
 
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
@@ -145,7 +158,9 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -206,15 +221,12 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             Mockito.mock(),
             fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL,
-            "org.apache.iceberg.inmemory.InMemoryFileIO",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
-            "catalog-default-key1",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
-            "catalog-default-key2"));
+    Map<String, String> properties =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build();
+    this.catalog.initialize(CATALOG_NAME, properties);
   }
 
   @AfterEach

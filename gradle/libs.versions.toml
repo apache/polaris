@@ -19,8 +19,8 @@
 
 [versions]
 hadoop = "3.4.1"
-iceberg = "1.8.1" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
-quarkus = "3.21.2"
+iceberg = "1.9.0" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
+quarkus = "3.21.4"
 immutables = "2.10.1"
 picocli = "4.7.7"
 scala212 = "2.12.19"
@@ -39,7 +39,7 @@ swagger = "1.6.15"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.26" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.30" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.33" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.80" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
@@ -61,7 +61,7 @@ immutables-builder = { module = "org.immutables:builder", version.ref = "immutab
 immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.18.3" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.0" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
 jakarta-enterprise-cdi-api = { module = "jakarta.enterprise:jakarta.enterprise.cdi-api", version = "4.1.0" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
@@ -73,7 +73,7 @@ javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0
 junit-bom = { module = "org.junit:junit-bom", version = "5.12.2" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.6" }
-microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.1" }
+microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.17.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.17.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.49.0" }

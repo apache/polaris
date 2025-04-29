@@ -99,7 +99,9 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.GenericTable;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -146,6 +148,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
 
+  private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
+      Map.of(
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
+          "catalog-default-key1",
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
+          "catalog-default-key2",
+          org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "override-key3",
+          "catalog-default-key3",
+          org.apache.iceberg.CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key3",
+          "catalog-override-key3",
+          org.apache.iceberg.CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
+          "catalog-override-key4");
+
   private static final String[] DEFAULT_CATALOG_PROPERTIES = {
     "allow.unstructured.table.location", "true",
     "allow.external.table.location", "true"
@@ -176,6 +191,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
+  }
+
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
   @AfterAll
@@ -229,7 +248,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    restCatalogConfig =
+    Map<String, String> dynamicConfig =
         testInfo
             .getTestMethod()
             .map(m -> m.getAnnotation(RestCatalogConfig.class))
@@ -247,6 +266,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                   return config;
                 })
             .orElse(ImmutableMap.of());
+
+    restCatalogConfig =
+        ImmutableMap.<String, String>builder()
+            .putAll(DEFAULT_REST_CATALOG_CONFIG)
+            .putAll(dynamicConfig)
+            .build();
 
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
@@ -575,7 +600,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -610,7 +635,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -644,7 +669,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             externalCatalogBase + "/ns1/my_table",
             Map.of());
@@ -675,7 +700,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -722,7 +747,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());
@@ -768,7 +793,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
         TableMetadata.newTableMetadata(
-            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
             "file:///tmp/ns1/my_table",
             Map.of());

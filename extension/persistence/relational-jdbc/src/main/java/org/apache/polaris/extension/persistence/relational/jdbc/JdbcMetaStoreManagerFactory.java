@@ -21,7 +21,9 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,16 +39,17 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
@@ -68,10 +71,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-  // TODO: Pending discussion of if we should have one Database per realm or 1 schema per realm
-  // or realm should be a primary key on all the tables.
-  @Inject DataSource dataSource;
+
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject Instance<DataSource> dataSource;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -86,7 +88,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new TransactionalMetaStoreManagerImpl();
+    return new AtomicOperationMetaStoreManager();
   }
 
   private void initializeForRealm(
@@ -106,12 +108,16 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource);
+    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
     if (isBootstrap) {
-      // TODO: see if we need to take script from Quarkus or can we just
-      // use the script committed in the repo.
       try {
-        databaseOperations.executeScript("scripts/postgres/schema-v1-postgres.sql");
+        DatabaseType databaseType;
+        try (Connection connection = dataSource.get().getConnection()) {
+          String productName = connection.getMetaData().getDatabaseProductName();
+          databaseType = DatabaseType.fromDisplayName(productName);
+        }
+        databaseOperations.executeScript(
+            String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);
@@ -204,7 +210,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      entityCacheMap.put(realmContext.getRealmIdentifier(), new EntityCache(metaStoreManager));
+      entityCacheMap.put(
+          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

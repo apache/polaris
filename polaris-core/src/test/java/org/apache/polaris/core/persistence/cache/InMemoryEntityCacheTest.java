@@ -45,7 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /** Unit testing of the entity cache */
-public class EntityCacheTest {
+public class InMemoryEntityCacheTest {
 
   // diag services
   private final PolarisDiagnostics diagServices;
@@ -87,7 +87,7 @@ public class EntityCacheTest {
    * - P2(PR2)
    * </pre>
    */
-  public EntityCacheTest() {
+  public InMemoryEntityCacheTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new TreeMapMetaStore(diagServices);
     metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
@@ -102,14 +102,14 @@ public class EntityCacheTest {
   /**
    * @return new cache for the entity store
    */
-  EntityCache allocateNewCache() {
-    return new EntityCache(this.metaStoreManager);
+  InMemoryEntityCache allocateNewCache() {
+    return new InMemoryEntityCache(this.metaStoreManager);
   }
 
   @Test
   void testGetOrLoadEntityByName() {
     // get a new cache
-    EntityCache cache = this.allocateNewCache();
+    InMemoryEntityCache cache = this.allocateNewCache();
 
     // should exist and no cache hit
     EntityCacheLookupResult lookup =
@@ -278,7 +278,7 @@ public class EntityCacheTest {
   @Test
   void testRefresh() {
     // allocate a new cache
-    EntityCache cache = this.allocateNewCache();
+    InMemoryEntityCache cache = this.allocateNewCache();
 
     // should exist and no cache hit
     EntityCacheLookupResult lookup =
@@ -423,7 +423,7 @@ public class EntityCacheTest {
   @Test
   void testRenameAndCacheDestinationBeforeLoadingSource() {
     // get a new cache
-    EntityCache cache = this.allocateNewCache();
+    InMemoryEntityCache cache = this.allocateNewCache();
 
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(

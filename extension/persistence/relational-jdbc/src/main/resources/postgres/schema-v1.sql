@@ -15,16 +15,12 @@
 -- KIND, either express or implied.  See the License for the
 -- specific language governing permissions and limitations
 -- under the License.
---
 
--- Note: Database and schema creation is not included in this script. Please create the database and
--- schema before running this script. for example in psql:
--- CREATE DATABASE polaris_db;
--- \c polaris_db
--- CREATE SCHEMA polaris_schema;
--- set search_path to polaris_schema;
+CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
+SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
@@ -49,6 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
+COMMENT ON COLUMN entities.realm_id IS 'realm_id used for multi-tenancy';
 COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
 COMMENT ON COLUMN entities.id IS 'entity id';
 COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
@@ -65,7 +62,7 @@ COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties 
 COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
 CREATE TABLE IF NOT EXISTS grant_records (
-    realm_id INT NOT NULL,
+    realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
@@ -84,7 +81,7 @@ COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
-    realm_id INT NOT NULL,
+    realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
     principal_client_id VARCHAR(255) NOT NULL,
     main_secret_hash VARCHAR(255) NOT NULL,
@@ -94,3 +91,17 @@ CREATE TABLE IF NOT EXISTS principal_authentication_data (
 );
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
+
+DROP TABLE IF EXISTS policy_mapping_record;
+CREATE TABLE IF NOT EXISTS policy_mapping_record (
+    realm_id TEXT NOT NULL,
+    target_catalog_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    policy_type_code INTEGER NOT NULL,
+    policy_catalog_id BIGINT NOT NULL,
+    policy_id BIGINT NOT NULL,
+    parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
+    PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
