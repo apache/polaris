@@ -29,8 +29,7 @@ import java.util.stream.StreamSupport;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
 /**
- * Used to wrap a ResultSet and the connection which generated it for lazy iteration over a
- * ResultSet
+ * Used to wrap a ResultSet and to build a stream from the data it contains
  */
 public class ResultSetIterator<T> implements Iterator<T> {
   private final ResultSet resultSet;
