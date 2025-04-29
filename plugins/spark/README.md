@@ -83,10 +83,13 @@ bin/spark-shell \
 ```
 
 # Limitations
-The Spark client does have limitations as follows:
-1) Create table as select (CTAS) is not supported for Delta tables.
-2) Dataframe saveAsTable is not supported for Delta tables, which requires CTAS support.
-3) Create non-iceberg table without explicit location is not supported.
-4) Rename table for non-iceberg table is not supported.
-5) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
-6) No specific guarantee is provided for table types that are neither ICEBERG or DELTA at this moment.
+The Polaris Spark client supports catalog management for both Iceberg and None-Iceberg tables, it routes all Iceberg
+table requests to the Iceberg REST endpoints, and routes none-iceberg table requests to the Generic Table REST endpoints.
+
+Following describes the current limitations of the Polaris Spark client:
+1) Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
+   is also not supported, since it relies on the CTAS support.
+2) Create a non-iceberg table without explicit location is not supported.
+3) Rename a table for non-iceberg table is not supported.
+4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
+5) No guarantee is provided for table types that are neither ICEBERG or DELTA at this moment, like csv.
