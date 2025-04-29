@@ -138,6 +138,12 @@ public class DatasourceOperations {
       consumer.accept(iterator.toStream());
     } catch (SQLException e) {
       throw e;
+    } catch (RuntimeException e) {
+      if (e.getCause() instanceof SQLException) {
+        throw (SQLException) e.getCause();
+      } else {
+        throw e;
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
