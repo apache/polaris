@@ -1205,7 +1205,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       try {
         //  need to check if the policy is attached to any entity
         List<PolarisPolicyMappingRecord> records =
-            ms.loadAllPoliciesOnTarget(
+            ms.loadAllTargetsOnPolicy(
                 callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
