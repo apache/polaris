@@ -28,24 +28,28 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
-/** Used to wrap a ResultSet and to build a stream from the data it contains */
+/**
+ * Used to wrap a ResultSet and to build a stream from the data it contains. This data
+ * structure will not close the ResultSet passed in, so the caller is still responsible
+ * for managing its lifecycle
+ */
 public class ResultSetIterator<T> implements Iterator<T> {
   private final ResultSet resultSet;
   private final Converter<T> converterInstance;
   private boolean hasNext;
 
-  public ResultSetIterator(ResultSet resultSet, Converter<T> converterInstance) {
+  public ResultSetIterator(ResultSet resultSet, Converter<T> converterInstance) throws SQLException {
     this.resultSet = resultSet;
     this.converterInstance = converterInstance;
     advance();
   }
 
-  private void advance() {
+  private void advance() throws SQLException {
     try {
       hasNext = resultSet.next();
     } catch (SQLException e) {
       hasNext = false;
-      throw new RuntimeException(e);
+      throw e;
     }
   }
 
