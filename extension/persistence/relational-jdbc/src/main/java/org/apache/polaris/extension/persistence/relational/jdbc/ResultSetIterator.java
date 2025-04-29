@@ -28,9 +28,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
-/**
- * Used to wrap a ResultSet and to build a stream from the data it contains
- */
+/** Used to wrap a ResultSet and to build a stream from the data it contains */
 public class ResultSetIterator<T> implements Iterator<T> {
   private final ResultSet resultSet;
   private final Converter<T> converterInstance;
