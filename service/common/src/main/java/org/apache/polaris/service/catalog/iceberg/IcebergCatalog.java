@@ -25,14 +25,9 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/BasePolarisCatalog.java
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
-=======
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -63,10 +58,6 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.TableProperties;
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/BasePolarisCatalog.java
-import org.apache.iceberg.aws.s3.S3FileIOProperties;
-=======
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -85,13 +76,9 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/BasePolarisCatalog.java
-import org.apache.iceberg.io.SupportsBulkOperations;
-=======
 import org.apache.iceberg.io.LocationProvider;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.util.LocationUtil;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
@@ -135,12 +122,8 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/BasePolarisCatalog.java
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
-import org.apache.polaris.service.persistence.MetadataCacheManager;
-=======
 import org.apache.polaris.service.catalog.io.FileIOUtil;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
+import org.apache.polaris.service.persistence.MetadataCacheManager;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -386,8 +369,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
+  @VisibleForTesting
   @Override
-  protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
+  public TableOperations newTableOps(TableIdentifier tableIdentifier) {
     boolean makeMetadataCurrentOnCommit =
         getCurrentPolarisContext()
             .getConfigurationStore()
@@ -911,8 +895,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
-    if (maxMetadataCacheBytes == PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
+                callContext.getPolarisCallContext(), FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
+    if (maxMetadataCacheBytes == FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
       return loadTableMetadata(loadTable(identifier));
     } else {
       Supplier<TableMetadata> fallback = () -> loadTableMetadata(loadTable(identifier));
@@ -1317,18 +1301,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
-      // if the metadata is already out of date, reject it
-      if (base != current()) {
-        if (base != null) {
-          throw new CommitFailedException("Cannot commit: stale table metadata");
-        } else {
+      if (base == null) {
+        if (currentMetadata != null) {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
-      }
-      // if the metadata is not changed, return early
-      if (base == metadata) {
+      } else if (base.metadataFileLocation() != null
+          && !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
+        throw new CommitFailedException("Cannot commit: stale table metadata");
+      } else if (base != currentMetadata) {
+        // This branch is different from BaseMetastoreTableOperations
+        LOGGER.debug(
+            "Base object differs from current metadata; proceeding because locations match");
+      } else if (base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+        // if the metadata is not changed, return early
         LOGGER.info("Nothing to commit.");
         return;
       }
@@ -1585,98 +1572,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         createTableLike(tableIdentifier, entity);
       } else {
         updateTableLike(tableIdentifier, entity);
-      }
-    }
-
-    /**
-     * Copied from {@link BaseMetastoreTableOperations} but without the requirement that base ==
-     * current()
-     *
-     * @param base table metadata on which changes were based
-     * @param metadata new table metadata with updates
-     */
-    @Override
-    public void commit(TableMetadata base, TableMetadata metadata) {
-      TableMetadata currentMetadata = current();
-
-      // if the metadata is already out of date, reject it
-      if (base == null) {
-        if (currentMetadata != null) {
-          // when current is non-null, the table exists. but when base is null, the commit is trying
-          // to create the table
-          throw new AlreadyExistsException("Table already exists: %s", tableName());
-        }
-      } else if (base.metadataFileLocation() != null
-          && !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
-        throw new CommitFailedException("Cannot commit: stale table metadata");
-      } else if (base != currentMetadata) {
-        // This branch is different from BaseMetastoreTableOperations
-        LOGGER.debug(
-            "Base object differs from current metadata; proceeding because locations match");
-      } else if (base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
-        // if the metadata is not changed, return early
-        LOGGER.info("Nothing to commit.");
-        return;
-      }
-
-      long start = System.currentTimeMillis();
-      doCommit(base, metadata);
-      deleteRemovedMetadataFiles(base, metadata);
-      requestRefresh();
-
-      LOGGER.info(
-          "Successfully committed to table {} in {} ms",
-          tableName(),
-          System.currentTimeMillis() - start);
-    }
-
-    /**
-     * Copied from {@link BaseMetastoreTableOperations} as the method is private there This is moved
-     * to `CatalogUtils` in Iceberg 1.7.0 and can be called from there once we depend on Iceberg
-     * 1.7.0
-     *
-     * <p>Deletes the oldest metadata files if {@link
-     * TableProperties#METADATA_DELETE_AFTER_COMMIT_ENABLED} is true.
-     *
-     * @param base table metadata on which previous versions were based
-     * @param metadata new table metadata with updated previous versions
-     */
-    protected void deleteRemovedMetadataFiles(TableMetadata base, TableMetadata metadata) {
-      if (base == null) {
-        return;
-      }
-
-      boolean deleteAfterCommit =
-          metadata.propertyAsBoolean(
-              TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED,
-              TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED_DEFAULT);
-
-      if (deleteAfterCommit) {
-        Set<TableMetadata.MetadataLogEntry> removedPreviousMetadataFiles =
-            Sets.newHashSet(base.previousFiles());
-        // TableMetadata#addPreviousFile builds up the metadata log and uses
-        // TableProperties.METADATA_PREVIOUS_VERSIONS_MAX to determine how many files should stay in
-        // the log, thus we don't include metadata.previousFiles() for deletion - everything else
-        // can
-        // be removed
-        removedPreviousMetadataFiles.removeAll(metadata.previousFiles());
-        if (io() instanceof SupportsBulkOperations) {
-          ((SupportsBulkOperations) io())
-              .deleteFiles(
-                  Iterables.transform(
-                      removedPreviousMetadataFiles, TableMetadata.MetadataLogEntry::file));
-        } else {
-          Tasks.foreach(removedPreviousMetadataFiles)
-              .noRetry()
-              .suppressFailureWhenFinished()
-              .onFailure(
-                  (previousMetadataFile, exc) ->
-                      LOGGER.warn(
-                          "Delete failed for previous metadata file: {}",
-                          previousMetadataFile,
-                          exc))
-              .run(previousMetadataFile -> io().deleteFile(previousMetadataFile.file()));
-        }
       }
     }
 

@@ -59,11 +59,8 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
 import org.apache.iceberg.TableOperations;
-=======
 import org.apache.iceberg.UpdateSchema;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -96,20 +93,16 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
-=======
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -127,12 +120,8 @@ import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.MetadataCacheManager;
-=======
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -223,9 +212,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private PolarisEntity catalogEntity;
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
   private PolarisResolutionManifestCatalogView passthroughView;
-=======
   private SecurityContext securityContext;
 
   @BeforeAll
@@ -237,7 +224,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   @Nullable
   protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -298,52 +284,20 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
-        adminService.createCatalog(
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(PolarisConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
+        new CatalogEntity.Builder()
+            .setName(CATALOG_NAME)
+            .setDefaultBaseLocation(storageLocation)
+            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(FeatureConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
+            .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+            .build();
 
     passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
-    TaskExecutor taskExecutor = Mockito.mock();
-    this.catalog =
-        new BasePolarisCatalog(
-            entityManager,
-            metaStoreManager,
-            callContext,
-            passthroughView,
-            authenticatedRoot,
-            taskExecutor,
-            new DefaultFileIOFactory());
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    stsClient = Mockito.mock(StsClient.class);
-=======
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog()));
+            callContext, entityManager, securityContext, CATALOG_NAME);
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -351,7 +305,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
         .thenReturn(
             AssumeRoleResponse.builder()
@@ -1808,7 +1761,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 
-<<<<<<< HEAD:polaris-service/src/test/java/org/apache/polaris/service/catalog/BasePolarisCatalogTest.java
   private Schema buildSchema(int fields) {
     Types.NestedField[] fieldsArray = new Types.NestedField[fields];
     for (int i = 0; i < fields; i++) {
@@ -1848,7 +1800,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     // Update the table
     TableOperations tableOps = catalog.newTableOps(tableIdentifier);
-    TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100), 100);
+    TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100));
     tableOps.commit(tableOps.current(), updatedMetadata);
 
     // Read from the cache; it should detect a chance due to the update and load the new fallback
@@ -1866,7 +1818,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);
     Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
-=======
+  }
+
   @Test
   public void testRegisterTableWithSlashlessMetadataLocation() {
     IcebergCatalog catalog = catalog();
@@ -2026,6 +1979,5 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {
     return (InMemoryFileIO) ((ExceptionMappingFileIO) catalog.getIo()).getInnerIo();
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:quarkus/service/src/test/java/org/apache/polaris/service/quarkus/catalog/IcebergCatalogTest.java
   }
 }

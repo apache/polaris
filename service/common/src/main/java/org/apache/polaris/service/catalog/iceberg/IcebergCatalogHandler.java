@@ -376,42 +376,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withSortOrder(request.writeOrder())
             .withProperties(properties)
             .create();
-
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/PolarisCatalogHandlerWrapper.java
-          if (table instanceof BaseTable baseTable) {
-
-            final TableMetadata tableMetadata;
-            if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-              tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
-            } else {
-              tableMetadata = baseTable.operations().current();
-            }
-
-            LoadTableResponse.Builder responseBuilder =
-                LoadTableResponse.builder().withTableMetadata(tableMetadata);
-            if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOGGER
-                  .atDebug()
-                  .addKeyValue("tableIdentifier", tableIdentifier)
-                  .addKeyValue("tableLocation", tableMetadata.location())
-                  .log("Fetching client credentials for table");
-              responseBuilder.addAllConfig(
-                  credentialDelegation.getCredentialConfig(
-                      tableIdentifier,
-                      tableMetadata,
-                      Set.of(
-                          PolarisStorageActions.READ,
-                          PolarisStorageActions.WRITE,
-                          PolarisStorageActions.LIST)));
-            }
-            return responseBuilder.build();
-          } else if (table instanceof BaseMetadataTable) {
-            // metadata tables are loaded on the client side, return NoSuchTableException for now
-            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-          }
-=======
     if (table instanceof BaseTable baseTable) {
-      TableMetadata tableMetadata = baseTable.operations().current();
+      final TableMetadata tableMetadata;
+      if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+        tableMetadata = icebergCatalog.loadTableMetadata(tableIdentifier);
+      } else {
+        tableMetadata = baseTable.operations().current();
+      }
       return buildLoadTableResponseWithDelegationCredentials(
               tableIdentifier,
               tableMetadata,
@@ -425,8 +396,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     }
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalogHandler.java
-
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
@@ -576,19 +545,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    */
   private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
-
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/PolarisCatalogHandlerWrapper.java
-    return doCatalogOperation(
-        () -> {
-          if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-            return LoadTableResponse.builder()
-                .withTableMetadata(basePolarisCatalog.loadTableMetadata(tableIdentifier))
-                .build();
-          }
-
-          return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
-        });
-=======
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
 
@@ -634,7 +590,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     LoadTableResponse rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
     return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalogHandler.java
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -724,53 +679,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         }
       }
     }
-
-    // TODO: Find a way for the configuration or caller to better express whether to fail or omit
-    // when data-access is specified but access delegation grants are not found.
-<<<<<<< HEAD:polaris-service/src/main/java/org/apache/polaris/service/catalog/PolarisCatalogHandlerWrapper.java
-    return doCatalogOperation(
-        () -> {
-          TableMetadata tableMetadata = null;
-          if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-            tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
-          }
-
-          // The metadata failed to load
-          if (tableMetadata == null) {
-            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-          }
-
-          if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-            LoadTableResponse.Builder responseBuilder =
-                LoadTableResponse.builder().withTableMetadata(tableMetadata);
-            LOGGER
-                .atDebug()
-                .addKeyValue("tableIdentifier", tableIdentifier)
-                .addKeyValue("tableLocation", tableMetadata.location())
-                .log("Fetching client credentials for table");
-            responseBuilder.addAllConfig(
-                credentialDelegation.getCredentialConfig(
-                    tableIdentifier, tableMetadata, actionsRequested));
-            return responseBuilder.build();
-          } else {
-            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-          }
-        });
-=======
-    Table table = baseCatalog.loadTable(tableIdentifier);
-
-    if (table instanceof BaseTable baseTable) {
-      TableMetadata tableMetadata = baseTable.operations().current();
-      return Optional.of(
-          buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
-              .build());
-    } else if (table instanceof BaseMetadataTable) {
-      // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    TableMetadata tableMetadata = null;
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      tableMetadata = icebergCatalog.loadTableMetadata(tableIdentifier);
     }
 
-    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    // The metadata failed to load
+    if (tableMetadata == null) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    } else {
+      return Optional.of(
+          buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier, tableMetadata, actionsRequested, snapshots)
+              .build());
+    }
   }
 
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
@@ -798,7 +720,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
     return responseBuilder;
->>>>>>> cfe22b7de57bfeb6f877bee54b8a959f30173451:service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalogHandler.java
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
@@ -958,8 +879,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
               TableOperations tableOps = ((BaseTable) table).operations();
               final TableMetadata currentMetadata;
-              if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-                currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
+              if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+                currentMetadata = icebergCatalog.loadTableMetadata(change.identifier());
               } else {
                 currentMetadata = tableOps.current();
               }
