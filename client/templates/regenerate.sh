@@ -82,7 +82,6 @@ EXCLUDE_PATHS=(
   "python/.gitignore"
   "python/.openapi-generator/"
   "python/.openapi-generator-ignore"
-  "python/pyproject.toml"
   "python/cli/"
   "python/test/"
 )
