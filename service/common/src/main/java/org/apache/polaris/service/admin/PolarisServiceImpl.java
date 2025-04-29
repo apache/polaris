@@ -164,20 +164,22 @@ public class PolarisServiceImpl
   private void validateConnectionConfigInfo(Catalog catalog) {
     if (catalog.getType() == Catalog.TypeEnum.EXTERNAL) {
       if (catalog instanceof ExternalCatalog externalCatalog) {
-        String connectionType =
-            externalCatalog.getConnectionConfigInfo().getConnectionType().name();
-        List<String> supportedConnectionTypes =
-            callContext
-                .getPolarisCallContext()
-                .getConfigurationStore()
-                .getConfiguration(
-                    callContext.getPolarisCallContext(),
-                    FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
-                .stream()
-                .map(s -> s.toUpperCase(Locale.ROOT))
-                .toList();
-        if (!supportedConnectionTypes.contains(connectionType)) {
-          throw new IllegalStateException("Unsupported connection type: " + connectionType);
+        if (externalCatalog.getConnectionConfigInfo() != null) {
+          String connectionType =
+              externalCatalog.getConnectionConfigInfo().getConnectionType().name();
+          List<String> supportedConnectionTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+                  .stream()
+                  .map(s -> s.toUpperCase(Locale.ROOT))
+                  .toList();
+          if (!supportedConnectionTypes.contains(connectionType)) {
+            throw new IllegalStateException("Unsupported connection type: " + connectionType);
+          }
         }
       }
     }
