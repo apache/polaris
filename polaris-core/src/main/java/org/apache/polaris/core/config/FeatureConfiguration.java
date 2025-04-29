@@ -21,6 +21,7 @@ package org.apache.polaris.core.config;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
@@ -226,5 +227,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "If true, allows creating and using ExternalCatalogs containing ConnectionConfigInfos"
                   + " to perform federation to remote catalogs.")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
+          .description("The list of supported catalog connection types for federation")
+          .defaultValue(
+              List.of(
+                  ConnectionType.ICEBERG_REST.name(),
+                  ConnectionType.HADOOP.name()))
           .buildFeatureConfiguration();
 }

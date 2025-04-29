@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -191,6 +192,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Catalog federatedCatalog;
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+
+      List<ConnectionType> supportedConnectionTypes = callContext
+          .getPolarisCallContext()
+          .getConfigurationStore()
+          .getConfiguration(callContext.getPolarisCallContext(), FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+          .stream()
+          .map(s -> s.toUpperCase(Locale.ROOT))
+          .map(ConnectionType::valueOf)
+          .toList();
+      if (!supportedConnectionTypes.contains(connectionType)) {
+        throw new IllegalStateException("Unsupported connection type: " + connectionType);
+      }
+
       switch (connectionType) {
         case ICEBERG_REST:
           SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
