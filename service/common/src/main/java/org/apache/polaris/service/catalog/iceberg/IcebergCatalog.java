@@ -427,17 +427,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
-    Set<String> locations = new HashSet<>();
-    locations.add(viewMetadata.location());
-    if (viewMetadata
-        .properties()
-        .containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
-      locations.add(
-          viewMetadata
-              .properties()
-              .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    }
-    return locations;
+    return Set.of(viewMetadata.location());
   }
 
   @Override
@@ -1749,36 +1739,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           resolvedEntities == null
               ? resolvedEntityView.getResolvedPath(identifier.namespace()).getRawFullPath()
               : resolvedEntities.getRawParentPath();
-      if (base == null
-          || !metadata.location().equals(base.location())
-          || !Objects.equal(
-              base.properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY),
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))) {
+      if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
-        Set<String> dataLocations = new HashSet<>();
-        dataLocations.add(metadata.location());
-        if (metadata
-                .properties()
-                .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)
-            != null) {
-          dataLocations.add(
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-        }
-        validateLocationsForTableLike(identifier, dataLocations, resolvedStorageEntity);
-        dataLocations.forEach(
-            location ->
-                validateNoLocationOverlap(
-                    catalogEntity,
-                    identifier,
-                    resolvedNamespace,
-                    location,
-                    resolvedStorageEntity.getRawLeafEntity()));
+        validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
+        validateNoLocationOverlap(
+            catalogEntity,
+            identifier,
+            resolvedNamespace,
+            metadata.location(),
+            resolvedStorageEntity.getRawLeafEntity());
       }
 
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
