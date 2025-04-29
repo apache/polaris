@@ -71,12 +71,13 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -194,7 +195,9 @@ public class PolicyCatalogTest {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -315,8 +318,8 @@ public class PolicyCatalogTest {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
+        return new InMemoryEntityCache(metaStoreManager);
       }
 
       @Override
@@ -502,6 +505,30 @@ public class PolicyCatalogTest {
     policyCatalog.dropPolicy(POLICY1, false);
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
+  }
+
+  @Test
+  public void testDropPolicyInUse() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    policyCatalog.attachPolicy(POLICY1, target, null);
+
+    assertThatThrownBy(() -> policyCatalog.dropPolicy(POLICY1, false))
+        .isInstanceOf(PolicyInUseException.class);
+
+    // The policy is still attached to the catalog
+    List<ApplicablePolicy> applicablePolicies =
+        policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(1);
+
+    // Drop the policy with detach-all flag
+    policyCatalog.dropPolicy(POLICY1, true);
+
+    // The policy should be detached from the catalog and dropped
+    applicablePolicies = policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(0);
   }
 
   @Test

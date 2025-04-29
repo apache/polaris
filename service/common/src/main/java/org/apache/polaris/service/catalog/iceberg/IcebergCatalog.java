@@ -1020,25 +1020,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                                       identifier);
                                 }
                               }));
-
-          // TODO: Consider exposing a property to control whether to use the explicit default
-          // in-memory PolarisStorageIntegration implementation to perform validation or
-          // whether to delegate to PolarisMetaStoreManager::validateAccessToLocations.
-          // Usually the validation is better to perform with local business logic, but if
-          // there are additional rules to be evaluated by a custom PolarisMetaStoreManager
-          // implementation, then the validation should go through that API instead as follows:
-          //
-          // PolarisMetaStoreManager.ValidateAccessResult validateResult =
-          //     getMetaStoreManager().validateAccessToLocations(
-          //         getCurrentPolarisContext(),
-          //         storageInfoHolderEntity.getCatalogId(),
-          //         storageInfoHolderEntity.getId(),
-          //         Set.of(PolarisStorageActions.ALL),
-          //         Set.of(location));
-          // if (!validateResult.isSuccess()) {
-          //   throw new ForbiddenException("Invalid location '%s' for identifier '%s': %s",
-          //       location, identifier, validateResult.getExtraInformation());
-          // }
         },
         () -> {
           List<String> allowedStorageTypes =

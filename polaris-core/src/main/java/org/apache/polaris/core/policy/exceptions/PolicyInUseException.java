@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog;
+package org.apache.polaris.core.policy.exceptions;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.annotation.Nullable;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import com.google.errorprone.annotations.FormatMethod;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-@QuarkusTest
-@TestProfile(IcebergCatalogTest.Profile.class)
-public class PolarisCatalogWithEntityCacheTest extends IcebergCatalogTest {
+public class PolicyInUseException extends PolarisException {
+  @FormatMethod
+  public PolicyInUseException(String message, Object... args) {
+    super(String.format(message, args));
+  }
 
-  @Nullable
-  @Override
-  protected InMemoryEntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(metaStoreManager);
+  @FormatMethod
+  public PolicyInUseException(Throwable cause, String message, Object... args) {
+    super(String.format(message, args), cause);
   }
 }

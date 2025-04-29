@@ -95,7 +95,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -223,7 +223,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   @Nullable
-  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+  protected abstract InMemoryEntityCache createEntityCache(
+      PolarisMetaStoreManager metaStoreManager);
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -409,8 +410,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
+        return new InMemoryEntityCache(metaStoreManager);
       }
 
       @Override
