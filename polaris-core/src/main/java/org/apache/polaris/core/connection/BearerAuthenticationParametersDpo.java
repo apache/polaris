@@ -56,7 +56,7 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
   }
 
   @Override
-  public AuthenticationParameters asAuthenticationParametersModel() {
+  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
     return BearerAuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
         .build();
