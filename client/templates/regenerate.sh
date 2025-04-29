@@ -117,7 +117,7 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
           exclude=true
         fi
       done
-      if [ "$exclude" = true ]; then
+      if [ "$exclude" = false ]; then
         # Construct the header file path
         header_file="${SCRIPT_DIR}/header-${ext}.txt"
       
