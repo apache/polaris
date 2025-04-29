@@ -876,8 +876,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               final TableMetadata currentMetadata;
               final TableOperations tableOps;
               if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-                tableOps = icebergCatalog.newTableOps(change.identifier());
                 currentMetadata = icebergCatalog.loadTableMetadata(change.identifier());
+                tableOps = icebergCatalog.newTableOps(change.identifier());
               } else {
                 final Table table = baseCatalog.loadTable(change.identifier());
 

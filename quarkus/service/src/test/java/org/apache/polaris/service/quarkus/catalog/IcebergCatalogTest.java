@@ -283,7 +283,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
-    catalogEntity =
+    CatalogEntity catalogEntityWithProperties =
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)
             .setDefaultBaseLocation(storageLocation)
@@ -294,6 +294,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addProperty(FeatureConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
             .setStorageConfigurationInfo(storageConfigModel, storageLocation)
             .build();
+
+    catalogEntity =
+        adminService.createCatalog(
+            new CreateCatalogRequest(catalogEntityWithProperties.asCatalog()));
 
     passthroughView =
         new PolarisPassthroughResolutionView(
