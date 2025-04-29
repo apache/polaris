@@ -110,23 +110,22 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
       echo "${file}: skipped"
       continue
     else
-      # Construct the header file path
-      header_file="${SCRIPT_DIR}/header-${ext}.txt"
-    
-      # Only process if the license file exists
-      if [ -f "$header_file" ]; then
-        echo "${file}: updated"
-        prepend_header "$file" "$header_file"
-      else
-        # Check if file should be excluded
-        exclude=false
-        for exclude_path in "${EXCLUDE_PATHS[@]}"; do
-          if [[ "$file" == "$exclude_path"* ]]; then
-            exclude=true
-          fi
-        done
+      # Check if file should be excluded
+      exclude=false
+      for exclude_path in "${EXCLUDE_PATHS[@]}"; do
+        if [[ "$file" == "$exclude_path"* ]]; then
+          exclude=true
+        fi
+      done
+      if [ "$exclude" = true ]; then
+        # Construct the header file path
+        header_file="${SCRIPT_DIR}/header-${ext}.txt"
       
-        if [ "$exclude" = false ]; then
+        # Only process if the license file exists
+        if [ -f "$header_file" ]; then
+          echo "${file}: updated"
+          prepend_header "$file" "$header_file"
+        else
           echo "No header compatible with file ${file}"
           exit 2
         fi
