@@ -21,7 +21,6 @@ package org.apache.polaris.core.config;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;

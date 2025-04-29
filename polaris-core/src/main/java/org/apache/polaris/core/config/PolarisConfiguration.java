@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +140,8 @@ public abstract class PolarisConfiguration<T> {
         throw new IllegalArgumentException(
             "catalogConfig is not valid for behavior change configs");
       }
-      return new BehaviorChangeConfiguration<>(key, description, defaultValue, catalogConfig, validation);
+      return new BehaviorChangeConfiguration<>(
+          key, description, defaultValue, catalogConfig, validation);
     }
   }
 

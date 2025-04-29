@@ -690,7 +690,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     } else {
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier, tableMetadata, actionsRequested, snapshots)
+                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
               .build());
     }
   }
@@ -811,8 +811,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      icebergCatalog.loadTableMetadata(tableIdentifier);
+    } else {
+      CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    }
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -870,18 +873,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
-              final Table table = baseCatalog.loadTable(change.identifier());
-
-              if (!(table instanceof BaseTable)) {
-                throw new IllegalStateException(
-                    "Cannot wrap catalog that does not produce BaseTable");
-              }
-
-              TableOperations tableOps = ((BaseTable) table).operations();
               final TableMetadata currentMetadata;
+              final TableOperations tableOps;
               if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+                tableOps = icebergCatalog.newTableOps(change.identifier());
                 currentMetadata = icebergCatalog.loadTableMetadata(change.identifier());
               } else {
+                final Table table = baseCatalog.loadTable(change.identifier());
+
+                if (!(table instanceof BaseTable)) {
+                  throw new IllegalStateException(
+                      "Cannot wrap catalog that does not produce BaseTable");
+                }
+
+                tableOps = ((BaseTable) table).operations();
                 currentMetadata = tableOps.current();
               }
 
