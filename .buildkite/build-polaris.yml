@@ -1,0 +1,41 @@
+steps:
+  - label: "Build and validate Polaris"
+    key: "polaris-build"
+    agents:
+      queue: "large"
+    commands: |
+      .buildkite/scripts/build-polaris.sh
+
+  - block: "Deploy Polaris Staging"
+    key: "polaris-staging-deployment-prompt"
+    prompt: "Fill out the details for release"
+    fields:
+      - text: "Release Name"
+        key: "release-name"
+
+  - label: "Trigger Build Pipeline"
+    trigger: "deploy-polaris-staging"
+    build:
+      branch: "main"
+      env:
+        REPOSITORY: "${REPOSITORY}"
+        POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
+    depends_on:
+      - "polaris-staging-deployment-prompt"
+
+  - block: "Deploy Polaris Production"
+    key: "polaris-production-deployment-prompt"
+    prompt: "Fill out the details for release"
+    fields:
+      - text: "Release Name"
+        key: "release-name"
+
+  - label: "Trigger Build Pipeline"
+    trigger: "deploy-polaris-production"
+    build:
+      branch: "stable"
+      env:
+        REPOSITORY: "${REPOSITORY}"
+        POLARIS_SHA: "${BUILDKITE_COMMIT:0:7}"
+    depends_on:
+      - "polaris-production-deployment-prompt"
