@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
@@ -35,46 +33,46 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter
  * ResultSet
  */
 public class ResultSetIterator<T> implements Iterator<T> {
-    private final ResultSet resultSet;
-    private final Converter<T> converterInstance;
-    private boolean hasNext;
+  private final ResultSet resultSet;
+  private final Converter<T> converterInstance;
+  private boolean hasNext;
 
-    public ResultSetIterator(ResultSet resultSet, Converter<T> converterInstance) {
-        this.resultSet = resultSet;
-        this.converterInstance = converterInstance;
-        advance();
-    }
+  public ResultSetIterator(ResultSet resultSet, Converter<T> converterInstance) {
+    this.resultSet = resultSet;
+    this.converterInstance = converterInstance;
+    advance();
+  }
 
-    private void advance() {
-        try {
-            hasNext = resultSet.next();
-        } catch (SQLException e) {
-            hasNext = false;
-            throw new RuntimeException(e);
-        }
+  private void advance() {
+    try {
+      hasNext = resultSet.next();
+    } catch (SQLException e) {
+      hasNext = false;
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public boolean hasNext() {
-        return hasNext;
-    }
+  @Override
+  public boolean hasNext() {
+    return hasNext;
+  }
 
-    @Override
-    public T next() {
-        if (!hasNext) {
-            throw new NoSuchElementException();
-        }
-        try {
-            T object = converterInstance.fromResultSet(resultSet);
-            advance();
-            return object;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public T next() {
+    if (!hasNext) {
+      throw new NoSuchElementException();
     }
+    try {
+      T object = converterInstance.fromResultSet(resultSet);
+      advance();
+      return object;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 
-    public Stream<T> toStream() {
-        Spliterator<T> spliterator = Spliterators.spliteratorUnknownSize(this, 0);
-        return StreamSupport.stream(spliterator, false);
-    }
+  public Stream<T> toStream() {
+    Spliterator<T> spliterator = Spliterators.spliteratorUnknownSize(this, 0);
+    return StreamSupport.stream(spliterator, false);
+  }
 }

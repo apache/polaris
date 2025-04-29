@@ -77,9 +77,7 @@ public class DatasourceOperationsTest {
 
     assertThrows(
         SQLException.class,
-        () ->
-            datasourceOperations.executeSelect(
-                query, new ModelEntity(), Function.identity()));
+        () -> datasourceOperations.executeSelect(query, new ModelEntity(), Function.identity()));
   }
 
   @Test

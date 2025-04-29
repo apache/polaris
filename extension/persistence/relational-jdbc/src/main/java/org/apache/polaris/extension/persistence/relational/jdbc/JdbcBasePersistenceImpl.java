@@ -30,8 +30,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -418,13 +416,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     String query = QueryGenerator.generateSelectQuery(ModelEntity.class, params);
     try {
       List<PolarisBaseEntity> results = new ArrayList<>();
-      datasourceOperations.executeSelectOverStream(query, new ModelEntity(), stream -> {
-        stream
-            .map(ModelEntity::toEntity)
-            .filter(entityFilter)
-            .limit(limit)
-            .forEach(results::add);
-      });
+      datasourceOperations.executeSelectOverStream(
+          query,
+          new ModelEntity(),
+          stream -> {
+            stream
+                .map(ModelEntity::toEntity)
+                .filter(entityFilter)
+                .limit(limit)
+                .forEach(results::add);
+          });
       return results == null
           ? Collections.emptyList()
           : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
@@ -469,8 +470,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             realmId);
     String query = generateSelectQuery(ModelGrantRecord.class, params);
     try {
-      List<PolarisGrantRecord> results = datasourceOperations
-          .executeSelect(query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
+      List<PolarisGrantRecord> results =
+          datasourceOperations.executeSelect(
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       if (results.size() > 1) {
         throw new IllegalStateException(
             String.format(
@@ -501,10 +503,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
-              query,
-              new ModelGrantRecord(),
-              ModelGrantRecord::toGrantRecord
-          );
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -526,10 +525,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
-              query,
-              new ModelGrantRecord(),
-              ModelGrantRecord::toGrantRecord
-          );
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -555,8 +551,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
     String query = generateSelectQuery(ModelEntity.class, params);
     try {
-      List<ModelEntity> results = datasourceOperations
-          .executeSelect(query, new ModelEntity(), Function.identity());
+      List<ModelEntity> results =
+          datasourceOperations.executeSelect(query, new ModelEntity(), Function.identity());
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -577,8 +573,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           datasourceOperations.executeSelect(
               query,
               new ModelPrincipalAuthenticationData(),
-              ModelPrincipalAuthenticationData::toPrincipalAuthenticationData
-          );
+              ModelPrincipalAuthenticationData::toPrincipalAuthenticationData);
       return results == null || results.isEmpty() ? null : results.getFirst();
     } catch (SQLException e) {
       LOGGER.error(
@@ -882,8 +877,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           datasourceOperations.executeSelect(
               query,
               new ModelPolicyMappingRecord(),
-              ModelPolicyMappingRecord::toPolicyMappingRecord
-          );
+              ModelPolicyMappingRecord::toPolicyMappingRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(

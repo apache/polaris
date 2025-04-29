@@ -33,11 +33,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
-
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
 public class DatasourceOperations {
@@ -97,7 +94,8 @@ public class DatasourceOperations {
    * Executes SELECT Query and returns the results after applying a transformer
    *
    * @param query : Query to executed
-   * @param converterInstance : An entity of the type being selected, used to convert to PolarisBaseEntity
+   * @param converterInstance : An entity of the type being selected, used to convert to
+   *     PolarisBaseEntity
    * @return The list of results yielded by the query
    * @param <T> : Entity class
    * @param <R> : Result class
@@ -106,19 +104,21 @@ public class DatasourceOperations {
   public <T, R> List<R> executeSelect(
       @Nonnull String query,
       @Nonnull Converter<T> converterInstance,
-      @Nonnull Function<T, R> transformer) throws SQLException{
+      @Nonnull Function<T, R> transformer)
+      throws SQLException {
     ArrayList<R> results = new ArrayList<>();
-    executeSelectOverStream(query, converterInstance, stream -> {
-      stream
-          .map(transformer)
-          .forEach(results::add);
-    });
+    executeSelectOverStream(
+        query,
+        converterInstance,
+        stream -> {
+          stream.map(transformer).forEach(results::add);
+        });
     return results;
   }
 
   /**
-   * Executes SELECT Query and takes a consumer over the results. For callers that
-   * want more sophisticated control over how query results are handled.
+   * Executes SELECT Query and takes a consumer over the results. For callers that want more
+   * sophisticated control over how query results are handled.
    *
    * @param query : Query to executed
    * @param converterInstance : An entity of the type being selected
