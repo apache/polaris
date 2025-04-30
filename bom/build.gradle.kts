@@ -47,6 +47,7 @@ dependencies {
 
     api(project(":polaris-quarkus-admin"))
     api(project(":polaris-quarkus-commons"))
+    api(project(":polaris-quarkus-test-commons"))
     api(project(":polaris-quarkus-defaults"))
     api(project(":polaris-quarkus-server"))
     api(project(":polaris-quarkus-service"))

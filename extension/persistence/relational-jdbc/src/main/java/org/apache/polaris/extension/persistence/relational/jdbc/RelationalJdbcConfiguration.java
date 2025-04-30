@@ -20,8 +20,11 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import io.smallrye.config.ConfigMapping;
 import java.util.Map;
+import java.util.Optional;
 
-@ConfigMapping(prefix = "polaris.relation.jdbc")
+@ConfigMapping(prefix = "polaris.relation.jdbc.datasource")
 public interface RelationalJdbcConfiguration {
-  Map<String, String> datasource();
+  Map<String, String> realm();
+
+  Optional<String> defaultDatasource();
 }

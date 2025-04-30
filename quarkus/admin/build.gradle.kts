@@ -54,6 +54,7 @@ dependencies {
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
   implementation(project(":polaris-quarkus-commons"))
+  testImplementation(project(":polaris-quarkus-test-commons"))
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))

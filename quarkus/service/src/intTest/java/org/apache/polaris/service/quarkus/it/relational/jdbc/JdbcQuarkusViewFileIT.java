@@ -20,8 +20,8 @@ package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.commons.RelationalJdbcProfile;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
 @TestProfile(RelationalJdbcProfile.class)
 @QuarkusIntegrationTest

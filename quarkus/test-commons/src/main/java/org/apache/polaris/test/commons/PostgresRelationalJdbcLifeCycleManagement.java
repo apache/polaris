@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.commons;
+package org.apache.polaris.test.commons;
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
@@ -60,41 +60,45 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
+
+    if (databases.isEmpty()) {
+      Map<String, String> props = generateDataSourceProps(List.of("realm1"));
+      // make realm1_ds as the default ds
+      props.put("polaris.relation.jdbc.datasource.default-datasource", "realm1_ds");
+      return props;
+    } else {
+      Map<String, String> allProps = new HashMap<>();
+      allProps.putAll(generateDataSourceMappingProps(databases));
+      allProps.putAll(generateDataSourceProps(databases));
+      return allProps;
+    }
+  }
+
+  private Map<String, String> generateDataSourceProps(List<String> dataSources) {
     Map<String, String> props = new HashMap<>();
     props.put("polaris.persistence.type", "relational-jdbc");
-
-    if (!databases.isEmpty()) {
-      for (String database : databases) {
-        // polaris.relation.jdbc.datasource.realm=realm_ds
-        props.put(String.format("polaris.relation.jdbc.datasource.%s", database), database + "_ds");
-        props.put(String.format("quarkus.datasource.%s.db-kind", database + "_ds"), "pgsql");
-        props.put(String.format("quarkus.datasource.%s.active", database + "_ds"), "true");
-        props.put(
-            String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"),
-            postgres.getJdbcUrl().replace("realm1", database));
-        props.put(
-            String.format("quarkus.datasource.%s.username", database + "_ds"),
-            postgres.getUsername());
-        props.put(
-            String.format("quarkus.datasource.%s.password", database + "_ds"),
-            postgres.getPassword());
-      }
-    } else {
-      return Map.of(
-          "polaris.persistence.type",
-          "relational-jdbc",
-          "quarkus.datasource.db-kind",
-          "pgsql",
-          "quarkus.datasource.jdbc.url",
-          postgres.getJdbcUrl(),
-          "quarkus.datasource.username",
-          postgres.getUsername(),
-          "quarkus.datasource.password",
-          postgres.getPassword(),
-          "quarkus.datasource.jdbc.initial-size",
-          "10");
+    for (String database : dataSources) {
+      props.put(String.format("quarkus.datasource.%s.db-kind", database + "_ds"), "pgsql");
+      props.put(String.format("quarkus.datasource.%s.active", database + "_ds"), "true");
+      props.put(
+              String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"),
+              postgres.getJdbcUrl().replace("realm1", database));
+      props.put(
+              String.format("quarkus.datasource.%s.username", database + "_ds"),
+              postgres.getUsername());
+      props.put(
+              String.format("quarkus.datasource.%s.password", database + "_ds"),
+              postgres.getPassword());
     }
+    return props;
+  }
 
+  private Map<String, String> generateDataSourceMappingProps(List<String> realms) {
+    Map<String, String> props = new HashMap<>();
+    // polaris.relation.jdbc.datasource.realm=realm_ds
+    for (String database : realms) {
+      props.put(String.format("polaris.relation.jdbc.datasource.realm.%s", database), database + "_ds");
+    }
     return props;
   }
 

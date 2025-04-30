@@ -16,13 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+plugins {
+    alias(libs.plugins.jandex)
+    id("java-test-fixtures")
+}
 
-@TestProfile(RelationalJdbcProfile.class)
-@QuarkusIntegrationTest
-public class JdbcQuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {}
+configurations.all {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation("io.quarkus:quarkus-junit5")
+    implementation(platform(libs.testcontainers.bom))
+    implementation("org.testcontainers:testcontainers")
+    implementation("org.testcontainers:postgresql")
+}

@@ -21,14 +21,15 @@ package org.apache.polaris.commons;
 import io.quarkus.arc.InstanceHandle;
 import java.util.List;
 import javax.sql.DataSource;
+
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSupplier;
 import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 public class QuarkusDatasourceSupplier implements DatasourceSupplier {
-  private List<InstanceHandle<DataSource>> dataSources;
-  private RelationalJdbcConfiguration relationalJdbcConfiguration;
+  private final List<InstanceHandle<DataSource>> dataSources;
+  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
 
-  public static final String DEFAULT_DATA_SOURCE_NAME = "<default>";
+  private static final String DEFAULT_DATA_SOURCE_NAME = "default";
 
   public QuarkusDatasourceSupplier(
       RelationalJdbcConfiguration relationalJdbcConfiguration,
@@ -39,16 +40,28 @@ public class QuarkusDatasourceSupplier implements DatasourceSupplier {
 
   @Override
   public DataSource fromRealmId(String realmId) {
-    String dataSourceName =
-        relationalJdbcConfiguration.datasource().getOrDefault(realmId, DEFAULT_DATA_SOURCE_NAME);
-    for (InstanceHandle<DataSource> handle : dataSources) {
-      String name = handle.getBean().getName();
-      name = name == null ? DEFAULT_DATA_SOURCE_NAME : name;
-      // if realm isolation is DB then there should be only one DS configured.
-      if (name.equals(dataSourceName)) {
-        return handle.get();
-      }
+    // check if the mapping of realm to DS exists, otherwise fall back to default
+    String dataSourceName = relationalJdbcConfiguration.realm().getOrDefault(
+            realmId,
+            relationalJdbcConfiguration.defaultDatasource().orElse(null)
+    );
+
+    // if neither mapping exists nor default DS exists, fail
+    if (dataSourceName == null) {
+      throw new IllegalStateException(String.format(
+              "No datasource configured with name: %s nor default datasource configured", realmId));
     }
-    throw new IllegalStateException("No datasource configured with name: " + realmId);
+
+    // check if there is actually a datasource of that dataSourceName
+    return dataSources.stream()
+            .filter(ds -> {
+              String name = ds.getBean().getName();
+              name = name == null ? DEFAULT_DATA_SOURCE_NAME : name;
+              return name.equals(dataSourceName);
+            })
+            .map(InstanceHandle::get)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(String.format(
+                    "No datasource configured with name: %s", dataSourceName)));
   }
 }
