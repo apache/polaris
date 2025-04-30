@@ -90,4 +90,3 @@ CREATE SCHEMA iceberg.tpch;
 CREATE TABLE iceberg.tpch.test_polaris AS SELECT 1 x;
 SELECT * FROM iceberg.tpch.test_polaris;
 ```
- 
