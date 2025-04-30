@@ -1257,26 +1257,29 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return current();
     }
 
+    /** With metadata caching, the `base` may not be exactly `current()` */
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
-      if (base == null) {
-        if (currentMetadata != null) {
+      // if the metadata is already out of date, reject it
+      if (currentMetadataLocation != null) {
+        if (base != null && !base.metadataFileLocation().equals(currentMetadataLocation)) {
+          throw new CommitFailedException("Cannot commit: stale table metadata");
+        } else {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
-      } else if (base.metadataFileLocation() != null
-          && currentMetadata != null
-          && !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
-        throw new CommitFailedException("Cannot commit: stale table metadata");
-      } else if (base != currentMetadata) {
-        // This branch is different from BaseMetastoreTableOperations
-        LOGGER.debug(
-            "Base object differs from current metadata; proceeding because locations match");
-      } else if (base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
-        // if the metadata is not changed, return early
-        LOGGER.info("Nothing to commit.");
-        return;
+      } else if (base != metadata) {
+        if (base != null && metadata != null &&
+            base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+          // if the metadata is not changed, return early
+          LOGGER.info("Nothing to commit.");
+          return;
+        } else {
+          // This branch is different from upstream due to metadata caching
+          LOGGER.debug(
+              "Base object differs from current metadata; proceeding because locations match");
+        }
       }
 
       long start = System.currentTimeMillis();
