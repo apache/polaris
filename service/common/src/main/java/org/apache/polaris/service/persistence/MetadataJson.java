@@ -18,10 +18,18 @@
  */
 package org.apache.polaris.service.persistence;
 
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.service.catalog.iceberg.IcebergMetadataUtil;
+
+import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_ALL;
+import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_REFS;
 
 /**
  * Represents a metadata.json file with its location and content
@@ -36,8 +44,29 @@ public record MetadataJson(String location, String content, Set<String> tableLoc
 
   /** Construct a record from a {@link TableMetadata} object */
   public static MetadataJson fromMetadata(TableMetadata metadata) {
-    Set<String> tableLocations = IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata);
+    return fromMetadata(metadata, SNAPSHOTS_ALL);
+  }
+
+  /** See {@link MetadataJson#fromMetadata(TableMetadata)} */
+  public static MetadataJson fromMetadata(TableMetadata metadata, String snapshots) {
+    final TableMetadata filteredMetadata;
+    if (snapshots != null && !snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+        Set<Long> referencedSnapshotIds =
+            metadata.refs().values().stream()
+                .map(SnapshotRef::snapshotId)
+                .collect(Collectors.toSet());
+
+        filteredMetadata =
+            metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+      } else {
+        throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+      }
+    } else {
+      filteredMetadata = metadata;
+    }
+    Set<String> tableLocations = IcebergMetadataUtil.getLocationsAllowedToBeAccessed(filteredMetadata);
     return new MetadataJson(
-        metadata.metadataFileLocation(), TableMetadataParser.toJson(metadata), tableLocations);
+        metadata.metadataFileLocation(), TableMetadataParser.toJson(filteredMetadata), tableLocations);
   }
 }

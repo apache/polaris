@@ -346,8 +346,8 @@ public class IcebergCatalogAdapter
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           } else {
-            RESTResponse response =
-                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            RESTResponse response = catalog
+                .createTableDirectWithWriteDelegation(ns, createTableRequest);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();

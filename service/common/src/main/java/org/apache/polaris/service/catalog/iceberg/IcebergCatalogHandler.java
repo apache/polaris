@@ -590,14 +590,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    final RESTResponse rawResponse;
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
       MetadataJson metadataJson = icebergCatalog.loadTableMetadataJson(tableIdentifier);
-      rawResponse = new StringLoadTableResponse(metadataJson);
+      if (icebergCatalog.shouldFilterSnapshots(snapshots)) {
+        TableMetadata metadata = TableMetadataParser.fromJson(metadataJson.content());
+        metadataJson = MetadataJson.fromMetadata(metadata, snapshots); // round-trip to filter
+      }
+      return Optional.of(new StringLoadTableResponse(metadataJson));
     } else {
-      rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+      return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
     }
-    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
   public RESTResponse loadTableWithAccessDelegation(
@@ -687,18 +689,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         }
       }
     }
-    MetadataJson tableMetadata = null;
+    MetadataJson metadataJson = null;
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      tableMetadata = icebergCatalog.loadTableMetadataJson(tableIdentifier);
+      metadataJson = icebergCatalog.loadTableMetadataJson(tableIdentifier, snapshots);
+      if (icebergCatalog.shouldFilterSnapshots(snapshots)) {
+        TableMetadata metadata = TableMetadataParser.fromJson(metadataJson.content());
+        metadataJson = MetadataJson.fromMetadata(metadata, snapshots); // round-trip to filter
+      }
     }
 
     // The metadata failed to load
-    if (tableMetadata == null) {
+    if (metadataJson == null) {
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     } else {
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier, tableMetadata, actionsRequested));
+              tableIdentifier, metadataJson, actionsRequested));
     }
   }
 
@@ -1033,40 +1039,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new BadRequestException("Cannot rename view on static-facade external catalogs.");
     }
     CatalogHandlers.renameView(viewCatalog, request);
-  }
-
-  private @Nonnull RESTResponse filterResponseToSnapshots(
-      RESTResponse restResponse, String snapshots) {
-
-    // TODO push the filtering down into MetadataJson.fromMetadata
-    if (snapshots != null && !Set.of(SNAPSHOTS_ALL, SNAPSHOTS_REFS).contains(snapshots)) {
-      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
-    }
-    if (restResponse instanceof LoadTableResponse loadTableResponse) {
-      if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
-        return loadTableResponse;
-      } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
-        TableMetadata metadata = loadTableResponse.tableMetadata();
-
-        Set<Long> referencedSnapshotIds =
-            metadata.refs().values().stream()
-                .map(SnapshotRef::snapshotId)
-                .collect(Collectors.toSet());
-
-        TableMetadata filteredMetadata =
-            metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
-
-        return LoadTableResponse.builder()
-            .withTableMetadata(filteredMetadata)
-            .addAllConfig(loadTableResponse.config())
-            .addAllCredentials(loadTableResponse.credentials())
-            .build();
-      } else {
-        throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
-      }
-    } else {
-      return restResponse;
-    }
   }
 
   @Override

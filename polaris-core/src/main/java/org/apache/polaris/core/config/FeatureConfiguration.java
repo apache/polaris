@@ -253,4 +253,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(METADATA_CACHE_MAX_BYTES_INFINITE_CACHING)
           .validation(value -> value >= -1)
           .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Boolean> ALWAYS_FILTER_SNAPSHOTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALWAYS_FILTER_SNAPSHOTS")
+          .description(
+              "If set, Polaris will always attempt to filter snapshots from a LoadTableResponse even when " +
+                  "doing so requires additional serialization of the TableMetadata")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }

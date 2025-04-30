@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_ALL;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -864,6 +865,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   public MetadataJson loadTableMetadataJson(TableIdentifier identifier) {
+    return loadTableMetadataJson(identifier, SNAPSHOTS_ALL);
+  }
+
+  boolean shouldFilterSnapshots(String snapshots) {
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return false;
+    }
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(), FeatureConfiguration.ALWAYS_FILTER_SNAPSHOTS);
+  }
+
+  public MetadataJson loadTableMetadataJson(TableIdentifier identifier, String snapshots) {
     int maxMetadataCacheBytes =
         callContext
             .getPolarisCallContext()
@@ -875,7 +891,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           return loadTableMetadata(loadTable(identifier));
         };
     if (maxMetadataCacheBytes == FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
-      return MetadataJson.fromMetadata(fallback.get());
+      return MetadataJson.fromMetadata(fallback.get(), snapshots);
     } else {
       return MetadataCacheManager.loadTableMetadataJson(
           identifier,
@@ -1261,25 +1277,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
       // if the metadata is already out of date, reject it
-      if (currentMetadataLocation != null) {
-        if (base != null && !base.metadataFileLocation().equals(currentMetadataLocation)) {
-          throw new CommitFailedException("Cannot commit: stale table metadata");
-        } else {
+      if (base == null) {
+        if (current() != null) {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
-      } else if (base != metadata) {
+      } else if (current() != null && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
+        throw new CommitFailedException("Cannot commit: stale table metadata");
+      }
+      // if the metadata is not changed, return early
+      if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      } else {
         if (base != null
             && metadata != null
             && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
           // if the metadata is not changed, return early
           LOGGER.info("Nothing to commit.");
           return;
-        } else {
-          // This branch is different from upstream due to metadata caching
-          LOGGER.debug(
-              "Base object differs from current metadata; proceeding because locations match");
         }
       }
 
@@ -1503,12 +1520,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // We diverge from `BaseMetastoreTableOperations` in the below code block
       if (makeMetadataCurrentOnCommit) {
-        currentMetadata =
-            TableMetadata.buildFrom(metadata)
-                .withMetadataLocation(newLocation)
-                .discardChanges()
-                .build();
-        currentMetadataLocation = newLocation;
+        setCurrentMetadata(newLocation, metadata);
       }
 
       if (null == existingLocation) {
@@ -1516,6 +1528,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(tableIdentifier, entity);
       }
+    }
+
+    public void setCurrentMetadata(String metadataLocation, TableMetadata metadata) {
+      if (metadata == null) {
+        return;
+      }
+      currentMetadata =
+          TableMetadata.buildFrom(metadata)
+              .withMetadataLocation(metadataLocation)
+              .discardChanges()
+              .build();
+      currentMetadataLocation = metadataLocation;
     }
 
     @Override
