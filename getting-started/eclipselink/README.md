@@ -90,9 +90,4 @@ CREATE SCHEMA iceberg.tpch;
 CREATE TABLE iceberg.tpch.test_polaris AS SELECT 1 x;
 SELECT * FROM iceberg.tpch.test_polaris;
 ```
-
-7. To shut down the Polaris instance and clean up all Docker containers, run the following command:
-```shell
-docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml down
-```
  
