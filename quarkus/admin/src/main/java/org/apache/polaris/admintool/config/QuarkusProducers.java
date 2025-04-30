@@ -33,12 +33,12 @@ import org.apache.polaris.commons.QuarkusDatasourceSupplier;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RelationalJdbcConfiguration;
+import org.apache.polaris.core.persistence.DatasourceSupplier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSupplier;
-import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 public class QuarkusProducers {

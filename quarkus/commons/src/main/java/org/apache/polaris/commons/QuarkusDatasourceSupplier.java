@@ -22,8 +22,8 @@ import io.quarkus.arc.InstanceHandle;
 import java.util.List;
 import javax.sql.DataSource;
 
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceSupplier;
-import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.apache.polaris.core.persistence.DatasourceSupplier;
+import org.apache.polaris.core.config.RelationalJdbcConfiguration;
 
 public class QuarkusDatasourceSupplier implements DatasourceSupplier {
   private final List<InstanceHandle<DataSource>> dataSources;

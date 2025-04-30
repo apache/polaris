@@ -32,7 +32,6 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
 
   implementation(libs.smallrye.common.annotation) // @Identifier
-  compileOnly(libs.smallrye.config.core)
 
   testImplementation(libs.mockito.junit.jupiter)
 

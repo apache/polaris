@@ -51,6 +51,11 @@ dependencies {
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql") {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
@@ -107,13 +112,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:glue")
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
-
-  implementation(project(":polaris-relational-jdbc"))
-  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql") {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
+  testImplementation(project(":polaris-relational-jdbc"))
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")

@@ -70,6 +70,7 @@ dependencies {
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.smallrye.common.annotation)
+  compileOnly(libs.smallrye.config.core) // @ConfigMap
 
   implementation("org.apache.iceberg:iceberg-aws")
   implementation(platform(libs.awssdk.bom))
