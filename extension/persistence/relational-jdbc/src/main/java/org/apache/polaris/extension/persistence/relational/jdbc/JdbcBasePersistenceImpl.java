@@ -93,11 +93,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
-      datasourceOperations.runWithinTransaction(
-          statement -> {
-            persistEntity(callCtx, entity, originalEntity, statement);
-            return true;
-          });
+      persistEntity(callCtx, entity, originalEntity, datasourceOperations::executeUpdate);
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);
     }
@@ -115,7 +111,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-
               // first, check if the entity has already been created, in which case we will simply
               // return it.
               PolarisBaseEntity entityFound =
@@ -127,7 +122,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 // already been updated after the creation.
                 continue;
               }
-              persistEntity(callCtx, entity, originalEntity, statement);
+              persistEntity(callCtx, entity, originalEntity, statement::executeUpdate);
             }
             return true;
           });
@@ -143,12 +138,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       PolarisBaseEntity originalEntity,
-      Statement statement)
+      QueryAction queryAction)
       throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     if (originalEntity == null) {
       try {
-        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
+        queryAction.apply(generateInsertQuery(modelEntity, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isConstraintViolation(e)) {
           PolarisBaseEntity existingEntity =
@@ -176,7 +171,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "realm_id",
               realmId);
       try {
-        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
+        int rowsUpdated = queryAction.apply(generateUpdateQuery(modelEntity, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected version %s",
@@ -922,5 +917,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(callContext, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+  }
+
+  @FunctionalInterface
+  private interface QueryAction {
+    Integer apply(String query) throws SQLException;
   }
 }
