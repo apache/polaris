@@ -97,7 +97,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
     Map<String, String> props = new HashMap<>();
     // polaris.relation.jdbc.datasource.realm=realm_ds
     for (String database : realms) {
-      props.put(String.format("polaris.relation.jdbc.datasource.realm.%s", database), database + "_ds");
+      props.put(String.format("polaris.relation.jdbc.datasource.%s", database), database + "_ds");
     }
     return props;
   }

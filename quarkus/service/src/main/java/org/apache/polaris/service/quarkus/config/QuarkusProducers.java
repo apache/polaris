@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
-import io.quarkus.arc.All;
-import io.quarkus.arc.InstanceHandle;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
@@ -34,9 +32,6 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-import java.util.List;
-import javax.sql.DataSource;
-import org.apache.polaris.commons.QuarkusDatasourceSupplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -44,11 +39,9 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.RelationalJdbcConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.DatasourceSupplier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -265,12 +258,12 @@ public class QuarkusProducers {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
   }
 
-  @Produces
-  public DatasourceSupplier datasourceSupplier(
-      @Any RelationalJdbcConfiguration relationalJdbcConfiguration,
-      @All List<InstanceHandle<DataSource>> datasources) {
-    return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, datasources);
-  }
+  //  @Produces
+  //  public DatasourceSupplier datasourceSupplier(
+  //      @Any RelationalJdbcConfiguration relationalJdbcConfiguration,
+  //      @All List<InstanceHandle<DataSource>> datasources) {
+  //    return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, datasources);
+  //  }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();

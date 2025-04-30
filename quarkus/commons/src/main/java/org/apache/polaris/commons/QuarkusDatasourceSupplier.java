@@ -18,22 +18,26 @@
  */
 package org.apache.polaris.commons;
 
+import io.quarkus.arc.All;
 import io.quarkus.arc.InstanceHandle;
 import java.util.List;
 import javax.sql.DataSource;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.persistence.DatasourceSupplier;
-import org.apache.polaris.core.config.RelationalJdbcConfiguration;
 
+@ApplicationScoped
 public class QuarkusDatasourceSupplier implements DatasourceSupplier {
   private final List<InstanceHandle<DataSource>> dataSources;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   private static final String DEFAULT_DATA_SOURCE_NAME = "default";
 
+  @Inject
   public QuarkusDatasourceSupplier(
       RelationalJdbcConfiguration relationalJdbcConfiguration,
-      List<InstanceHandle<DataSource>> dataSources) {
+      @All List<InstanceHandle<DataSource>> dataSources) {
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     this.dataSources = dataSources;
   }
@@ -41,7 +45,7 @@ public class QuarkusDatasourceSupplier implements DatasourceSupplier {
   @Override
   public DataSource fromRealmId(String realmId) {
     // check if the mapping of realm to DS exists, otherwise fall back to default
-    String dataSourceName = relationalJdbcConfiguration.realm().getOrDefault(
+    String dataSourceName = relationalJdbcConfiguration.realms().getOrDefault(
             realmId,
             relationalJdbcConfiguration.defaultDatasource().orElse(null)
     );
