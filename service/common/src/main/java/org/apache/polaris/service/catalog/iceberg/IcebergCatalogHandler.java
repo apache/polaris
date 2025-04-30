@@ -591,10 +591,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     final LoadTableResponse rawResponse;
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
       TableMetadata tableMetadata = icebergCatalog.loadTableMetadata(tableIdentifier);
-      rawResponse = LoadTableResponse
-          .builder()
-          .withTableMetadata(tableMetadata)
-          .build();
+      rawResponse = LoadTableResponse.builder().withTableMetadata(tableMetadata).build();
     } else {
       rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
     }
