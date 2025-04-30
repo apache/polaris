@@ -55,8 +55,10 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-core")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+  // enforce the usage of log4j 2.24.3 for log4j-api compatibility
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.24.3")
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
+
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
