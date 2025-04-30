@@ -38,9 +38,9 @@ val scalaLibraryVersion =
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
+    exclude("org.antlr", "antlr4-runtime")
+    exclude("org.scala-lang", "scala-library")
+    exclude("org.scala-lang", "scala-reflect")
   }
 
   implementation(project(":polaris-quarkus-service"))
@@ -51,10 +51,13 @@ dependencies {
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-api")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.apache.logging.log4j", "log4j-core")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.24.3")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
+  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.core:jackson-annotations")

@@ -151,13 +151,20 @@ public class SparkCatalog
     String provider = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
     if (PolarisCatalogUtils.useIceberg(provider)) {
       return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
-    } else if (PolarisCatalogUtils.useDelta(provider)) {
-      // For delta table, we load the delta catalog to help dealing with the
-      // delta log creation.
-      TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
-      return deltaCatalog.createTable(ident, schema, transforms, properties);
     } else {
-      return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
+      if (PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)) {
+        throw new UnsupportedOperationException(
+            "Table with spark managed location is currently not supported by Polaris. Please provide location or path to the table.");
+      }
+
+      if (PolarisCatalogUtils.useDelta(provider)) {
+        // For delta table, we load the delta catalog to help dealing with the
+        // delta log creation.
+        TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
+        return deltaCatalog.createTable(ident, schema, transforms, properties);
+      } else {
+        return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
+      }
     }
   }
 
