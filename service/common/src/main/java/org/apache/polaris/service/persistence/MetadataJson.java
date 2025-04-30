@@ -18,18 +18,15 @@
  */
 package org.apache.polaris.service.persistence;
 
-import java.util.HashSet;
+import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_ALL;
+import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_REFS;
+
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.service.catalog.iceberg.IcebergMetadataUtil;
-
-import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_ALL;
-import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_REFS;
 
 /**
  * Represents a metadata.json file with its location and content
@@ -65,8 +62,11 @@ public record MetadataJson(String location, String content, Set<String> tableLoc
     } else {
       filteredMetadata = metadata;
     }
-    Set<String> tableLocations = IcebergMetadataUtil.getLocationsAllowedToBeAccessed(filteredMetadata);
+    Set<String> tableLocations =
+        IcebergMetadataUtil.getLocationsAllowedToBeAccessed(filteredMetadata);
     return new MetadataJson(
-        metadata.metadataFileLocation(), TableMetadataParser.toJson(filteredMetadata), tableLocations);
+        metadata.metadataFileLocation(),
+        TableMetadataParser.toJson(filteredMetadata),
+        tableLocations);
   }
 }

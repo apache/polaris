@@ -258,8 +258,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALWAYS_FILTER_SNAPSHOTS")
           .description(
-              "If set, Polaris will always attempt to filter snapshots from a LoadTableResponse even when " +
-                  "doing so requires additional serialization of the TableMetadata")
+              "If set, Polaris will always attempt to filter snapshots from a LoadTableResponse even when "
+                  + "doing so requires additional serialization of the TableMetadata")
           .defaultValue(true)
           .buildFeatureConfiguration();
 }

@@ -1283,7 +1283,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
-      } else if (current() != null && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
+      } else if (current() != null
+          && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
         throw new CommitFailedException("Cannot commit: stale table metadata");
       }
       // if the metadata is not changed, return early
