@@ -30,6 +30,12 @@ and depends on iceberg-spark-runtime 1.8.1.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
+`polaris-iceberg-<icebergVersion>-spark-runtime-<sparkVersion>_<scalaVersion>-<polarisVersion>.jar`. For example:
+`polaris-iceberg-1.8.1-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar`.
+
+- `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.12.
+- `./gradlew :polaris-spark-3.5_2.13:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.13.
+
 The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after the build.
 
 # Start Spark with Local Polaris Service using built Jar
@@ -86,10 +92,12 @@ bin/spark-shell \
 The Polaris Spark client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table 
 requests to the Iceberg REST endpoints, and routes all Delta table requests to the Generic Table REST endpoints.
 
-Following describes the current limitations of the Polaris Spark client:
+The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
+Following describes the current functionality limitations of the Polaris Spark client:
 1) Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
    is also not supported, since it relies on the CTAS support.
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
 5) For other non-iceberg tables like csv, there is no specific guarantee provided today.
+6) Role-based RBAC support for Delta table write is not available. Create, Drop and List RBAC support is available.
