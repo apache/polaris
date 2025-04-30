@@ -57,12 +57,6 @@ export CLIENT_SECRET=s3cr3t
 
 The Docker image pre-configures a sample catalog called `quickstart_catalog` that uses a local file system.
 
-To shut down the Polaris server and clean up the Docker containers, run the following command:
-
-```shell
-docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml down
-```
-
 ## Running Polaris as a Standalone Process
 
 You can also start Polaris through Gradle (packaged within the Polaris repository):
