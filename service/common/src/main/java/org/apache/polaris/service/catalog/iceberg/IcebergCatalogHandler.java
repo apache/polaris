@@ -1037,6 +1037,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   private @Nonnull RESTResponse filterResponseToSnapshots(
       RESTResponse restResponse, String snapshots) {
+
+    // TODO push the filtering down into MetadataJson.fromMetadata
+    if (snapshots != null && !Set.of(SNAPSHOTS_ALL, SNAPSHOTS_REFS).contains(snapshots)) {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
     if (restResponse instanceof LoadTableResponse loadTableResponse) {
       if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
         return loadTableResponse;

@@ -1399,24 +1399,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
-        Set<String> dataLocations = new HashSet<>();
-        dataLocations.add(metadata.location());
-        if (metadata.properties().get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)
-            != null) {
-          dataLocations.add(
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-        }
-        if (metadata
-                .properties()
-                .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)
-            != null) {
-          dataLocations.add(
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-        }
+        Set<String> dataLocations = IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata);
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
@@ -1466,16 +1449,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   callContext.getPolarisCallContext(),
                   catalogEntity,
                   FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
-      Optional<String> metadataJsonOpt =
+      Optional<String> metadataJsonToCache =
           switch (maxMetadataCacheBytes) {
             case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> Optional.empty();
             case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
               yield Optional.of(TableMetadataParser.toJson(metadata));
             }
             default -> {
-              metadataJsonOpt = Optional.of(TableMetadataParser.toJson(metadata));
-              if (metadataJsonOpt.get().length() <= maxMetadataCacheBytes) {
-                yield Optional.of(TableMetadataParser.toJson(metadata));
+              String rawMetadataJson = TableMetadataParser.toJson(metadata);
+              if (rawMetadataJson.length() < maxMetadataCacheBytes) {
+                yield Optional.of(rawMetadataJson);
               } else {
                 yield Optional.empty();
               }
@@ -1498,7 +1481,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation);
       }
-      metadataJsonOpt.ifPresent(s -> builder.setMetadataContent(newLocation, s));
+      metadataJsonToCache.ifPresent(s -> builder.setMetadataContent(newLocation, s));
       entity = builder.build();
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
