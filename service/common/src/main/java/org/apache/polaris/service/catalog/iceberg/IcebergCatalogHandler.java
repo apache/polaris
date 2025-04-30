@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
@@ -1072,7 +1073,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public record StringLoadTableResponse(
       @JsonProperty("metadata-location") String metadataLocation,
-      @JsonProperty("metadata") String metadata,
+      @JsonProperty("metadata") @JsonRawValue String metadata,
       @JsonProperty("config") Map<String, String> config,
       @JsonProperty("storage-credentials") List<Credential> credentials)
       implements RESTResponse {
