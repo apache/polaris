@@ -173,9 +173,6 @@ public class ManagementApi extends RestApi {
 
   public void createCatalog(Catalog catalog) {
     try (Response response = request("v1/catalogs").post(Entity.json(catalog))) {
-      if (response.getStatus() == 500) {
-        System.out.println("hm");
-      }
       assertThat(response.getStatus()).isEqualTo(CREATED.getStatusCode());
     }
   }
