@@ -45,8 +45,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Contains utility methods related to storing TableMetadata in the metastore
- * and retrieving it from the metastore
+ * Contains utility methods related to storing TableMetadata in the metastore and retrieving it from
+ * the metastore
  */
 public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
