@@ -44,6 +44,10 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Contains utility methods related to storing TableMetadata in the metastore
+ * and retrieving it from the metastore
+ */
 public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
@@ -181,7 +185,7 @@ public class MetadataCacheManager {
       }
     }
 
-    private boolean canWriteBytes(long bytesToWrite) throws IOException {
+    private boolean canWriteBytes(long bytesToWrite) {
       if (writtenBytes + bytesToWrite > maxBytes) {
         limitExceeded = true;
       }
