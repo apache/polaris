@@ -121,6 +121,7 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.persistence.MetadataCacheManager;
+import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -1785,8 +1786,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Table createdTable = catalog.createTable(tableIdentifier, schema);
     TableMetadata originalMetadata = ((BaseTable) createdTable).operations().current();
 
-    TableMetadata cachedMetadata =
-        MetadataCacheManager.loadTableMetadata(
+    MetadataJson cachedMetadataJson =
+        MetadataCacheManager.loadTableMetadataJson(
             tableIdentifier,
             Integer.MAX_VALUE,
             polarisContext,
@@ -1796,11 +1797,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
               throw new IllegalStateException("Fell back even though a cache entry should exist!");
             });
 
-    // The metadata object is loaded from the cache
-    Assertions.assertThat(cachedMetadata).isNotSameAs(originalMetadata);
-
     // The content should match what was cached
-    Assertions.assertThat(TableMetadataParser.toJson(cachedMetadata))
+    Assertions.assertThat(cachedMetadataJson.content())
         .isEqualTo(TableMetadataParser.toJson(originalMetadata));
 
     // Update the table
@@ -1808,9 +1806,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100));
     tableOps.commit(tableOps.current(), updatedMetadata);
 
-    // Read from the cache; it should detect a chance due to the update and load the new fallback
-    TableMetadata reloadedMetadata =
-        MetadataCacheManager.loadTableMetadata(
+    // Read from the cache; it should detect a change due to the update and load the new fallback
+    MetadataJson reloadedMetadataJson =
+        MetadataCacheManager.loadTableMetadataJson(
             tableIdentifier,
             Integer.MAX_VALUE,
             polarisContext,
@@ -1821,8 +1819,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                   "Fell back even though a cache entry should be updated on write");
             });
 
-    Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);
-    Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
+    Assertions.assertThat(reloadedMetadataJson).isNotSameAs(cachedMetadataJson);
+    Assertions.assertThat(
+            TableMetadataParser.fromJson(reloadedMetadataJson.content()).schema().columns().size())
+        .isEqualTo(100);
   }
 
   @Test

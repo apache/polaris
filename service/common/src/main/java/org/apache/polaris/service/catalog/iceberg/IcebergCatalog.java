@@ -124,6 +124,7 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.persistence.MetadataCacheManager;
+import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -405,32 +406,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       return SLASH.join(defaultBaseLocation, SLASH.join(namespace.levels()));
     }
-  }
-
-  private Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
-    Set<String> locations = new HashSet<>();
-    locations.add(tableMetadata.location());
-    if (tableMetadata
-        .properties()
-        .containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)) {
-      locations.add(
-          tableMetadata
-              .properties()
-              .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    }
-    if (tableMetadata
-        .properties()
-        .containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
-      locations.add(
-          tableMetadata
-              .properties()
-              .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    }
-    return locations;
-  }
-
-  private Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
-    return Set.of(viewMetadata.location());
   }
 
   @Override
@@ -868,7 +843,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public Map<String, String> getCredentialConfig(
       TableIdentifier tableIdentifier,
-      TableMetadata tableMetadata,
+      Set<String> locationsAllowedToBeAccessed,
       Set<PolarisStorageActions> storageActions) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
@@ -884,23 +859,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getCredentialVendor(),
         callContext.getPolarisCallContext().getConfigurationStore(),
         tableIdentifier,
-        getLocationsAllowedToBeAccessed(tableMetadata),
+        locationsAllowedToBeAccessed,
         storageActions,
         storageInfo.get());
   }
 
-  public TableMetadata loadTableMetadata(TableIdentifier identifier) {
+  public MetadataJson loadTableMetadataJson(TableIdentifier identifier) {
     int maxMetadataCacheBytes =
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
                 callContext.getPolarisCallContext(), FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
+    Supplier<TableMetadata> fallback =
+        () -> {
+          return loadTableMetadata(loadTable(identifier));
+        };
     if (maxMetadataCacheBytes == FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
-      return loadTableMetadata(loadTable(identifier));
+      return MetadataJson.fromMetadata(fallback.get());
     } else {
-      Supplier<TableMetadata> fallback = () -> loadTableMetadata(loadTable(identifier));
-      return MetadataCacheManager.loadTableMetadata(
+      return MetadataCacheManager.loadTableMetadataJson(
           identifier,
           maxMetadataCacheBytes,
           callContext.getPolarisCallContext(),
@@ -1401,7 +1379,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
-              getLocationsAllowedToBeAccessed(metadata),
+              IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
               new HashMap<>(metadata.properties()),
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
@@ -1488,20 +1466,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   callContext.getPolarisCallContext(),
                   catalogEntity,
                   FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
-      Optional<String> metadataJsonOpt = Optional.empty();
-      boolean shouldPersistMetadata =
+      Optional<String> metadataJsonOpt =
           switch (maxMetadataCacheBytes) {
-            case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
+            case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> Optional.empty();
             case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
-              metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
-              yield true;
+              yield Optional.of(TableMetadataParser.toJson(metadata));
             }
             default -> {
-              metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
-              yield metadataJsonOpt
-                  .map(String::length)
-                  .map(l -> l <= maxMetadataCacheBytes)
-                  .orElse(false);
+              metadataJsonOpt = Optional.of(TableMetadataParser.toJson(metadata));
+              if (metadataJsonOpt.get().length() <= maxMetadataCacheBytes) {
+                yield Optional.of(TableMetadataParser.toJson(metadata));
+              } else {
+                yield Optional.empty();
+              }
             }
           };
       final IcebergTableLikeEntity.Builder builder;
@@ -1521,9 +1498,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation);
       }
-      if (shouldPersistMetadata && metadataJsonOpt.isPresent()) {
-        builder.setMetadataContent(newLocation, metadataJsonOpt.get());
-      }
+      metadataJsonOpt.ifPresent(s -> builder.setMetadataContent(newLocation, s));
       entity = builder.build();
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
@@ -1818,7 +1793,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
-              getLocationsAllowedToBeAccessed(metadata),
+              IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
               tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));

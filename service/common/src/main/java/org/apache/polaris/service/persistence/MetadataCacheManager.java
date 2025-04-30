@@ -18,21 +18,17 @@
  */
 package org.apache.polaris.service.persistence;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
-import org.apache.iceberg.Table;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.RuntimeIOException;
-import org.apache.iceberg.util.JsonUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -52,10 +48,10 @@ public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
   /**
-   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist. If the metadata
-   * is not currently cached, it may be added to the cache.
+   * Load the cached metadata.json content and location or fall back to `fallback` if one doesn't
+   * exist. If the metadata is not currently cached, it may be added to the cache.
    */
-  public static TableMetadata loadTableMetadata(
+  public static MetadataJson loadTableMetadataJson(
       TableIdentifier tableIdentifier,
       int maxBytesToCache,
       PolarisCallContext callContext,
@@ -66,18 +62,33 @@ public class MetadataCacheManager {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(
             tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+    // If the table doesn't exist, just fall back fast
+    if (resolvedEntities == null) {
+      return MetadataJson.fromMetadata(fallback.get());
+    }
     IcebergTableLikeEntity tableLikeEntity =
         IcebergTableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     String cacheContent = tableLikeEntity.getMetadataCacheContent();
     if (cacheContent != null) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
-      return TableMetadataParser.fromJson(tableLikeEntity.getMetadataCacheContent());
+      Map<String, String> entityProperties = tableLikeEntity.getPropertiesAsMap();
+      return new MetadataJson(
+          tableLikeEntity.getMetadataLocation(),
+          tableLikeEntity.getMetadataCacheContent(),
+          Stream.of(
+                  entityProperties.get(PolarisEntityConstants.ENTITY_BASE_LOCATION),
+                  entityProperties.get(
+                      IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+                  entityProperties.get(
+                      IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet()));
     } else {
-      TableMetadata metadata = fallback.get();
+      MetadataJson fallbackJson = MetadataJson.fromMetadata(fallback.get());
       var cacheResult =
-          cacheTableMetadata(
+          cacheTableMetadataJson(
               tableLikeEntity,
-              metadata,
+              fallbackJson.content(),
               maxBytesToCache,
               callContext,
               metastoreManager,
@@ -85,25 +96,7 @@ public class MetadataCacheManager {
       if (!cacheResult.isSuccess()) {
         LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
       }
-      return metadata;
-    }
-  }
-
-  /** Convert a {@link TableMetadata} to JSON, with the size bounded */
-  public static Optional<String> toBoundedJson(TableMetadata metadata, int maxBytes) {
-    try (StringWriter unboundedWriter = new StringWriter()) {
-      BoundedStringWriter boundedWriter = new BoundedStringWriter(unboundedWriter, maxBytes);
-      JsonGenerator generator = JsonUtil.factory().createGenerator(boundedWriter);
-      TableMetadataParser.toJson(metadata, generator);
-      generator.flush();
-      String result = boundedWriter.toString();
-      if (boundedWriter.isLimitExceeded()) {
-        return Optional.empty();
-      } else {
-        return Optional.ofNullable(result);
-      }
-    } catch (IOException e) {
-      throw new RuntimeIOException(e, "Failed to write json for: %s", metadata);
+      return fallbackJson;
     }
   }
 
@@ -112,148 +105,51 @@ public class MetadataCacheManager {
    *
    * @return The result of trying to cache the metadata
    */
-  private static EntityResult cacheTableMetadata(
+  private static EntityResult cacheTableMetadataJson(
       IcebergTableLikeEntity tableLikeEntity,
-      TableMetadata metadata,
+      String metadataJson,
       int maxBytesToCache,
       PolarisCallContext callContext,
       PolarisMetaStoreManager metaStoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
-    Optional<String> jsonOpt = toBoundedJson(metadata, maxBytesToCache);
-    // We should not reach this method in this case, but check just in case...
-    if (maxBytesToCache != FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
-      if (jsonOpt.isEmpty()) {
+    if (maxBytesToCache != FeatureConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING) {
+      if (metadataJson.length() > maxBytesToCache) {
         LOGGER.debug(
             String.format(
                 "Will not cache metadata for %s; metadata above the limit of %d bytes",
                 tableLikeEntity.getTableIdentifier(), maxBytesToCache));
         return new EntityResult(EntityResult.ReturnStatus.SUCCESS, null);
-      } else {
+      }
+    }
+
+    LOGGER.debug(String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
+    TableLikeEntity newTableLikeEntity =
+        new IcebergTableLikeEntity.Builder(tableLikeEntity)
+            .setMetadataContent(tableLikeEntity.getMetadataLocation(), metadataJson)
+            .build();
+    PolarisResolvedPathWrapper resolvedPath =
+        resolvedEntityView.getResolvedPath(
+            tableLikeEntity.getTableIdentifier(),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE);
+    try {
+      return metaStoreManager.updateEntityPropertiesIfNotChanged(
+          callContext,
+          PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),
+          newTableLikeEntity);
+    } catch (RuntimeException e) {
+      // PersistenceException (& other extension-specific exceptions) may not be in scope,
+      // but we can make a best-effort attempt to swallow it and just forego caching
+      if (e.toString().contains("PersistenceException")) {
         LOGGER.debug(
-            String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
-        TableLikeEntity newTableLikeEntity =
-            new IcebergTableLikeEntity.Builder(tableLikeEntity)
-                .setMetadataContent(tableLikeEntity.getMetadataLocation(), jsonOpt.get())
-                .build();
-        PolarisResolvedPathWrapper resolvedPath =
-            resolvedEntityView.getResolvedPath(
-                tableLikeEntity.getTableIdentifier(),
-                PolarisEntityType.TABLE_LIKE,
-                PolarisEntitySubType.ICEBERG_TABLE);
-        try {
-          return metaStoreManager.updateEntityPropertiesIfNotChanged(
-              callContext,
-              PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),
-              newTableLikeEntity);
-        } catch (RuntimeException e) {
-          // PersistenceException (& other extension-specific exceptions) may not be in scope,
-          // but we can make a best-effort attempt to swallow it and just forego caching
-          if (e.toString().contains("PersistenceException")) {
-            LOGGER.debug(
-                String.format(
-                    "Encountered an error while caching %s: %s",
-                    tableLikeEntity.getTableIdentifier(), e));
-            return new EntityResult(
-                EntityResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
-          } else {
-            throw e;
-          }
-        }
-      }
-    } else {
-      LOGGER.debug(
-          String.format(
-              "Will not cache metadata for %s; metadata caching is disabled",
-              tableLikeEntity.getTableIdentifier()));
-      return new EntityResult(EntityResult.ReturnStatus.SUCCESS, null);
-    }
-  }
-
-  private static class BoundedStringWriter extends Writer {
-    private final Writer delegate;
-    private final int maxBytes;
-    private long writtenBytes = 0;
-    private boolean limitExceeded = false;
-
-    /** Create a new BoundedWriter with a given limit `maxBytes`. -1 means no limit. */
-    public BoundedStringWriter(StringWriter delegate, int maxBytes) {
-      this.delegate = delegate;
-      if (maxBytes == -1) {
-        this.maxBytes = Integer.MAX_VALUE;
+            String.format(
+                "Encountered an error while caching %s: %s",
+                tableLikeEntity.getTableIdentifier(), e));
+        return new EntityResult(
+            EntityResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
       } else {
-        this.maxBytes = maxBytes;
+        throw e;
       }
-    }
-
-    private boolean canWriteBytes(long bytesToWrite) {
-      if (writtenBytes + bytesToWrite > maxBytes) {
-        limitExceeded = true;
-      }
-      return !limitExceeded;
-    }
-
-    /** `true` when the writer was asked to write more than `maxBytes` bytes */
-    public final boolean isLimitExceeded() {
-      return limitExceeded;
-    }
-
-    @Override
-    public final void write(char[] cbuf, int off, int len) throws IOException {
-      if (canWriteBytes(len)) {
-        delegate.write(cbuf, off, len);
-        writtenBytes += len;
-      }
-    }
-
-    @Override
-    public final void write(int c) throws IOException {
-      if (canWriteBytes(1)) {
-        delegate.write(c);
-        writtenBytes++;
-      }
-    }
-
-    @Override
-    public final void write(String str, int off, int len) throws IOException {
-      if (canWriteBytes(len)) {
-        delegate.write(str, off, len);
-        writtenBytes += len;
-      }
-    }
-
-    @Override
-    public final Writer append(CharSequence csq) throws IOException {
-      String str = (csq == null) ? "null" : csq.toString();
-      write(str, 0, str.length());
-      return this;
-    }
-
-    @Override
-    public final Writer append(CharSequence csq, int start, int end) throws IOException {
-      String str = (csq == null) ? "null" : csq.subSequence(start, end).toString();
-      write(str, 0, str.length());
-      return this;
-    }
-
-    @Override
-    public final Writer append(char c) throws IOException {
-      write(c);
-      return this;
-    }
-
-    @Override
-    public final void flush() throws IOException {
-      delegate.flush();
-    }
-
-    @Override
-    public final void close() throws IOException {
-      delegate.close();
-    }
-
-    @Override
-    public final String toString() {
-      return delegate.toString();
     }
   }
 }
