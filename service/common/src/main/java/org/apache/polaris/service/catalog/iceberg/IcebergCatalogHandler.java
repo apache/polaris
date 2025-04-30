@@ -588,7 +588,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    LoadTableResponse rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    final LoadTableResponse rawResponse;
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      TableMetadata tableMetadata = icebergCatalog.loadTableMetadata(tableIdentifier);
+      rawResponse = LoadTableResponse
+          .builder()
+          .withTableMetadata(tableMetadata)
+          .build();
+    } else {
+      rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    }
     return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
