@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.commons;
+package org.apache.polaris.common;
 
 import io.quarkus.arc.All;
 import io.quarkus.arc.InstanceHandle;

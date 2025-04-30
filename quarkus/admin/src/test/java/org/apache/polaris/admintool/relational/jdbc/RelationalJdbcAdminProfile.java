@@ -22,8 +22,8 @@ import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.
 
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+import org.apache.polaris.test.common.PostgresRelationalJdbcLifeCycleManagement;
+import org.apache.polaris.test.common.RelationalJdbcProfile;
 
 public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
   @Override

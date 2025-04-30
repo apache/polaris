@@ -41,10 +41,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.*;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -258,12 +255,12 @@ public class QuarkusProducers {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
   }
 
-  //  @Produces
-  //  public DatasourceSupplier datasourceSupplier(
-  //      @Any RelationalJdbcConfiguration relationalJdbcConfiguration,
-  //      @All List<InstanceHandle<DataSource>> datasources) {
-  //    return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, datasources);
-  //  }
+  //    @Produces
+  //    public DatasourceSupplier datasourceSupplier(
+  //        @Any RelationalJdbcConfiguration relationalJdbcConfiguration,
+  //        @All List<InstanceHandle<DataSource>> datasources) {
+  //      return new QuarkusDatasourceSupplier(relationalJdbcConfiguration, datasources);
+  //    }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();

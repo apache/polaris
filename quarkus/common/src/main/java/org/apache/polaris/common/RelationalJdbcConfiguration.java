@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.commons;
+package org.apache.polaris.common;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithParentName;
@@ -24,7 +24,7 @@ import io.smallrye.config.WithParentName;
 import java.util.Map;
 import java.util.Optional;
 
-@ConfigMapping(prefix = "polaris.relation.jdbc.datasource")
+@ConfigMapping(prefix = "polaris.relational.jdbc.datasource")
 public interface RelationalJdbcConfiguration {
   /** realmId to configured Datasource name mapping. */
   @WithParentName

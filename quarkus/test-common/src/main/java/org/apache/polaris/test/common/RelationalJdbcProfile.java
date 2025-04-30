@@ -16,27 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.test.common;
 
-plugins {
-    alias(libs.plugins.jandex)
-    id("java-test-fixtures")
-}
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.List;
+import java.util.Map;
 
-configurations.all {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-}
+public class RelationalJdbcProfile implements QuarkusTestProfile {
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return Map.of("polaris.persistence.auto-bootstrap-types", "relational-jdbc");
+  }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-dependencies {
-    implementation(enforcedPlatform(libs.quarkus.bom))
-    implementation("io.quarkus:quarkus-junit5")
-    implementation(platform(libs.testcontainers.bom))
-    implementation("org.testcontainers:testcontainers")
-    implementation("org.testcontainers:postgresql")
+  @Override
+  public List<TestResourceEntry> testResources() {
+    return List.of(
+        new QuarkusTestProfile.TestResourceEntry(
+            PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
+  }
 }
