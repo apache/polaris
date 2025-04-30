@@ -1270,8 +1270,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
       } else if (base != metadata) {
-        if (base != null && metadata != null &&
-            base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+        if (base != null
+            && metadata != null
+            && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
           // if the metadata is not changed, return early
           LOGGER.info("Nothing to commit.");
           return;
