@@ -25,6 +25,34 @@ pushd "$SCRIPT_DIR/.." > /dev/null
 TARGET_DIR="$SCRIPT_DIR/../python"
 
 #############################
+#      Delete old Tests     #
+#############################
+
+# List of test files to keep (from .../client)
+KEEP_TESTS=(
+  "python/test/test_cli_parsing.py"
+)
+
+git ls-files "${TARGET_DIR}/test" | while read -r file; do
+
+  # Check if file should be excluded
+  keep=false
+  for test_path in "${KEEP_TESTS[@]}"; do
+    if [[ "$file" == "$exclude_path"* ]]; then
+      keep=true
+    fi
+  done
+
+  if [ "$keep" = true ]; then
+    echo "${file}: skipped"
+    continue
+  else
+    echo "${file}: removed"
+    rm ${file}
+  done
+done
+
+#############################
 # Regenerate Python clients #
 #############################
 
