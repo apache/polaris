@@ -884,18 +884,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               final TableMetadata currentMetadata;
               final TableOperations tableOps;
               if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-                currentMetadata =
-                    TableMetadataParser.fromJson(
-                        icebergCatalog.loadTableMetadataJson(change.identifier()).content());
                 tableOps = icebergCatalog.newTableOps(change.identifier());
+                MetadataJson metadataJson = icebergCatalog.loadTableMetadataJson(change.identifier());
+                currentMetadata = TableMetadataParser.fromJson(metadataJson.content());
+                // Update tableOps.current() to reflect the cached metadata
+                if (tableOps instanceof IcebergCatalog.BasePolarisTableOperations bpto) {
+                  bpto.setCurrentMetadata(metadataJson.location(), currentMetadata);
+                  bpto.shouldRefresh = false;
+                }
               } else {
                 final Table table = baseCatalog.loadTable(change.identifier());
-
                 if (!(table instanceof BaseTable)) {
                   throw new IllegalStateException(
                       "Cannot wrap catalog that does not produce BaseTable");
                 }
-
                 tableOps = ((BaseTable) table).operations();
                 currentMetadata = tableOps.current();
               }

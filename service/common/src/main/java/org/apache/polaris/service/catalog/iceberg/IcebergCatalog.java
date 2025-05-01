@@ -1285,6 +1285,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         }
       } else if (current() != null
           && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
+        System.out.println("#### " + current().metadataFileLocation() + " vs " + base.metadataFileLocation());
         throw new CommitFailedException("Cannot commit: stale table metadata");
       }
       // if the metadata is not changed, return early
