@@ -47,7 +47,7 @@ tar xzvf spark-3.5.5-bin-hadoop3.tgz  -C spark-3.5 --strip-components=1
 cd spark-3.5
 ```
 
-All Spark Client code is available under plugins/spark of the polaris repo.
+All Spark Client code is available under `plugins/spark` of the polaris repo.
 
 ## Quick Start with Local Polaris Service
 If you want to quickly try out the functionality with a local Polaris service, you can follow the instructions

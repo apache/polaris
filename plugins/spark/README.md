@@ -57,13 +57,12 @@ bin/spark-shell \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
---conf spark.sql.catalog.<catalog-name>.header.X-Iceberg-Access-Delegation=true \
+--conf spark.sql.catalog.<catalog-name>.header.X-Iceberg-Access-Delegation=vended-credentials \
 --conf spark.sql.catalog.<catalog-name>=org.apache.polaris.spark.SparkCatalog \
 --conf spark.sql.catalog.<catalog-name>.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.<catalog-name>.credential="root:secret" \
 --conf spark.sql.catalog.<catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<catalog-name>.token-refresh-enabled=true \
---conf spark.sql.catalog.<catalog-name>.type=rest \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
@@ -78,13 +77,12 @@ bin/spark-shell \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=<catalog-name> \
---conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=true \
+--conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
 --conf spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog \
 --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.polaris.credential="root:secret" \
 --conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
---conf spark.sql.catalog.polaris.type=rest \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
