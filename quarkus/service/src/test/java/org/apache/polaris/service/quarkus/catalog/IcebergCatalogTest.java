@@ -254,11 +254,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+
+    callContext = CallContext.of(realmContext, polarisContext);
+    QuarkusMock.installMockForType(callContext, CallContext.class);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
-
-    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(

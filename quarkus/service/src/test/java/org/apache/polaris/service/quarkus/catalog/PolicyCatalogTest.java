@@ -200,13 +200,13 @@ public class PolicyCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+    callContext = CallContext.of(realmContext, polarisContext);
+    QuarkusMock.installMockForType(callContext, CallContext.class);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
-
-    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
