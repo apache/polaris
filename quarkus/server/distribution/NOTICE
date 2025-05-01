@@ -554,10 +554,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.11.4
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.11.4
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.11.4
-Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
+Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.12.4
 
 NOTICE:
 | Copyright 2009-2017 Mark Struberg

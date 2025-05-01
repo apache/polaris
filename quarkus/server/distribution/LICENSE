@@ -723,6 +723,18 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: com.sun.xml.bind Name: jaxb-core Version: 4.0.5
+Project URL (from POM): https://github.com/eclipse-ee4j/jaxb-ri
+License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
+Group: com.sun.xml.bind Name: jaxb-xjc Version: 4.0.5
+Project URL (from POM): https://github.com/eclipse-ee4j/jaxb-ri
+License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
 Group: commons-beanutils Name: commons-beanutils Version: 1.9.4
 Project URL (from POM): https://commons.apache.org/proper/commons-beanutils/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1203,19 +1215,19 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.4
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.5
 Project URL (from POM): https://github.com/reactor/reactor-netty
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.4
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.5
 Project URL (from POM): https://github.com/reactor/reactor-netty
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.4
+Group: io.projectreactor Name: reactor-core Version: 3.7.5
 Project URL (from POM): https://github.com/reactor/reactor-core
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1258,6 +1270,24 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: io.quarkus Name: quarkus-arc Version: 3.21.2
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-container-image Version: 3.21.2
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-container-image-docker Version: 3.21.2
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1371,6 +1401,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: io.quarkus Name: quarkus-security Version: 3.21.2
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: io.quarkus Name: quarkus-security-runtime-spi Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1395,6 +1431,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: io.quarkus Name: quarkus-tls-registry-spi Version: 3.21.2
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: io.quarkus Name: quarkus-vertx Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1413,7 +1455,7 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus.resteasy Name: reactive.resteasy-reactive Version: 3.21.2
+Group: io.quarkus.resteasy.reactive Name: resteasy-reactive Version: 3.21.2
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1754,6 +1796,11 @@ Group: jakarta.interceptor Name: jakarta.interceptor-api Version: 2.2.0
 Project URL (from POM): https://github.com/jakartaee/interceptors
 License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 License (from POM): GPL2 w/ CPE - https://www.gnu.org/software/classpath/license.html
+--------------------------------------------------------------------------------
+
+Group: jakarta.persistence Name: jakarta.persistence-api Version: 3.1.0
+Project URL (from POM): https://github.com/jakartaee/persistence
+License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2252,6 +2299,12 @@ License (from POM): BSD-3-Clause - https://asm.ow2.io/license.html
 
 --------------------------------------------------------------------------------
 
+Group: org.postgresql Name: postgresql Version: 42.7.5
+Project URL: https://jdbc.postgresql.org/
+License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
+
+--------------------------------------------------------------------------------
+
 Group: org.reactivestreams Name: reactive-streams Version: 1.0.4
 Project URL (from POM): http://www.reactive-streams.org/
 License (from POM): MIT-0 - https://spdx.org/licenses/MIT-0.html
@@ -2295,7 +2348,7 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: org.yaml Name: snakeyaml Version: 2.3
+Group: org.yaml Name: snakeyaml Version: 2.4
 Project URL (from POM): https://bitbucket.org/snakeyaml/snakeyaml
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -2490,11 +2543,5 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
 Project URL (from POM): https://github.com/awslabs/aws-eventstream-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: org.postgresql Name: postgresql Version: 42.7.5
-Project URL: https://jdbc.postgresql.org/
-License (from POM): BSD-2-Clause - https://opensource.org/licenses/BSD-2-Clause
 
 --------------------------------------------------------------------------------
