@@ -21,9 +21,9 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -31,10 +31,9 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 
 @Decorator
+@Priority(1)
 public class DefaultConfigurationStoreDecorator implements PolarisConfigurationStore {
-  @Inject
-  @Delegate
-  PolarisConfigurationStore delegate;
+  @Inject @Delegate PolarisConfigurationStore delegate;
 
   private final Map<String, Object> defaults;
   private final Map<String, Map<String, Object>> realmOverrides;
@@ -46,8 +45,7 @@ public class DefaultConfigurationStoreDecorator implements PolarisConfigurationS
     this(
         configurations.parseDefaults(objectMapper),
         configurations.parseRealmOverrides(objectMapper),
-        callContext
-    );
+        callContext);
   }
 
   public DefaultConfigurationStoreDecorator(Map<String, Object> defaults, CallContext callContext) {
@@ -55,7 +53,9 @@ public class DefaultConfigurationStoreDecorator implements PolarisConfigurationS
   }
 
   public DefaultConfigurationStoreDecorator(
-      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides, CallContext callContext) {
+      Map<String, Object> defaults,
+      Map<String, Map<String, Object>> realmOverrides,
+      CallContext callContext) {
     this.defaults = Map.copyOf(defaults);
     this.realmOverrides = Map.copyOf(realmOverrides);
     this.callContext = callContext;
