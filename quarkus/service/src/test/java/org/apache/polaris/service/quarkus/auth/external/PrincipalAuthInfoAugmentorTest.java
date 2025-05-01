@@ -69,9 +69,7 @@ class PrincipalAuthInfoAugmentorTest {
     when(principalRoleMappers.select(Identifier.Literal.of("default")))
         .thenReturn(principalRoleMappers);
     when(principalRoleMappers.get()).thenReturn(principalRolesMapper);
-    augmentor = new PrincipalAuthInfoAugmentor();
-    augmentor.principalMappers = principalMappers;
-    augmentor.principalRoleMappers = principalRoleMappers;
+    augmentor = new PrincipalAuthInfoAugmentor(principalMappers, principalRoleMappers);
   }
 
   @Test

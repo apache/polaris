@@ -32,7 +32,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /** A utility class for locating claims in a JWT token by path. */
 @ApplicationScoped
-public class ClaimsLocator {
+class ClaimsLocator {
 
   /**
    * Locates a claim, possibly a nested one, in a JWT token by path.

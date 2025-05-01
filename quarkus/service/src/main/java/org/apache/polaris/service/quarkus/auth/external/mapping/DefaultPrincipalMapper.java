@@ -35,9 +35,14 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
  */
 @ApplicationScoped
 @Identifier("default")
-public class DefaultPrincipalMapper implements PrincipalMapper {
+class DefaultPrincipalMapper implements PrincipalMapper {
 
-  @Inject ClaimsLocator claimsLocator;
+  private final ClaimsLocator claimsLocator;
+
+  @Inject
+  public DefaultPrincipalMapper(ClaimsLocator claimsLocator) {
+    this.claimsLocator = claimsLocator;
+  }
 
   @Override
   public OptionalLong mapPrincipalId(SecurityIdentity identity) {

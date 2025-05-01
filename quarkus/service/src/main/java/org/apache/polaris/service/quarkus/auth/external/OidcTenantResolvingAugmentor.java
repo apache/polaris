@@ -44,7 +44,12 @@ public class OidcTenantResolvingAugmentor implements SecurityIdentityAugmentor {
     return identity.getAttribute(TENANT_CONFIG_ATTRIBUTE);
   }
 
-  @Inject OidcTenantResolver resolver;
+  private final OidcTenantResolver resolver;
+
+  @Inject
+  public OidcTenantResolvingAugmentor(OidcTenantResolver resolver) {
+    this.resolver = resolver;
+  }
 
   @Override
   public int priority() {

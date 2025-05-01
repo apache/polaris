@@ -57,8 +57,7 @@ class DefaultPrincipalMapperTest {
     Instance<PrincipalRolesMapper> strategies = mock(Instance.class);
     when(strategies.select(Identifier.Literal.of("default"))).thenReturn(strategies);
     when(strategies.get()).thenReturn(new DefaultPrincipalRolesMapper());
-    mapper = new DefaultPrincipalMapper();
-    mapper.claimsLocator = claimsLocator;
+    mapper = new DefaultPrincipalMapper(claimsLocator);
   }
 
   @ParameterizedTest

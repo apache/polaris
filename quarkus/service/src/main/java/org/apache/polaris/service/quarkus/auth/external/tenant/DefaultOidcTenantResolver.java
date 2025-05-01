@@ -37,11 +37,16 @@ import org.slf4j.LoggerFactory;
  */
 @ApplicationScoped
 @Identifier("default")
-public class DefaultOidcTenantResolver implements OidcTenantResolver {
+class DefaultOidcTenantResolver implements OidcTenantResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOidcTenantResolver.class);
 
-  @Inject OidcConfiguration config;
+  private final OidcConfiguration config;
+
+  @Inject
+  public DefaultOidcTenantResolver(OidcConfiguration config) {
+    this.config = config;
+  }
 
   @Override
   public OidcTenantConfiguration resolveConfig(SecurityIdentity identity) {

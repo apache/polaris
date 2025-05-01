@@ -45,8 +45,7 @@ public class AuthenticatingAugmentorTest {
   @SuppressWarnings("unchecked")
   public void setup() {
     authenticator = mock(Authenticator.class);
-    augmentor = new AuthenticatingAugmentor();
-    augmentor.authenticator = authenticator;
+    augmentor = new AuthenticatingAugmentor(authenticator);
   }
 
   @Test

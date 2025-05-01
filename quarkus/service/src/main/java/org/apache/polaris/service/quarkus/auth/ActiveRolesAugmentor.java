@@ -41,7 +41,12 @@ public class ActiveRolesAugmentor implements SecurityIdentityAugmentor {
   // must run after AuthenticatingAugmentor
   public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY - 1;
 
-  @Inject ActiveRolesProvider activeRolesProvider;
+  private final ActiveRolesProvider activeRolesProvider;
+
+  @Inject
+  public ActiveRolesAugmentor(ActiveRolesProvider activeRolesProvider) {
+    this.activeRolesProvider = activeRolesProvider;
+  }
 
   @Override
   public int priority() {

@@ -40,9 +40,8 @@ class DefaultOidcTenantResolverTest {
 
   @BeforeEach
   public void setup() {
-    resolver = new DefaultOidcTenantResolver();
     polarisOidcConfig = mock(OidcConfiguration.class);
-    resolver.config = polarisOidcConfig;
+    resolver = new DefaultOidcTenantResolver(polarisOidcConfig);
   }
 
   @Test

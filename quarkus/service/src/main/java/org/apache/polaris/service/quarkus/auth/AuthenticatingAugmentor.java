@@ -41,7 +41,13 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
 
   public static final int PRIORITY = 1000;
 
-  @Inject Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator;
+  private final Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator;
+
+  @Inject
+  public AuthenticatingAugmentor(
+      Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator) {
+    this.authenticator = authenticator;
+  }
 
   @Override
   public int priority() {

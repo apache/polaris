@@ -40,8 +40,7 @@ class OidcTenantResolvingAugmentorTest {
   @BeforeEach
   public void setup() {
     resolver = mock(OidcTenantResolver.class);
-    augmentor = new OidcTenantResolvingAugmentor();
-    augmentor.resolver = resolver;
+    augmentor = new OidcTenantResolvingAugmentor(resolver);
   }
 
   @Test

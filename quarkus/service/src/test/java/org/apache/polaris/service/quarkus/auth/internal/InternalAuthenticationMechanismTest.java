@@ -56,10 +56,7 @@ public class InternalAuthenticationMechanismTest {
     tokenBroker = mock(TokenBroker.class);
     identityProviderManager = mock(IdentityProviderManager.class);
     routingContext = mock(RoutingContext.class);
-
-    mechanism = new InternalAuthenticationMechanism();
-    mechanism.configuration = configuration;
-    mechanism.tokenBroker = tokenBroker;
+    mechanism = new InternalAuthenticationMechanism(configuration, tokenBroker);
   }
 
   @ParameterizedTest

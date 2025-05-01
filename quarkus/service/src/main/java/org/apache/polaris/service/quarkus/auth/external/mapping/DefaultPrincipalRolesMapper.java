@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  */
 @ApplicationScoped
 @Identifier("default")
-public class DefaultPrincipalRolesMapper implements PrincipalRolesMapper {
+class DefaultPrincipalRolesMapper implements PrincipalRolesMapper {
 
   @Override
   public Set<String> mapPrincipalRoles(SecurityIdentity identity) {

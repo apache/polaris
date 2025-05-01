@@ -44,8 +44,7 @@ public class ActiveRolesAugmentorTest {
   @BeforeEach
   public void setup() {
     activeRolesProvider = mock(ActiveRolesProvider.class);
-    augmentor = new ActiveRolesAugmentor();
-    augmentor.activeRolesProvider = activeRolesProvider;
+    augmentor = new ActiveRolesAugmentor(activeRolesProvider);
   }
 
   @Test

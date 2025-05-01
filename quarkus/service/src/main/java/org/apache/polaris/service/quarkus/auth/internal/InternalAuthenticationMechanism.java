@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.auth.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.quarkus.security.AuthenticationFailedException;
@@ -48,7 +49,7 @@ import org.apache.polaris.service.quarkus.auth.QuarkusPrincipalAuthInfo;
  * authentication using tokens provided by Polaris itself.
  */
 @ApplicationScoped
-public class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
+class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
 
   // Must be higher than the OIDC authentication mechanism priority, which is
   // HttpAuthenticationMechanism.DEFAULT_PRIORITY + 1, since this mechanism must be tried first.
@@ -57,8 +58,15 @@ public class InternalAuthenticationMechanism implements HttpAuthenticationMechan
 
   private static final String BEARER = "Bearer";
 
-  @Inject AuthenticationRealmConfiguration configuration;
-  @Inject TokenBroker tokenBroker;
+  @VisibleForTesting final AuthenticationRealmConfiguration configuration;
+  private final TokenBroker tokenBroker;
+
+  @Inject
+  public InternalAuthenticationMechanism(
+      AuthenticationRealmConfiguration configuration, TokenBroker tokenBroker) {
+    this.configuration = configuration;
+    this.tokenBroker = tokenBroker;
+  }
 
   @Override
   public int getPriority() {

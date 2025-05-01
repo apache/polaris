@@ -31,7 +31,7 @@ import java.security.Principal;
 
 /** A custom {@link IdentityProvider} that handles internal token authentication requests. */
 @ApplicationScoped
-public class InternalIdentityProvider implements IdentityProvider<TokenAuthenticationRequest> {
+class InternalIdentityProvider implements IdentityProvider<TokenAuthenticationRequest> {
 
   @Override
   public Class<TokenAuthenticationRequest> getRequestType() {

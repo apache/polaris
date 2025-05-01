@@ -48,8 +48,16 @@ public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
   // must run before the authenticating augmentor
   public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY + 100;
 
-  @Inject @Any Instance<PrincipalMapper> principalMappers;
-  @Inject @Any Instance<PrincipalRolesMapper> principalRoleMappers;
+  private final Instance<PrincipalMapper> principalMappers;
+  private final Instance<PrincipalRolesMapper> principalRoleMappers;
+
+  @Inject
+  public PrincipalAuthInfoAugmentor(
+      @Any Instance<PrincipalMapper> principalMappers,
+      @Any Instance<PrincipalRolesMapper> principalRoleMappers) {
+    this.principalMappers = principalMappers;
+    this.principalRoleMappers = principalRoleMappers;
+  }
 
   @Override
   public int priority() {
