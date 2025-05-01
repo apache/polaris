@@ -69,6 +69,8 @@ public class PrincipalRoleEntity extends PolarisEntity {
     public Builder setFederated(Boolean isFederated) {
       if (isFederated != null && isFederated) {
         internalProperties.put(FederatedEntities.FEDERATED_ENTITY, "true");
+      } else {
+        internalProperties.remove(FederatedEntities.FEDERATED_ENTITY);
       }
       return this;
     }
