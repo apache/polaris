@@ -21,6 +21,8 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
@@ -28,26 +30,50 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 
-@ApplicationScoped
-public class DefaultConfigurationStore implements PolarisConfigurationStore {
+@Decorator
+public class DefaultConfigurationStoreDecorator implements PolarisConfigurationStore {
+  @Inject
+  @Delegate
+  PolarisConfigurationStore delegate;
 
   private final Map<String, Object> defaults;
+  private final Map<String, Map<String, Object>> realmOverrides;
+  private final CallContext callContext;
 
-  // FIXME the whole PolarisConfigurationStore + PolarisConfiguration needs to be refactored
-  // to become a proper Quarkus configuration object
   @Inject
-  public DefaultConfigurationStore(
-      ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this(configurations.parseDefaults(objectMapper));
+  public DefaultConfigurationStoreDecorator(
+      ObjectMapper objectMapper, FeaturesConfiguration configurations, CallContext callContext) {
+    this(
+        configurations.parseDefaults(objectMapper),
+        configurations.parseRealmOverrides(objectMapper),
+        callContext
+    );
   }
 
-  public DefaultConfigurationStore(Map<String, Object> defaults) {
-    this.defaults = Map.copyOf(defaults);
+  public DefaultConfigurationStoreDecorator(Map<String, Object> defaults, CallContext callContext) {
+    this(defaults, Map.of(), callContext);
   }
+
+  public DefaultConfigurationStoreDecorator(
+      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides, CallContext callContext) {
+    this.defaults = Map.copyOf(defaults);
+    this.realmOverrides = Map.copyOf(realmOverrides);
+    this.callContext = callContext;
+  }
+
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
-    @SuppressWarnings("unchecked")
-    T confgValue = (T) defaults.get(configName);
-    return confgValue;
+    if (callContext == null) {
+      return delegate.getConfiguration(ctx, configName);
+    } else {
+      String realm = callContext.getRealmContext().getRealmIdentifier();
+      @SuppressWarnings("unchecked")
+      T confgValue =
+          (T)
+              realmOverrides
+                  .getOrDefault(realm, Map.of())
+                  .getOrDefault(configName, defaults.get(configName));
+      return confgValue;
+    }
   }
 }
