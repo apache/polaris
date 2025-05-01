@@ -18,13 +18,9 @@
  */
 package org.apache.polaris.core.policy.validator.maintenance;
 
-import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
-import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
-import static org.apache.polaris.core.entity.PolarisEntityType.TABLE_LIKE;
-
-import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidator;
 
@@ -32,26 +28,11 @@ public class BaseMaintenancePolicyValidator implements PolicyValidator {
   public static final BaseMaintenancePolicyValidator INSTANCE =
       new BaseMaintenancePolicyValidator();
 
-  private static final Set<PolarisEntityType> ATTACHABLE_ENTITY_TYPES =
-      Set.of(CATALOG, NAMESPACE, TABLE_LIKE);
-
   @Override
   public void validate(String content) throws InvalidPolicyException {}
 
   @Override
   public boolean canAttach(PolarisEntityType entityType, PolarisEntitySubType entitySubType) {
-    if (entityType == null) {
-      return false;
-    }
-
-    if (!ATTACHABLE_ENTITY_TYPES.contains(entityType)) {
-      return false;
-    }
-
-    if (entityType == TABLE_LIKE && entitySubType != PolarisEntitySubType.ICEBERG_TABLE) {
-      return false;
-    }
-
-    return true;
+    return PolicyMappingUtil.isValidTargetEntityType(entityType, entitySubType);
   }
 }

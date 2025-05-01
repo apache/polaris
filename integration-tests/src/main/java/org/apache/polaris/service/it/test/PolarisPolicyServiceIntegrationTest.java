@@ -50,6 +50,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
@@ -268,8 +269,21 @@ public class PolarisPolicyServiceIntegrationTest {
         PredefinedPolicyTypes.DATA_COMPACTION,
         EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
         "test policy");
-    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, Map.of());
+
+    // dropPolicy should fail because the policy is attached to the catalog
+    Assertions.assertThatThrownBy(() -> policyApi.dropPolicy(currentCatalogName, NS1_P1))
+        .isInstanceOf(PolicyInUseException.class);
+
+    // with detach-all=true, the policy and the attachment should be dropped
+    policyApi.dropPolicy(currentCatalogName, NS1_P1, true);
     Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS1)).hasSize(0);
+    // The policy mapping record should be dropped
+    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, null, null, null))
+        .hasSize(0);
   }
 
   @Test
