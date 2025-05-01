@@ -250,7 +250,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence"
                   + " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata"
                   + " will be cached.")
-          .defaultValue(METADATA_CACHE_MAX_BYTES_INFINITE_CACHING)
+          .defaultValue(METADATA_CACHE_MAX_BYTES_NO_CACHING)
           .validation(value -> value >= -1)
           .buildFeatureConfiguration();
 

@@ -881,12 +881,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
+              // TODO we are still loading metadata redundantly against the same table
               final TableMetadata currentMetadata;
               final TableOperations tableOps;
               if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
                 tableOps = icebergCatalog.newTableOps(change.identifier());
-                MetadataJson metadataJson = icebergCatalog.loadTableMetadataJson(change.identifier());
-                currentMetadata = TableMetadataParser.fromJson(metadataJson.content());
+                MetadataJson metadataJson =
+                    icebergCatalog.loadTableMetadataJson(change.identifier());
+                currentMetadata =
+                    TableMetadata.buildFrom(TableMetadataParser.fromJson(metadataJson.content()))
+                        .withMetadataLocation(metadataJson.location())
+                        .build();
                 // Update tableOps.current() to reflect the cached metadata
                 if (tableOps instanceof IcebergCatalog.BasePolarisTableOperations bpto) {
                   bpto.setCurrentMetadata(metadataJson.location(), currentMetadata);

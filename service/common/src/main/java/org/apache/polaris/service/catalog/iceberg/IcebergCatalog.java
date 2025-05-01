@@ -1273,7 +1273,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return current();
     }
 
-    /** With metadata caching, the `base` may not be exactly `current()` */
+    /**
+     * With metadata caching, the `base` may not be exactly `current()` by reference so we compare
+     * locations instead
+     */
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
       // if the metadata is already out of date, reject it
@@ -1285,7 +1288,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         }
       } else if (current() != null
           && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
-        System.out.println("#### " + current().metadataFileLocation() + " vs " + base.metadataFileLocation());
         throw new CommitFailedException("Cannot commit: stale table metadata");
       }
       // if the metadata is not changed, return early
