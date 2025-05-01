@@ -108,7 +108,7 @@ bin/spark-shell \
 Replace `path-to-spark-client-jar` to where the built jar is located. The `spark-catalog-name` is the catalog name you
 will use with spark, and `polaris-catalog-name` is the catalog name used by Polaris service, for simplicity, you can use
 the same name. Replace the `polaris-service-uri`, `client-id` and `client-secret` accordingly, you can refer to
-[Quick Start]({{% ref "../0.9.0/quickstart" %}}) for more details about those fields.
+[Using Polaris]({{% ref "getting-started/using-polaris" %}}) for more details about those fields.
 
 Or you can create a spark session start the connection, following is an example with pyspark
 ```python
