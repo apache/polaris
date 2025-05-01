@@ -97,5 +97,6 @@ Following describes the current functionality limitations of the Polaris Spark c
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
-5) For other non-iceberg tables like csv, there is no specific guarantee provided today.
-6) Role-based RBAC support for Delta table write is not available. Create, Drop and List RBAC support is available.
+5) For other non-Iceberg tables like csv, there is no specific guarantee provided today.
+6) TABLE_WRITE_DATA privilege is not supported for Delta Table.
+7) Credential Vending is not supported for Delta Table.

@@ -25,12 +25,12 @@ weight: 400
 Apache Polaris now provides Catalog support for Generic Tables (non-iceberg tables), please check out 
 the [Catalog API Spec]({{% ref "polaris-catalog-service" %}}) for Generic Table API specs.
 
-Along with the Generic Table Catalog support, Polaris is also releasing a Spark Client, which help
-providing an end-to-end solution for Apache Spark to manage Delta tables using Polaris.
+Along with the Generic Table Catalog support, Polaris is also releasing a Spark Client, which helps to 
+provide an end-to-end solution for Apache Spark to manage Delta tables using Polaris.
 
 Note the Polaris Spark Client is able to handle both Iceberg and Delta tables, not just Delta.
 
-This pages documents how to build and use the Apache Polaris Spark Client before formal release.
+This page documents how to build and use the Polaris Spark Client directly with the source repo.
 
 ## Prerequisite
 1. Check out the polaris repo
@@ -59,14 +59,14 @@ The getting-started will start two containers:
 
 The notebook `SparkPolaris.ipynb` provided under `plugins/spark/v3.5/getting-started/notebooks` provides examples 
 with basic commands, includes:
-1) Connect to Polaris using Python client to create Catalog and Roles
+1) Connect to Polaris using Python client to create a Catalog and Roles
 2) Start Spark session using the Polaris Spark Client
 3) Using Spark to perform table operations for both Delta and Iceberg
 
 ## Start Spark against a deployed Polaris Service
-If you want to start Spark with a deployed Polaris service, you can follow the following instructions.
+If you want to start Spark with a deployed Polaris service, you can follow the instructions below.
 
-Before start, Make sure the service deployed is up-to-date, and Spark 3.5 with at least version 3.5.3 is installed. 
+Before starting, make sure the service deployed is up-to-date, and that Spark 3.5 with at least version 3.5.3 is installed. 
 
 ### Build Spark Client Jars
 The polaris-spark project provides a task createPolarisSparkJar to help building jars for the Polaris Spark client,
@@ -83,7 +83,7 @@ cd ~/polaris
 If you want to build a Scala 2.13 compatible jar, you can use the following command:
 - `./gradlew :polaris-spark-3.5_2.13:createPolarisSparkJar` 
 
-The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after the build. You can also copy the
+The result jar is located at `plugins/spark/v3.5/build/<scala_version>/libs` after the build. You can also copy the
 corresponding jar to any location your Spark will have access.
 
 ### Connecting with Spark Using the built jar
@@ -111,7 +111,7 @@ the same name. Replace the `polaris-service-uri`, `client-id` and `client-secret
 [Quick Start]({{% ref "../0.9.0/quickstart" %}}) for more details about those fields.
 
 Or you can create a spark session start the connection, following is an example with pyspark
-```shell
+```python
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder
@@ -133,7 +133,7 @@ Similar as the CLI command, make sure the corresponding fields are replaced corr
 ### Create tables with Spark
 After the spark is started, you can use it to create and access Iceberg and Delta table like what you are doing before, 
 for example:
-```shell
+```python
 spark.sql("USE polaris")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS.PUBLIC")
@@ -151,5 +151,6 @@ The Polaris Spark client has the following functionality limitations:
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
-5) For other non-iceberg tables like csv, there is no specific guarantee provided today.
-6) Role-based RBAC support for Delta table write is not available. Create, Drop and List RBAC support is available.
+5) For other non-Iceberg tables like csv, there is no specific guarantee provided today.
+6) TABLE_WRITE_DATA privileges is not supported for Delta Table.
+7) Credential Vending is not supported for Delta Table.
