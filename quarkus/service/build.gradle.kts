@@ -47,6 +47,7 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-health")
   implementation("io.quarkus:quarkus-micrometer")
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
+  implementation("io.quarkus:quarkus-oidc")
   implementation("io.quarkus:quarkus-opentelemetry")
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")

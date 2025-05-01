@@ -16,26 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.quarkus.auth;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.quarkus.security.credential.Credential;
+import io.quarkus.security.identity.SecurityIdentity;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 
-dependencies {
-
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
-}
+/**
+ * Convenience sub-interface of Polaris {@link PrincipalAuthInfo} that also implements Quarkus
+ * {@link Credential}, thus allowing it to be used as a {@linkplain
+ * SecurityIdentity#getCredential(Class) security identity credential}.
+ */
+public interface QuarkusPrincipalAuthInfo extends PrincipalAuthInfo, Credential {}

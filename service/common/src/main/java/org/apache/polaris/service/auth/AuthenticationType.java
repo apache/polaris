@@ -16,26 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.auth;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+public enum AuthenticationType {
 
-dependencies {
+  /** Polaris will be the only identity provider. */
+  INTERNAL,
 
-  // The dependencies below are included merely to allow IDEs to provide
-  // support for Quarkus in this module.
-  compileOnly(platform(libs.quarkus.bom))
-  compileOnly("io.quarkus:quarkus-logging-json")
-  compileOnly("io.quarkus:quarkus-rest-jackson")
-  compileOnly("io.quarkus:quarkus-reactive-routes")
-  compileOnly("io.quarkus:quarkus-hibernate-validator")
-  compileOnly("io.quarkus:quarkus-smallrye-health")
-  compileOnly("io.quarkus:quarkus-micrometer")
-  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
-  compileOnly("io.quarkus:quarkus-oidc")
-  compileOnly("io.quarkus:quarkus-opentelemetry")
-  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+  /**
+   * Polaris will delegate authentication to an external identity provider (e.g., Keycloak). The
+   * internal token endpoint will be deactivated.
+   */
+  EXTERNAL,
+
+  /**
+   * Polaris will act as an identity provider, but it will also support external authentication. The
+   * internal token endpoint will be activated and will always be tried first. If the token issuer
+   * is not Polaris, the token will be passed to the external identity provider for validation.
+   */
+  MIXED,
 }

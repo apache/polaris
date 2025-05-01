@@ -16,22 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.auth;
+package org.apache.polaris.service.quarkus.auth.external;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithDefaults;
+import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
-import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
 
-@ConfigMapping(prefix = "polaris.authentication")
-public interface QuarkusAuthenticationConfiguration
-    extends AuthenticationConfiguration<QuarkusAuthenticationRealmConfiguration> {
+/** Polaris-specific configuration for OIDC tenants. */
+@ConfigMapping(prefix = "polaris.oidc")
+public interface OidcConfiguration {
 
+  String DEFAULT_TENANT_KEY = "<default>";
+
+  /**
+   * Configuration for each OIDC tenant. The tenant ID must have a corresponding entry in {@code
+   * quarkus.oidc.<tenant-id>} configuration.
+   */
   @WithParentName
-  @WithUnnamedKey(DEFAULT_REALM_KEY)
+  @WithUnnamedKey(DEFAULT_TENANT_KEY)
   @WithDefaults
-  @Override
-  Map<String, QuarkusAuthenticationRealmConfiguration> realms();
+  Map<String, OidcTenantConfiguration> tenants();
+
+  /**
+   * The type of the OIDC tenant resolver. Must be a registered {@link OidcTenantResolver}
+   * implementation.
+   */
+  @WithDefault("default")
+  @WithName("tenant-resolver.type")
+  String tenantResolver();
 }
