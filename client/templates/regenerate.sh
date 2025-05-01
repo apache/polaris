@@ -111,7 +111,6 @@ EXCLUDE_PATHS=(
   "python/.openapi-generator/"
   "python/.openapi-generator-ignore"
   "python/cli/"
-  "python/test/"
 )
 
 EXCLUDE_EXTENSIONS=(
@@ -140,6 +139,11 @@ git ls-files "${TARGET_DIR}" | while read -r file; do
       # Check if file should be excluded
       exclude=false
       for exclude_path in "${EXCLUDE_PATHS[@]}"; do
+        if [[ "$file" == "$exclude_path"* ]]; then
+          exclude=true
+        fi
+      done
+      for exclude_path in "${KEEP_TESTS[@]}"; do
         if [[ "$file" == "$exclude_path"* ]]; then
           exclude=true
         fi
