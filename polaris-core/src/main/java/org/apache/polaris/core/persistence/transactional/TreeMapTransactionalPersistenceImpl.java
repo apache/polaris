@@ -589,9 +589,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
     // also delete the other side. We need to delete these mapping one at a time versus doing a
     // range delete
-    mappingOnTarget.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
-    mappingOnPolicy.forEach(
+    mappingOnTarget.forEach(
         record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
+    mappingOnPolicy.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
   }
 
   /** {@inheritDoc} */

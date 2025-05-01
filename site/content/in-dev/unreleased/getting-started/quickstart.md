@@ -36,7 +36,7 @@ cd ~/polaris
   :polaris-quarkus-admin:assemble --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
-docker compose -f getting-started/eclipselink/docker-compose.yml up
+docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
 ```
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:
@@ -55,7 +55,7 @@ export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
 
-The Docker image pre-configures a sample catalog called `polaris_demo` that uses a local file system.
+The Docker image pre-configures a sample catalog called `quickstart_catalog` that uses a local file system.
 
 ## Running Polaris as a Standalone Process
 

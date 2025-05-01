@@ -293,6 +293,11 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  protected void testPolicyMappingCleanup() {
+    polarisTestMetaStoreManager.testPolicyMappingCleanup();
+  }
+
+  @Test
   protected void testLoadTasks() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(

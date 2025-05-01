@@ -65,6 +65,9 @@ public class GenericTableCatalogAdapter
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
+
+    // FIXME: This is a hack to set the current context for downstream calls.
+    CallContext.setCurrentContext(callContext);
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(
