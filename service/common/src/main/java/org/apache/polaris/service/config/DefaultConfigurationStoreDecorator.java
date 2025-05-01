@@ -37,7 +37,7 @@ public class DefaultConfigurationStoreDecorator implements PolarisConfigurationS
 
   private final Map<String, Object> defaults;
   private final Map<String, Map<String, Object>> realmOverrides;
-  private final CallContext callContext;
+  private CallContext callContext = null;
 
   @Inject
   public DefaultConfigurationStoreDecorator(

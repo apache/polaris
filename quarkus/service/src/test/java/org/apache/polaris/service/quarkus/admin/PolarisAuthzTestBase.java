@@ -241,6 +241,7 @@ public abstract class PolarisAuthzTestBase {
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
     callContext = CallContext.of(realmContext, polarisContext);
+    QuarkusMock.installMockForType(callContext, CallContext.class);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
