@@ -26,7 +26,6 @@ import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 
 @ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
@@ -44,6 +43,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   public DefaultConfigurationStore(Map<String, Object> defaults) {
     this.defaults = Map.copyOf(defaults);
   }
+
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
     @SuppressWarnings("unchecked")

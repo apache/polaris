@@ -21,10 +21,13 @@ package org.apache.polaris.service.quarkus.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+
+import org.apache.hadoop.ipc.Server;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.config.DefaultConfigurationStoreDecorator;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Test;
 
@@ -60,14 +63,6 @@ public class DefaultConfigurationStoreTest {
     int realm1KeyOneValue = 2;
     int realm2KeyOneValue = 3;
     String realm2KeyTwoValue = "value3";
-    DefaultConfigurationStore defaultConfigurationStore =
-        new DefaultConfigurationStore(
-            Map.of("key1", defaultKeyOneValue, "key2", defaultKeyTwoValue),
-            Map.of(
-                "realm1",
-                Map.of("key1", realm1KeyOneValue),
-                "realm2",
-                Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)));
     InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
 
@@ -76,6 +71,18 @@ public class DefaultConfigurationStoreTest {
         new PolarisCallContext(
             metastoreFactory.getOrCreateSessionSupplier(() -> "realm1").get(),
             new PolarisDefaultDiagServiceImpl());
+    CallContext realm1CallCtx = CallContext.of(() -> "realm1", realm1Ctx);
+    CallContext.setCurrentContext(realm1CallCtx);
+    DefaultConfigurationStoreDecorator defaultConfigurationStore =
+        new DefaultConfigurationStoreDecorator(
+            Map.of("key1", defaultKeyOneValue, "key2", defaultKeyTwoValue),
+            Map.of(
+                "realm1",
+                Map.of("key1", realm1KeyOneValue),
+                "realm2",
+                Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)),
+            realm1CallCtx
+            );
     Object value =
         defaultConfigurationStore.getConfiguration(realm1Ctx, "missingKeyWithoutDefault");
     assertThat(value).isNull();
@@ -83,7 +90,6 @@ public class DefaultConfigurationStoreTest {
         defaultConfigurationStore.getConfiguration(
             realm1Ctx, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
-    CallContext.setCurrentContext(CallContext.of(() -> "realm1", realm1Ctx));
     Integer keyOneRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key1");
     assertThat(keyOneRealm1).isEqualTo(realm1KeyOneValue);
     String keyTwoRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key2");
