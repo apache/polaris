@@ -125,7 +125,7 @@ USING delta LOCATION 'file:///tmp/delta_tables/people';
 """)
 ```
 
-### Build Spark Client jars locally
+## Connecting with Spark using local Polaris Spark client
 If there is no released Spark client, or you want to try the Spark client that is currently not yet released. You can
 build a Spark Client jar locally with the source repo, and use the local jar to connect Spark with Polaris Service.
 
