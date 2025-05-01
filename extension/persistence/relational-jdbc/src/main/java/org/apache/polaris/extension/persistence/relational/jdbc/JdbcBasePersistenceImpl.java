@@ -266,7 +266,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     return getPolarisBaseEntity(query);
   }
 
@@ -289,7 +289,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             name,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     return getPolarisBaseEntity(query);
   }
 
@@ -410,7 +410,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
-    String query = QueryGenerator.generateSelectQuery(ModelEntity.class, params);
+    String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
     try {
       List<PolarisBaseEntity> results =
           datasourceOperations.executeSelect(
@@ -430,7 +430,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
-    String query = QueryGenerator.generateSelectQuery(ModelEntity.class, params);
+    String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
     PolarisBaseEntity b = getPolarisBaseEntity(query);
     return b == null ? 0 : b.getGrantRecordsVersion();
   }
@@ -457,7 +457,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             privilegeCode,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
@@ -492,7 +492,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             securableId,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
@@ -518,7 +518,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     Map<String, Object> params =
         Map.of(
             "grantee_catalog_id", granteeCatalogId, "grantee_id", granteeId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
@@ -550,7 +550,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (optionalEntityType != null) {
       params.put("type_code", optionalEntityType.getCode());
     }
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     try {
       List<ModelEntity> results =
           datasourceOperations.executeSelect(
@@ -569,7 +569,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public PolarisPrincipalSecrets loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPrincipalAuthenticationData.class, params);
+    String query = generateSelectQuery(new ModelPrincipalAuthenticationData(), params);
     try {
       List<PolarisPrincipalSecrets> results =
           datasourceOperations.executeSelect(
@@ -828,7 +828,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             policyCatalogId,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
     Preconditions.checkState(results.size() <= 1, "More than one policy mapping records found");
     return results.size() == 1 ? results.getFirst() : null;
@@ -851,7 +851,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             policyTypeCode,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
@@ -861,7 +861,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     Map<String, Object> params =
         Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
@@ -871,7 +871,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     Map<String, Object> params =
         Map.of("policy_catalog_id", policyCatalogId, "policy_id", policyId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
