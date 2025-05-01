@@ -36,24 +36,18 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
+from pydantic import ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List
+from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertCreate(BaseModel):
+class AssertCreate(TableRequirement):
     """
     The table must not already exist; used for create transactions
     """ # noqa: E501
     type: StrictStr
     __properties: ClassVar[List[str]] = ["type"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-create']):
-            raise ValueError("must be one of enum values ('assert-create')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

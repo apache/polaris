@@ -40,6 +40,7 @@ docs/CreateViewRequest.md
 docs/DataFile.md
 docs/DeleteFile.md
 docs/EmptyPlanningResult.md
+docs/EnableRowLineageUpdate.md
 docs/EqualityDeleteFile.md
 docs/ErrorModel.md
 docs/Expression.md
@@ -181,6 +182,7 @@ polaris/catalog/models/create_view_request.py
 polaris/catalog/models/data_file.py
 polaris/catalog/models/delete_file.py
 polaris/catalog/models/empty_planning_result.py
+polaris/catalog/models/enable_row_lineage_update.py
 polaris/catalog/models/equality_delete_file.py
 polaris/catalog/models/error_model.py
 polaris/catalog/models/expression.py
@@ -278,4 +280,14 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
+test/test_content_file.py
+test/test_count_map.py
+test/test_data_file.py
+test/test_equality_delete_file.py
+test/test_file_format.py
+test/test_iceberg_catalog_api.py
+test/test_iceberg_configuration_api.py
+test/test_iceberg_o_auth2_api.py
+test/test_position_delete_file.py
+test/test_value_map.py
 tox.ini

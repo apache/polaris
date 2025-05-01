@@ -36,25 +36,19 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertLastAssignedFieldId(BaseModel):
+class AssertLastAssignedFieldId(TableRequirement):
     """
     The table's last assigned column id must match the requirement's `last-assigned-field-id`
     """ # noqa: E501
-    type: StrictStr
+    type: Optional[StrictStr] = None
     last_assigned_field_id: StrictInt = Field(alias="last-assigned-field-id")
-    __properties: ClassVar[List[str]] = ["type", "last-assigned-field-id"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-last-assigned-field-id']):
-            raise ValueError("must be one of enum values ('assert-last-assigned-field-id')")
-        return value
+    __properties: ClassVar[List[str]] = ["type"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -107,8 +101,7 @@ class AssertLastAssignedFieldId(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type"),
-            "last-assigned-field-id": obj.get("last-assigned-field-id")
+            "type": obj.get("type")
         })
         return _obj
 

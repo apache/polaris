@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **snapshot** | [**Snapshot**](Snapshot.md) |  | 
 
 ## Example

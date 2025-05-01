@@ -48,6 +48,7 @@ class FileFormat(str, Enum):
     AVRO = 'avro'
     ORC = 'orc'
     PARQUET = 'parquet'
+    PUFFIN = 'puffin'
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:

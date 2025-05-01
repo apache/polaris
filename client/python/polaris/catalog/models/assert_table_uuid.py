@@ -36,25 +36,19 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
+from pydantic import ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List
+from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertTableUUID(BaseModel):
+class AssertTableUUID(TableRequirement):
     """
     The table UUID must match the requirement's `uuid`
     """ # noqa: E501
     type: StrictStr
     uuid: StrictStr
-    __properties: ClassVar[List[str]] = ["type", "uuid"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-table-uuid']):
-            raise ValueError("must be one of enum values ('assert-table-uuid')")
-        return value
+    __properties: ClassVar[List[str]] = ["type"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -107,8 +101,7 @@ class AssertTableUUID(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type"),
-            "uuid": obj.get("uuid")
+            "type": obj.get("type")
         })
         return _obj
 

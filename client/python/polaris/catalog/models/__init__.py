@@ -70,6 +70,7 @@ from polaris.catalog.models.create_view_request import CreateViewRequest
 from polaris.catalog.models.data_file import DataFile
 from polaris.catalog.models.delete_file import DeleteFile
 from polaris.catalog.models.empty_planning_result import EmptyPlanningResult
+from polaris.catalog.models.enable_row_lineage_update import EnableRowLineageUpdate
 from polaris.catalog.models.equality_delete_file import EqualityDeleteFile
 from polaris.catalog.models.error_model import ErrorModel
 from polaris.catalog.models.expression import Expression

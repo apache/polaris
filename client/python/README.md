@@ -188,6 +188,7 @@ Class | Method | HTTP request | Description
  - [DataFile](docs/DataFile.md)
  - [DeleteFile](docs/DeleteFile.md)
  - [EmptyPlanningResult](docs/EmptyPlanningResult.md)
+ - [EnableRowLineageUpdate](docs/EnableRowLineageUpdate.md)
  - [EqualityDeleteFile](docs/EqualityDeleteFile.md)
  - [ErrorModel](docs/ErrorModel.md)
  - [Expression](docs/Expression.md)

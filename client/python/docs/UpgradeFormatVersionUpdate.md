@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **format_version** | **int** |  | 
 
 ## Example

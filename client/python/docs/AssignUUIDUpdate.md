@@ -26,7 +26,7 @@ Assigning a UUID to a table/view should only be done when creating the table/vie
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **uuid** | **str** |  | 
 
 ## Example

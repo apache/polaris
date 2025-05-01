@@ -26,7 +26,7 @@ The table branch or tag identified by the requirement's `ref` must reference the
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **ref** | **str** |  | 
 **snapshot_id** | **int** |  | 
 

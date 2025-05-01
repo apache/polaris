@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **partition_statistics** | [**PartitionStatisticsFile**](PartitionStatisticsFile.md) |  | 
 
 ## Example

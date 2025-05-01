@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **schema_id** | **int** | Schema ID to set as current, or -1 to set last added schema | 
 
 ## Example

@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **snapshot_ids** | **List[int]** |  | 
 
 ## Example

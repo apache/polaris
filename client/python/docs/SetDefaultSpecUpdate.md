@@ -25,7 +25,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **spec_id** | **int** | Partition spec ID to set as the default, or -1 to set last added spec | 
 
 ## Example

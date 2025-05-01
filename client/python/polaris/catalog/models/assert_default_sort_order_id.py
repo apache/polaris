@@ -36,25 +36,19 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
 
-class AssertDefaultSortOrderId(BaseModel):
+class AssertDefaultSortOrderId(TableRequirement):
     """
     The table's default sort order id must match the requirement's `default-sort-order-id`
     """ # noqa: E501
-    type: StrictStr
+    type: Optional[StrictStr] = None
     default_sort_order_id: StrictInt = Field(alias="default-sort-order-id")
-    __properties: ClassVar[List[str]] = ["type", "default-sort-order-id"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-default-sort-order-id']):
-            raise ValueError("must be one of enum values ('assert-default-sort-order-id')")
-        return value
+    __properties: ClassVar[List[str]] = ["type"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -107,8 +101,7 @@ class AssertDefaultSortOrderId(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "type": obj.get("type"),
-            "default-sort-order-id": obj.get("default-sort-order-id")
+            "type": obj.get("type")
         })
         return _obj
 

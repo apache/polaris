@@ -26,14 +26,6 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **type** | **str** |  | 
-**uuid** | **str** |  | 
-**ref** | **str** |  | 
-**snapshot_id** | **int** |  | 
-**last_assigned_field_id** | **int** |  | 
-**current_schema_id** | **int** |  | 
-**last_assigned_partition_id** | **int** |  | 
-**default_spec_id** | **int** |  | 
-**default_sort_order_id** | **int** |  | 
 
 ## Example
 
