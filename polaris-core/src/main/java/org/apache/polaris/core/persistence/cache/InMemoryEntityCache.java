@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -77,9 +76,10 @@ public class InMemoryEntityCache implements EntityCache {
           }
         };
 
-    long weigherTarget = polarisCallContext
-        .getConfigurationStore()
-        .getConfiguration(polarisCallContext, FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    long weigherTarget =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(polarisCallContext, FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)

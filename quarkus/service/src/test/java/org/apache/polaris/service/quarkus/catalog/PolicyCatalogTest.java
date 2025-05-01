@@ -248,7 +248,8 @@ public class PolicyCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
+                    .setStorageConfigurationInfo(
+                        storageConfigModel, storageLocation, polarisContext)
                     .build()
                     .asCatalog()));
 

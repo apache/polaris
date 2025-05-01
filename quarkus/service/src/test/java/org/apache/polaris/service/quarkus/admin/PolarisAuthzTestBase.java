@@ -278,7 +278,8 @@ public abstract class PolarisAuthzTestBase {
                     .setName(CATALOG_NAME)
                     .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
+                    .setStorageConfigurationInfo(
+                        storageConfigModel, storageLocation, polarisContext)
                     .build()
                     .asCatalog()));
 

@@ -666,8 +666,8 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 
-    CatalogEntity entity = CatalogEntity.fromCatalog(
-        callContext.getPolarisCallContext(), catalogRequest.getCatalog());
+    CatalogEntity entity =
+        CatalogEntity.fromCatalog(callContext.getPolarisCallContext(), catalogRequest.getCatalog());
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 

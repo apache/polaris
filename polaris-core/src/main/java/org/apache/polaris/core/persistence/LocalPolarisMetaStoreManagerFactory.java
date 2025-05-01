@@ -193,7 +193,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
-          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager, polarisCallContext));
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(metaStoreManager, polarisCallContext));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
