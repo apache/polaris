@@ -38,7 +38,7 @@ git ls-files "${TARGET_DIR}/test" | while read -r file; do
   # Check if file should be excluded
   keep=false
   for test_path in "${KEEP_TESTS[@]}"; do
-    if [[ "$file" == "$exclude_path"* ]]; then
+    if [[ "$file" == "$test_path"* ]]; then
       keep=true
     fi
   done
@@ -49,7 +49,7 @@ git ls-files "${TARGET_DIR}/test" | while read -r file; do
   else
     echo "${file}: removed"
     rm ${file}
-  done
+  fi
 done
 
 #############################
