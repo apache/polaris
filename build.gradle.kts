@@ -134,6 +134,11 @@ tasks.register<Exec>("regeneratePythonClient") {
 
   workingDir = project.projectDir
   commandLine("bash", "client/templates/regenerate.sh")
+
+  dependsOn(":polaris-api-iceberg-service:processResources")
+  dependsOn(":polaris-api-management-service:processResources")
+  dependsOn(":polaris-api-catalog-service:processResources")
+  dependsOn(":polaris-api-management-model:processResources")
 }
 
 // Pass environment variables:
