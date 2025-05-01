@@ -47,8 +47,8 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -70,14 +70,14 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+  public EnumMap<IcebergStorageAccessProperty, String> getSubscopedCreds(
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    EnumMap<PolarisCredentialProperty, String> credentialMap =
-        new EnumMap<>(PolarisCredentialProperty.class);
+    EnumMap<IcebergStorageAccessProperty, String> credentialMap =
+        new EnumMap<>(IcebergStorageAccessProperty.class);
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -170,10 +170,10 @@ public class AzureCredentialsStorageIntegration
       throw new RuntimeException(
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
-    credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
+    credentialMap.put(IcebergStorageAccessProperty.AZURE_SAS_TOKEN, sasToken);
+    credentialMap.put(IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST, storageDnsName);
     credentialMap.put(
-        PolarisCredentialProperty.EXPIRATION_TIME,
+        IcebergStorageAccessProperty.EXPIRATION_TIME,
         String.valueOf(sanitizedEndTime.toInstant().toEpochMilli()));
     return credentialMap;
   }

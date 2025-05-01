@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -89,13 +89,13 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageIntegration =
             new PolarisStorageIntegration<>("file") {
               @Override
-              public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+              public EnumMap<IcebergStorageAccessProperty, String> getSubscopedCreds(
                   @Nonnull PolarisDiagnostics diagnostics,
                   @Nonnull T storageConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations) {
-                return new EnumMap<>(PolarisCredentialProperty.class);
+                return new EnumMap<>(IcebergStorageAccessProperty.class);
               }
 
               @Override
