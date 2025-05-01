@@ -42,8 +42,6 @@ For example:
 `
 This ensures that each realm's data is stored separately.
 
-**Persistence:** Some implementations of Polaris Persistence may use realm IDs in primary keys for Polaris data.
-
 ### How is it used in the system?
 
 **RealmContext:**  It is a key concept used to identify and resolve the context in which operations are performed. For example `DefaultRealmContextResolver`, a realm is resolved from request headers, and operations are performed based on the resolved realm identifier.
@@ -55,3 +53,5 @@ authorization.
 An example of this is the way a realm name is used to create a database connection url so that you have one database instance per realm, or it can be more granular and applied at primary key level (within the same database instance).
 
 **MetaStore and Cache Management:** Realms are used to manage different instances or configurations of metadata stores and caches. An example of this is `LocalPolarisMetaStoreManagerFactory`.
+
+**Persistence:** Some implementations of Polaris Persistence may use realm IDs in primary keys for Polaris data.
