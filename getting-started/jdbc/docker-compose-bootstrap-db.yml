@@ -18,19 +18,6 @@
 #
 
 services:
-  polaris-purge:
-    # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
-    image: apache/polaris-admin-tool:postgres-latest
-    environment:
-      polaris.persistence.type: relational-jdbc
-      quarkus.datasource.db-kind: pgsql
-      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/POLARIS
-      quarkus.datasource.username: postgres
-      quarkus.datasource.password: postgres
-    command:
-      - "purge"
-      - "--realm=POLARIS"
-
   polaris-bootstrap:
     # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
     image: apache/polaris-admin-tool:postgres-latest
@@ -44,9 +31,6 @@ services:
       - "bootstrap"
       - "--realm=POLARIS"
       - "--credential=POLARIS,root,s3cr3t"
-    depends_on:
-      polaris-purge:
-        condition: service_started
 
   polaris:
     depends_on:
