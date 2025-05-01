@@ -77,7 +77,11 @@ public class RateLimiterFilterTest {
           "polaris.metrics.tags.environment",
           "prod",
           "polaris.realm-context.type",
-          "test");
+          "test",
+          "polaris.authentication.token-broker.type",
+          "symmetric-key",
+          "polaris.authentication.token-broker.symmetric-key.secret",
+          "secret");
     }
   }
 

@@ -45,6 +45,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {
@@ -118,3 +120,5 @@ sourceSets {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("processResources") { dependsOn("openApiGenerate") }
+
+tasks.named("openApiGenerate") { outputs.cacheIf { false } }

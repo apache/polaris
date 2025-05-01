@@ -36,4 +36,4 @@ if [ ! -x "$JAVACMD" ] ; then
   exit 1
 fi
 
-exec "${JAVACMD}" -jar "${script_dir}/quarkus-run.jar"
+exec "${JAVACMD}" -jar "${script_dir}/quarkus-run.jar" $@

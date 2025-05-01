@@ -117,6 +117,9 @@ public class BaseResult {
 
     // policy mapping of same type already exists
     POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS(15),
+
+    // policy has mappings and cannot be dropped
+    POLICY_HAS_MAPPINGS(16),
     ;
 
     // code for the enum

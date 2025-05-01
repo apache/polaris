@@ -45,6 +45,7 @@ import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
@@ -62,10 +63,12 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -118,6 +121,7 @@ public class GenericTableCatalogTest {
   public static final String SESSION_TOKEN = "session_token";
 
   @Inject MetaStoreManagerFactory managerFactory;
+  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
@@ -128,6 +132,7 @@ public class GenericTableCatalogTest {
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
+  private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
@@ -157,6 +162,7 @@ public class GenericTableCatalogTest {
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -167,7 +173,7 @@ public class GenericTableCatalogTest {
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(polarisContext),
-            new EntityCache(metaStoreManager, polarisContext));
+            new InMemoryEntityCache(metaStoreManager, polarisContext));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -193,6 +199,7 @@ public class GenericTableCatalogTest {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
 
@@ -207,16 +214,19 @@ public class GenericTableCatalogTest {
             .build();
     catalogEntity =
         adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
-                .build());
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .setDefaultBaseLocation(storageLocation)
+                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .setStorageConfigurationInfo(storageConfigModel, storageLocation, polarisContext)
+                    .build()
+                    .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -286,9 +296,9 @@ public class GenericTableCatalogTest {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(
-          RealmContext realmContext, PolarisCallContext polarisCallContext) {
-        return new EntityCache(metaStoreManager, polarisCallContext);
+      public InMemoryEntityCache getOrCreateEntityCache(
+          RealmContext realmContext, PolarisCallContext polaraisCallContext) {
+        return new InMemoryEntityCache(metaStoreManager, polaraisCallContext);
       }
 
       @Override

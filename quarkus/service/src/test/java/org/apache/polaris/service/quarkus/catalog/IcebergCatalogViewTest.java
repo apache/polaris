@@ -40,6 +40,7 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -56,7 +57,9 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -65,6 +68,8 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +80,9 @@ import org.mockito.Mockito;
 @QuarkusTest
 @TestProfile(IcebergCatalogViewTest.Profile.class)
 public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -96,7 +104,16 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
   public static final String CATALOG_NAME = "polaris-catalog";
 
+  public static Map<String, String> VIEW_PREFIXES =
+      Map.of(
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key1", "catalog-default-key1",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key2", "catalog-default-key2",
+          CatalogProperties.VIEW_DEFAULT_PREFIX + "key3", "catalog-default-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3", "catalog-override-key3",
+          CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4", "catalog-override-key4");
+
   @Inject MetaStoreManagerFactory managerFactory;
+  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
 
@@ -104,6 +121,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
+  private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
 
   @BeforeAll
@@ -130,6 +148,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     RealmContext realmContext = () -> realmName;
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -141,7 +160,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(polarisContext),
-            new EntityCache(metaStoreManager, polarisContext));
+            new InMemoryEntityCache(metaStoreManager, polarisContext));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -168,21 +187,25 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             callContext,
             entityManager,
             metaStoreManager,
+            userSecretsManager,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setName(CATALOG_NAME)
-            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .setDefaultBaseLocation("file://tmp")
-            .setStorageConfigurationInfo(
-                new FileStorageConfigInfo(
-                    StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                "file://tmp",
-                polarisContext)
-            .build());
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setName(CATALOG_NAME)
+                .addProperty(
+                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .setDefaultBaseLocation("file://tmp")
+                .setStorageConfigurationInfo(
+                    new FileStorageConfigInfo(
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                    "file://tmp",
+                    polarisContext)
+                .build()
+                .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -199,15 +222,12 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             Mockito.mock(),
             fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL,
-            "org.apache.iceberg.inmemory.InMemoryFileIO",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
-            "catalog-default-key1",
-            CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
-            "catalog-default-key2"));
+    Map<String, String> properties =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build();
+    this.catalog.initialize(CATALOG_NAME, properties);
   }
 
   @AfterEach
