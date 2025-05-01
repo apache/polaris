@@ -19,6 +19,12 @@
  under the License.
 
 -->
+<!--
+Spark by default set the logging at DEBUG level, which dumps a lot of code details in
+the Intelij console, which impacts the IDE performance significantly when running the
+tests. This configuration allows only log back the ERROR logs for the IDE, you can comment
+out the configuration if you would like ot see all spark debug log during the run.
+-->
 <configuration>
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -26,7 +32,7 @@
     </encoder>
   </appender>
 
-  <root level="WARN">
+  <root level="ERROR">
     <appender-ref ref="CONSOLE"/>
   </root>
 </configuration>

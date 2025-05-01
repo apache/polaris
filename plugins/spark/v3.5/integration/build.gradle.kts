@@ -38,9 +38,9 @@ val scalaLibraryVersion =
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
-    exclude("org.antlr", "antlr4-runtime")
-    exclude("org.scala-lang", "scala-library")
-    exclude("org.scala-lang", "scala-reflect")
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
   implementation(project(":polaris-quarkus-service"))
