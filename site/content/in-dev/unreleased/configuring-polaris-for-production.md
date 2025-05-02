@@ -135,33 +135,19 @@ default, Polaris uses an in-memory metastore.
 > The default in-memory metastore is not suitable for production use, as it will lose all data
 > when the server is restarted; it is also unusable when multiple Polaris replicas are used.
 
-To use a durable metastore, you need to switch to the EclipseLink metastore, and provide your own
-`persistence.xml` file. This file contains details of the database used for metastore management and
-the connection settings. For more information, refer to the [metastore documentation]({{% ref
-"metastores" %}}).
+To use a durable metastore, you need to switch to the Relational JDBC backed metastore 
 
-Then, configure Polaris to use your metastore by setting the following properties:
+Configure the `polaris.persistence` section in your Polaris configuration file
+(`application.properties`) as follows:
 
-```properties
-polaris.persistence.type=eclipse-link
-polaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
-polaris.persistence.eclipselink.persistence-unit=polaris
+```
+polaris.persistence.type=relational-jdbc
 ```
 
-Where:
+Relational JDBC uses Quarkus managed datasource and only supports Postgres and h2 as of now.
+please ref here: [How to configure jdbc Datasource via Quarkus](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml)
 
-- `polaris.persistence.type` indicates that we are using the EclipseLink metastore.
-- `polaris.persistence.eclipselink.configuration-file` is the path to the `persistence.xml` file.
-- `polaris.persistence.eclipselink.persistence-unit` is the name of the persistence unit to use (in
-  case the configuration file has many persistence units).
-
-Typically, in Kubernetes, you would define the `persistence.xml` file as a `ConfigMap` and set the
-`polaris.persistence.eclipselink.configuration-file` property to the path of the mounted file in
-the container.
-
-> [!IMPORTANT]
-> Be sure to secure your metastore backend since it will be storing sensitive data and catalog
-> metadata.
+Note: Polaris will create schema named 'polaris_schema' always under the configured database via Quarkus.
 
 ### Bootstrapping
 
