@@ -20,7 +20,6 @@
 services:
 
   polaris:
-    # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
     image: apache/polaris:postgres-latest
     ports:
       # API port
@@ -32,12 +31,13 @@ services:
     environment:
       JAVA_DEBUG: "true"
       JAVA_DEBUG_PORT: "*:5005"
-      polaris.persistence.type: eclipse-link
-      polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
+      polaris.persistence.type: relational-jdbc
+      quarkus.datasource.db-kind: pgsql
+      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/POLARIS
+      quarkus.datasource.username: postgres
+      quarkus.datasource.password: postgres
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
-    volumes:
-      - ../assets/eclipselink/:/deployments/config/eclipselink
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s

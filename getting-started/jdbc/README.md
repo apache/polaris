@@ -17,11 +17,11 @@
   under the License.
 -->
 
-# Getting Started with Apache Polaris, EclipseLink, Postgres and Spark SQL
+# Getting Started with Apache Polaris, Relational JDBC, Postgres and Spark SQL
 
 This example requires `jq` to be installed on your machine.
 
-1. If such an image is not already present, build the Polaris image with support for EclipseLink and
+1. If such an image is not already present, build the Polaris image with support for JDBC persistence and
    the Postgres JDBC driver:
 
     ```shell
@@ -37,7 +37,7 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    docker compose -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose.yml up
+    docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/jdbc/docker-compose.yml up
     ```
 
 3. Using spark-sql: attach to the running spark-sql container:
@@ -74,10 +74,10 @@ This example requires `jq` to be installed on your machine.
     ```
 
 6. Using Trino CLI: To access the Trino CLI, run this command:
+```shell
+docker exec -it jdbc-trino-1 trino
 ```
-docker exec -it eclipselink-trino-1 trino
-```
-Note, `trino-trino-1` is the name of the Docker container.
+Note, `jdbc-trino-1` is the name of the Docker container.
 
 Example Trino queries:
 ```
