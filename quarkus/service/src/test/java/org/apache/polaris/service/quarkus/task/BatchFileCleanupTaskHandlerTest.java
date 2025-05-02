@@ -260,7 +260,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @ParameterizedTest
   @ValueSource(ints = {1, 2, 3})
-  public void testCleanupWithRetries(int retryTime) throws IOException {
+  public void testCleanupWithRetries(int maxRetries) throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -289,7 +289,7 @@ public class BatchFileCleanupTaskHandlerTest {
                 Boolean isConcurrent,
                 Throwable e,
                 int attempt) {
-              if (attempt <= retryTime) {
+              if (attempt <= maxRetries) {
                 batchRetryCounter.incrementAndGet();
                 return tryDelete(tableId, fileIO, files, type, isConcurrent, e, attempt + 1);
               } else {
@@ -337,7 +337,7 @@ public class BatchFileCleanupTaskHandlerTest {
       future.join();
 
       // Ensure that retries happened as expected
-      assertThat(batchRetryCounter.get()).isEqualTo(retryTime);
+      assertThat(batchRetryCounter.get()).isEqualTo(maxRetries);
 
       // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
