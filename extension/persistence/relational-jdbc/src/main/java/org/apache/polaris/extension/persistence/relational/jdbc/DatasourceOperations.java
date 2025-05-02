@@ -35,10 +35,18 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
+
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+
+  // POSTGRES RETRYABLE
+  private static final String DEADLOCK_SQL_CODE = "40P01";
+  private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
   private final DataSource datasource;
 
@@ -121,21 +129,70 @@ public class DatasourceOperations {
       @Nonnull Converter<T> converterInstance,
       @Nonnull Consumer<Stream<T>> consumer)
       throws SQLException {
-    try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(query)) {
-      ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-      consumer.accept(iterator.toStream());
-    } catch (SQLException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      if (e.getCause() instanceof SQLException) {
-        throw (SQLException) e.getCause();
-      } else {
-        throw e;
+    int maxRetries = 3;
+    int retryCount = 0;
+    long initialDelay = 100; // milliseconds
+    boolean success = false;
+    while (retryCount < maxRetries && !success) {
+      try (Connection connection = borrowConnection();
+          Statement statement = connection.createStatement();
+          ResultSet resultSet = statement.executeQuery(query)) {
+        success = true;
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        consumer.accept(iterator.toStream());
+      } catch (SQLException e) {
+        if (isRetryable(e)) {
+          retryCount++;
+          long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
+          LOGGER.info(
+              ("Transient error occurred, retrying in "
+                  + delay
+                  + "ms (attempt "
+                  + retryCount
+                  + "/"
+                  + maxRetries
+                  + "): "
+                  + e.getMessage()),
+              e);
+          try {
+            Thread.sleep(delay);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Retry interrupted", ie);
+          }
+        } else {
+          throw e;
+        }
+      } catch (RuntimeException e) {
+        if (e.getCause() instanceof SQLException ex) {
+          if (isRetryable(ex) && retryCount + 1 < maxRetries) {
+            retryCount++;
+            long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
+            LOGGER.info(
+                ("Transient error occurred, retrying in "
+                    + delay
+                    + "ms (attempt "
+                    + retryCount
+                    + "/"
+                    + maxRetries
+                    + "): "
+                    + e.getMessage()),
+                e);
+            try {
+              Thread.sleep(delay);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              throw new RuntimeException("Retry interrupted", ie);
+            }
+          } else {
+            throw ex;
+          }
+        } else {
+          throw e;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -147,16 +204,46 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during Query Execution.
    */
   public int executeUpdate(String query) throws SQLException {
-    try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement()) {
-      boolean autoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(true);
-      try {
-        return statement.executeUpdate(query);
-      } finally {
-        connection.setAutoCommit(autoCommit);
+    int maxRetries = 3;
+    int retryCount = 0;
+    long initialDelay = 100; // milliseconds
+    boolean success = false;
+    while (retryCount < maxRetries && !success) {
+      try (Connection connection = borrowConnection();
+          Statement statement = connection.createStatement()) {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(true);
+        try {
+          return statement.executeUpdate(query);
+        } catch (SQLException e) {
+          if (isRetryable(e) && retryCount + 1 < maxRetries) {
+            retryCount++;
+            long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
+            LOGGER.info(
+                ("Transient error occurred, retrying in "
+                    + delay
+                    + "ms (attempt "
+                    + retryCount
+                    + "/"
+                    + maxRetries
+                    + "): "
+                    + e.getMessage()),
+                e);
+            try {
+              Thread.sleep(delay);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              throw new RuntimeException("Retry interrupted", ie);
+            }
+          } else {
+            throw e;
+          }
+        } finally {
+          connection.setAutoCommit(autoCommit);
+        }
       }
     }
+    throw new RuntimeException("Error executing query: ");
   }
 
   /**
@@ -166,23 +253,69 @@ public class DatasourceOperations {
    * @throws SQLException : Exception caught during transaction execution.
    */
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
-    try (Connection connection = borrowConnection()) {
-      boolean autoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(false);
-      boolean success = false;
-      try {
-        try (Statement statement = connection.createStatement()) {
-          success = callback.execute(statement);
+    int maxRetries = 3;
+    int retryCount = 0;
+    long initialDelay = 100; // milliseconds
+    boolean success = false;
+    while (retryCount < maxRetries && !success) {
+      try (Connection connection = borrowConnection()) {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+          try (Statement statement = connection.createStatement()) {
+            success = callback.execute(statement);
+          } catch (SQLException e) {
+            if (isRetryable(e) && retryCount + 1 < maxRetries) {
+              retryCount++;
+              long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
+              LOGGER.info(
+                  ("Transient error occurred, retrying in "
+                      + delay
+                      + "ms (attempt "
+                      + retryCount
+                      + "/"
+                      + maxRetries
+                      + "): "
+                      + e.getMessage()),
+                  e);
+              try {
+                Thread.sleep(delay);
+              } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Retry interrupted", ie);
+              }
+            } else {
+              throw e;
+            }
+          }
+        } finally {
+          if (success) {
+            connection.commit();
+          } else {
+            connection.rollback();
+          }
+          connection.setAutoCommit(autoCommit);
         }
-      } finally {
-        if (success) {
-          connection.commit();
-        } else {
-          connection.rollback();
-        }
-        connection.setAutoCommit(autoCommit);
       }
     }
+
+    if (!success) {
+      throw new RuntimeException("Failed to execute transaction");
+    }
+  }
+
+  private boolean isRetryable(SQLException e) {
+    String sqlState = e.getSQLState();
+
+    if (sqlState != null) {
+      return sqlState.equals(DEADLOCK_SQL_CODE)
+          || // Deadlock detected
+          sqlState.equals(SERIALIZATION_FAILURE_SQL_CODE); // Serialization failure
+    }
+
+    // Additionally, one might check for specific error messages or other conditions
+    return e.getMessage().contains("connection refused")
+        || e.getMessage().contains("connection reset");
   }
 
   // Interface for transaction callback
