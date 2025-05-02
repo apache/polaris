@@ -43,6 +43,8 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
 
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
