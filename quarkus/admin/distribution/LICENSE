@@ -290,12 +290,6 @@ License (from POM): Apache License 2.0 - https://repository.jboss.org/licenses/a
 
 --------------------------------------------------------------------------------
 
-Group: com.auth0 Name: java-jwt Version: 4.5.0
-Project URL (from POM): https://github.com/auth0/java-jwt
-License (from POM): The MIT License (MIT) - https://raw.githubusercontent.com/auth0/java-jwt/master/LICENSE
-
---------------------------------------------------------------------------------
-
 Group: com.azure Name: azure-core Version: 1.55.3
 Project URL (from POM): https://github.com/Azure/azure-sdk-for-java
 License (from POM): The MIT License (MIT) - http://opensource.org/licenses/MIT
@@ -375,12 +369,6 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.18.2
-Project URL (from POM): https://github.com/FasterXML/jackson
-License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: com.fasterxml.jackson.module Name: jackson-module-parameter-names Version: 2.18.2
 Project URL (from POM): https://github.com/FasterXML/jackson
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1022,12 +1010,6 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.opentelemetry Name: opentelemetry-sdk-extension-autoconfigure Version: 1.44.1
-Project URL (from POM): https://github.com/open-telemetry/opentelemetry-java
-License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 Group: io.opentelemetry Name: opentelemetry-sdk-extension-autoconfigure-spi Version: 1.44.1
 Project URL (from POM): https://github.com/open-telemetry/opentelemetry-java
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1141,6 +1123,7 @@ Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
+
 Group: io.quarkus Name: quarkus-fs-util Version: 0.0.10
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1350,6 +1333,12 @@ License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
+Group: jakarta.resource Name: jakarta.resource-api Version: 2.1.0
+Project URL (from POM): https://github.com/jakartaee/connectors
+License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+
+--------------------------------------------------------------------------------
+
 Group: jakarta.servlet Name: jakarta.servlet-api Version: 6.0.0
 Project URL (from POM): https://projects.eclipse.org/projects/ee4j.servlet
 License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
@@ -1380,6 +1369,12 @@ License (from POM): GPL2 w/ CPE - https://www.gnu.org/software/classpath/license
 Group: jakarta.xml.bind Name: jakarta.xml.bind-api Version: 4.0.2
 Project URL (from POM): https://github.com/jakartaee/jaxb-api
 License (from POM): Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
+Group: javax.validation Name: validation-api Version: 1.1.0.Final
+Project URL (from POM): https://beanvalidation.org
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 

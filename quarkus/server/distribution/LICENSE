@@ -723,6 +723,18 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: com.sun.xml.bind Name: jaxb-core Version: 4.0.5
+Project URL (from POM): https://github.com/eclipse-ee4j/jaxb-ri
+License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
+Group: com.sun.xml.bind Name: jaxb-xjc Version: 4.0.5
+Project URL (from POM): https://github.com/eclipse-ee4j/jaxb-ri
+License (from POM): EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
 Group: commons-beanutils Name: commons-beanutils Version: 1.9.4
 Project URL (from POM): https://commons.apache.org/proper/commons-beanutils/
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -909,25 +921,25 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.5
+Group: io.micrometer Name: micrometer-commons Version: 1.14.6
 Project URL (from POM): https://github.com/micrometer-metrics/micrometer
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-core Version: 1.14.5
+Group: io.micrometer Name: micrometer-core Version: 1.14.6
 Project URL (from POM): https://github.com/micrometer-metrics/micrometer
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-observation Version: 1.14.5
+Group: io.micrometer Name: micrometer-observation Version: 1.14.6
 Project URL (from POM): https://github.com/micrometer-metrics/micrometer
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.5
+Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.6
 Project URL (from POM): https://github.com/micrometer-metrics/micrometer
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1221,19 +1233,19 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.4
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.5
 Project URL (from POM): https://github.com/reactor/reactor-netty
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.4
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.5
 Project URL (from POM): https://github.com/reactor/reactor-netty
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.4
+Group: io.projectreactor Name: reactor-core Version: 3.7.5
 Project URL (from POM): https://github.com/reactor/reactor-core
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1389,7 +1401,25 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: io.quarkus Name: quarkus-narayana Version: 3.21.4
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: io.quarkus Name: quarkus-netty Version: 3.21.4
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-oidc Version: 3.21.4
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-oidc-common Version: 3.21.4
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1456,6 +1486,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: io.quarkus Name: quarkus-smallrye-health Version: 3.21.4
+Project URL (from POM): https://quarkus.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.quarkus Name: quarkus-smallrye-jwt-build Version: 3.21.4
 Project URL (from POM): https://quarkus.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1641,6 +1677,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-web-client Version: 3.18.1
+Project URL (from POM): https://smallrye.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-web-common Version: 3.18.1
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1724,6 +1766,7 @@ Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
+
 Group: io.smallrye Name: smallrye-health Version: 4.2.0
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1737,6 +1780,24 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: io.smallrye Name: smallrye-health-provided-checks Version: 4.2.0
+Project URL (from POM): https://smallrye.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.smallrye Name: smallrye-jwt Version: 4.6.1
+Project URL (from POM): https://smallrye.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.smallrye Name: smallrye-jwt-build Version: 4.6.1
+Project URL (from POM): https://smallrye.io
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: io.smallrye Name: smallrye-jwt-common Version: 4.6.1
 Project URL (from POM): https://smallrye.io
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1885,6 +1946,12 @@ Group: jakarta.interceptor Name: jakarta.interceptor-api Version: 2.2.0
 Project URL (from POM): https://github.com/jakartaee/interceptors
 License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 License (from POM): GPL2 w/ CPE - https://www.gnu.org/software/classpath/license.html
+
+--------------------------------------------------------------------------------
+
+Group: jakarta.persistence Name: jakarta.persistence-api Version: 3.1.0
+Project URL (from POM): https://github.com/jakartaee/persistence
+License (from POM): EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2181,6 +2248,12 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: org.bitbucket.b_c Name: jose4j Version: 0.9.6
+Project URL: https://bitbucket.org/b_c/jose4j/src/master/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: org.bouncycastle Name: bcprov-jdk18on Version: 1.80
 Project URL (from POM): https://www.bouncycastle.org/download/bouncy-castle-java/
 License (from POM): Bouncy Castle Licence - https://www.bouncycastle.org/licence.html
@@ -2341,6 +2414,18 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 
 --------------------------------------------------------------------------------
 
+Group: org.jboss.invocation Name: jboss-invocation Version: 2.0.0.Final
+Project URL (from POM): http://www.jboss.org
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.jboss Name: jboss-transaction-spi Version: 8.0.0.Final
+Project URL (from POM): http://www.jboss.org
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 Group: org.jboss.logging Name: commons-logging-jboss-logging Version: 1.0.0.Final
 Project URL (from POM): http://www.jboss.org
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2348,6 +2433,18 @@ License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE
 --------------------------------------------------------------------------------
 
 Group: org.jboss.logging Name: jboss-logging-annotations Version: 3.0.4.Final
+Project URL (from POM): http://www.jboss.org
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.jboss.narayana.jta Name: narayana-jta Version: 7.2.1.Final
+Project URL (from POM): http://www.jboss.org
+License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+Group: org.jboss.narayana.jta Name: narayana-jts-integration Version: 7.2.1.Final
 Project URL (from POM): http://www.jboss.org
 License (from POM): Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
