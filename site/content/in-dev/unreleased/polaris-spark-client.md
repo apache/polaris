@@ -32,31 +32,19 @@ Note the Polaris Spark client is able to handle both Iceberg and Delta tables, n
 
 This page documents how to connect Spark with Polaris Service using the Polaris Spark client.
 
-## Prerequisite
+## Quick Start with Local Polaris service
+If you want to quickly try out the functionality with a local Polaris service, simply check out the Polaris repo 
+and follow the instructions in the Spark plugin getting-started 
+[README](https://github.com/apache/polaris/blob/main/plugins/spark/v3.5/getting-started/README.md).
+
 Check out the Polaris repo:
 ```shell
 cd ~
 git clone https://github.com/apache/polaris.git
 ```
 
-All Spark client code is available under `plugins/spark` of the Polaris repo.
-
-## Quick Start with Local Polaris service
-If you want to quickly try out the functionality with a local Polaris service, you can follow the instructions
-in `plugins/spark/v3.5/getting-started/README.md`.
-
-The getting-started will start two containers:
-1) The `polaris` service for running Apache Polaris using an in-memory metastore
-2) The `jupyter` service for running Jupyter notebook with PySpark (Spark 3.5.5 is used)
-
-The notebook `SparkPolaris.ipynb` provided under `plugins/spark/v3.5/getting-started/notebooks` provides examples 
-with basic commands, includes:
-1) Connect to Polaris using Python client to create a Catalog and Roles
-2) Start Spark session using the Polaris Spark client
-3) Using Spark to perform table operations for both Delta and Iceberg
-
 ## Start Spark against a deployed Polaris service
-Before starting, make sure the service deployed is up-to-date, and that Spark 3.5 with at least version 3.5.3 is installed.
+Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5(version 3.5.3 or later is installed).
 Spark 3.5.5 is recommended, and you can follow the instructions below to get a Spark 3.5.5 distribution.
 ```shell
 cd ~
@@ -129,42 +117,8 @@ USING delta LOCATION 'file:///tmp/var/delta_tables/people';
 
 ## Connecting with Spark using local Polaris Spark client
 If you would like to use a version of the Spark client that is currently not yet released, you can
-build a Spark client jar locally from source.
-
-The polaris-spark project provides a task createPolarisSparkJar to help building jars for the Polaris Spark client,
-The built jar is named as:
-`polaris-iceberg-<icebergVersion>-spark-runtime-<sparkVersion>_<scalaVersion>-<polarisVersion>.jar`. 
-
-For example: `polaris-iceberg-1.8.1-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar`.
-
-Run the following commands to build a Spark client jar that is compatible with Spark 3.5 and Scala 2.12.
-```shell
-cd ~/polaris
-./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar
-```
-If you want to build a Scala 2.13 compatible jar, you can use the following command:
-- `./gradlew :polaris-spark-3.5_2.13:createPolarisSparkJar` 
-
-The result jar is located at `plugins/spark/v3.5/build/<scala_version>/libs` after the build. You can also copy the
-corresponding jar to any location your Spark will have access.
-
-When starting Spark or create Spark session, instead of providing the Polaris Spark client as a `packages` configuration, we
-need to provide the `jars` configuration as follows:
-```shell
-bin/spark-shell \
---jars <path-to-spark-client-jar> \
---packages org.apache.hadoop:hadoop-aws:3.4.0,io.delta:delta-spark_2.12:3.3.1 \
---conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
---conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
---conf spark.sql.catalog.<spark-catalog-name>.warehouse=<polaris-catalog-name> \
---conf spark.sql.catalog.<spark-catalog-name>.header.X-Iceberg-Access-Delegation=vended-credentials \
---conf spark.sql.catalog.<spark-catalog-name>=org.apache.polaris.spark.SparkCatalog \
---conf spark.sql.catalog.<spark-catalog-name>.uri=<polaris-service-uri> \
---conf spark.sql.catalog.<spark-catalog-name>.credential='<client-id>:<client-secret>' \
---conf spark.sql.catalog.<spark-catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
---conf spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled=true
-```
-Replace `path-to-spark-client-jar` with where the built jar is located.
+build a Spark client jar locally from source. Please refer to the Spark plugin
+[README](https://github.com/apache/polaris/blob/main/plugins/spark/README.md) for detailed instructions.
 
 ## Limitations
 The Polaris Spark client has the following functionality limitations:
