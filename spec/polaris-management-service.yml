@@ -948,11 +948,16 @@ components:
       properties:
         roleArn:
           type: string
-          description: The aws IAM role arn assume when signing requests
+          description: The aws IAM role arn assumed by polaris userArn when signing requests
           example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        roleSessionName:
+          type: string
+          description: The role session name to be used by the SigV4 protocol for signing requests
+          example: "polaris-remote-catalog-access"
         externalId:
           type: string
           description: An optional external id used to establish a trust relationship with AWS in the trust policy
+          example: "external-id-1234"
         signingRegion:
           type: string
           description: Region to be used by the SigV4 protocol for signing requests
@@ -967,6 +972,7 @@ components:
           example: "arn:aws:iam::123456789001:user/polaris-service-user"
       required:
         - roleArn
+        - signingRegion
 
     StorageConfigInfo:
       type: object
