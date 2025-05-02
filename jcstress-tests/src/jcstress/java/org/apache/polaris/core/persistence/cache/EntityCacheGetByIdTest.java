@@ -49,7 +49,7 @@ public class EntityCacheGetByIdTest {
 
     public WithoutArbiter() {
       context = new PolarisCallContext(new FakeBasePersistence(), new FakePolarisDiagnostics());
-      entityCache = new EntityCache(new FakeMetaStoreManager());
+      entityCache = new InMemoryEntityCache(new FakeMetaStoreManager());
     }
 
     @Actor
@@ -104,7 +104,7 @@ public class EntityCacheGetByIdTest {
 
     public WithArbiter() {
       context = new PolarisCallContext(new FakeBasePersistence(), new FakePolarisDiagnostics());
-      entityCache = new EntityCache(new FakeMetaStoreManager());
+      entityCache = new InMemoryEntityCache(new FakeMetaStoreManager());
     }
 
     @Actor

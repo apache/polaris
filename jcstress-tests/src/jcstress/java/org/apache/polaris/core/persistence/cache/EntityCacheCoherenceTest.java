@@ -47,11 +47,11 @@ public class EntityCacheCoherenceTest {
   @State()
   public static class UsingGetters {
     private final PolarisCallContext context;
-    private final EntityCache entityCache;
+    private final InMemoryEntityCache entityCache;
 
     public UsingGetters() {
       context = new PolarisCallContext(new FakeBasePersistence(), new FakePolarisDiagnostics());
-      entityCache = new EntityCache(new FakeMetaStoreManager());
+      entityCache = new InMemoryEntityCache(new FakeMetaStoreManager());
     }
 
     @Actor
@@ -119,7 +119,7 @@ public class EntityCacheCoherenceTest {
 
     public UsingLoaders() {
       context = new PolarisCallContext(new FakeBasePersistence(), new FakePolarisDiagnostics());
-      entityCache = new EntityCache(new FakeMetaStoreManager());
+      entityCache = new InMemoryEntityCache(new FakeMetaStoreManager());
     }
 
     @Actor

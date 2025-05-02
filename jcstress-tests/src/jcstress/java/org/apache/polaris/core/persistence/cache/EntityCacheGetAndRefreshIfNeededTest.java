@@ -51,7 +51,7 @@ public class EntityCacheGetAndRefreshIfNeededTest {
   public EntityCacheGetAndRefreshIfNeededTest() {
     context = new PolarisCallContext(new FakeBasePersistence(), new FakePolarisDiagnostics());
     FakeMetaStoreManager metaStoreManager = new FakeMetaStoreManager();
-    entityCache = new EntityCache(metaStoreManager);
+    entityCache = new InMemoryEntityCache(metaStoreManager);
     entityV1 = metaStoreManager.loadResolvedEntityById(null, -1, -1, null).getEntity();
   }
 

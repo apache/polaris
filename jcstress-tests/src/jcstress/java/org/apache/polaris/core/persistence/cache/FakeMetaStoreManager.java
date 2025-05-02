@@ -31,7 +31,6 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.*;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
  * Build a fake meta store manager that returns a single catalog entity. Every time the catalog is
@@ -295,17 +294,6 @@ public class FakeMetaStoreManager implements PolarisMetaStoreManager {
       boolean allowListOperation,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations) {
-    return null;
-  }
-
-  @Override
-  public ValidateAccessResult validateAccessToLocations(
-      PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      Set<PolarisStorageActions> actions,
-      Set<String> locations) {
     return null;
   }
 
