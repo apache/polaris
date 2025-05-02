@@ -22,14 +22,14 @@ import java.util.EnumMap;
 import java.util.function.BiConsumer;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
 import org.apache.polaris.core.storage.ImmutableAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** A storage credential cached entry. */
 public class StorageCredentialCacheEntry {
   /** The scoped creds map that is fetched from a creds vending service */
-  public final EnumMap<IcebergStorageAccessProperty, String> credsMap;
+  public final EnumMap<StorageAccessProperty, String> credsMap;
 
   private final ScopedCredentialsResult scopedCredentialsResult;
 
@@ -40,15 +40,14 @@ public class StorageCredentialCacheEntry {
 
   /** Get the expiration time in millisecond for the cached entry */
   public long getExpirationTime() {
-    if (credsMap.containsKey(IcebergStorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT)) {
-      return Long.parseLong(credsMap.get(IcebergStorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT));
+    if (credsMap.containsKey(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT)) {
+      return Long.parseLong(credsMap.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT));
     }
-    if (credsMap.containsKey(IcebergStorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS)) {
-      return Long.parseLong(
-          credsMap.get(IcebergStorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS));
+    if (credsMap.containsKey(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS)) {
+      return Long.parseLong(credsMap.get(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS));
     }
-    if (credsMap.containsKey(IcebergStorageAccessProperty.EXPIRATION_TIME)) {
-      return Long.parseLong(credsMap.get(IcebergStorageAccessProperty.EXPIRATION_TIME));
+    if (credsMap.containsKey(StorageAccessProperty.EXPIRATION_TIME)) {
+      return Long.parseLong(credsMap.get(StorageAccessProperty.EXPIRATION_TIME));
     }
     return Long.MAX_VALUE;
   }
@@ -58,11 +57,9 @@ public class StorageCredentialCacheEntry {
    * account endpoint
    */
   private void handleAzureCredential(
-      BiConsumer<String, String> results,
-      IcebergStorageAccessProperty credentialProperty,
-      String value) {
-    if (credentialProperty.equals(IcebergStorageAccessProperty.AZURE_SAS_TOKEN)) {
-      String host = credsMap.get(IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST);
+      BiConsumer<String, String> results, StorageAccessProperty credentialProperty, String value) {
+    if (credentialProperty.equals(StorageAccessProperty.AZURE_SAS_TOKEN)) {
+      String host = credsMap.get(StorageAccessProperty.AZURE_ACCOUNT_HOST);
       results.accept(credentialProperty.getPropertyName() + host, value);
 
       // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
@@ -99,9 +96,9 @@ public class StorageCredentialCacheEntry {
               return;
             }
 
-            if (key.equals(IcebergStorageAccessProperty.AZURE_SAS_TOKEN)) {
+            if (key.equals(StorageAccessProperty.AZURE_SAS_TOKEN)) {
               handleAzureCredential(config::putCredential, key, value);
-            } else if (!key.equals(IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST)) {
+            } else if (!key.equals(StorageAccessProperty.AZURE_ACCOUNT_HOST)) {
               config.putCredential(key.getPropertyName(), value);
             }
           });

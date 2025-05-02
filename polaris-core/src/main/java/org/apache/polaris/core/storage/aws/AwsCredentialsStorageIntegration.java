@@ -30,8 +30,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
@@ -54,7 +54,7 @@ public class AwsCredentialsStorageIntegration
 
   /** {@inheritDoc} */
   @Override
-  public EnumMap<IcebergStorageAccessProperty, String> getSubscopedCreds(
+  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -75,30 +75,28 @@ public class AwsCredentialsStorageIntegration
                         .toJson())
                 .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
-    EnumMap<IcebergStorageAccessProperty, String> credentialMap =
-        new EnumMap<>(IcebergStorageAccessProperty.class);
+    EnumMap<StorageAccessProperty, String> credentialMap =
+        new EnumMap<>(StorageAccessProperty.class);
+    credentialMap.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
     credentialMap.put(
-        IcebergStorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-    credentialMap.put(
-        IcebergStorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-    credentialMap.put(
-        IcebergStorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
+        StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
+    credentialMap.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
             i -> {
               credentialMap.put(
-                  IcebergStorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                  StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
               credentialMap.put(
-                  IcebergStorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                   String.valueOf(i.toEpochMilli()));
             });
 
     if (storageConfig.getRegion() != null) {
-      credentialMap.put(IcebergStorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
+      credentialMap.put(StorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
     }
 
     if (storageConfig.getAwsPartition().equals("aws-us-gov")
-        && credentialMap.get(IcebergStorageAccessProperty.CLIENT_REGION) == null) {
+        && credentialMap.get(StorageAccessProperty.CLIENT_REGION) == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));

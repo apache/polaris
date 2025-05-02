@@ -101,10 +101,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -1520,7 +1520,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         metaStoreManager.loadTasks(polarisContext, "testExecutor", 1).getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    EnumMap<IcebergStorageAccessProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
                 polarisContext,
@@ -1534,9 +1534,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThat(credentials)
         .isNotNull()
         .isNotEmpty()
-        .containsEntry(IcebergStorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
-        .containsEntry(IcebergStorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
-        .containsEntry(IcebergStorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
     MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
     FileIO fileIO =
         new TaskFileIOSupplier(

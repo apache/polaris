@@ -24,13 +24,13 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.Map;
-import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 
 /** Result of a getSubscopedCredsForEntity() call */
 public class ScopedCredentialsResult extends BaseResult {
 
   // null if not success. Else, set of name/value pairs for the credentials
-  private final EnumMap<IcebergStorageAccessProperty, String> credentials;
+  private final EnumMap<StorageAccessProperty, String> credentials;
 
   /**
    * Constructor for an error
@@ -49,8 +49,7 @@ public class ScopedCredentialsResult extends BaseResult {
    *
    * @param credentials credentials
    */
-  public ScopedCredentialsResult(
-      @Nonnull EnumMap<IcebergStorageAccessProperty, String> credentials) {
+  public ScopedCredentialsResult(@Nonnull EnumMap<StorageAccessProperty, String> credentials) {
     super(ReturnStatus.SUCCESS);
     this.credentials = credentials;
   }
@@ -61,14 +60,13 @@ public class ScopedCredentialsResult extends BaseResult {
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("credentials") Map<String, String> credentials) {
     super(returnStatus, extraInformation);
-    this.credentials = new EnumMap<>(IcebergStorageAccessProperty.class);
+    this.credentials = new EnumMap<>(StorageAccessProperty.class);
     if (credentials != null) {
-      credentials.forEach(
-          (k, v) -> this.credentials.put(IcebergStorageAccessProperty.valueOf(k), v));
+      credentials.forEach((k, v) -> this.credentials.put(StorageAccessProperty.valueOf(k), v));
     }
   }
 
-  public EnumMap<IcebergStorageAccessProperty, String> getCredentials() {
+  public EnumMap<StorageAccessProperty, String> getCredentials() {
     return credentials;
   }
 }

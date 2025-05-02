@@ -45,7 +45,7 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.IcebergStorageAccessProperty;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -396,28 +396,28 @@ public class StorageCredentialCacheTest {
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                      .put(IcebergStorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
-                      .put(IcebergStorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
-                      .put(IcebergStorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
-                      .put(IcebergStorageAccessProperty.EXPIRATION_TIME, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
+                      .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
+                      .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                      .put(IcebergStorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
-                      .put(IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST, "account_host")
-                      .put(IcebergStorageAccessProperty.EXPIRATION_TIME, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
+                      .put(StorageAccessProperty.AZURE_ACCOUNT_HOST, "account_host")
+                      .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                      .put(IcebergStorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
-                      .put(IcebergStorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
+                      .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
                       .buildOrThrow())));
     }
     return res;
@@ -448,34 +448,28 @@ public class StorageCredentialCacheTest {
         List.of(
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                        .put(IcebergStorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
-                        .put(IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST, "some_account")
-                        .put(
-                            IcebergStorageAccessProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
+                        .put(StorageAccessProperty.AZURE_ACCOUNT_HOST, "some_account")
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())),
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                        .put(IcebergStorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
                         .put(
-                            IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST,
+                            StorageAccessProperty.AZURE_ACCOUNT_HOST,
                             "some_account." + AzureLocation.ADLS_ENDPOINT)
-                        .put(
-                            IcebergStorageAccessProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())),
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                        .put(IcebergStorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
                         .put(
-                            IcebergStorageAccessProperty.AZURE_ACCOUNT_HOST,
+                            StorageAccessProperty.AZURE_ACCOUNT_HOST,
                             "some_account." + AzureLocation.BLOB_ENDPOINT)
-                        .put(
-                            IcebergStorageAccessProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())));
 
     Mockito.when(
@@ -542,10 +536,10 @@ public class StorageCredentialCacheTest {
     ScopedCredentialsResult properties =
         new ScopedCredentialsResult(
             new EnumMap<>(
-                ImmutableMap.<IcebergStorageAccessProperty, String>builder()
-                    .put(IcebergStorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
-                    .put(IcebergStorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
-                    .put(IcebergStorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
+                ImmutableMap.<StorageAccessProperty, String>builder()
+                    .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
+                    .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
+                    .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
                     .buildOrThrow()));
     Mockito.when(
             metaStoreManager.getSubscopedCredsForEntity(

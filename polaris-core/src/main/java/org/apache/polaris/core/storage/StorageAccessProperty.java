@@ -24,7 +24,7 @@ package org.apache.polaris.core.storage;
  * <p>Most of these properties are meant to configure Iceberg FileIO objects for accessing data in
  * storage.
  */
-public enum IcebergStorageAccessProperty {
+public enum StorageAccessProperty {
   AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id"),
   AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret"),
   AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token"),
@@ -65,11 +65,11 @@ public enum IcebergStorageAccessProperty {
            - `s3.secret-access-key`: secret for credentials that provide access to data in S3
            - `s3.session-token
    */
-  IcebergStorageAccessProperty(Class valueType, String propertyName, String description) {
+  StorageAccessProperty(Class valueType, String propertyName, String description) {
     this(valueType, propertyName, description, true);
   }
 
-  IcebergStorageAccessProperty(
+  StorageAccessProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {
     this.valueType = valueType;
     this.propertyName = propertyName;
