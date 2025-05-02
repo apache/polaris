@@ -94,11 +94,12 @@ public class DatasourceOperations {
    * Executes SELECT Query and returns the results after applying a transformer
    *
    * @param query : Query to executed
-   * @param converterInstance : An entity of the type being selected, used to convert to
-   *     PolarisBaseEntity
+   * @param converterInstance : An instance of the type being selected, used to convert to
+   *     a business entity like PolarisBaseEntity
+   * @param transformer Transformation of entity class to Result class
    * @return The list of results yielded by the query
-   * @param <T> : Entity class
-   * @param <R> : Result class
+   * @param <T> : Persistence entity class
+   * @param <R> : Business entity class
    * @throws SQLException : Exception during the query execution.
    */
   public <T, R> List<R> executeSelect(
@@ -110,9 +111,7 @@ public class DatasourceOperations {
     executeSelectOverStream(
         query,
         converterInstance,
-        stream -> {
-          stream.map(transformer).forEach(results::add);
-        });
+        stream -> stream.map(transformer).forEach(results::add););
     return results;
   }
 
