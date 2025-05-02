@@ -32,6 +32,7 @@ import java.util.UUID;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
@@ -506,10 +507,20 @@ class TableCleanupTaskHandlerTest {
             snapshot.sequenceNumber(),
             "/metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
+    PartitionStatisticsFile partitionStatisticsFile1 =
+        TaskTestUtils.writePartitionStatsFile(
+            snapshot.snapshotId(),
+            snapshot.sequenceNumber(),
+            "/metadata/" + UUID.randomUUID() + ".partition_stats",
+            fileIO);
     String firstMetadataFile = "v1-295495059.metadata.json";
     TableMetadata firstMetadata =
         TaskTestUtils.writeTableMetadata(
-            fileIO, firstMetadataFile, List.of(statisticsFile1), snapshot);
+            fileIO,
+            firstMetadataFile,
+            List.of(statisticsFile1),
+            List.of(partitionStatisticsFile1),
+            snapshot);
     assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
 
     ManifestFile manifestFile3 =
@@ -530,6 +541,12 @@ class TableCleanupTaskHandlerTest {
             snapshot2.sequenceNumber(),
             "/metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
+    PartitionStatisticsFile partitionStatisticsFile2 =
+        TaskTestUtils.writePartitionStatsFile(
+            snapshot2.snapshotId(),
+            snapshot2.sequenceNumber(),
+            "/metadata/" + UUID.randomUUID() + ".partition_stats",
+            fileIO);
     String secondMetadataFile = "v1-295495060.metadata.json";
     TaskTestUtils.writeTableMetadata(
         fileIO,
@@ -537,6 +554,7 @@ class TableCleanupTaskHandlerTest {
         firstMetadata,
         firstMetadataFile,
         List.of(statisticsFile2),
+        List.of(partitionStatisticsFile2),
         snapshot2);
     assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
     assertThat(TaskUtils.exists(secondMetadataFile, fileIO)).isTrue();
@@ -596,7 +614,9 @@ class TableCleanupTaskHandlerTest {
                                 snapshot.manifestListLocation(),
                                 snapshot2.manifestListLocation(),
                                 statisticsFile1.path(),
-                                statisticsFile2.path())),
+                                statisticsFile2.path(),
+                                partitionStatisticsFile1.path(),
+                                partitionStatisticsFile2.path())),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
