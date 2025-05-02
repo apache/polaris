@@ -94,8 +94,8 @@ public class DatasourceOperations {
    * Executes SELECT Query and returns the results after applying a transformer
    *
    * @param query : Query to executed
-   * @param converterInstance : An instance of the type being selected, used to convert to
-   *     a business entity like PolarisBaseEntity
+   * @param converterInstance : An instance of the type being selected, used to convert to a
+   *     business entity like PolarisBaseEntity
    * @param transformer Transformation of entity class to Result class
    * @return The list of results yielded by the query
    * @param <T> : Persistence entity class
@@ -109,9 +109,7 @@ public class DatasourceOperations {
       throws SQLException {
     ArrayList<R> results = new ArrayList<>();
     executeSelectOverStream(
-        query,
-        converterInstance,
-        stream -> stream.map(transformer).forEach(results::add));
+        query, converterInstance, stream -> stream.map(transformer).forEach(results::add));
     return results;
   }
 
