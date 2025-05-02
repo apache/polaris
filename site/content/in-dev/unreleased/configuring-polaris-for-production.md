@@ -142,12 +142,19 @@ Configure the `polaris.persistence` section in your Polaris configuration file
 
 ```
 polaris.persistence.type=relational-jdbc
+
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.username=<your username>
+quarkus.datasource.password=<your password>
+
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/<database_name>
 ```
 
-Relational JDBC uses Quarkus managed datasource and only supports Postgres and h2 as of now.
-please ref here: [How to configure jdbc Datasource via Quarkus](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml)
+The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
+Please refer to the documentation here:
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-Note: Polaris will create schema named 'polaris_schema' always under the configured database via Quarkus.
+Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ### Bootstrapping
 
