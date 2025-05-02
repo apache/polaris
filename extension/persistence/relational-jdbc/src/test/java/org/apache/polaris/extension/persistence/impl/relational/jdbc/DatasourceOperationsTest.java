@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,9 +77,7 @@ public class DatasourceOperationsTest {
 
     assertThrows(
         SQLException.class,
-        () ->
-            datasourceOperations.executeSelect(
-                query, Object.class, Function.identity(), null, Integer.MAX_VALUE));
+        () -> datasourceOperations.executeSelect(query, new ModelEntity(), Function.identity()));
   }
 
   @Test

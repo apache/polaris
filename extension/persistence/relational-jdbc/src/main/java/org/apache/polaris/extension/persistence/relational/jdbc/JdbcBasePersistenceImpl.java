@@ -297,8 +297,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private PolarisBaseEntity getPolarisBaseEntity(String query) {
     try {
       List<PolarisBaseEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
+          datasourceOperations.executeSelect(query, new ModelEntity(), ModelEntity::toEntity);
       if (results.isEmpty()) {
         return null;
       } else if (results.size() > 1) {
@@ -322,8 +321,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     String query = generateSelectQueryWithEntityIds(realmId, entityIds);
     try {
-      return datasourceOperations.executeSelect(
-          query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
+      return datasourceOperations.executeSelect(query, new ModelEntity(), ModelEntity::toEntity);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -412,9 +410,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     // absence of transaction.
     String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
     try {
-      List<PolarisBaseEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, ModelEntity::toEntity, entityFilter, limit);
+      List<PolarisBaseEntity> results = new ArrayList<>();
+      datasourceOperations.executeSelectOverStream(
+          query,
+          new ModelEntity(),
+          stream -> {
+            stream
+                .map(ModelEntity::toEntity)
+                .filter(entityFilter)
+                .limit(limit)
+                .forEach(results::add);
+          });
       return results == null
           ? Collections.emptyList()
           : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
@@ -461,11 +467,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       if (results.size() > 1) {
         throw new IllegalStateException(
             String.format(
@@ -496,11 +498,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -522,11 +520,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisGrantRecord> results =
           datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+              query, new ModelGrantRecord(), ModelGrantRecord::toGrantRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -553,8 +547,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     String query = generateSelectQuery(new ModelEntity(), params);
     try {
       List<ModelEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, Function.identity(), null, Integer.MAX_VALUE);
+          datasourceOperations.executeSelect(query, new ModelEntity(), Function.identity());
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -574,10 +567,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       List<PolarisPrincipalSecrets> results =
           datasourceOperations.executeSelect(
               query,
-              ModelPrincipalAuthenticationData.class,
-              ModelPrincipalAuthenticationData::toPrincipalAuthenticationData,
-              null,
-              Integer.MAX_VALUE);
+              new ModelPrincipalAuthenticationData(),
+              ModelPrincipalAuthenticationData::toPrincipalAuthenticationData);
       return results == null || results.isEmpty() ? null : results.getFirst();
     } catch (SQLException e) {
       LOGGER.error(
@@ -880,10 +871,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       List<PolarisPolicyMappingRecord> results =
           datasourceOperations.executeSelect(
               query,
-              ModelPolicyMappingRecord.class,
-              ModelPolicyMappingRecord::toPolicyMappingRecord,
-              null,
-              Integer.MAX_VALUE);
+              new ModelPolicyMappingRecord(),
+              ModelPolicyMappingRecord::toPolicyMappingRecord);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
