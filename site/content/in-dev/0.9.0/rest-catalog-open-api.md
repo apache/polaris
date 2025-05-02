@@ -24,4 +24,4 @@ params:
   show_page_toc: false
 ---
 
-{{< redoc-polaris "https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/rest-catalog-open-api.yaml" >}}
+<meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/rest-catalog-open-api.yaml" />

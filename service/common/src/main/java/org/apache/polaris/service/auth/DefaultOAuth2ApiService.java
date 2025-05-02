@@ -46,12 +46,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
 
   private static final String BEARER = "bearer";
 
-  private final TokenBrokerFactory tokenBrokerFactory;
+  private final TokenBroker tokenBroker;
   private final CallContext callContext;
 
   @Inject
-  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory, CallContext callContext) {
-    this.tokenBrokerFactory = tokenBrokerFactory;
+  public DefaultOAuth2ApiService(TokenBroker tokenBroker, CallContext callContext) {
+    this.tokenBroker = tokenBroker;
     this.callContext = callContext;
   }
 
@@ -70,7 +70,6 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       RealmContext realmContext,
       SecurityContext securityContext) {
 
-    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmContext);
     if (!tokenBroker.supportsGrantType(grantType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }

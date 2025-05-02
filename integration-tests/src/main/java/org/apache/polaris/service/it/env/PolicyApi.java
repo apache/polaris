@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -72,12 +73,24 @@ public class PolicyApi extends RestApi {
   }
 
   public void dropPolicy(String catalog, PolicyIdentifier policyIdentifier) {
+    dropPolicy(catalog, policyIdentifier, null);
+  }
+
+  public void dropPolicy(String catalog, PolicyIdentifier policyIdentifier, Boolean detachAll) {
     String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    Map<String, String> queryParams = new HashMap<>();
+    if (detachAll != null) {
+      queryParams.put("detach-all", detachAll.toString());
+    }
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()))
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()),
+                queryParams)
             .delete()) {
+      if (res.getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
+        throw new PolicyInUseException("Policy in use");
+      }
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
   }
