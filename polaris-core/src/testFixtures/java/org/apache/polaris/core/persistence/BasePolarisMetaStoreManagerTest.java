@@ -273,6 +273,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testRename();
   }
 
+  /** test entity lookup */
+  @Test
+  protected void testLookup() {
+    polarisTestMetaStoreManager.testLookup();
+  }
+
   /** Test the set of functions for the entity cache */
   @Test
   protected void testEntityCache() {
@@ -284,6 +290,11 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testPolicyMapping() {
     polarisTestMetaStoreManager.testPolicyMapping();
+  }
+
+  @Test
+  protected void testPolicyMappingCleanup() {
+    polarisTestMetaStoreManager.testPolicyMappingCleanup();
   }
 
   @Test

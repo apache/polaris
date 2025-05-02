@@ -20,8 +20,6 @@ package org.apache.polaris.service.it.env;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
-import org.apache.iceberg.catalog.SessionCatalog;
-import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
@@ -36,14 +34,7 @@ public final class IcebergHelper {
       String catalog,
       Map<String, String> extraProperties) {
     String authToken = client.obtainToken(credentials);
-    SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-    RESTCatalog restCatalog =
-        new RESTCatalog(
-            context,
-            (config) ->
-                HTTPClient.builder(config)
-                    .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                    .build());
+    RESTCatalog restCatalog = new RESTCatalog();
 
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()

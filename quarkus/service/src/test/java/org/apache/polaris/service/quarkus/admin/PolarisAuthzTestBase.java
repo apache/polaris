@@ -75,6 +75,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -82,12 +83,14 @@ import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -139,6 +142,9 @@ public abstract class PolarisAuthzTestBase {
   protected static final TableIdentifier TABLE_NS1_1_GENERIC =
       TableIdentifier.of(NS1, "layer1_table_generic");
 
+  // A policy directly under ns1
+  protected static final PolicyIdentifier POLICY_NS1_1 = new PolicyIdentifier(NS1, "layer1_policy");
+
   // Two tables under ns1a
   protected static final TableIdentifier TABLE_NS1A_1 = TableIdentifier.of(NS1A, "table1");
   protected static final TableIdentifier TABLE_NS1A_2 = TableIdentifier.of(NS1A, "table2");
@@ -185,6 +191,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected IcebergCatalog baseCatalog;
   protected GenericTableCatalog genericTableCatalog;
+  protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
@@ -320,6 +327,12 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
     genericTableCatalog.createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
+
+    policyCatalog.createPolicy(
+        POLICY_NS1_1,
+        PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+        "test_policy",
+        "{\"enable\": false}");
 
     baseCatalog
         .buildView(VIEW_NS1_1)
@@ -463,6 +476,7 @@ public abstract class PolarisAuthzTestBase {
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
         new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }
 
   @Alternative
@@ -613,24 +627,44 @@ public abstract class PolarisAuthzTestBase {
       Runnable action,
       Function<PolarisPrivilege, Boolean> grantAction,
       Function<PolarisPrivilege, Boolean> revokeAction) {
-    for (PolarisPrivilege privilege : insufficientPrivileges) {
-      // Grant the single privilege at a catalog level to cascade to all objects.
-      Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+    doTestInsufficientPrivilegeSets(
+        insufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
+        principalName,
+        action,
+        grantAction,
+        revokeAction);
+  }
 
-      // Should be insufficient
-      try {
-        Assertions.assertThatThrownBy(() -> action.run())
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining(principalName)
-            .hasMessageContaining("is not authorized");
-      } catch (Throwable t) {
-        Assertions.fail(
-            String.format("Expected failure with insufficientPrivilege '%s'", privilege), t);
+  /**
+   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
+   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
+   */
+  protected void doTestInsufficientPrivilegeSets(
+      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
+      String principalName,
+      Runnable action,
+      Function<PolarisPrivilege, Boolean> grantAction,
+      Function<PolarisPrivilege, Boolean> revokeAction) {
+    for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
+      for (PolarisPrivilege privilege : privilegeSet) {
+        // Grant the single privilege at a catalog level to cascade to all objects.
+        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+
+        // Should be insufficient
+        try {
+          Assertions.assertThatThrownBy(() -> action.run())
+              .isInstanceOf(ForbiddenException.class)
+              .hasMessageContaining(principalName)
+              .hasMessageContaining("is not authorized");
+        } catch (Throwable t) {
+          Assertions.fail(
+              String.format("Expected failure with insufficientPrivilege '%s'", privilege), t);
+        }
+
+        // Revoking only matters in case there are some multi-privilege actions being tested with
+        // only granting individual privileges in isolation.
+        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
       }
-
-      // Revoking only matters in case there are some multi-privilege actions being tested with
-      // only granting individual privileges in isolation.
-      Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
     }
   }
 }

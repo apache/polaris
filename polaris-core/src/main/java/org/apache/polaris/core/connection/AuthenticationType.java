@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.connection;
 
+import jakarta.annotation.Nonnull;
+import java.util.Arrays;
+
 /**
  * The internal persistence-object counterpart to AuthenticationParameters.AuthenticationTypeEnum
  * defined in the API model. We define integer type codes in this enum for better compatibility
@@ -27,13 +30,51 @@ package org.apache.polaris.core.connection;
  * AuthenticationParametersDpo}.
  */
 public enum AuthenticationType {
+  NULL_TYPE(0),
   OAUTH(1),
-  BEARER(2);
+  BEARER(2),
+  ;
+
+  private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;
+
+  static {
+    // find max array size
+    int maxCode =
+        Arrays.stream(AuthenticationType.values())
+            .mapToInt(AuthenticationType::getCode)
+            .max()
+            .orElse(0);
+
+    // allocate mapping array
+    REVERSE_MAPPING_ARRAY = new AuthenticationType[maxCode + 1];
+
+    // populate mapping array
+    for (AuthenticationType authType : AuthenticationType.values()) {
+      REVERSE_MAPPING_ARRAY[authType.code] = authType;
+    }
+  }
 
   private final int code;
 
   AuthenticationType(int code) {
     this.code = code;
+  }
+
+  /**
+   * Given the code associated to the type, return the associated AuthenticationType. Return
+   * NULL_TYPE if not found
+   *
+   * @param authTypeCode code associated to the authentication type
+   * @return ConnectionType corresponding to that code or null if mapping not found
+   */
+  public static @Nonnull AuthenticationType fromCode(int authTypeCode) {
+    // ensure it is within bounds
+    if (authTypeCode < 0 || authTypeCode >= REVERSE_MAPPING_ARRAY.length) {
+      return NULL_TYPE;
+    }
+
+    // get value
+    return REVERSE_MAPPING_ARRAY[authTypeCode];
   }
 
   public int getCode() {

@@ -227,4 +227,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " to perform federation to remote catalogs.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_POLICY_STORE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_POLICY_STORE")
+          .description("If true, the policy-store endpoints are enabled")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }

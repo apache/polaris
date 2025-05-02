@@ -48,10 +48,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testNoSupportGrantType() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(false);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
@@ -70,7 +68,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -81,10 +79,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testNoSupportRequestedTokenType() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(false);
     when(tokenBroker.generateFromClientSecrets(
@@ -103,7 +99,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -114,10 +110,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testSupportClientIdNoSecret() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
@@ -135,7 +129,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -144,10 +138,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testSupportClientIdAndSecret() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
@@ -166,7 +158,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -175,10 +167,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testReadClientCredentialsFromAuthHeader() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
@@ -199,7 +189,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -208,10 +198,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testAuthHeaderRequiresValidCredentialPair() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
@@ -232,7 +220,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -243,10 +231,8 @@ class DefaultOAuth2ApiServiceTest {
 
   @Test
   public void testReadClientSecretFromAuthHeader() {
-    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
-    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
 
@@ -270,7 +256,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))

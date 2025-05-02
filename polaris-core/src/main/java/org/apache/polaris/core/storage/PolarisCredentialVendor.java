@@ -23,7 +23,6 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
-import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -49,46 +48,4 @@ public interface PolarisCredentialVendor {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations);
-
-  /**
-   * Validate whether the entity has access to the locations with the provided target operations
-   *
-   * @param callCtx the polaris call context
-   * @param catalogId the catalog id
-   * @param entityId the entity id
-   * @param actions a set of operation actions: READ/WRITE/LIST/DELETE/ALL
-   * @param locations a set of locations to verify
-   * @return a Map of {@code <location, validate result>}, a validate result value looks like this
-   *     <pre>
-   * {
-   *   "status" : "failure",
-   *   "actions" : {
-   *     "READ" : {
-   *       "message" : "The specified file was not found",
-   *       "status" : "failure"
-   *     },
-   *     "DELETE" : {
-   *       "message" : "One or more objects could not be deleted (Status Code: 200; Error Code: null)",
-   *       "status" : "failure"
-   *     },
-   *     "LIST" : {
-   *       "status" : "success"
-   *     },
-   *     "WRITE" : {
-   *       "message" : "Access Denied (Status Code: 403; Error Code: AccessDenied)",
-   *       "status" : "failure"
-   *     }
-   *   },
-   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
-   * }
-   * </pre>
-   */
-  @Nonnull
-  ValidateAccessResult validateAccessToLocations(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      @Nonnull Set<PolarisStorageActions> actions,
-      @Nonnull Set<String> locations);
 }
