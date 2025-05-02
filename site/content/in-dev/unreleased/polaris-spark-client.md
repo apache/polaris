@@ -19,7 +19,7 @@
 #
 Title: Polaris Spark Client
 type: docs
-weight: 400
+weight: 650
 ---
 
 Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out 
@@ -67,7 +67,7 @@ cd spark-3.5
 ```
 
 ### Connecting with Spark using the Polaris Spark client
-The following CLI command can be used to start the spark with connection to the deployed Polaris service using
+The following CLI command can be used to start the Spark with connection to the deployed Polaris service using
 a released Polaris Spark client.
 
 ```shell
@@ -89,10 +89,12 @@ replace the `polaris-spark-client-package` field with the release.
 The `spark-catalog-name` is the catalog name you will use with Spark, and `polaris-catalog-name` is the catalog name used 
 by Polaris service, for simplicity, you can use the same name. 
 
-Replace the `polaris-service-uri`, `client-id` and `client-secret` accordingly, you can refer to
-[Using Polaris]({{% ref "getting-started/using-polaris" %}}) for more details about those fields.
+Replace the `polaris-service-uri` with the uri to the deployed Polaris service you want to use.
 
-You can also start the connection by creating a Spark session, following is an example with PySpark:
+For `client-id` and `client-secret` values, you can refer to [Using Polaris]({{% ref "getting-started/using-polaris" %}}) 
+for more details.
+
+You can also start the connection by programmatically initialize a SparkSession, following is an example with PySpark:
 ```python
 from pyspark.sql import SparkSession
 
@@ -112,8 +114,7 @@ spark = SparkSession.builder
 Similar as the CLI command, make sure the corresponding fields are replaced correctly.
 
 ### Create tables with Spark
-After the Spark is started, you can use it to create and access Iceberg and Delta table like what you are doing before,
-for example:
+After Spark is started, you can use it to create and access Iceberg and Delta tables, for example:
 ```python
 spark.sql("USE polaris")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS")
@@ -121,13 +122,13 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS.PUBLIC")
 spark.sql("USE NAMESPACE DELTA_NS.PUBLIC")
 spark.sql("""CREATE TABLE IF NOT EXISTS PEOPLE (
     id int, name string)
-USING delta LOCATION 'file:///tmp/delta_tables/people';
+USING delta LOCATION 'file:///tmp/var/delta_tables/people';
 """)
 ```
 
 ## Connecting with Spark using local Polaris Spark client
-If there is no released Spark client, or you want to try the Spark client that is currently not yet released. You can
-build a Spark Client jar locally with the source repo, and use the local jar to connect Spark with Polaris Service.
+If you would like to use a version of the Spark client that is currently not yet released, you can
+build a Spark client jar locally from source.
 
 The polaris-spark project provides a task createPolarisSparkJar to help building jars for the Polaris Spark client,
 The built jar is named as:
@@ -171,6 +172,4 @@ The Polaris Spark client has the following functionality limitations:
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
-5) For other non-Iceberg tables like csv, there is no specific guarantee provided today.
-6) TABLE_WRITE_DATA privilege is not supported for Delta Table.
-7) Credential Vending is not supported for Delta Table.
+5) For other non-Iceberg tables like csv, it is not supported.
