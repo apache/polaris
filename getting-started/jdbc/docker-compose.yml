@@ -20,7 +20,6 @@
 services:
 
   polaris:
-    # IMPORTANT: the image MUST contain the Postgres JDBC driver and JDBC persistence dependencies, see README for instructions
     image: apache/polaris:postgres-latest
     ports:
       # API port
