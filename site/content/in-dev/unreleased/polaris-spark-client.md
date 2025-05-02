@@ -115,7 +115,7 @@ USING delta LOCATION 'file:///tmp/var/delta_tables/people';
 """)
 ```
 
-## Connecting with Spark using local Polaris Spark client
+## Connecting with Spark using local Polaris Spark client jar
 If you would like to use a version of the Spark client that is currently not yet released, you can
 build a Spark client jar locally from source. Please check out the Polaris repo and refer to the Spark plugin
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/README.md) for detailed instructions.
