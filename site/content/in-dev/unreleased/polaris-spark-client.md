@@ -89,7 +89,8 @@ replace the `polaris-spark-client-package` field with the release.
 The `spark-catalog-name` is the catalog name you will use with Spark, and `polaris-catalog-name` is the catalog name used 
 by Polaris service, for simplicity, you can use the same name. 
 
-Replace the `polaris-service-uri` with the uri to the deployed Polaris service you want to use.
+Replace the `polaris-service-uri` with the uri of the deployed Polaris service. For example, with a locally deployed
+Polaris service, the uri would be `http://localhost:8181/api/catalog`.
 
 For `client-id` and `client-secret` values, you can refer to [Using Polaris]({{% ref "getting-started/using-polaris" %}}) 
 for more details.
