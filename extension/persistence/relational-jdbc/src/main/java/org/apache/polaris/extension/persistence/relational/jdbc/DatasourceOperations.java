@@ -111,7 +111,7 @@ public class DatasourceOperations {
     executeSelectOverStream(
         query,
         converterInstance,
-        stream -> stream.map(transformer).forEach(results::add););
+        stream -> stream.map(transformer).forEach(results::add));
     return results;
   }
 
