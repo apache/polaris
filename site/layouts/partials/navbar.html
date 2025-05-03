@@ -1,18 +1,18 @@
 {{/*
 Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
+or more contributor license agreements. See the NOTICE file
 distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
+regarding copyright ownership. The ASF licenses this file
 to you under the Apache License, Version 2.0 (the
 "License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+with the License. You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing,
 software distributed under the License is distributed on an
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
+KIND, either express or implied. See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
@@ -39,81 +39,82 @@ under the License.
       {{ $p := . -}}
       {{ $s := .Site -}}
       {{ range .Site.Menus.main -}}
-      {{ if .HasChildren }}
-      <!-- Menu items with children -->
-      <div class="dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          {{- .Pre -}}
-          <span>{{ .Name }}</span>
-        </a>
-        <ul class="dropdown-menu">
-          {{ $children := .Children.ByWeight -}}
-          {{ if eq .Identifier "releases" -}}
-            {{ with (partial "releasePages.html" (dict "site" $s)).active -}}
-              {{ range . -}}
-                <a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
-              {{- end -}}
-            {{ else -}}
-              {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
-            {{ end -}}
-          {{ end -}}
-          {{ range $children -}}
-          <a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a>
-          {{- end -}}
-        </ul>
-      </div>
-      {{ else -}}
-      <!-- Menu items without children -->
-      {{ $topHidden := false }}
-      {{ if .Page }}
-      {{ $topHidden = .Page.Params.top_hidden | default false }}
-      {{ else }}
-      {{ $topHidden = .Params.top_hidden | default false }}
-      {{ end }}
-      {{ if not $topHidden }}
-      <li class="nav-item">
-        {{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
-        {{ $href := "" -}}
-        {{ with .Page -}}
-          {{ $active = or $active ( $.IsDescendant .) -}}
-          {{ $href = .RelPermalink -}}
-        {{ else -}}
-          {{ $href = .URL | relLangURL -}}
-        {{ end -}}
-        {{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
-        <a {{/**/ -}}
-          class="nav-link {{- if $active }} active {{- end }}" {{/**/ -}}
-          href="{{ $href }}"
-          {{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}
-        >
-            {{- .Pre -}}
-            <span>{{ .Name }}</span>
-            {{- .Post -}}
-        </a>
-      </li>
-      {{ end -}}
-      {{ end -}}
-      {{ end -}}
-      <!-- Other navbar items -->
-      {{ if .Site.Params.versions -}}
-      <li class="nav-item dropdown d-none d-lg-block">
-        {{ partial "navbar-version-selector.html" . -}}
-      </li>
-      {{ end -}}
-      {{ if (gt (len .Site.Home.Translations) 0) -}}
-      <li class="nav-item dropdown d-none d-lg-block">
-        {{ partial "navbar-lang-selector.html" . -}}
-      </li>
-      {{ end -}}
-      {{ if .Site.Params.ui.showLightDarkModeMenu -}}
-      <li class="td-light-dark-menu nav-item dropdown">
-        {{ partial "theme-toggler" . }}
-      </li>
-      {{ end -}}
-    </ul>
-  </div>
-  <div class="d-none d-lg-block">
-    {{ partial "search-input.html" . }}
-  </div>
+	<li class="nav-item">
+	  {{ if .HasChildren }}
+	  <!-- Menu items with children -->
+	  <div class="dropdown">
+		<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+		  {{- .Pre -}}
+		  <span>{{ .Name }}</span>
+		</a>
+		<ul class="dropdown-menu">
+		  {{ $children := .Children.ByWeight -}}
+		  {{ if eq .Identifier "releases" -}}
+			{{ with (partial "releasePages.html" (dict "site" $s)).active -}}
+			  {{ range . -}}
+				<a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
+			  {{- end -}}
+			{{ else -}}
+			  {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
+			{{ end -}}
+		  {{ end -}}
+		  {{ range $children -}}
+		  <a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a>
+		  {{- end -}}
+		</ul>
+	  </div>
+	  {{ else -}}
+	  <!-- Menu items without children -->
+	  {{ $topHidden := false }}
+	  {{ if .Page }}
+	  {{ $topHidden = .Page.Params.top_hidden | default false }}
+	  {{ else }}
+	  {{ $topHidden = .Params.top_hidden | default false }}
+	  {{ end }}
+	  {{ if not $topHidden }}
+	  {{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
+	  {{ $href := "" -}}
+	  {{ with .Page -}}
+		{{ $active = or $active ( $.IsDescendant .) -}}
+		{{ $href = .RelPermalink -}}
+	  {{ else -}}
+		{{ $href = .URL | relLangURL -}}
+	  {{ end -}}
+	  {{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
+	  <a {{/**/ -}}
+		class="nav-link {{- if $active }} active {{- end }}" {{/**/ -}}
+		href="{{ $href }}"
+		{{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}
+	  >
+		  {{- .Pre -}}
+		  <span>{{ .Name }}</span>
+		  {{- .Post -}}
+	  </a>
+	  
+	  {{ end -}}
+	  {{ end -}}
+	</li>
+	{{ end -}}
+	<!-- Other navbar items -->
+	{{ if .Site.Params.versions -}}
+	<li class="nav-item dropdown d-none d-lg-block">
+	  {{ partial "navbar-version-selector.html" . -}}
+	</li>
+	{{ end -}}
+	{{ if (gt (len .Site.Home.Translations) 0) -}}
+	<li class="nav-item dropdown d-none d-lg-block">
+	  {{ partial "navbar-lang-selector.html" . -}}
+	</li>
+	{{ end -}}
+	{{ if .Site.Params.ui.showLightDarkModeMenu -}}
+	<li class="td-light-dark-menu nav-item dropdown">
+	  {{ partial "theme-toggler" . }}
+	</li>
+	{{ end -}}
+  </ul>
+</div>
+<div class="d-none d-lg-block">
+  {{ partial "search-input.html" . }}
+</div>
 </div>
 </nav>
