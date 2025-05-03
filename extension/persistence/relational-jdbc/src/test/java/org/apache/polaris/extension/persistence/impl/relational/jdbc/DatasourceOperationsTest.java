@@ -24,8 +24,12 @@ import static org.mockito.Mockito.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
+import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
+import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations.Operation;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,17 +45,21 @@ public class DatasourceOperationsTest {
 
   @Mock private Statement mockStatement;
 
+  @Mock private RelationalJdbcConfiguration relationalJdbcConfiguration;
+
+  @Mock Operation<String> mockOperation;
+
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
   void setUp() throws Exception {
-    when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    datasourceOperations = new DatasourceOperations(mockDataSource);
+    datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
   }
 
   @Test
   void testExecuteUpdate_success() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     String query = "UPDATE users SET active = true";
     when(mockStatement.executeUpdate(query)).thenReturn(1);
 
@@ -63,6 +71,8 @@ public class DatasourceOperationsTest {
 
   @Test
   void testExecuteUpdate_failure() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     String query = "INVALID SQL";
     when(mockStatement.executeUpdate(query)).thenThrow(new SQLException("demo", "42P07"));
 
@@ -71,8 +81,10 @@ public class DatasourceOperationsTest {
 
   @Test
   void testExecuteSelect_exception() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     String query = "SELECT * FROM users";
-    when(mockStatement.executeQuery(query)).thenThrow(new SQLException());
+    when(mockStatement.executeQuery(query)).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(
         SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
@@ -80,6 +92,8 @@ public class DatasourceOperationsTest {
 
   @Test
   void testRunWithinTransaction_commit() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     DatasourceOperations.TransactionCallback callback = statement -> true;
     when(mockConnection.getAutoCommit()).thenReturn(true);
     datasourceOperations.runWithinTransaction(callback);
@@ -92,6 +106,8 @@ public class DatasourceOperationsTest {
 
   @Test
   void testRunWithinTransaction_rollback() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     DatasourceOperations.TransactionCallback callback = statement -> false;
 
     datasourceOperations.runWithinTransaction(callback);
@@ -101,6 +117,8 @@ public class DatasourceOperationsTest {
 
   @Test
   void testRunWithinTransaction_exceptionTriggersRollback() throws Exception {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     DatasourceOperations.TransactionCallback callback =
         statement -> {
           throw new SQLException("Boom");
@@ -109,5 +127,110 @@ public class DatasourceOperationsTest {
     assertThrows(SQLException.class, () -> datasourceOperations.runWithinTransaction(callback));
 
     verify(mockConnection).rollback();
+  }
+
+  @Test
+  void testSuccessfulExecutionOnFirstAttempt() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(mockOperation.execute()).thenReturn("Success!");
+
+    String result = datasourceOperations.withRetries(mockOperation);
+    assertEquals("Success!", result);
+    verify(mockOperation, times(1)).execute();
+  }
+
+  @Test
+  void testSuccessfulExecutionAfterOneRetry() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(mockOperation.execute())
+        .thenThrow(
+            new SQLException("Retryable error", "40001", new SQLException("Retryable error")))
+        .thenReturn("Success!");
+
+    String result = datasourceOperations.withRetries(mockOperation);
+    assertEquals("Success!", result);
+    verify(mockOperation, times(2)).execute();
+  }
+
+  @Test
+  void testRetryAttemptsExceedMaxRetries() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(mockOperation.execute())
+        .thenThrow(
+            new SQLException("Retryable error", "40001", new SQLException("Retryable error")));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+    assertEquals("Retryable error", thrown.getMessage());
+    verify(mockOperation, times(2)).execute(); // Tried twice, then threw
+  }
+
+  @Test
+  void testRetryAttemptsExceedMaxDuration() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(10));
+    when(relationalJdbcConfiguration.maxDurationInMs())
+        .thenReturn(Optional.of(250L)); // Short max duration
+    when(mockOperation.execute())
+        .thenThrow(
+            new SQLException("Demo Exception", "40001", new SQLException("Retryable error")));
+
+    long startTime = Instant.now().toEpochMilli();
+    assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+    assertTrue((Instant.now().toEpochMilli() - startTime) >= 250);
+    // The number of executions depends on the timing and jitter, but should be more than 1
+    verify(mockOperation, atLeast(2)).execute();
+  }
+
+  @Test
+  void testNonRetryableSQLException() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(mockOperation.execute()).thenThrow(new SQLException("NonRetryable error"));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+    assertEquals("NonRetryable error", thrown.getMessage());
+    verify(mockOperation, times(1)).execute(); // Should not retry
+  }
+
+  @Test
+  void testInterruptedExceptionDuringRetry() throws SQLException, InterruptedException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(mockOperation.execute())
+        .thenThrow(
+            new SQLException("Demo Exception", "40001", new SQLException("Retryable error")));
+
+    Thread.currentThread().interrupt(); // Simulate interruption
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> datasourceOperations.withRetries(mockOperation));
+    assertEquals("Retry interrupted", thrown.getMessage());
+    assertTrue(Thread.currentThread().isInterrupted());
+    verify(mockOperation, atMost(1))
+        .execute(); // Might not even be called if interrupted very early
+  }
+
+  @Test
+  void testDefaultConfigurationValues() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.empty()); // Defaults to 1
+    when(relationalJdbcConfiguration.maxDurationInMs())
+        .thenReturn(Optional.empty()); // Defaults to 100
+    when(relationalJdbcConfiguration.initialDelayInMs())
+        .thenReturn(Optional.empty()); // Defaults to 100
+    when(mockOperation.execute())
+        .thenThrow(
+            new SQLException("Demo Exception", "40001", new SQLException("Retryable error")));
+
+    assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+    verify(mockOperation, times(1)).execute();
   }
 }

@@ -28,9 +28,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -44,14 +46,19 @@ public class DatasourceOperations {
 
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
-  // POSTGRES RETRYABLE
+  // POSTGRES RETRYABLE EXCEPTIONS
   private static final String DEADLOCK_SQL_CODE = "40P01";
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
   private final DataSource datasource;
+  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
 
-  public DatasourceOperations(DataSource datasource) {
+  private final Random random = new Random();
+
+  public DatasourceOperations(
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
+    this.relationalJdbcConfiguration = relationalJdbcConfiguration;
   }
 
   /**
@@ -129,71 +136,21 @@ public class DatasourceOperations {
       @Nonnull Converter<T> converterInstance,
       @Nonnull Consumer<Stream<T>> consumer)
       throws SQLException {
-    int maxRetries = 3;
-    int retryCount = 0;
-    long initialDelay = 100; // milliseconds
-    boolean success = false;
-    while (retryCount < maxRetries && !success) {
-      try (Connection connection = borrowConnection();
-          Statement statement = connection.createStatement();
-          ResultSet resultSet = statement.executeQuery(query)) {
-        success = true;
-        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-        consumer.accept(iterator.toStream());
-      } catch (SQLException e) {
-        if (isRetryable(e)) {
-          retryCount++;
-          long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
-          LOGGER.info(
-              ("Transient error occurred, retrying in "
-                  + delay
-                  + "ms (attempt "
-                  + retryCount
-                  + "/"
-                  + maxRetries
-                  + "): "
-                  + e.getMessage()),
-              e);
-          try {
-            Thread.sleep(delay);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", ie);
-          }
-        } else {
-          throw e;
-        }
-      } catch (RuntimeException e) {
-        if (e.getCause() instanceof SQLException ex) {
-          if (isRetryable(ex) && retryCount + 1 < maxRetries) {
-            retryCount++;
-            long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
-            LOGGER.info(
-                ("Transient error occurred, retrying in "
-                    + delay
-                    + "ms (attempt "
-                    + retryCount
-                    + "/"
-                    + maxRetries
-                    + "): "
-                    + e.getMessage()),
-                e);
-            try {
-              Thread.sleep(delay);
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              throw new RuntimeException("Retry interrupted", ie);
+    withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              Statement statement = connection.createStatement();
+              ResultSet resultSet = statement.executeQuery(query)) {
+            ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+            consumer.accept(iterator.toStream());
+            return null;
+          } catch (RuntimeException e) {
+            if (e.getCause() instanceof SQLException ex) {
+              throw ex;
             }
-          } else {
-            throw ex;
+            throw e;
           }
-        } else {
-          throw e;
-        }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
+        });
   }
 
   /**
@@ -204,46 +161,19 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during Query Execution.
    */
   public int executeUpdate(String query) throws SQLException {
-    int maxRetries = 3;
-    int retryCount = 0;
-    long initialDelay = 100; // milliseconds
-    boolean success = false;
-    while (retryCount < maxRetries && !success) {
-      try (Connection connection = borrowConnection();
-          Statement statement = connection.createStatement()) {
-        boolean autoCommit = connection.getAutoCommit();
-        connection.setAutoCommit(true);
-        try {
-          return statement.executeUpdate(query);
-        } catch (SQLException e) {
-          if (isRetryable(e) && retryCount + 1 < maxRetries) {
-            retryCount++;
-            long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
-            LOGGER.info(
-                ("Transient error occurred, retrying in "
-                    + delay
-                    + "ms (attempt "
-                    + retryCount
-                    + "/"
-                    + maxRetries
-                    + "): "
-                    + e.getMessage()),
-                e);
+    return withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              Statement statement = connection.createStatement()) {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(true);
             try {
-              Thread.sleep(delay);
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              throw new RuntimeException("Retry interrupted", ie);
+              return statement.executeUpdate(query);
+            } finally {
+              connection.setAutoCommit(autoCommit);
             }
-          } else {
-            throw e;
           }
-        } finally {
-          connection.setAutoCommit(autoCommit);
-        }
-      }
-    }
-    throw new RuntimeException("Error executing query: ");
+        });
   }
 
   /**
@@ -253,55 +183,27 @@ public class DatasourceOperations {
    * @throws SQLException : Exception caught during transaction execution.
    */
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
-    int maxRetries = 3;
-    int retryCount = 0;
-    long initialDelay = 100; // milliseconds
-    boolean success = false;
-    while (retryCount < maxRetries && !success) {
-      try (Connection connection = borrowConnection()) {
-        boolean autoCommit = connection.getAutoCommit();
-        connection.setAutoCommit(false);
-        try {
-          try (Statement statement = connection.createStatement()) {
-            success = callback.execute(statement);
-          } catch (SQLException e) {
-            if (isRetryable(e) && retryCount + 1 < maxRetries) {
-              retryCount++;
-              long delay = initialDelay * (long) Math.pow(2, retryCount - 1); // Exponential backoff
-              LOGGER.info(
-                  ("Transient error occurred, retrying in "
-                      + delay
-                      + "ms (attempt "
-                      + retryCount
-                      + "/"
-                      + maxRetries
-                      + "): "
-                      + e.getMessage()),
-                  e);
-              try {
-                Thread.sleep(delay);
-              } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Retry interrupted", ie);
+    withRetries(
+        () -> {
+          try (Connection connection = borrowConnection()) {
+            boolean autoCommit = connection.getAutoCommit();
+            boolean success = false;
+            connection.setAutoCommit(false);
+            try {
+              try (Statement statement = connection.createStatement()) {
+                success = callback.execute(statement);
               }
-            } else {
-              throw e;
+            } finally {
+              if (success) {
+                connection.commit();
+              } else {
+                connection.rollback();
+              }
+              connection.setAutoCommit(autoCommit);
             }
           }
-        } finally {
-          if (success) {
-            connection.commit();
-          } else {
-            connection.rollback();
-          }
-          connection.setAutoCommit(autoCommit);
-        }
-      }
-    }
-
-    if (!success) {
-      throw new RuntimeException("Failed to execute transaction");
-    }
+          return null;
+        });
   }
 
   private boolean isRetryable(SQLException e) {
@@ -316,6 +218,47 @@ public class DatasourceOperations {
     // Additionally, one might check for specific error messages or other conditions
     return e.getMessage().contains("connection refused")
         || e.getMessage().contains("connection reset");
+  }
+
+  public <T> T withRetries(Operation<T> operation) throws SQLException {
+    int attempts = 0;
+    // maximum number of retries.
+    int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
+    // How long we should try, since the first attempt.
+    long maxDuration = relationalJdbcConfiguration.maxDurationInMs().orElse(100L);
+    // How long to wait before first failure.
+    long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
+
+    // maximum time we will retry till.
+    long maxRetryTime = Instant.now().toEpochMilli() + maxDuration;
+
+    while (attempts < maxAttempts) {
+      try {
+        return operation.execute();
+      } catch (SQLException e) {
+        attempts++;
+        long timeLeft = Math.max((maxRetryTime - Instant.now().toEpochMilli()), 0L);
+        if (attempts >= maxAttempts || !isRetryable(e) || timeLeft == 0) {
+          throw e;
+        }
+        // Add jitter
+        long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextDouble() * 0.2 * delay));
+        LOGGER.debug("Retrying {} after {} attempts on {}", operation, attempts, e.getMessage(), e);
+        try {
+          Thread.sleep(timeToSleep);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Retry interrupted", ie);
+        }
+        delay *= 2; // Exponential backoff
+      }
+    }
+    // This should never be reached
+    return null;
+  }
+
+  public interface Operation<T> {
+    T execute() throws SQLException;
   }
 
   // Interface for transaction callback

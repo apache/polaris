@@ -16,29 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+import io.smallrye.config.ConfigMapping;
+import java.util.Optional;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+public interface RelationalJdbcConfiguration {
+  // max retries before giving up
+  Optional<Integer> maxRetries();
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
+  // max retry duration
+  Optional<Long> maxDurationInMs();
 
-  compileOnly(libs.jakarta.inject.api)
-  compileOnly(libs.smallrye.config.core) // @ConfigMapping
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+  // initial delay
+  Optional<Long> initialDelayInMs();
 }

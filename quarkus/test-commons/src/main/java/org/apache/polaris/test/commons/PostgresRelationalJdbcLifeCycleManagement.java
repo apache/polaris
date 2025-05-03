@@ -56,6 +56,8 @@ public class PostgresRelationalJdbcLifeCycleManagement
     return Map.of(
         "polaris.persistence.type",
         "relational-jdbc",
+        "polaris.persistence.relational.jdbc.max-retries",
+        "2",
         "quarkus.datasource.db-kind",
         "pgsql",
         "quarkus.datasource.jdbc.url",
