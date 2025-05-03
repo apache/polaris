@@ -21,6 +21,7 @@ package org.apache.polaris.core.config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,15 +40,24 @@ public abstract class PolarisConfiguration<T> {
   public final T defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Class<T> typ;
+  private final Optional<Function<T, Boolean>> validation;
 
   @SuppressWarnings("unchecked")
   protected PolarisConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+      String key,
+      String description,
+      T defaultValue,
+      Optional<String> catalogConfig,
+      Optional<Function<T, Boolean>> validation) {
     this.key = key;
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
     this.typ = (Class<T>) defaultValue.getClass();
+    this.validation = validation;
+
+    // Force validation:
+    apply(defaultValue);
   }
 
   public boolean hasCatalogConfig() {
@@ -61,8 +71,20 @@ public abstract class PolarisConfiguration<T> {
                 "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  T cast(Object value) {
-    return this.typ.cast(value);
+  T apply(Object value) {
+    T result = this.typ.cast(value);
+    validate(result);
+    return result;
+  }
+
+  private void validate(T value) {
+    this.validation.ifPresent(
+        v -> {
+          if (!v.apply(value)) {
+            throw new IllegalArgumentException(
+                String.format("Configuration %s has invalid value %s", key, defaultValue));
+          }
+        });
   }
 
   public static class Builder<T> {
@@ -70,6 +92,7 @@ public abstract class PolarisConfiguration<T> {
     private String description;
     private T defaultValue;
     private Optional<String> catalogConfig = Optional.empty();
+    private Optional<Function<T, Boolean>> validation = Optional.empty();
 
     public Builder<T> key(String key) {
       this.key = key;
@@ -97,11 +120,16 @@ public abstract class PolarisConfiguration<T> {
       return this;
     }
 
+    public Builder<T> validation(Function<T, Boolean> validation) {
+      this.validation = Optional.of(validation);
+      return this;
+    }
+
     public FeatureConfiguration<T> buildFeatureConfiguration() {
       if (key == null || description == null || defaultValue == null) {
         throw new IllegalArgumentException("key, description, and defaultValue are required");
       }
-      return new FeatureConfiguration<>(key, description, defaultValue, catalogConfig);
+      return new FeatureConfiguration<>(key, description, defaultValue, catalogConfig, validation);
     }
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
@@ -112,7 +140,8 @@ public abstract class PolarisConfiguration<T> {
         throw new IllegalArgumentException(
             "catalogConfig is not valid for behavior change configs");
       }
-      return new BehaviorChangeConfiguration<>(key, description, defaultValue, catalogConfig);
+      return new BehaviorChangeConfiguration<>(
+          key, description, defaultValue, catalogConfig, validation);
     }
   }
 

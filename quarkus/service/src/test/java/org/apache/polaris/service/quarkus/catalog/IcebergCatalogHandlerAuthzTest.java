@@ -39,6 +39,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -48,6 +49,7 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -763,6 +765,14 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         });
   }
 
+  private static String getMetadataLocation(RESTResponse resp) {
+    final String metadataLocation =
+        resp instanceof IcebergCatalogHandler.StringLoadTableResponse
+            ? ((IcebergCatalogHandler.StringLoadTableResponse) resp).metadataLocation()
+            : ((LoadTableResponse) resp).metadataLocation();
+    return metadataLocation;
+  }
+
   @Test
   public void testRegisterTableAllSufficientPrivileges() {
     Assertions.assertThat(
@@ -776,7 +786,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     // To get a handy metadata file we can use one from another table.
     // to avoid overlapping directories, drop the original table and recreate it via registerTable
-    final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    final String metadataLocation = getMetadataLocation(newWrapper().loadTable(TABLE_NS1_1, "all"));
     newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     final RegisterTableRequest registerRequest =
@@ -814,7 +824,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .isTrue();
 
     // To get a handy metadata file we can use one from another table.
-    final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    final String metadataLocation = getMetadataLocation(newWrapper().loadTable(TABLE_NS1_1, "all"));
 
     final RegisterTableRequest registerRequest =
         new RegisterTableRequest() {

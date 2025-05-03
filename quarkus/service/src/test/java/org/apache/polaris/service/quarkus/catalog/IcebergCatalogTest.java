@@ -59,6 +59,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
@@ -98,6 +99,7 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -118,6 +120,8 @@ import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.persistence.MetadataCacheManager;
+import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -209,6 +213,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private PolarisEntity catalogEntity;
+  private PolarisResolutionManifestCatalogView passthroughView;
   private SecurityContext securityContext;
 
   @BeforeAll
@@ -280,21 +285,25 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
+    CatalogEntity catalogEntityWithProperties =
+        new CatalogEntity.Builder()
+            .setName(CATALOG_NAME)
+            .setDefaultBaseLocation(storageLocation)
+            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(FeatureConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
+            .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+            .build();
+
     catalogEntity =
         adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog()));
+            new CreateCatalogRequest(catalogEntityWithProperties.asCatalog()));
+
+    passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, CATALOG_NAME);
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -1756,6 +1765,64 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
     handler.handleTask(taskEntity, callContext);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
+  }
+
+  private Schema buildSchema(int fields) {
+    Types.NestedField[] fieldsArray = new Types.NestedField[fields];
+    for (int i = 0; i < fields; i++) {
+      fieldsArray[i] = Types.NestedField.optional(i, "field_" + i, Types.IntegerType.get());
+    }
+    return new Schema(fieldsArray);
+  }
+
+  @Test
+  public void testMetadataCachingWithManualFallback() {
+    Namespace namespace = Namespace.of("manual-namespace");
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "t1");
+
+    Schema schema = buildSchema(10);
+
+    catalog.createNamespace(namespace);
+    Table createdTable = catalog.createTable(tableIdentifier, schema);
+    TableMetadata originalMetadata = ((BaseTable) createdTable).operations().current();
+
+    MetadataJson cachedMetadataJson =
+        MetadataCacheManager.loadTableMetadataJson(
+            tableIdentifier,
+            Integer.MAX_VALUE,
+            polarisContext,
+            metaStoreManager,
+            passthroughView,
+            () -> {
+              throw new IllegalStateException("Fell back even though a cache entry should exist!");
+            });
+
+    // The content should match what was cached
+    Assertions.assertThat(cachedMetadataJson.content())
+        .isEqualTo(TableMetadataParser.toJson(originalMetadata));
+
+    // Update the table
+    TableOperations tableOps = catalog.newTableOps(tableIdentifier);
+    TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100));
+    tableOps.commit(tableOps.current(), updatedMetadata);
+
+    // Read from the cache; it should detect a change due to the update and load the new fallback
+    MetadataJson reloadedMetadataJson =
+        MetadataCacheManager.loadTableMetadataJson(
+            tableIdentifier,
+            Integer.MAX_VALUE,
+            polarisContext,
+            metaStoreManager,
+            passthroughView,
+            () -> {
+              throw new IllegalStateException(
+                  "Fell back even though a cache entry should be updated on write");
+            });
+
+    Assertions.assertThat(reloadedMetadataJson).isNotSameAs(cachedMetadataJson);
+    Assertions.assertThat(
+            TableMetadataParser.fromJson(reloadedMetadataJson.content()).schema().columns().size())
+        .isEqualTo(100);
   }
 
   @Test
