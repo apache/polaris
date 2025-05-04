@@ -53,7 +53,7 @@ dependencies {
     implementation("org.codehaus.jettison:jettison:1.5.4") {
       because("Vulnerability detected in 1.1")
     }
-    implementation("org.apache.commons:commons-configuration2:2.11.0") {
+    implementation("org.apache.commons:commons-configuration2:2.12.0") {
       because("Vulnerability detected in 2.8.0")
     }
     implementation("org.apache.commons:commons-compress:1.27.1") {
