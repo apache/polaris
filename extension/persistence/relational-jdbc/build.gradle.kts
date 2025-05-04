@@ -27,6 +27,8 @@ dependencies {
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 
+  compileOnly(platform(libs.jackson.bom))
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
