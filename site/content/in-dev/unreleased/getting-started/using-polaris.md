@@ -174,7 +174,6 @@ Replace the credentials used in the Docker container using the following code:
 ```shell
 USER_CLIENT_ID="XXXX"
 USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(.*spark\.sql\.catalog\.quickstart_catalog\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
