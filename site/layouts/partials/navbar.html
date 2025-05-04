@@ -42,27 +42,25 @@ under the License.
 			<li class="nav-item">
 				{{ if .HasChildren }}
 				<!-- Menu items with children -->
-				<div class="dropdown">
-					<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-						{{- .Pre -}}
-						<span>{{ .Name }}</span>
-					</a>
-					<ul class="dropdown-menu">
-						{{ $children := .Children.ByWeight -}}
-						{{ if eq .Identifier "releases" -}}
-							{{ with (partial "releasePages.html" (dict "site" $s)).active -}}
-								{{ range . -}}
-									<a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
-								{{- end -}}
-							{{ else -}}
-								{{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
-							{{ end -}}
+				<button class="btn btn-link nav-link dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+					{{- .Pre -}}
+					<span>{{ .Name }}</span>
+				</button>
+				<ul class="dropdown-menu">
+					{{ $children := .Children.ByWeight -}}
+					{{ if eq .Identifier "releases" -}}
+						{{ with (partial "releasePages.html" (dict "site" $s)).active -}}
+							{{ range . -}}
+								<a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
+							{{- end -}}
+						{{ else -}}
+							{{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
 						{{ end -}}
-						{{ range $children -}}
-						<a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a>
-						{{- end -}}
-					</ul>
-				</div>
+					{{ end -}}
+					{{ range $children -}}
+					<li><a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a></li>
+					{{- end -}}
+				</ul>
 				{{ else -}}
 				<!-- Menu items without children -->
 				{{ $topHidden := false }}
