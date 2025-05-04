@@ -2014,8 +2014,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
 
-    List<PolarisBaseEntity> entities = entitySuccessResults.stream().flatMap(result -> result.getEntities().stream()).collect(
-            Collectors.toList());
+    List<PolarisBaseEntity> entities =
+        entitySuccessResults.stream()
+            .flatMap(result -> result.getEntities().stream())
+            .collect(Collectors.toList());
 
     return new EntitiesResult(entities);
   }

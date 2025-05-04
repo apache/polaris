@@ -449,150 +449,139 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .allSatisfy((k, v) -> Assertions.assertThat(v).isEqualTo(1));
   }
 
-    @Test
-    protected void testLoadTasksOnCompensation() {
-      for (int i = 0; i < 20; i++) {
-        polarisTestMetaStoreManager.createEntity(
-                null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
-      }
-      String executorId = "testExecutor_abc";
-      PolarisMetaStoreManager metaStoreManager =
-   polarisTestMetaStoreManager.polarisMetaStoreManager;
-      PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
-
-      // First round of tasks are loaded as before, mock usual scheduling process
-      List<PolarisBaseEntity> taskList =
-              metaStoreManager.loadTasks(callCtx, executorId, 5).getEntities();
-      Assertions.assertThat(taskList)
-              .isNotNull()
-              .isNotEmpty()
-              .hasSize(5)
-              .allSatisfy(
-                      entry ->
-                              Assertions.assertThat(entry)
-                                      .extracting(
-                                              e ->
-
-   PolarisObjectMapperUtil.deserializeProperties(
-                                                              callCtx, e.getProperties()))
-                                      .asInstanceOf(InstanceOfAssertFactories.map(String.class,
-   String.class))
-                                      .containsEntry("lastAttemptExecutorId", executorId)
-                                      .containsEntry("attemptCount", "1"));
-      Set<String> firstFiveTasks =
-              taskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
-
-      // Remaining tasks are loaded with perTaskTxn, mock periodic compensation
-      List<PolarisBaseEntity> remainingTaskList =
-              metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
-      Assertions.assertThat(remainingTaskList)
-              .isNotNull()
-              .isNotEmpty()
-              .hasSize(15)
-              .extracting(PolarisBaseEntity::getName)
-              .noneMatch(firstFiveTasks::contains);
-
-      Set<String> allTaskNames =
-              Stream.concat(firstFiveTasks.stream(),
-   remainingTaskList.stream().map(PolarisBaseEntity::getName))
-                      .collect(Collectors.toSet());
-
-      // Try to load unfinished tasks again
-      List<PolarisBaseEntity> emtpyList =
-              metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
-
-      Assertions.assertThat(emtpyList).isNotNull().isEmpty();
-
-      // all the tasks are unassigned. Fetch them all
-      timeSource.add(Duration.ofMinutes(10));
-      List<PolarisBaseEntity> allTasks =
-              metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
-
-      Assertions.assertThat(allTasks)
-              .isNotNull()
-              .isNotEmpty()
-              .hasSize(20)
-              .extracting(PolarisBaseEntity::getName)
-              .allMatch(allTaskNames::contains);
-
-      // drop all the tasks. Skip the clock forward and fetch. empty list expected
-      allTasks.forEach(
-              entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(),
-   false));
-      timeSource.add(Duration.ofMinutes(10));
-
-      List<PolarisBaseEntity> finalList =
-              metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
-
-      Assertions.assertThat(finalList).isNotNull().isEmpty();
-    }
-
-    @Test
-    protected void testLoadTasksOnStartupRecovery() {
+  @Test
+  protected void testLoadTasksOnCompensation() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(
-              null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
+          null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
+    }
+    String executorId = "testExecutor_abc";
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    // First round of tasks are loaded as before, mock usual scheduling process
+    List<PolarisBaseEntity> taskList =
+        metaStoreManager.loadTasks(callCtx, executorId, 5).getEntities();
+    Assertions.assertThat(taskList)
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(5)
+        .allSatisfy(
+            entry ->
+                Assertions.assertThat(entry)
+                    .extracting(
+                        e ->
+                            PolarisObjectMapperUtil.deserializeProperties(
+                                callCtx, e.getProperties()))
+                    .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+                    .containsEntry("lastAttemptExecutorId", executorId)
+                    .containsEntry("attemptCount", "1"));
+    Set<String> firstFiveTasks =
+        taskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
+
+    // Remaining tasks are loaded with perTaskTxn, mock periodic compensation
+    List<PolarisBaseEntity> remainingTaskList =
+        metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
+    Assertions.assertThat(remainingTaskList)
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(15)
+        .extracting(PolarisBaseEntity::getName)
+        .noneMatch(firstFiveTasks::contains);
+
+    Set<String> allTaskNames =
+        Stream.concat(
+                firstFiveTasks.stream(), remainingTaskList.stream().map(PolarisBaseEntity::getName))
+            .collect(Collectors.toSet());
+
+    // Try to load unfinished tasks again
+    List<PolarisBaseEntity> emtpyList =
+        metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
+
+    Assertions.assertThat(emtpyList).isNotNull().isEmpty();
+
+    // all the tasks are unassigned. Fetch them all
+    timeSource.add(Duration.ofMinutes(10));
+    List<PolarisBaseEntity> allTasks =
+        metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
+
+    Assertions.assertThat(allTasks)
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(20)
+        .extracting(PolarisBaseEntity::getName)
+        .allMatch(allTaskNames::contains);
+
+    // drop all the tasks. Skip the clock forward and fetch. empty list expected
+    allTasks.forEach(
+        entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(), false));
+    timeSource.add(Duration.ofMinutes(10));
+
+    List<PolarisBaseEntity> finalList =
+        metaStoreManager.loadTasks(callCtx, executorId, 20, true).getEntities();
+
+    Assertions.assertThat(finalList).isNotNull().isEmpty();
+  }
+
+  @Test
+  protected void testLoadTasksOnStartupRecovery() {
+    for (int i = 0; i < 20; i++) {
+      polarisTestMetaStoreManager.createEntity(
+          null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
     }
     String firstExecutorId = "testExecutor_1";
-    PolarisMetaStoreManager metaStoreManager =
-            polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
 
     // First round of tasks are loaded as before, mock usual scheduling process
     List<PolarisBaseEntity> firstRoundtaskList =
-            metaStoreManager.loadTasks(callCtx, firstExecutorId, 20).getEntities();
+        metaStoreManager.loadTasks(callCtx, firstExecutorId, 20).getEntities();
     Assertions.assertThat(firstRoundtaskList)
-            .isNotNull()
-            .isNotEmpty()
-            .hasSize(20)
-            .allSatisfy(
-                    entry ->
-                            Assertions.assertThat(entry)
-                                    .extracting(
-                                            e ->
-
-                                                    PolarisObjectMapperUtil.deserializeProperties(
-                                                            callCtx, e.getProperties()))
-                                    .asInstanceOf(InstanceOfAssertFactories.map(String.class,
-                                            String.class))
-                                    .containsEntry("lastAttemptExecutorId", firstExecutorId)
-                                    .containsEntry("attemptCount", "1"));
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(20)
+        .allSatisfy(
+            entry ->
+                Assertions.assertThat(entry)
+                    .extracting(
+                        e ->
+                            PolarisObjectMapperUtil.deserializeProperties(
+                                callCtx, e.getProperties()))
+                    .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+                    .containsEntry("lastAttemptExecutorId", firstExecutorId)
+                    .containsEntry("attemptCount", "1"));
     Set<String> firstRoundTask =
-            firstRoundtaskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
+        firstRoundtaskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
 
     // Mock service dies, try with another executor and load all tasks
     timeSource.add(Duration.ofMinutes(10));
     String secondExecutorId = "testExecutor_2";
     List<PolarisBaseEntity> secondRoundTaskList =
-            metaStoreManager.loadTasks(callCtx, secondExecutorId, 20, true).getEntities();
+        metaStoreManager.loadTasks(callCtx, secondExecutorId, 20, true).getEntities();
     Assertions.assertThat(secondRoundTaskList)
-            .isNotNull()
-            .isNotEmpty()
-            .hasSize(20)
-            .allSatisfy(
-                    entry ->
-                            Assertions.assertThat(entry)
-                                    .extracting(
-                                            e ->
-
-                                                    PolarisObjectMapperUtil.deserializeProperties(
-                                                            callCtx, e.getProperties()))
-                                    .asInstanceOf(InstanceOfAssertFactories.map(String.class,
-                                            String.class))
-                                    .containsEntry("lastAttemptExecutorId", secondExecutorId)
-                                    .containsEntry("attemptCount", "2"))
-            .extracting(PolarisBaseEntity::getName)
-            .allMatch(firstRoundTask::contains);
-
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(20)
+        .allSatisfy(
+            entry ->
+                Assertions.assertThat(entry)
+                    .extracting(
+                        e ->
+                            PolarisObjectMapperUtil.deserializeProperties(
+                                callCtx, e.getProperties()))
+                    .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+                    .containsEntry("lastAttemptExecutorId", secondExecutorId)
+                    .containsEntry("attemptCount", "2"))
+        .extracting(PolarisBaseEntity::getName)
+        .allMatch(firstRoundTask::contains);
 
     // drop all the tasks. Skip the clock forward and fetch. empty list expected
     secondRoundTaskList.forEach(
-            entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(),
-                    false));
+        entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(), false));
     timeSource.add(Duration.ofMinutes(10));
 
     List<PolarisBaseEntity> finalList =
-            metaStoreManager.loadTasks(callCtx, secondExecutorId, 20, true).getEntities();
+        metaStoreManager.loadTasks(callCtx, secondExecutorId, 20, true).getEntities();
 
     Assertions.assertThat(finalList).isNotNull().isEmpty();
   }
