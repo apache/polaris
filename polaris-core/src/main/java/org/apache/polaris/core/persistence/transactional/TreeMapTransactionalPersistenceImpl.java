@@ -21,13 +21,11 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -40,7 +38,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.persistence.pagination.OffsetPageToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
@@ -352,12 +349,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
-    if (!(pageToken instanceof ReadEverythingPageToken)
-        && !(pageToken instanceof OffsetPageToken)) {
-      throw new IllegalArgumentException("Unexpected pageToken: " + pageToken);
-    }
-
-    Stream<PolarisBaseEntity> partialResults =
+    // full range scan under the parent for that type
+    return Page.fromData(
         this.store
             .getSliceEntitiesActive()
             .readRange(
@@ -367,18 +360,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
                         callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-            .filter(entityFilter);
-
-    if (pageToken instanceof OffsetPageToken) {
-      partialResults =
-          partialResults
-              .sorted(Comparator.comparingLong(PolarisEntityCore::getId))
-              .skip(((OffsetPageToken) pageToken).offset)
-              .limit(pageToken.pageSize);
-    }
-
-    List<T> entities = partialResults.map(transformer).collect(Collectors.toList());
-    return pageToken.buildNextPage(entities);
+            .filter(entityFilter)
+            .limit(pageToken.pageSize)
+            .map(transformer)
+            .collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -580,11 +565,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     this.store.rollback();
   }
 
-  @Override
-  public @Nonnull PageToken.PageTokenBuilder<?> pageTokenBuilder() {
-    return OffsetPageToken.builder();
-  }
-
   /** {@inheritDoc} */
   @Override
   public void writeToPolicyMappingRecordsInCurrentTxn(
@@ -665,5 +645,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyCatalogId, policyId));
+  }
+
+  // TODO support pagination
+  @Nonnull
+  @Override
+  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
+    return ReadEverythingPageToken.builder();
   }
 }

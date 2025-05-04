@@ -564,6 +564,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  // TODO support pagination
   @Nonnull
   @Override
   public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
