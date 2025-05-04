@@ -43,7 +43,7 @@ public class PageTokenTest {
 
   @Test
   void testDoneToken() {
-    Assertions.assertThat(PageToken.DONE).isNull();
+    Assertions.assertThat(PageToken.END).isNull();
   }
 
   @ParameterizedTest
@@ -101,7 +101,7 @@ public class PageTokenTest {
         List.of(ModelEntity.builder().id(1).build(), ModelEntity.builder().id(2).build());
 
     PageToken token = builder.fromLimit(1000);
-    Assertions.assertThat(token.buildNextPage(data).data).isEqualTo(data);
+    Assertions.assertThat(token.buildNextPage(data).items).isEqualTo(data);
     Assertions.assertThat(token.buildNextPage(data).pageToken).isNull();
   }
 
@@ -157,7 +157,7 @@ public class PageTokenTest {
 
     Assertions.assertThat(token.toString()).isNotNull();
     Assertions.assertThat(token.buildNextPage(List.of("anything")).pageToken)
-        .isEqualTo(PageToken.DONE);
+        .isEqualTo(PageToken.END);
     Assertions.assertThat(token.pageSize).isEqualTo(Integer.MAX_VALUE);
   }
 
@@ -174,7 +174,7 @@ public class PageTokenTest {
     Assertions.assertThat(page.pageToken).isInstanceOf(OffsetPageToken.class);
     Assertions.assertThat(page.pageToken.pageSize).isEqualTo(2);
     Assertions.assertThat(((OffsetPageToken) page.pageToken).offset).isEqualTo(2);
-    Assertions.assertThat(page.data).isEqualTo(data);
+    Assertions.assertThat(page.items).isEqualTo(data);
 
     Assertions.assertThat(OffsetPageToken.builder().fromString(page.pageToken.toString()))
         .isEqualTo(page.pageToken);
@@ -191,15 +191,15 @@ public class PageTokenTest {
     Assertions.assertThatThrownBy(() -> token.buildNextPage(badData))
         .isInstanceOf(IllegalArgumentException.class);
 
-    List<ModelEntity> data =
+    List<ModelEntity> items =
         List.of(ModelEntity.builder().id(101).build(), ModelEntity.builder().id(102).build());
-    var page = token.buildNextPage(data);
+    var page = token.buildNextPage(items);
 
     Assertions.assertThat(page.pageToken).isNotNull();
     Assertions.assertThat(page.pageToken).isInstanceOf(EntityIdPageToken.class);
     Assertions.assertThat(page.pageToken.pageSize).isEqualTo(2);
     Assertions.assertThat(((EntityIdPageToken) page.pageToken).id).isEqualTo(102);
-    Assertions.assertThat(page.data).isEqualTo(data);
+    Assertions.assertThat(page.items).isEqualTo(items);
 
     Assertions.assertThat(EntityIdPageToken.builder().fromString(page.pageToken.toString()))
         .isEqualTo(page.pageToken);

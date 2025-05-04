@@ -25,8 +25,8 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 
 /** the return the result for a list entities call */
 public class ListEntitiesResult extends BaseResult {
@@ -35,10 +35,9 @@ public class ListEntitiesResult extends BaseResult {
   private final List<EntityNameLookupRecord> entities;
   private final Optional<PageToken> pageTokenOpt;
 
-  /** Create a {@link ListEntitiesResult} from a {@link PolarisPage} */
-  public static ListEntitiesResult fromPolarisPage(
-      PolarisPage<EntityNameLookupRecord> polarisPage) {
-    return new ListEntitiesResult(polarisPage.data, Optional.ofNullable(polarisPage.pageToken));
+  /** Create a {@link ListEntitiesResult} from a {@link Page} */
+  public static ListEntitiesResult fromPolarisPage(Page<EntityNameLookupRecord> page) {
+    return new ListEntitiesResult(page.items, Optional.ofNullable(page.pageToken));
   }
 
   /**

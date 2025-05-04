@@ -62,8 +62,8 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -680,14 +680,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         catalogPath == null || catalogPath.size() == 0
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
-    PolarisPage<EntityNameLookupRecord> resultPage =
+    Page<EntityNameLookupRecord> resultPage =
         ms.listEntities(callCtx, catalogId, parentId, entityType, pageToken);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
       resultPage =
           pageToken.buildNextPage(
-              resultPage.data.stream()
+              resultPage.items.stream()
                   .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
                   .collect(Collectors.toList()));
     }
@@ -1165,7 +1165,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   entity -> true,
                   Function.identity(),
                   ms.pageTokenBuilder().fromLimit(2))
-              .data;
+              .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1463,7 +1463,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
-    PolarisPage<PolarisBaseEntity> availableTasks =
+    Page<PolarisBaseEntity> availableTasks =
         ms.listEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
@@ -1488,7 +1488,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
-    availableTasks.data.forEach(
+    availableTasks.items.forEach(
         task -> {
           PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
@@ -1525,7 +1525,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       throw new RetryOnConcurrencyException(
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
-    return EntitiesResult.fromPolarisPage(PolarisPage.fromData(loadedTasks));
+    return EntitiesResult.fromPolarisPage(Page.fromData(loadedTasks));
   }
 
   /** {@inheritDoc} */

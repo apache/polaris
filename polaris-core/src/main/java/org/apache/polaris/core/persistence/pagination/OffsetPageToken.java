@@ -96,7 +96,7 @@ public class OffsetPageToken extends PageToken {
   @Override
   public PageToken updated(List<?> newData) {
     if (newData == null || newData.size() < this.pageSize) {
-      return PageToken.DONE;
+      return PageToken.END;
     } else {
       return new OffsetPageToken(this.offset + newData.size(), pageSize);
     }

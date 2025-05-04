@@ -36,9 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
-import org.apache.polaris.jpa.models.EntityIdPageToken;
 import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
@@ -291,34 +289,19 @@ public class PolarisEclipseLinkStore {
       @Nonnull PolarisEntityType entityType,
       @Nonnull PageToken pageToken) {
     diagnosticServices.check(session != null, "session_is_null");
-    diagnosticServices.check(
-        (pageToken instanceof EntityIdPageToken || pageToken instanceof ReadEverythingPageToken),
-        "unexpected_page_token");
     checkInitialized();
 
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
     String hql =
-        "SELECT m from ModelEntity m "
-            + "where m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
-
-    if (pageToken instanceof EntityIdPageToken) {
-      hql += " order by m.id asc";
-    }
+        "SELECT m from ModelEntity m where m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode";
 
     TypedQuery<ModelEntity> query =
         session
             .createQuery(hql, ModelEntity.class)
             .setParameter("catalogId", catalogId)
             .setParameter("parentId", parentId)
-            .setParameter("typeCode", entityType.getCode())
-            .setParameter("tokenId", -1L);
+            .setParameter("typeCode", entityType.getCode());
 
-    if (pageToken instanceof EntityIdPageToken) {
-      query =
-          query
-              .setParameter("tokenId", ((EntityIdPageToken) pageToken).id)
-              .setMaxResults(pageToken.pageSize);
-    }
     return query.getResultList();
   }
 
@@ -442,7 +425,22 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    session.persist(ModelPolicyMappingRecord.fromPolicyMappingRecord(mappingRecord));
+    // TODO: combine existence check and write into one statement
+    ModelPolicyMappingRecord model =
+        lookupPolicyMappingRecord(
+            session,
+            mappingRecord.getTargetCatalogId(),
+            mappingRecord.getTargetId(),
+            mappingRecord.getPolicyTypeCode(),
+            mappingRecord.getPolicyCatalogId(),
+            mappingRecord.getPolicyId());
+    if (model != null) {
+      model.update(mappingRecord);
+    } else {
+      model = ModelPolicyMappingRecord.fromPolicyMappingRecord(mappingRecord);
+    }
+
+    session.persist(model);
   }
 
   void deleteFromPolicyMappingRecords(

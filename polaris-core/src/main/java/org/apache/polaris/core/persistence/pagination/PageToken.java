@@ -38,7 +38,7 @@ public abstract class PageToken {
 
   public int pageSize;
 
-  public static final PageToken DONE = null;
+  public static final PageToken END = null;
   public static final int DEFAULT_PAGE_SIZE = 1000;
 
   protected void validate() {
@@ -125,17 +125,17 @@ public abstract class PageToken {
 
   /**
    * Builds a new page token to reflect new data that's been read. If the amount of data read is
-   * less than the pageSize, this will return {@link PageToken#DONE}(null)
+   * less than the pageSize, this will return {@link PageToken#END}(null)
    */
   protected abstract PageToken updated(List<?> newData);
 
   /**
-   * Builds a {@link PolarisPage<T>} from a {@link List<T>}. The {@link PageToken} attached to the
-   * new {@link PolarisPage<T>} is the same as the result of calling {@link #updated(List)} on this
-   * {@link PageToken}.
+   * Builds a {@link Page <T>} from a {@link List<T>}. The {@link PageToken} attached to the new
+   * {@link Page <T>} is the same as the result of calling {@link #updated(List)} on this {@link
+   * PageToken}.
    */
-  public final <T> PolarisPage<T> buildNextPage(List<T> data) {
-    return new PolarisPage<T>(updated(data), data);
+  public final <T> Page<T> buildNextPage(List<T> data) {
+    return new Page<T>(updated(data), data);
   }
 
   /**

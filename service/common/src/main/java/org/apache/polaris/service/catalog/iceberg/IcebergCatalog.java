@@ -109,8 +109,8 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -502,10 +502,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-    return listTables(namespace, ReadEverythingPageToken.get()).data;
+    return listTables(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public PolarisPage<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
@@ -824,15 +824,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
-    return listNamespaces(namespace, ReadEverythingPageToken.get()).data;
+    return listNamespaces(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public PolarisPage<Namespace> listNamespaces(PageToken pageToken)
-      throws NoSuchNamespaceException {
+  public Page<Namespace> listNamespaces(PageToken pageToken) throws NoSuchNamespaceException {
     return listNamespaces(Namespace.empty(), pageToken);
   }
 
-  public PolarisPage<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
+  public Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
       throws NoSuchNamespaceException {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
@@ -856,8 +855,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     List<Namespace> namespaces = PolarisCatalogHelpers.nameAndIdToNamespaces(catalogPath, entities);
     return listResult
         .getPageToken()
-        .map(token -> new PolarisPage<>(token, namespaces))
-        .orElseGet(() -> PolarisPage.fromData(namespaces));
+        .map(token -> new Page<>(token, namespaces))
+        .orElseGet(() -> Page.fromData(namespaces));
   }
 
   @Override
@@ -869,10 +868,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-    return listViews(namespace, ReadEverythingPageToken.get()).data;
+    return listViews(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public PolarisPage<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
@@ -2478,7 +2477,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private PolarisPage<TableIdentifier> listTableLike(
+  private Page<TableIdentifier> listTableLike(
       PolarisEntitySubType subType, Namespace namespace, PageToken pageToken) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
@@ -2503,8 +2502,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     return listResult
         .getPageToken()
-        .map(token -> new PolarisPage<>(token, identifiers))
-        .orElseGet(() -> PolarisPage.fromData(identifiers));
+        .map(token -> new Page<>(token, identifiers))
+        .orElseGet(() -> Page.fromData(identifiers));
   }
 
   /**

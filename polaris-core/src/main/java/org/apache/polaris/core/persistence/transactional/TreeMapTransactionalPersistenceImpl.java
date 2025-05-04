@@ -41,8 +41,8 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.OffsetPageToken;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -307,7 +307,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -318,7 +318,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   }
 
   @Override
-  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -344,7 +344,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   }
 
   @Override
-  public @Nonnull <T> PolarisPage<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

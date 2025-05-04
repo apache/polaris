@@ -99,7 +99,7 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -1950,19 +1950,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       Assertions.assertThat(catalog.listTables(NS)).isNotNull().hasSize(5);
 
       // List with a limit:
-      PolarisPage<?> firstListResult =
+      Page<?> firstListResult =
           catalog.listTables(NS, polarisContext.getMetaStore().pageTokenBuilder().fromLimit(2));
-      Assertions.assertThat(firstListResult.data.size()).isEqualTo(2);
+      Assertions.assertThat(firstListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(firstListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the previously obtained token:
-      PolarisPage<?> secondListResult = catalog.listTables(NS, firstListResult.pageToken);
-      Assertions.assertThat(secondListResult.data.size()).isEqualTo(2);
+      Page<?> secondListResult = catalog.listTables(NS, firstListResult.pageToken);
+      Assertions.assertThat(secondListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(secondListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the final token:
-      PolarisPage<?> finalListResult = catalog.listTables(NS, secondListResult.pageToken);
-      Assertions.assertThat(finalListResult.data.size()).isEqualTo(1);
+      Page<?> finalListResult = catalog.listTables(NS, secondListResult.pageToken);
+      Assertions.assertThat(finalListResult.items.size()).isEqualTo(1);
       Assertions.assertThat(finalListResult.pageToken).isNull();
     } finally {
       for (int i = 0; i < 5; i++) {
@@ -1991,19 +1991,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       Assertions.assertThat(catalog.listViews(NS)).isNotNull().hasSize(5);
 
       // List with a limit:
-      PolarisPage<?> firstListResult =
+      Page<?> firstListResult =
           catalog.listViews(NS, polarisContext.getMetaStore().pageTokenBuilder().fromLimit(2));
-      Assertions.assertThat(firstListResult.data.size()).isEqualTo(2);
+      Assertions.assertThat(firstListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(firstListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the previously obtained token:
-      PolarisPage<?> secondListResult = catalog.listViews(NS, firstListResult.pageToken);
-      Assertions.assertThat(secondListResult.data.size()).isEqualTo(2);
+      Page<?> secondListResult = catalog.listViews(NS, firstListResult.pageToken);
+      Assertions.assertThat(secondListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(secondListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the final token:
-      PolarisPage<?> finalListResult = catalog.listViews(NS, secondListResult.pageToken);
-      Assertions.assertThat(finalListResult.data.size()).isEqualTo(1);
+      Page<?> finalListResult = catalog.listViews(NS, secondListResult.pageToken);
+      Assertions.assertThat(finalListResult.items.size()).isEqualTo(1);
       Assertions.assertThat(finalListResult.pageToken).isNull();
     } finally {
       for (int i = 0; i < 5; i++) {
@@ -2023,36 +2023,36 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       Assertions.assertThat(catalog.listNamespaces()).isNotNull().hasSize(5);
 
       // List with a limit:
-      PolarisPage<?> firstListResult =
+      Page<?> firstListResult =
           catalog.listNamespaces(polarisContext.getMetaStore().pageTokenBuilder().fromLimit(2));
-      Assertions.assertThat(firstListResult.data.size()).isEqualTo(2);
+      Assertions.assertThat(firstListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(firstListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the previously obtained token:
-      PolarisPage<?> secondListResult = catalog.listNamespaces(firstListResult.pageToken);
-      Assertions.assertThat(secondListResult.data.size()).isEqualTo(2);
+      Page<?> secondListResult = catalog.listNamespaces(firstListResult.pageToken);
+      Assertions.assertThat(secondListResult.items.size()).isEqualTo(2);
       Assertions.assertThat(secondListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // List using the final token:
-      PolarisPage<?> finalListResult = catalog.listNamespaces(secondListResult.pageToken);
-      Assertions.assertThat(finalListResult.data.size()).isEqualTo(1);
+      Page<?> finalListResult = catalog.listNamespaces(secondListResult.pageToken);
+      Assertions.assertThat(finalListResult.items.size()).isEqualTo(1);
       Assertions.assertThat(finalListResult.pageToken).isNull();
 
       // List with page size matching the amount of data
-      PolarisPage<?> firstExactListResult =
+      Page<?> firstExactListResult =
           catalog.listNamespaces(polarisContext.getMetaStore().pageTokenBuilder().fromLimit(5));
-      Assertions.assertThat(firstExactListResult.data.size()).isEqualTo(5);
+      Assertions.assertThat(firstExactListResult.items.size()).isEqualTo(5);
       Assertions.assertThat(firstExactListResult.pageToken.toString()).isNotNull().isNotEmpty();
 
       // Again list with matching page size
-      PolarisPage<?> secondExactListResult = catalog.listNamespaces(firstExactListResult.pageToken);
-      Assertions.assertThat(secondExactListResult.data).isEmpty();
+      Page<?> secondExactListResult = catalog.listNamespaces(firstExactListResult.pageToken);
+      Assertions.assertThat(secondExactListResult.items).isEmpty();
       Assertions.assertThat(secondExactListResult.pageToken).isNull();
 
       // List with huge page size:
-      PolarisPage<?> bigListResult =
+      Page<?> bigListResult =
           catalog.listNamespaces(polarisContext.getMetaStore().pageTokenBuilder().fromLimit(9999));
-      Assertions.assertThat(bigListResult.data.size()).isEqualTo(5);
+      Assertions.assertThat(bigListResult.items.size()).isEqualTo(5);
       Assertions.assertThat(bigListResult.pageToken).isNull();
     } finally {
       for (int i = 0; i < 5; i++) {

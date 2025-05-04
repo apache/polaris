@@ -31,8 +31,8 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
 /**
@@ -276,7 +276,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @return the list of entities for the specified list operation
    */
   @Nonnull
-  PolarisPage<EntityNameLookupRecord> listEntities(
+  Page<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -296,7 +296,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  PolarisPage<EntityNameLookupRecord> listEntities(
+  Page<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -319,7 +319,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  <T> PolarisPage<T> listEntities(
+  <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

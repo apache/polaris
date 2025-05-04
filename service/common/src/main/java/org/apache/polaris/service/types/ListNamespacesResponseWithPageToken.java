@@ -24,8 +24,8 @@ import com.google.common.base.Preconditions;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 
 /**
  * Used in lieu of {@link ListNamespacesResponse} when there may be a {@link PageToken} associated
@@ -43,9 +43,8 @@ public class ListNamespacesResponseWithPageToken extends ListNamespacesResponse 
     Preconditions.checkArgument(this.namespaces != null, "Invalid namespace: null");
   }
 
-  public static ListNamespacesResponseWithPageToken fromPolarisPage(
-      PolarisPage<Namespace> polarisPage) {
-    return new ListNamespacesResponseWithPageToken(polarisPage.pageToken, polarisPage.data);
+  public static ListNamespacesResponseWithPageToken fromPolarisPage(Page<Namespace> page) {
+    return new ListNamespacesResponseWithPageToken(page.pageToken, page.items);
   }
 
   @JsonProperty("next-page-token")

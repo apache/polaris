@@ -21,22 +21,20 @@ package org.apache.polaris.core.persistence.pagination;
 import java.util.List;
 
 /**
- * A wrapper for a {@link List} of data and a {@link PageToken} that can be used to continue the
- * listing operation that generated that data.
+ * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
+ * continue the listing operation that generated the `items`.
  */
-public class PolarisPage<T> {
+public class Page<T> {
   public final PageToken pageToken;
-  public final List<T> data;
+  public final List<T> items;
 
-  public PolarisPage(PageToken pageToken, List<T> data) {
+  public Page(PageToken pageToken, List<T> items) {
     this.pageToken = pageToken;
-    this.data = data;
+    this.items = items;
   }
 
-  /**
-   * Used to wrap a {@link List<T>} of data into a {@link PolarisPage<T>} when there is no more data
-   */
-  public static <T> PolarisPage<T> fromData(List<T> data) {
-    return new PolarisPage<>(PageToken.DONE, data);
+  /** Used to wrap a {@link List<T>} of data into a {@link Page <T>} when there is no more data */
+  public static <T> Page<T> fromData(List<T> data) {
+    return new Page<>(PageToken.END, data);
   }
 }

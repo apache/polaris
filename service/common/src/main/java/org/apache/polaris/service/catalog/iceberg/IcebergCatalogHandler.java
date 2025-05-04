@@ -90,8 +90,8 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -181,8 +181,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           polarisCatalog.listNamespaces(parent, pageToken));
     } else {
       return ListNamespacesResponseWithPageToken.fromPolarisPage(
-          PolarisPage.fromData(
-              CatalogHandlers.listNamespaces(namespaceCatalog, parent).namespaces()));
+          Page.fromData(CatalogHandlers.listNamespaces(namespaceCatalog, parent).namespaces()));
     }
   }
 
@@ -330,7 +329,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           polarisCatalog.listTables(namespace, pageToken));
     } else {
       return ListTablesResponseWithPageToken.fromPolarisPage(
-          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
+          Page.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }
 
@@ -979,7 +978,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           polarisCatalog.listViews(namespace, pageToken));
     } else {
       return ListTablesResponseWithPageToken.fromPolarisPage(
-          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
+          Page.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }
 

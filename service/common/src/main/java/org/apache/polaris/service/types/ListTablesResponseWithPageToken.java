@@ -24,8 +24,8 @@ import com.google.common.base.Preconditions;
 import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 
 /**
  * Used in lieu of {@link ListTablesResponse} when there may be a {@link PageToken} associated with
@@ -43,9 +43,8 @@ public class ListTablesResponseWithPageToken extends ListTablesResponse {
     Preconditions.checkArgument(this.identifiers != null, "Invalid identifier list: null");
   }
 
-  public static ListTablesResponseWithPageToken fromPolarisPage(
-      PolarisPage<TableIdentifier> polarisPage) {
-    return new ListTablesResponseWithPageToken(polarisPage.pageToken, polarisPage.data);
+  public static ListTablesResponseWithPageToken fromPolarisPage(Page<TableIdentifier> page) {
+    return new ListTablesResponseWithPageToken(page.pageToken, page.items);
   }
 
   @JsonProperty("next-page-token")

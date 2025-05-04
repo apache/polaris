@@ -64,8 +64,8 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -677,7 +677,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // return list of active entities
-    PolarisPage<EntityNameLookupRecord> resultPage =
+    Page<EntityNameLookupRecord> resultPage =
         ms.listEntitiesInCurrentTxn(
             callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType, pageToken);
 
@@ -685,7 +685,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
       resultPage =
           pageToken.buildNextPage(
-              resultPage.data.stream()
+              resultPage.items.stream()
                   .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
                   .collect(Collectors.toList()));
     }
@@ -1352,7 +1352,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   entity -> true,
                   Function.identity(),
                   ms.pageTokenBuilder().fromLimit(2))
-              .data;
+              .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1902,7 +1902,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       PageToken pageToken) {
 
     // find all available tasks
-    PolarisPage<PolarisBaseEntity> availableTasks =
+    Page<PolarisBaseEntity> availableTasks =
         ms.listEntitiesInCurrentTxn(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
@@ -1926,7 +1926,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             pageToken);
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
-    availableTasks.data.forEach(
+    availableTasks.items.forEach(
         task -> {
           // Make a copy to avoid mutating someone else's reference.
           // TODO: Refactor into immutable/Builder pattern.
@@ -1957,7 +1957,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 result.getReturnStatus(), result.getExtraInformation());
           }
         });
-    return EntitiesResult.fromPolarisPage(PolarisPage.fromData(loadedTasks));
+    return EntitiesResult.fromPolarisPage(Page.fromData(loadedTasks));
   }
 
   @Override

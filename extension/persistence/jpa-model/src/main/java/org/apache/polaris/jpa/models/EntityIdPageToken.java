@@ -87,7 +87,7 @@ public class EntityIdPageToken extends PageToken {
   @Override
   public PageToken updated(List<?> newData) {
     if (newData == null || newData.size() < this.pageSize) {
-      return DONE;
+      return END;
     } else {
       var head = newData.getFirst();
       if (head instanceof ModelEntity) {
