@@ -49,6 +49,8 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
@@ -322,8 +324,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     String query = generateSelectQueryWithEntityIds(realmId, entityIds);
     try {
-      return datasourceOperations.executeSelect(
-          query, new ModelEntity(), ModelEntity::toEntity);
+      return datasourceOperations.executeSelect(query, new ModelEntity(), ModelEntity::toEntity);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -354,49 +355,51 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public List<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        Integer.MAX_VALUE,
-        entity -> true,
-        EntityNameLookupRecord::new);
-  }
-
-  @Nonnull
-  @Override
-  public List<EntityNameLookupRecord> listEntities(
+  public Page<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
     return listEntities(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
-        entityFilter,
-        EntityNameLookupRecord::new);
+        entity -> true,
+        EntityNameLookupRecord::new,
+        pageToken);
   }
 
   @Nonnull
   @Override
-  public <T> List<T> listEntities(
+  public Page<EntityNameLookupRecord> listEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
+    return listEntities(
+        callCtx,
+        catalogId,
+        parentId,
+        entityType,
+        entityFilter,
+        EntityNameLookupRecord::new,
+        pageToken);
+  }
+
+  @Nonnull
+  @Override
+  public <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -420,12 +423,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             stream
                 .map(ModelEntity::toEntity)
                 .filter(entityFilter)
-                .limit(limit)
+                .limit(pageToken.pageSize)
                 .forEach(results::add);
           });
-      return results == null
-          ? Collections.emptyList()
-          : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
+      List<T> resultsOrEmpty =
+          results == null
+              ? Collections.emptyList()
+              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
+      return Page.fromData(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -557,6 +562,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
           e);
     }
+  }
+
+  @Nonnull
+  @Override
+  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
+    return ReadEverythingPageToken.builder();
   }
 
   @Nullable

@@ -101,8 +101,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                 databaseOperations,
                 secretsGenerator(realmContext, rootCredentialsSet),
                 storageIntegrationProvider,
-                realmContext.getRealmIdentifier(),
-                diagServices));
+                realmContext.getRealmIdentifier()));
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);

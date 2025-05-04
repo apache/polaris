@@ -26,7 +26,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.function.Function;
 import javax.sql.DataSource;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.junit.jupiter.api.BeforeEach;

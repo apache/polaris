@@ -35,7 +35,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 
 public class DatasourceOperations {
