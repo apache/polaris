@@ -172,8 +172,8 @@ Finally, note that we include the `hadoop-aws` package here. If your table is us
 Replace the credentials used in the Docker container using the following code:
 
 ```shell
-USER_CLIENT_ID="XXXX"
-USER_CLIENT_SECRET="YYYY"
+export USER_CLIENT_ID="XXXX"
+export USER_CLIENT_SECRET="YYYY"
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
