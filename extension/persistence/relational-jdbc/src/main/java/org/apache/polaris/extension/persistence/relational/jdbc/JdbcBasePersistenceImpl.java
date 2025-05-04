@@ -323,7 +323,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     String query = generateSelectQueryWithEntityIds(realmId, entityIds);
     try {
       return datasourceOperations.executeSelect(
-          query, new ModelEntity(), ModelEntity::toEntity, ReadEverythingPageToken.get());
+          query, new ModelEntity(), ModelEntity::toEntity);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);

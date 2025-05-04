@@ -31,8 +31,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
@@ -91,13 +92,11 @@ public class DatasourceOperations {
   }
 
   /**
-   * Executes SELECT Query
+   * Executes SELECT Query and returns the results after applying a transformer
    *
    * @param query : Query to executed
-   * @param entityClass : Class of the entity being selected
+   * @param converterInstance : Class of the entity being selected
    * @param transformer : Transformation of entity class to Result class
-   * @param entityFilter : Client-side filter to applied on the Result class
-   * @param pageToken : Page token to be enforced.
    * @return List of Result class objects
    * @param <T> : Entity class
    * @param <R> : Result class
@@ -105,27 +104,43 @@ public class DatasourceOperations {
    */
   public <T, R> List<R> executeSelect(
       @Nonnull String query,
-      @Nonnull Class<T> entityClass,
-      @Nonnull Function<T, R> transformer,
-      Predicate<R> entityFilter,
-      PageToken pageToken)
+      @Nonnull Converter<T> converterInstance,
+      @Nonnull Function<T, R> transformer)
+      throws SQLException {
+    ArrayList<R> results = new ArrayList<>();
+    executeSelectOverStream(
+        query, converterInstance, stream -> stream.map(transformer).forEach(results::add));
+    return results;
+  }
+
+  /**
+   * Executes SELECT Query and takes a consumer over the results. For callers that want more
+   * sophisticated control over how query results are handled.
+   *
+   * @param query : Query to executed
+   * @param converterInstance : An entity of the type being selected
+   * @param consumer : An function to consume the returned results
+   * @param <T> : Entity class
+   * @throws SQLException : Exception during the query execution.
+   */
+  public <T> void executeSelectOverStream(
+      @Nonnull String query,
+      @Nonnull Converter<T> converterInstance,
+      @Nonnull Consumer<Stream<T>> consumer)
       throws SQLException {
     try (Connection connection = borrowConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(query)) {
-      List<R> resultList = new ArrayList<>(PageToken.DEFAULT_PAGE_SIZE);
-      while (resultSet.next() && resultList.size() < pageToken.pageSize) {
-        Converter<T> object =
-            (Converter<T>)
-                entityClass.getDeclaredConstructor().newInstance(); // Create a new instance
-        R entity = transformer.apply(object.fromResultSet(resultSet));
-        if (entityFilter == null || entityFilter.test(entity)) {
-          resultList.add(entity);
-        }
-      }
-      return resultList;
+      ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+      consumer.accept(iterator.toStream());
     } catch (SQLException e) {
       throw e;
+    } catch (RuntimeException e) {
+      if (e.getCause() instanceof SQLException) {
+        throw (SQLException) e.getCause();
+      } else {
+        throw e;
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

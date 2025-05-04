@@ -174,7 +174,7 @@ Replace the credentials used in the Docker container using the following code:
 ```shell
 USER_CLIENT_ID="XXXX"
 USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(.*spark\.sql\.catalog\.polaris\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
+sed -i "s/^\(.*spark\.sql\.catalog\.quickstart_catalog\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
@@ -189,7 +189,7 @@ docker attach $(docker ps -q --filter name=spark-sql)
 Once the Spark session starts, we can create a namespace and table within the catalog:
 
 ```sql
-USE polaris;
+USE quickstart_catalog;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema;
 USE NAMESPACE quickstart_namespace.schema;
@@ -303,5 +303,9 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 ## Next Steps
 * Visit [Configuring Polaris for Production]({{% relref "../configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
+* To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
+```shell
+docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml down
+```
 
 
