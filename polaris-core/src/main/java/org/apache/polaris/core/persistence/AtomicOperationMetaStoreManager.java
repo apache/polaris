@@ -1489,6 +1489,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
+    return loadTasks(callCtx, executorId, limit, false);
+  }
+
+  @Override
+  public @Nonnull EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit, boolean txnPerTask) {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
