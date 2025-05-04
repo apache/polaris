@@ -26,7 +26,7 @@ REST endpoints, and provides implementations for Apache Spark's
 [ViewCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
 
 Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13,
-and depends on iceberg-spark-runtime 1.8.1.
+and depends on iceberg-spark-runtime 1.9.0.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
