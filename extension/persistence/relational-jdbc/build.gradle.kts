@@ -24,7 +24,6 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  implementation(project(":polaris-jpa-model"))
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 

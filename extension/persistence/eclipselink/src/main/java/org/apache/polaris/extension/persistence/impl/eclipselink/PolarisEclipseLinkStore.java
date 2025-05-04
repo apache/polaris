@@ -425,22 +425,7 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    // TODO: combine existence check and write into one statement
-    ModelPolicyMappingRecord model =
-        lookupPolicyMappingRecord(
-            session,
-            mappingRecord.getTargetCatalogId(),
-            mappingRecord.getTargetId(),
-            mappingRecord.getPolicyTypeCode(),
-            mappingRecord.getPolicyCatalogId(),
-            mappingRecord.getPolicyId());
-    if (model != null) {
-      model.update(mappingRecord);
-    } else {
-      model = ModelPolicyMappingRecord.fromPolicyMappingRecord(mappingRecord);
-    }
-
-    session.persist(model);
+    session.persist(ModelPolicyMappingRecord.fromPolicyMappingRecord(mappingRecord));
   }
 
   void deleteFromPolicyMappingRecords(
