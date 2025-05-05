@@ -73,7 +73,7 @@ services:
       retries: 15
     command: [
       /opt/spark/bin/spark-sql,
-      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.0,software.amazon.awssdk:bundle:2.28.17,software.amazon.awssdk:url-connection-client:2.28.17,org.apache.iceberg:iceberg-gcp-bundle:1.7.0,org.apache.iceberg:iceberg-azure-bundle:1.7.0",
+      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,software.amazon.awssdk:bundle:2.28.17,software.amazon.awssdk:url-connection-client:2.28.17,org.apache.iceberg:iceberg-gcp-bundle:1.9.0,org.apache.iceberg:iceberg-azure-bundle:1.9.0",
       --conf, "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
       --conf, "spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog",
       --conf, "spark.sql.catalog.polaris.type=rest",

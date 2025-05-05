@@ -6,9 +6,9 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,13 +20,13 @@
 # Polaris Spark Plugin
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
-REST endpoints, and provides implementations for Apache Spark's 
-[TableCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java), 
-[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java), 
+REST endpoints, and provides implementations for Apache Spark's
+[TableCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java),
+[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java),
 [ViewCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
 
 Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13,
-and depends on iceberg-spark-runtime 1.8.1.
+and depends on iceberg-spark-runtime 1.9.0.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
@@ -87,7 +87,7 @@ bin/spark-shell \
 ```
 
 # Limitations
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table 
+The Polaris Spark client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table
 requests to the Iceberg REST endpoints, and routes all Delta table requests to the Generic Table REST endpoints.
 
 The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
