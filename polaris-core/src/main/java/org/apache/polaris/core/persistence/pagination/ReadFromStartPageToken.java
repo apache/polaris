@@ -16,73 +16,71 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
 
 /**
- * This is needed until real pagination is implemented just to capture
- * limit / page-size without any particular start position
- * TODO: Remove this type
+ * This is needed until real pagination is implemented just to capture limit / page-size without any
+ * particular start position TODO: Remove this type
  */
 public class ReadFromStartPageToken extends PageToken {
 
-    private final int pageSize;
+  private final int pageSize;
 
-    private ReadFromStartPageToken(int pageSize) {
-        this.pageSize = pageSize;
-    }
+  private ReadFromStartPageToken(int pageSize) {
+    this.pageSize = pageSize;
+  }
 
-    /** Get a new `ReadFromStartPageTokenBuilder` instance */
-    public static PageTokenBuilder<ReadFromStartPageToken> builder() {
-        return new ReadFromStartPageToken.ReadFromStartPageTokenBuilder();
+  /** Get a new `ReadFromStartPageTokenBuilder` instance */
+  public static PageTokenBuilder<ReadFromStartPageToken> builder() {
+    return new ReadFromStartPageToken.ReadFromStartPageTokenBuilder();
+  }
+
+  @Override
+  protected PageTokenBuilder<?> getBuilder() {
+    return ReadFromStartPageToken.builder();
+  }
+
+  @Override
+  protected List<String> getComponents() {
+    return List.of(String.valueOf(pageSize));
+  }
+
+  @Override
+  protected PageToken updated(List<?> newData) {
+    return new ReadFromStartPageToken(pageSize);
+  }
+
+  @Override
+  public PageToken withPageSize(Integer pageSize) {
+    return new ReadFromStartPageToken(pageSize);
+  }
+
+  /** A {@link PageTokenBuilder} implementation for {@link ReadFromStartPageToken} */
+  public static class ReadFromStartPageTokenBuilder
+      extends PageTokenBuilder<ReadFromStartPageToken> {
+
+    private ReadFromStartPageTokenBuilder() {}
+
+    @Override
+    public String tokenPrefix() {
+      return "polaris-read-from-start";
     }
 
     @Override
-    protected PageTokenBuilder<?> getBuilder() {
-        return ReadFromStartPageToken.builder();
+    public int expectedComponents() {
+      return 1;
     }
 
     @Override
-    protected List<String> getComponents() {
-        return List.of(String.valueOf(pageSize));
+    protected ReadFromStartPageToken fromStringComponents(List<String> components) {
+      return new ReadFromStartPageToken(Integer.parseInt(components.get(0)));
     }
 
     @Override
-    protected PageToken updated(List<?> newData) {
-        return new ReadFromStartPageToken(pageSize);
+    protected ReadFromStartPageToken fromLimitImpl(int limit) {
+      return new ReadFromStartPageToken(limit);
     }
-
-    @Override
-    public PageToken withPageSize(Integer pageSize) {
-        return new ReadFromStartPageToken(pageSize);
-    }
-
-    /** A {@link PageTokenBuilder} implementation for {@link ReadFromStartPageToken} */
-    public static class ReadFromStartPageTokenBuilder
-        extends PageTokenBuilder<ReadFromStartPageToken> {
-
-        private ReadFromStartPageTokenBuilder() {}
-
-        @Override
-        public String tokenPrefix() {
-            return "polaris-read-from-start";
-        }
-
-        @Override
-        public int expectedComponents() {
-            return 1;
-        }
-
-        @Override
-        protected ReadFromStartPageToken fromStringComponents(List<String> components) {
-            return new ReadFromStartPageToken(Integer.parseInt(components.get(0)));
-        }
-
-        @Override
-        protected ReadFromStartPageToken fromLimitImpl(int limit) {
-            return new ReadFromStartPageToken(limit);
-        }
-    }
+  }
 }

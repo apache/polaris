@@ -54,7 +54,6 @@ import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.persistence.pagination.ReadFromStartPageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
