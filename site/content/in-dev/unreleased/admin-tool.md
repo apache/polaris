@@ -79,6 +79,8 @@ used by the Polaris server.
 See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the
 database connection.
 
+Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
+
 ## Bootstrapping Realms and Principal Credentials
 
 The `bootstrap` command is used to bootstrap realms and create the necessary principal credentials

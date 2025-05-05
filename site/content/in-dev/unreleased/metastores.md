@@ -33,24 +33,22 @@ In order to add other JDBC drivers, you have to build Polaris using the `eclipse
 ## Polaris Server Configuration
 
 ### Relational JDBC
-Configure the `polaris.persistence` section in your Polaris configuration file
-(`application.properties`) as follows:
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+
 
 ```
-polaris.persistence.type=relational-jdbc
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-quarkus.datasource.db-kind=postgresql
-quarkus.datasource.username=<your username>
-quarkus.datasource.password=<your password>
-
-quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/<database_name>
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
 
-The relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only Postgres and H2—similar to EclipseLink. However, we only provide documentation for using it with Postgres. In future releases of Apache Polaris, we plan to extend support to additional RDBMS datasources such as MySQL and MariaDB. These are not currently supported due to differences in schema requirements and error handling conventions.
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
-
-Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ### EclipseLink
 > [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.

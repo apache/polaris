@@ -48,7 +48,7 @@ A Helm chart for Apache Polaris (incubating).
 
 ### Optional
 
-When using EclipseLink backed metastore a custom `persistence.xml`, a Kubernetes Secret must be created for it. Below is a sample command:
+When using EclipseLink backed metastore a custom `persistence.xml` is required, a Kubernetes Secret must be created for it. Below is a sample command:
 ```bash
 kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
 ```
