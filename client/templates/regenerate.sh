@@ -113,7 +113,7 @@ EXCLUDE_PATHS=(
   "./requirements.txt"
   "./test-requirements.txt"
   "./tox.ini"
-  "test/test_cli_parsing.py"
+  "./test/test_cli_parsing.py"
   "./cli/"
   "./polaris/__pycache__"
   "./polaris/catalog/__pycache__/"
