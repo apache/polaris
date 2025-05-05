@@ -1730,7 +1730,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .as("A table was read and written, but a trip to storage was made")
         .isEqualTo(0);
 
-    Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
+    Assertions.assertThat(catalog.dropTable(TestData.TABLE))
+        .as("Table deletion should succeed")
+        .isTrue();
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
