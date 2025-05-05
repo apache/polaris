@@ -49,8 +49,8 @@ dependencies {
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies, and an explicit dependency for the log4j library is
-    // enforced below to ensure the library compatibility.
+    // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
+    // enforced below to ensure the version compatibility
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.apache.logging.log4j", "log4j-core")
