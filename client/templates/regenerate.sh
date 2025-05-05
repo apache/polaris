@@ -24,10 +24,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd "$SCRIPT_DIR/.." > /dev/null
 TARGET_DIR="$SCRIPT_DIR/../python"
 
-
-ls "${TARGET_DIR}/.openapi-generator/"
-exit 1
-
 #############################
 #      Delete old Tests     #
 #############################
