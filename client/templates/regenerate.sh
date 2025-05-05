@@ -21,19 +21,18 @@
 set -e 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pushd "$SCRIPT_DIR/.." > /dev/null
-TARGET_DIR="$SCRIPT_DIR/../python"
+pushd "$SCRIPT_DIR/../python" > /dev/null
 
 #############################
 #      Delete old Tests     #
 #############################
 
-# List of test files to keep (from .../client)
+# List of test files to keep (from .../client/python)
 KEEP_TESTS=(
-  "python/test/test_cli_parsing.py"
+  "test/test_cli_parsing.py"
 )
 
-ls "${TARGET_DIR}/test" | while read -r file; do
+find "test" | while read -r file; do
 
   # Check if file should be excluded
   keep=false
@@ -48,7 +47,7 @@ ls "${TARGET_DIR}/test" | while read -r file; do
     continue
   else
     echo "${file}: removed"
-    rm ${file}
+    rm "${file}"
   fi
 done
 
@@ -105,12 +104,12 @@ prepend_header() {
   mv "$tmpfile" "$file"
 }
 
-# List of paths to exclude (from .../client)
+# List of paths to exclude (from .../client/python)
 EXCLUDE_PATHS=(
-  "python/.gitignore"
-  "python/.openapi-generator/"
-  "python/.openapi-generator-ignore"
-  "python/cli/"
+  ".gitignore"
+  ".openapi-generator/"
+  ".openapi-generator-ignore"
+  "cli/"
 )
 
 EXCLUDE_EXTENSIONS=(
@@ -118,7 +117,7 @@ EXCLUDE_EXTENSIONS=(
 )
 
 # Process all files in the target directory
-ls "${TARGET_DIR}" | while read -r file; do
+find . | while read -r file; do
   if [ -f "$file" ]; then
     # Extract the extension
     ext="${file##*.}"
@@ -177,7 +176,6 @@ for path in "${DELETE_PATHS[@]}"; do
 done
 
 echo "Deletion complete"
-
 
 echo "Regeneration complete"
 

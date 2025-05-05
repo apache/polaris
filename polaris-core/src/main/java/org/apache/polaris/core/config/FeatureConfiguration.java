@@ -202,7 +202,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
+  public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =f
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
           .description("If true, the generic-tables endpoints are enabled")
