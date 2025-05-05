@@ -37,7 +37,7 @@ KEEP_TESTS=(
   "python/test/test_cli_parsing.py"
 )
 
-git ls-files "${TARGET_DIR}/test" | while read -r file; do
+ls "${TARGET_DIR}/test" | while read -r file; do
 
   # Check if file should be excluded
   keep=false
@@ -122,7 +122,7 @@ EXCLUDE_EXTENSIONS=(
 )
 
 # Process all files in the target directory
-git ls-files "${TARGET_DIR}" | while read -r file; do
+ls "${TARGET_DIR}" | while read -r file; do
   if [ -f "$file" ]; then
     # Extract the extension
     ext="${file##*.}"
