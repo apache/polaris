@@ -26,8 +26,6 @@ import java.util.List;
  */
 public class ReadFromStartPageToken extends PageToken {
 
-  private final int pageSize;
-
   private ReadFromStartPageToken(int pageSize) {
     this.pageSize = pageSize;
   }
