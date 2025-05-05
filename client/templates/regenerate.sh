@@ -180,7 +180,7 @@ echo "License fix complete"
 
 
 DELETE_PATHS=(
-  "python/test/__init__.py"
+  "test/__init__.py"
 )
 
 for path in "${DELETE_PATHS[@]}"; do
