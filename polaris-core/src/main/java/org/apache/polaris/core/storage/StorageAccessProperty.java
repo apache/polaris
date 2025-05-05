@@ -18,8 +18,13 @@
  */
 package org.apache.polaris.core.storage;
 
-/** Enum of polaris supported credential properties */
-public enum PolarisCredentialProperty {
+/**
+ * A subset of Iceberg catalog properties recognized by Polaris.
+ *
+ * <p>Most of these properties are meant to configure Iceberg FileIO objects for accessing data in
+ * storage.
+ */
+public enum StorageAccessProperty {
   AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id"),
   AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret"),
   AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token"),
@@ -27,6 +32,9 @@ public enum PolarisCredentialProperty {
       String.class,
       "s3.session-token-expires-at-ms",
       "the time the aws session token expires, in milliseconds"),
+  AWS_ENDPOINT(String.class, "s3.endpoint", "the S3 endpoint to use for requests", false),
+  AWS_PATH_STYLE_ACCESS(
+      Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
 
@@ -50,19 +58,30 @@ public enum PolarisCredentialProperty {
   private final Class valueType;
   private final String propertyName;
   private final String description;
+  private final boolean isCredential;
 
   /*
   s3.access-key-id`: id for for credentials that provide access to the data in S3
            - `s3.secret-access-key`: secret for credentials that provide access to data in S3
            - `s3.session-token
    */
-  PolarisCredentialProperty(Class valueType, String propertyName, String description) {
+  StorageAccessProperty(Class valueType, String propertyName, String description) {
+    this(valueType, propertyName, description, true);
+  }
+
+  StorageAccessProperty(
+      Class valueType, String propertyName, String description, boolean isCredential) {
     this.valueType = valueType;
     this.propertyName = propertyName;
     this.description = description;
+    this.isCredential = isCredential;
   }
 
   public String getPropertyName() {
     return propertyName;
+  }
+
+  public boolean isCredential() {
+    return isCredential;
   }
 }
