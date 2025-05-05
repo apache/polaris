@@ -32,7 +32,7 @@ KEEP_TESTS=(
   "test/test_cli_parsing.py"
 )
 
-find "test" | while read -r file; do
+find "test" -type f | while read -r file; do
 
   # Check if file should be excluded
   keep=false
@@ -106,18 +106,30 @@ prepend_header() {
 
 # List of paths to exclude (from .../client/python)
 EXCLUDE_PATHS=(
-  ".gitignore"
-  ".openapi-generator/"
-  ".openapi-generator-ignore"
-  "cli/"
+  "./.gitignore"
+  "./.openapi-generator/"
+  "./.openapi-generator-ignore"
+  "./.pytest_cache"
+  "./requirements.txt"
+  "./test-requirements.txt"
+  "./tox.ini"
+  "./cli/"
+  "./polaris/__pycache__"
+  "./polaris/catalog/__pycache__/"
+  "./polaris/catalog/models/__pycache__/"
+  "./polaris/catalog/api/__pycache__/"
+  "./polaris/management/__pycache__/"
+  "./polaris/management/models/__pycache__/"
+  "./polaris/management/api/__pycache__/"
 )
 
 EXCLUDE_EXTENSIONS=(
   "json"
+  "iml"
 )
 
 # Process all files in the target directory
-find . | while read -r file; do
+find . -type f | while read -r file; do
   if [ -f "$file" ]; then
     # Extract the extension
     ext="${file##*.}"
