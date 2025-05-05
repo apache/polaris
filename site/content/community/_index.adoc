@@ -91,7 +91,7 @@ cascade:
 | https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Kent Yao | Mentor |
 | https://github.com/collado-mike[Michael Collado] | Committer | link:https://www.snowflake.com/[Snowflake]
-| https://gitbub.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
+| https://github.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/singhpk234[Prashant Singh] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/snazy[Robert Stupp] | PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
