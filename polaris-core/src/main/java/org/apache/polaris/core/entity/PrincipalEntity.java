@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.entity;
 
-import org.apache.polaris.core.admin.model.BasePrincipal;
-import org.apache.polaris.core.admin.model.FederatedPrincipal;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 
@@ -39,29 +37,17 @@ public class PrincipalEntity extends PolarisEntity {
   public static PrincipalEntity fromPrincipal(Principal principal) {
     return new Builder()
         .setName(principal.getName())
+        .setFederated(principal.getFederated())
         .setProperties(principal.getProperties())
         .setClientId(principal.getClientId())
         .build();
   }
 
-  public BasePrincipal asBasePrincipal() {
-    if (FederatedEntities.isFederated(this)) {
-      return new FederatedPrincipal(
-          true,
-          getName(),
-          getPropertiesAsMap(),
-          getCreateTimestamp(),
-          getLastUpdateTimestamp(),
-          getEntityVersion());
-    } else {
-      return asPrincipal();
-    }
-  }
-
   public Principal asPrincipal() {
     return new Principal(
-        getClientId(),
         getName(),
+        getClientId(),
+        FederatedEntities.isFederated(this),
         getPropertiesAsMap(),
         getCreateTimestamp(),
         getLastUpdateTimestamp(),
