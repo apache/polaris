@@ -41,6 +41,7 @@ import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+import org.apache.polaris.core.persistence.pagination.ReadFromStartPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -651,6 +652,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Nonnull
   @Override
   public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
-    return ReadEverythingPageToken.builder();
+    return ReadFromStartPageToken.builder();
   }
 }
