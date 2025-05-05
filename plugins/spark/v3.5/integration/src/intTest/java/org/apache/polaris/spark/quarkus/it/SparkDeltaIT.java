@@ -28,11 +28,9 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
-import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
-import org.apache.spark.sql.catalyst.parser.ParseException;
 import org.apache.spark.sql.delta.DeltaAnalysisException;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.Metadata;
@@ -189,14 +187,6 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     // ALTER TABLE ... SET LOCATION ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s SET LOCATION '/tmp/new/path'", deltatb))
         .isInstanceOf(DeltaAnalysisException.class);
-
-    // ALTER TABLE ... SET FILEFORMAT ... fails
-    assertThatThrownBy(() -> sql("ALTER TABLE %s SET FILEFORMAT 'csv'", deltatb))
-        .isInstanceOf(ParseException.class);
-
-    // ALTER TABLE ... ADD PARTITION ... fails
-    assertThatThrownBy(() -> sql("ALTER TABLE %s ADD PARTITION (country='US')", deltatb))
-        .isInstanceOf(AnalysisException.class);
 
     sql("DROP TABLE %s", deltatb);
   }

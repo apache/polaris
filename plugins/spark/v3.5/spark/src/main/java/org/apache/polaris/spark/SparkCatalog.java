@@ -154,7 +154,7 @@ public class SparkCatalog
     } else {
       if (PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)) {
         throw new UnsupportedOperationException(
-            "Table with spark managed location is currently not supported by Polaris. Please provide location or path to the table.");
+            "Create table without location key is not supported by Polaris. Please provide location or path on table creation.");
       }
 
       if (PolarisCatalogUtils.useDelta(provider)) {
