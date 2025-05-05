@@ -57,6 +57,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DETACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_CREATE;
@@ -342,7 +343,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         VIEW_LIST_GRANTS,
         List.of(VIEW_LIST_GRANTS, VIEW_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
 
-    // _MANAGE_GRANTS_ON_SECURABLE for CATALOG, NAMESPACE, TABLE, VIEW
+    // _MANAGE_GRANTS_ON_SECURABLE for CATALOG, NAMESPACE, TABLE, VIEW, POLICY
     SUPER_PRIVILEGES.putAll(
         CATALOG_MANAGE_GRANTS_ON_SECURABLE,
         List.of(CATALOG_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
@@ -355,6 +356,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         VIEW_MANAGE_GRANTS_ON_SECURABLE,
         List.of(VIEW_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
+    SUPER_PRIVILEGES.putAll(
+        POLICY_MANAGE_GRANTS_ON_SECURABLE,
+        List.of(POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
 
     // PRINCIPAL CRUDL
     SUPER_PRIVILEGES.putAll(

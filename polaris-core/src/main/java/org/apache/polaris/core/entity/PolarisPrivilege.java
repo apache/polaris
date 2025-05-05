@@ -150,6 +150,11 @@ public enum PolarisPrivilege {
   CATALOG_DETACH_POLICY(81, PolarisEntityType.CATALOG),
   NAMESPACE_DETACH_POLICY(82, PolarisEntityType.NAMESPACE),
   TABLE_DETACH_POLICY(83, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
+  POLICY_MANAGE_GRANTS_ON_SECURABLE(
+      84,
+      PolarisEntityType.POLICY,
+      PolarisEntitySubType.NULL_SUBTYPE,
+      PolarisEntityType.CATALOG_ROLE),
   ;
 
   /**

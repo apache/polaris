@@ -49,6 +49,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DETACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_READ;
 import static org.apache.polaris.core.entity.PolarisPrivilege.POLICY_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_CREATE;
@@ -208,7 +209,10 @@ public enum PolarisAuthorizableOperation {
   DETACH_POLICY_FROM_TABLE(POLICY_DETACH, TABLE_DETACH_POLICY),
   GET_APPLICABLE_POLICIES_ON_CATALOG(CATALOG_READ_PROPERTIES),
   GET_APPLICABLE_POLICIES_ON_NAMESPACE(NAMESPACE_READ_PROPERTIES),
-  GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES);
+  GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES),
+  ADD_POLICY_GRANT_TO_CATALOG_ROLE(POLICY_MANAGE_GRANTS_ON_SECURABLE),
+  REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE(
+      POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE);
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
   private final EnumSet<PolarisPrivilege> privilegesOnSecondary;
