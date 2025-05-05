@@ -103,7 +103,7 @@ public class InMemoryEntityCacheTest {
    * @return new cache for the entity store
    */
   InMemoryEntityCache allocateNewCache() {
-    return new InMemoryEntityCache(this.metaStoreManager);
+    return new InMemoryEntityCache(this.metaStoreManager, callCtx);
   }
 
   @Test

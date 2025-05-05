@@ -89,8 +89,8 @@ public class QuarkusProducers {
 
   @Produces
   @ApplicationScoped
-  public StorageCredentialCache storageCredentialCache() {
-    return new StorageCredentialCache();
+  public StorageCredentialCache storageCredentialCache(PolarisCallContext polarisCallContext) {
+    return new StorageCredentialCache(polarisCallContext);
   }
 
   @Produces
@@ -264,8 +264,10 @@ public class QuarkusProducers {
   @Produces
   @RequestScoped
   public PolarisEntityManager polarisEntityManager(
-      RealmContext realmContext, RealmEntityManagerFactory factory) {
-    return factory.getOrCreateEntityManager(realmContext);
+      RealmContext realmContext,
+      RealmEntityManagerFactory factory,
+      PolarisCallContext polarisCallContext) {
+    return factory.getOrCreateEntityManager(realmContext, polarisCallContext);
   }
 
   @Produces

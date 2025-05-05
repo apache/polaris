@@ -36,6 +36,7 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.caffeine)
   implementation(libs.commons.lang3)
   implementation(libs.commons.codec1)

@@ -666,7 +666,8 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 
-    CatalogEntity entity = CatalogEntity.fromCatalog(catalogRequest.getCatalog());
+    CatalogEntity entity =
+        CatalogEntity.fromCatalog(callContext.getPolarisCallContext(), catalogRequest.getCatalog());
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
@@ -843,7 +844,9 @@ public class PolarisAdminService {
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
-          updateRequest.getStorageConfigInfo(), defaultBaseLocation);
+          updateRequest.getStorageConfigInfo(),
+          defaultBaseLocation,
+          callContext.getPolarisCallContext());
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 

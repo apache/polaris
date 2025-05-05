@@ -50,6 +50,7 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
@@ -1732,7 +1733,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             new CatalogEntity.Builder()
                 .setName(externalCatalog)
                 .setDefaultBaseLocation(storageLocation)
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(
+                    storageConfigModel, storageLocation, callContext.getPolarisCallContext())
                 .setCatalogType("EXTERNAL")
                 .build()
                 .asCatalog()));
@@ -1800,7 +1802,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         new PolarisCallContextCatalogFactory(
             new RealmEntityManagerFactory(null) {
               @Override
-              public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
+              public PolarisEntityManager getOrCreateEntityManager(
+                  RealmContext realmContext, PolarisCallContext polarisCallContext) {
                 return entityManager;
               }
             },

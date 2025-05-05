@@ -79,7 +79,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     RealmContext realmContext = callContext.getRealmContext();
     PolarisEntityManager entityManager =
-        realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+        realmEntityManagerFactory.getOrCreateEntityManager(
+            realmContext, callContext.getPolarisCallContext());
     PolarisCredentialVendor credentialVendor =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 

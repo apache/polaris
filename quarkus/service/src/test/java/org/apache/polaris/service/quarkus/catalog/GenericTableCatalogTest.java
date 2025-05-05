@@ -172,8 +172,8 @@ public class GenericTableCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
-            new InMemoryEntityCache(metaStoreManager));
+            new StorageCredentialCache(polarisContext),
+            new InMemoryEntityCache(metaStoreManager, polarisContext));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -224,7 +224,8 @@ public class GenericTableCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        storageConfigModel, storageLocation, polarisContext)
                     .build()
                     .asCatalog()));
 
@@ -290,13 +291,15 @@ public class GenericTableCatalogTest {
       }
 
       @Override
-      public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+      public StorageCredentialCache getOrCreateStorageCredentialCache(
+          RealmContext realmContext, PolarisCallContext polarisCallContext) {
+        return new StorageCredentialCache(polarisCallContext);
       }
 
       @Override
-      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+      public InMemoryEntityCache getOrCreateEntityCache(
+          RealmContext realmContext, PolarisCallContext polaraisCallContext) {
+        return new InMemoryEntityCache(metaStoreManager, polaraisCallContext);
       }
 
       @Override

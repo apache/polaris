@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -80,7 +81,7 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public static CatalogEntity fromCatalog(Catalog catalog) {
+  public static CatalogEntity fromCatalog(PolarisCallContext callContext, Catalog catalog) {
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -90,7 +91,7 @@ public class CatalogEntity extends PolarisEntity {
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        catalog.getStorageConfigInfo(), getDefaultBaseLocation(catalog));
+        catalog.getStorageConfigInfo(), getDefaultBaseLocation(catalog), callContext);
     return builder.build();
   }
 
@@ -247,7 +248,9 @@ public class CatalogEntity extends PolarisEntity {
     }
 
     public Builder setStorageConfigurationInfo(
-        StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+        StorageConfigInfo storageConfigModel,
+        String defaultBaseLocation,
+        PolarisCallContext callContext) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -261,7 +264,7 @@ public class CatalogEntity extends PolarisEntity {
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(allowedLocations);
+        validateMaxAllowedLocations(allowedLocations, callContext);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -305,10 +308,13 @@ public class CatalogEntity extends PolarisEntity {
     }
 
     /** Validate the number of allowed locations not exceeding the max value. */
-    private void validateMaxAllowedLocations(Collection<String> allowedLocations) {
+    private void validateMaxAllowedLocations(
+        Collection<String> allowedLocations, PolarisCallContext callContext) {
       int maxAllowedLocations =
-          BehaviorChangeConfiguration.loadConfig(
-              BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+          callContext
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext, BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(

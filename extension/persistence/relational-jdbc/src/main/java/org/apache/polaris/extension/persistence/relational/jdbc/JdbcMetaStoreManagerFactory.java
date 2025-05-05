@@ -197,21 +197,23 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext) {
+      RealmContext realmContext, PolarisCallContext polarisCallContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(), new StorageCredentialCache(polarisCallContext));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
   }
 
   @Override
-  public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
+  public synchronized EntityCache getOrCreateEntityCache(
+      RealmContext realmContext, PolarisCallContext polarisCallContext) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
-          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager));
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(metaStoreManager, polarisCallContext));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

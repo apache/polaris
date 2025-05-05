@@ -1607,7 +1607,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     try {
       EnumMap<PolarisCredentialProperty, String> creds =
           storageIntegration.getSubscopedCreds(
-              callCtx.getDiagServices(),
+              callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
