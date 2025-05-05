@@ -32,7 +32,7 @@ In order to add other JDBC drivers, you have to build Polaris using the `eclipse
 
 ## Polaris Server Configuration
 
-#### Relational JDBC
+### Relational JDBC
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
 
@@ -46,7 +46,7 @@ quarkus.datasource.password=<your password>
 quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/<database_name>
 ```
 
-The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
+The relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only Postgres and H2—similar to EclipseLink. However, we only provide documentation for using it with Postgres. In future releases of Apache Polaris, we plan to extend support to additional RDBMS datasources such as MySQL and MariaDB. These are not currently supported due to differences in schema requirements and error handling conventions.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 

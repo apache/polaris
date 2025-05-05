@@ -135,24 +135,29 @@ default, Polaris uses an in-memory metastore.
 > The default in-memory metastore is not suitable for production use, as it will lose all data
 > when the server is restarted; it is also unusable when multiple Polaris replicas are used.
 
-To use a durable metastore, you need to switch to the Relational JDBC backed metastore 
+To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore.
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
-Configure the `polaris.persistence` section in your Polaris configuration file
-(`application.properties`) as follows:
+Configure the metastore by setting the following ENV variables:
 
 ```
-polaris.persistence.type=relational-jdbc
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-quarkus.datasource.db-kind=postgresql
-quarkus.datasource.username=<your username>
-quarkus.datasource.password=<your password>
-
-quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/<database_name>
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
+
 
 The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+
+> [!IMPORTANT]
+> Be sure to secure your metastore backend since it will be storing sensitive data and catalog
+> metadata.
 
 Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
