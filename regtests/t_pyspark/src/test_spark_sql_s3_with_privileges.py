@@ -1151,7 +1151,7 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
-def test_spark_credentials_s3_exceptions(root_client, snowflake_catalog, polaris_catalog_url,
+def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, snowflake_catalog, polaris_catalog_url,
                                                 snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
     """
     Create a using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
@@ -1187,12 +1187,14 @@ def test_spark_credentials_s3_exceptions(root_client, snowflake_catalog, polaris
                       aws_secret_access_key=response.config['s3.secret-access-key'],
                       aws_session_token=response.config['s3.session-token'])
 
+    # Get metadata files
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) > 0
 
+    # Verify metadata content
     metadata_file = next(f for f in objects['Contents'] if f['Key'].endswith('metadata.json'))
     assert metadata_file is not None
 
@@ -1200,6 +1202,7 @@ def test_spark_credentials_s3_exceptions(root_client, snowflake_catalog, polaris
     assert metadata_contents is not None
     assert metadata_contents['ContentLength'] > 0
 
+    # Delete metadata files
     s3.delete_objects(Bucket=test_bucket,
                       Delete={'Objects': objects})
 
