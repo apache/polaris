@@ -21,7 +21,12 @@ Title: Using Polaris
 type: docs
 weight: 400
 ---
-
+## Before start
+Put your `CLIENT_ID` & `CLIENT_SECRET` in .env file for later use.
+```env
+CLIENT_ID=YOUR_CLIENT_ID
+CLIENT_SECRET=YOUR_CLIENT_SECRET
+```
 ## Defining a Catalog
 
 In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
@@ -79,11 +84,13 @@ With a catalog created, we can create a [principal]({{% relref "../entities#prin
 
 Be sure to provide the necessary credentials, hostname, and port as before.
 
-When the `principals create` command completes successfully, it will return the credentials for this new principal. Be sure to note these down for later. For example:
+When the `principals create` command completes successfully, it will return the credentials for this new principal. Add the credentials in .env for later. For example:
 
 ```
 ./polaris ... principals create example
 {"clientId": "XXXX", "clientSecret": "YYYY"}
+echo "USER_CLIENT_ID="XXXX"                                                
+USER_CLIENT_SECRET="YYYY"" >> .env
 ```
 
 Now, we grant the principal the [principal role]({{% relref "../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
@@ -146,6 +153,10 @@ This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-relea
 _Note: the credentials provided here are those for our principal, not the root credentials._
 
 ```shell
+cd polaris
+set -a
+source .env
+cd spark
 bin/spark-sql \
 --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
@@ -154,26 +165,22 @@ bin/spark-sql \
 --conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \
 --conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
---conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \
+--conf spark.sql.catalog.quickstart_catalog.credential='${USER_CLIENT_ID}:${USER_CLIENT_SECRET}' \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
 
-Replace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.
-
 Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
 Finally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
 #### Using Spark SQL from a Docker container
-
-Replace the credentials used in the Docker container using the following code:
-
+Source the .env file before using docker compose.
 ```shell
-export USER_CLIENT_ID="XXXX"
-export USER_CLIENT_SECRET="YYYY"
+set -a
+source .env
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
@@ -235,9 +242,8 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 Replace the credentials used in the Docker container using the following code:
 
 ```shell
-USER_CLIENT_ID="XXXX"
-USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(iceberg\.rest-catalog\.oauth2\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}/" getting-started/eclipselink/trino-config/catalog/iceberg.properties
+set -a
+source .env
 docker compose -f getting-started/eclipselink/docker-compose.yml down trino
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```

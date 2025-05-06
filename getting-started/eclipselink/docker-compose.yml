@@ -36,6 +36,7 @@ services:
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${CLIENT_ID},${CLIENT_SECRET}
     volumes:
       - ../assets/eclipselink/:/deployments/config/eclipselink
     healthcheck:
@@ -54,6 +55,8 @@ services:
       - STORAGE_LOCATION=${STORAGE_LOCATION}
       - AWS_ROLE_ARN=${AWS_ROLE_ARN}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
@@ -91,6 +94,7 @@ services:
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
+    env_file: ../../.env
     stdin_open: true
     tty: true
     ports:
