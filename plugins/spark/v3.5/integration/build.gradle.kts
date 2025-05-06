@@ -49,12 +49,19 @@ dependencies {
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies
+    // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
+    // enforced below to ensure the version compatibility
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-api")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.apache.logging.log4j", "log4j-core")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+  // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
+  // of spark-sql dependency
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.24.3")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
+
+  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.core:jackson-annotations")

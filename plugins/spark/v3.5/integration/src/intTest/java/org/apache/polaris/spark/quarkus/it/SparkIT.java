@@ -22,8 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
+import org.apache.commons.io.FileUtils;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkIT extends SparkIntegrationBase {
@@ -64,7 +69,7 @@ public class SparkIT extends SparkIntegrationBase {
 
   @Test
   public void testCreatDropView() {
-    String namespace = "ns";
+    String namespace = generateName("ns");
     // create namespace ns
     sql("CREATE NAMESPACE %s", namespace);
     sql("USE %s", namespace);
@@ -88,23 +93,112 @@ public class SparkIT extends SparkIntegrationBase {
     sql("DROP VIEW %s", view2Name);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(0);
+
+    sql("DROP NAMESPACE %s", namespace);
   }
 
   @Test
-  public void renameView() {
-    sql("CREATE NAMESPACE ns");
-    sql("USE ns");
+  public void renameIcebergViewAndTable() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
 
+    // create one view and one table
     String viewName = "originalView";
-    String renamedView = "renamedView";
     sql("CREATE VIEW %s AS SELECT 1 AS id", viewName);
+
+    String icebergTable = "iceberg_table";
+    sql("CREATE TABLE %s (col1 int, col2 string)", icebergTable);
+
+    // verify view and table is showing correctly
     List<Object[]> views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {"ns", viewName, false});
+    assertThat(views).contains(new Object[] {namespace, viewName, false});
 
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(1);
+    assertThat(tables).contains(new Object[] {namespace, icebergTable, false});
+
+    // rename the view
+    String renamedView = "renamedView";
     sql("ALTER VIEW %s RENAME TO %s", viewName, renamedView);
     views = sql("SHOW VIEWS");
     assertThat(views.size()).isEqualTo(1);
-    assertThat(views).contains(new Object[] {"ns", renamedView, false});
+    assertThat(views).contains(new Object[] {namespace, renamedView, false});
+
+    // rename the table
+    String newIcebergTable = "iceberg_table_new";
+    sql("ALTER TABLE %s RENAME TO %s", icebergTable, newIcebergTable);
+    tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(1);
+    assertThat(tables).contains(new Object[] {namespace, newIcebergTable, false});
+
+    // clean up the resources
+    sql("DROP VIEW %s", renamedView);
+    sql("DROP TABLE %s", newIcebergTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
+  public void testMixedTableAndViews(@TempDir Path tempDir) {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    // create one iceberg table, iceberg view and one delta table
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (col1 int, col2 String)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b')", icebergTable);
+
+    String viewName = "icebergview";
+    sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
+
+    String deltaTable = "deltatb";
+    String deltaDir =
+        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(namespace).getPath();
+    sql(
+        "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
+        deltaTable, deltaDir, deltaTable);
+    sql("INSERT INTO %s VALUES (1, 3), (2, 5), (11, 20)", deltaTable);
+    // join the iceberg and delta table
+    List<Object[]> joinResult =
+        sql(
+            "SELECT icebergtb.col1 as id, icebergtb.col2 as str_col, deltatb.col2 as int_col from icebergtb inner join deltatb on icebergtb.col1 = deltatb.col1 order by id");
+    assertThat(joinResult.get(0)).isEqualTo(new Object[] {1, "a", 3});
+    assertThat(joinResult.get(1)).isEqualTo(new Object[] {2, "b", 5});
+
+    // show tables shows all tables
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(2);
+    assertThat(tables)
+        .contains(
+            new Object[] {namespace, icebergTable, false},
+            new Object[] {namespace, deltaTable, false});
+
+    // verify the table and view content
+    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {1, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {2, "b"});
+
+    // verify the table and view content
+    results = sql("SELECT * FROM %s ORDER BY col1", viewName);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {3, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {4, "b"});
+
+    List<Object[]> views = sql("SHOW VIEWS");
+    assertThat(views.size()).isEqualTo(1);
+    assertThat(views).contains(new Object[] {namespace, viewName, false});
+
+    // drop views and tables
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP TABLE %s", deltaTable);
+    sql("DROP VIEW %s", viewName);
+    sql("DROP NAMESPACE %s", namespace);
+
+    // clean up delta directory
+    File dirToDelete = new File(deltaDir);
+    FileUtils.deleteQuietly(dirToDelete);
   }
 }
