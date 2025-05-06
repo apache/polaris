@@ -240,6 +240,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
           .description("The list of supported catalog connection types for federation")
-          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name(), ConnectionType.HADOOP.name()))
+          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
           .buildFeatureConfiguration();
 }
