@@ -21,11 +21,11 @@ Title: Using Polaris
 type: docs
 weight: 400
 ---
-## Before start
-Put your `CLIENT_ID` & `CLIENT_SECRET` in .env file for later use.
-```env
-CLIENT_ID=YOUR_CLIENT_ID
-CLIENT_SECRET=YOUR_CLIENT_SECRET
+## Setup
+Define your `CLIENT_ID` & `CLIENT_SECRET` and put them in .env file for later use.
+```shell
+echo "CLIENT_ID=YOUR_CLIENT_ID" >> .env
+echo "CLIENT_SECRET=YOUR_CLIENT_SECRET" >> .env
 ```
 ## Defining a Catalog
 
@@ -89,8 +89,8 @@ When the `principals create` command completes successfully, it will return the 
 ```
 ./polaris ... principals create example
 {"clientId": "XXXX", "clientSecret": "YYYY"}
-echo "USER_CLIENT_ID="XXXX"                                                
-USER_CLIENT_SECRET="YYYY"" >> .env
+echo "USER_CLIENT_ID=XXXX" >> .env
+echo "USER_CLIENT_SECRET=YYYY" >> .env
 ```
 
 Now, we grant the principal the [principal role]({{% relref "../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
