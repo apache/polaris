@@ -47,7 +47,7 @@ public class QueryGeneratorTest {
     whereClause.put("entity_version", 1);
     String expectedQuery =
         "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND name = 'testEntity'";
-    assertEquals(expectedQuery, QueryGenerator.generateSelectQuery(ModelEntity.class, whereClause));
+    assertEquals(expectedQuery, QueryGenerator.generateSelectQuery(new ModelEntity(), whereClause));
   }
 
   @Test
@@ -199,7 +199,7 @@ public class QueryGeneratorTest {
     Map<String, Object> emptyWhereClause = Collections.emptyMap();
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateSelectQuery(ModelEntity.class, " WHERE name = 'testEntity'"));
+        QueryGenerator.generateSelectQuery(new ModelEntity(), " WHERE name = 'testEntity'"));
   }
 
   @Test

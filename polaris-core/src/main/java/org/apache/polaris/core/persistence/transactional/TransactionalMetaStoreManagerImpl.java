@@ -67,9 +67,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2035,7 +2035,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
-      EnumMap<PolarisCredentialProperty, String> creds =
+      EnumMap<StorageAccessProperty, String> creds =
           storageIntegration.getSubscopedCreds(
               callCtx.getDiagServices(),
               storageConfigurationInfo,

@@ -167,9 +167,11 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   minimize {
     exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
     exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
+    exclude(dependency("org.apache.avro:avro*.*"))
   }
 
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+  relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }

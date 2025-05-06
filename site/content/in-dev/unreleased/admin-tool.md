@@ -74,17 +74,12 @@ The Polaris Admin Tool must be executed with the same configuration as the Polar
 configuration can be done via environment variables or system properties.
 
 At a minimum, it is necessary to configure the Polaris Admin Tool to connect to the same database
-used by the Polaris server. This can be done by setting the following system properties:
-
-```shell
-java \
-    -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
-    -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-    -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar
-```
+used by the Polaris server.
 
 See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the
 database connection.
+
+Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ## Bootstrapping Realms and Principal Credentials
 

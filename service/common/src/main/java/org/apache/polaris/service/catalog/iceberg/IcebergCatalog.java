@@ -113,6 +113,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -863,7 +864,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public Map<String, String> getCredentialConfig(
+  public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions) {
@@ -873,9 +874,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return Map.of();
+      return AccessConfig.builder().build();
     }
-    return FileIOUtil.refreshCredentials(
+    return FileIOUtil.refreshAccessConfig(
         callContext,
         entityManager,
         getCredentialVendor(),

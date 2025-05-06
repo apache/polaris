@@ -63,7 +63,10 @@ public class PostgresTestResourceLifecycleManager
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
     return Map.of(
-        "polaris.persistence.eclipselink.configuration-file", createPersistenceXml().toString());
+        "polaris.persistence.type",
+        "eclipse-link",
+        "polaris.persistence.eclipselink.configuration-file",
+        createPersistenceXml().toString());
   }
 
   @Override

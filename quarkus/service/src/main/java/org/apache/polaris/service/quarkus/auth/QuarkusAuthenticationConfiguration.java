@@ -19,44 +19,19 @@
 package org.apache.polaris.service.quarkus.auth;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefaults;
+import io.smallrye.config.WithParentName;
+import io.smallrye.config.WithUnnamedKey;
+import java.util.Map;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 
 @ConfigMapping(prefix = "polaris.authentication")
-public interface QuarkusAuthenticationConfiguration extends AuthenticationConfiguration {
+public interface QuarkusAuthenticationConfiguration
+    extends AuthenticationConfiguration<QuarkusAuthenticationRealmConfiguration> {
 
+  @WithParentName
+  @WithUnnamedKey(DEFAULT_REALM_KEY)
+  @WithDefaults
   @Override
-  QuarkusAuthenticatorConfiguration authenticator();
-
-  @Override
-  QuarkusTokenServiceConfiguration tokenService();
-
-  @Override
-  QuarkusTokenBrokerConfiguration tokenBroker();
-
-  interface QuarkusAuthenticatorConfiguration extends AuthenticatorConfiguration {
-
-    /**
-     * The type of the authenticator. Must be a registered {@link
-     * org.apache.polaris.service.auth.Authenticator} identifier.
-     */
-    String type();
-  }
-
-  interface QuarkusTokenServiceConfiguration extends TokenServiceConfiguration {
-
-    /**
-     * The type of the OAuth2 service. Must be a registered {@link
-     * org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService} identifier.
-     */
-    String type();
-  }
-
-  interface QuarkusTokenBrokerConfiguration extends TokenBrokerConfiguration {
-
-    /**
-     * The type of the token broker factory. Must be a registered {@link
-     * org.apache.polaris.service.auth.TokenBrokerFactory} identifier.
-     */
-    String type();
-  }
+  Map<String, QuarkusAuthenticationRealmConfiguration> realms();
 }

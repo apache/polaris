@@ -147,7 +147,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-sql \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
@@ -174,7 +174,7 @@ Replace the credentials used in the Docker container using the following code:
 ```shell
 USER_CLIENT_ID="XXXX"
 USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(.*spark\.sql\.catalog\.polaris\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
+sed -i "s/^\(.*spark\.sql\.catalog\.quickstart_catalog\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
@@ -189,7 +189,7 @@ docker attach $(docker ps -q --filter name=spark-sql)
 Once the Spark session starts, we can create a namespace and table within the catalog:
 
 ```sql
-USE polaris;
+USE quickstart_catalog;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema;
 USE NAMESPACE quickstart_namespace.schema;

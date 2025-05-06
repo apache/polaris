@@ -96,7 +96,7 @@ internal fun configureOnRootProject(project: Project) =
 
       doFirst {
         val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        val asfName = e.asfProjectName.get()
+        val asfName = e.asfProjectId.get()
 
         val gitInfo = MemoizedGitInfo.gitInfo(rootProject)
         val gitCommitId = gitInfo["Apache-Polaris-Build-Git-Head"]
@@ -132,7 +132,8 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val asfProjectName = "Apache Polaris"
+        val asfProjectName =
+          e.overrideName.orElse(project.provider { "Apache ${fetchAsfProjectName(asfName)}" }).get()
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 

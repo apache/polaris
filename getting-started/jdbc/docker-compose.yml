@@ -1,0 +1,99 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  polaris:
+    image: apache/polaris:postgres-latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Management port (metrics and health checks)
+      - "8182:8182"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    environment:
+      JAVA_DEBUG: "true"
+      JAVA_DEBUG_PORT: "*:5005"
+      polaris.persistence.type: relational-jdbc
+      quarkus.datasource.db-kind: pgsql
+      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/POLARIS
+      quarkus.datasource.username: postgres
+      quarkus.datasource.password: postgres
+      polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - STORAGE_LOCATION=${STORAGE_LOCATION}
+      - AWS_ROLE_ARN=${AWS_ROLE_ARN}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
+
+  spark-sql:
+    image: apache/spark:3.5.5-java17-python3
+    depends_on:
+      polaris-setup:
+        condition: service_completed_successfully
+    stdin_open: true
+    tty: true
+    ports:
+      - "4040-4045:4040-4045"
+    healthcheck:
+      test: "curl localhost:4040"
+      interval: 5s
+      retries: 15
+    command: [
+      /opt/spark/bin/spark-sql,
+      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,software.amazon.awssdk:bundle:2.28.17,software.amazon.awssdk:url-connection-client:2.28.17,org.apache.iceberg:iceberg-gcp-bundle:1.9.0,org.apache.iceberg:iceberg-azure-bundle:1.9.0",
+      --conf, "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+      --conf, "spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog",
+      --conf, "spark.sql.catalog.polaris.type=rest",
+      --conf, "spark.sql.catalog.polaris.warehouse=quickstart_catalog",
+      --conf, "spark.sql.catalog.polaris.uri=http://polaris:8181/api/catalog",
+      --conf, "spark.sql.catalog.polaris.credential=root:s3cr3t",
+      --conf, "spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL",
+      --conf, "spark.sql.defaultCatalog=polaris",
+      --conf, "spark.sql.catalogImplementation=in-memory",
+      --conf, "spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp"
+    ]
+
+  trino:
+    image: trinodb/trino:latest
+    depends_on:
+      polaris-setup:
+        condition: service_completed_successfully
+    stdin_open: true
+    tty: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../assets/trino-config/catalog:/etc/trino/catalog
