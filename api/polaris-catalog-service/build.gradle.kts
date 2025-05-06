@@ -96,7 +96,6 @@ openApiGenerate {
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
   configOptions.put("openApiNullable", "false")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "PolarisCatalog")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
