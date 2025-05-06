@@ -1272,7 +1272,6 @@ components:
     PolicyPrivilege:
       type: string
       enum:
-        - POLICY_CREATE
         - POLICY_READ
         - POLICY_DROP
         - POLICY_WRITE
@@ -1307,6 +1306,11 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
         - POLICY_FULL_METADATA
         - NAMESPACE_ATTACH_POLICY
         - NAMESPACE_DETACH_POLICY
@@ -1339,6 +1343,12 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
         - CATALOG_ATTACH_POLICY
         - CATALOG_DETACH_POLICY
 
