@@ -28,7 +28,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -225,24 +225,28 @@ public class DatasourceOperations {
     // maximum number of retries.
     int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
     // How long we should try, since the first attempt.
-    long maxDuration = relationalJdbcConfiguration.maxDurationInMs().orElse(100L);
+    long maxDuration = relationalJdbcConfiguration.maxDurationInMs().orElse(5000L);
     // How long to wait before first failure.
     long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
 
     // maximum time we will retry till.
-    long maxRetryTime = Instant.now().toEpochMilli() + maxDuration;
+    long maxRetryTime = Clock.systemUTC().millis() + maxDuration;
 
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
       } catch (SQLException e) {
         attempts++;
-        long timeLeft = Math.max((maxRetryTime - Instant.now().toEpochMilli()), 0L);
+        long timeLeft = Math.max((maxRetryTime - Clock.systemUTC().millis()), 0L);
         if (attempts >= maxAttempts || !isRetryable(e) || timeLeft == 0) {
-          throw e;
+          String exceptionMessage =
+              String.format(
+                  "Failed due to %s, after , %s attempts and %s milliseconds",
+                  e.getMessage(), attempts, maxDuration);
+          throw new SQLException(exceptionMessage, e.getSQLState(), e.getErrorCode());
         }
         // Add jitter
-        long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextDouble() * 0.2 * delay));
+        long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextFloat() * 0.2 * delay));
         LOGGER.debug("Retrying {} after {} attempts on {}", operation, attempts, e.getMessage(), e);
         try {
           Thread.sleep(timeToSleep);

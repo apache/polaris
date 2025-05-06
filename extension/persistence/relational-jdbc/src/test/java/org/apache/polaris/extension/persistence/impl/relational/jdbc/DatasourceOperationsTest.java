@@ -167,7 +167,9 @@ public class DatasourceOperationsTest {
 
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
-    assertEquals("Retryable error", thrown.getMessage());
+    assertEquals(
+        "Failed due to Retryable error, after , 2 attempts and 1000 milliseconds",
+        thrown.getMessage());
     verify(mockOperation, times(2)).execute(); // Tried twice, then threw
   }
 
@@ -196,7 +198,9 @@ public class DatasourceOperationsTest {
 
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
-    assertEquals("NonRetryable error", thrown.getMessage());
+    assertEquals(
+        "Failed due to NonRetryable error, after , 1 attempts and 1000 milliseconds",
+        thrown.getMessage());
     verify(mockOperation, times(1)).execute(); // Should not retry
   }
 
