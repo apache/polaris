@@ -57,8 +57,6 @@ openApiGenerate {
   additionalProperties.put("apiNameSuffix", "Api")
   additionalProperties.put("metricsPrefix", "polaris")
   serverVariables = mapOf("basePath" to "api/v1")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
-  openapiNormalizer.put("REF_AS_PARENT_IN_ALLOF", "true")
 }
 
 listOf("sourcesJar", "compileJava").forEach { task ->
