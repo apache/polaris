@@ -51,11 +51,15 @@ import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
+import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.PolicyPrivilege;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.TableGrant;
+import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -93,6 +97,7 @@ public class PolarisPolicyServiceIntegrationTest {
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
           .orElse("arn:aws:iam::123456789012:role/my-role");
 
+  private static final String CATALOG_ROLE_1 = "catalogrole1";
   private static final String CATALOG_ROLE_2 = "catalogrole2";
   private static final String EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT = "{\"enable\":true}";
   private static final Namespace NS1 = Namespace.of("NS1");
@@ -233,9 +238,9 @@ public class PolarisPolicyServiceIntegrationTest {
             extraPropertiesBuilder.build());
     CatalogGrant catalogGrant =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
-    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
-    managementApi.addGrant(currentCatalogName, "catalogrole1", catalogGrant);
-    CatalogRole catalogRole = managementApi.getCatalogRole(currentCatalogName, "catalogrole1");
+    managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_1);
+    managementApi.addGrant(currentCatalogName, CATALOG_ROLE_1, catalogGrant);
+    CatalogRole catalogRole = managementApi.getCatalogRole(currentCatalogName, CATALOG_ROLE_1);
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, currentCatalogName, catalogRole);
 
@@ -523,19 +528,19 @@ public class PolarisPolicyServiceIntegrationTest {
           .map(gr -> ((PolicyGrant) gr).getPrivilege())
           .containsExactlyInAnyOrder(PolicyPrivilege.values());
 
-      PolicyGrant policyCreateGrant =
+      PolicyGrant policyReadGrant =
           new PolicyGrant(
               Arrays.asList(NS1.levels()),
               NS1_P1.getName(),
-              PolicyPrivilege.POLICY_CREATE,
+              PolicyPrivilege.POLICY_READ,
               GrantResource.TypeEnum.POLICY);
-      managementApi.revokeGrant(currentCatalogName, CATALOG_ROLE_2, policyCreateGrant);
+      managementApi.revokeGrant(currentCatalogName, CATALOG_ROLE_2, policyReadGrant);
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
           .map(gr -> ((PolicyGrant) gr).getPrivilege())
-          .doesNotContain(PolicyPrivilege.POLICY_CREATE);
+          .doesNotContain(PolicyPrivilege.POLICY_READ);
     } finally {
       policyApi.purge(currentCatalogName, NS1);
     }
@@ -570,6 +575,98 @@ public class PolarisPolicyServiceIntegrationTest {
           });
     } finally {
       policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGrantsOnNamespace() {
+    restCatalog.createNamespace(NS1);
+    try {
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      List<NamespacePrivilege> policyPrivilegesOnNamespace =
+          List.of(
+              NamespacePrivilege.POLICY_LIST,
+              NamespacePrivilege.POLICY_CREATE,
+              NamespacePrivilege.POLICY_DROP,
+              NamespacePrivilege.POLICY_WRITE,
+              NamespacePrivilege.POLICY_READ,
+              NamespacePrivilege.POLICY_FULL_METADATA,
+              NamespacePrivilege.NAMESPACE_ATTACH_POLICY,
+              NamespacePrivilege.NAMESPACE_DETACH_POLICY);
+      Stream<NamespaceGrant> namespaceGrants =
+          policyPrivilegesOnNamespace.stream()
+              .map(
+                  p ->
+                      new NamespaceGrant(
+                          Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
+      namespaceGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((NamespaceGrant) gr).getPrivilege())
+          .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnNamespace);
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGrantsOnCatalog() {
+    managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+    List<CatalogPrivilege> policyPrivilegesOnCatalog =
+        List.of(
+            CatalogPrivilege.POLICY_LIST,
+            CatalogPrivilege.POLICY_CREATE,
+            CatalogPrivilege.POLICY_DROP,
+            CatalogPrivilege.POLICY_WRITE,
+            CatalogPrivilege.POLICY_READ,
+            CatalogPrivilege.POLICY_FULL_METADATA,
+            CatalogPrivilege.CATALOG_ATTACH_POLICY,
+            CatalogPrivilege.CATALOG_DETACH_POLICY);
+    Stream<CatalogGrant> catalogGrants =
+        policyPrivilegesOnCatalog.stream()
+            .map(p -> new CatalogGrant(p, GrantResource.TypeEnum.CATALOG));
+    catalogGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+    Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+        .extracting(GrantResources::getGrants)
+        .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+        .map(gr -> ((CatalogGrant) gr).getPrivilege())
+        .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnCatalog);
+  }
+
+  @Test
+  public void testGrantsOnTable() {
+    restCatalog.createNamespace(NS2);
+    try {
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      restCatalog
+          .buildTable(
+              NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
+          .create();
+
+      List<TablePrivilege> policyPrivilegesOnTable =
+          List.of(TablePrivilege.TABLE_ATTACH_POLICY, TablePrivilege.TABLE_DETACH_POLICY);
+
+      Stream<TableGrant> tableGrants =
+          policyPrivilegesOnTable.stream()
+              .map(
+                  p ->
+                      new TableGrant(
+                          Arrays.asList(NS2.levels()),
+                          NS2_T1.name(),
+                          p,
+                          GrantResource.TypeEnum.TABLE));
+      tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((TableGrant) gr).getPrivilege())
+          .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnTable);
+    } finally {
+      policyApi.purge(currentCatalogName, NS2);
     }
   }
 
