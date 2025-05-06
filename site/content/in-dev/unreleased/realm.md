@@ -36,7 +36,7 @@ A realm in Polaris serves as logical partitioning mechanism within the catalog s
 
 **Configuration Scope:** Realm identifiers are used in various configurations, such as connection strings feature configurations, etc.
 
-For example:
+An example of this is:
 
 `jdbc:postgresql://localhost:5432/{realm}
 `
