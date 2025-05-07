@@ -199,6 +199,8 @@ components:
           type: object
           additionalProperties:
             type: string
+        location:
+          type: string
 
     GenericTable:
       type: object
@@ -212,6 +214,8 @@ components:
         - `properties` properties for the generic table passed on creation
         
         - `doc` comment or description for the generic table
+        
+        - `location` location for the table
       required:
         - name
         - format
@@ -226,6 +230,8 @@ components:
           type: object
           additionalProperties:
             type: string
+        location:
+          type: string
 
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
