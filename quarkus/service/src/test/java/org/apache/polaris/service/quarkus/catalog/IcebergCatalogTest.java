@@ -19,7 +19,6 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doReturn;
@@ -101,10 +100,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -116,8 +115,15 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.AfterTableCommitedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.BeforeTableCommitedEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -166,17 +172,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
           "polaris.features.defaults.\"LIST_PAGINATION_ENABLED\"",
-          "true");
+          "true",
+          "polaris.event-listener.type",
+          "test");
     }
   }
 
-  protected static final Namespace NS = Namespace.of("newdb");
-  protected static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
-  protected static final Schema SCHEMA =
-      new Schema(
-          required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
-          required(4, "data", Types.StringType.get()));
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
+
   public static final String CATALOG_NAME = "polaris-catalog";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
@@ -200,6 +203,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisDiagnostics diagServices;
+  @Inject PolarisEventListener polarisEventListener;
 
   private IcebergCatalog catalog;
   private CallContext callContext;
@@ -212,6 +216,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private FileIOFactory fileIOFactory;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -321,6 +326,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
   }
 
   @AfterEach
@@ -356,7 +362,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
@@ -651,7 +658,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(TaskExecutor.class),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -771,9 +779,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified is outside of the table's base location
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableSuffix = UUID.randomUUID().toString();
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
@@ -822,15 +833,18 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assumptions.assumeTrue(
         supportsNotifications(), "Only applicable if notifications are supported");
 
+    final String tableSuffix = UUID.randomUUID().toString();
     // The location of the metadata JSON file specified is outside of the table's metadata directory
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v3.metadata.json";
 
     // this passes the first validation, since it's within the namespace subdirectory, but
     // the location is in another table's subdirectory
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
@@ -882,9 +896,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified is outside of the table's base location
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableSuffix = UUID.randomUUID().toString();
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
@@ -977,7 +994,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -1043,7 +1061,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1527,7 +1546,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    EnumMap<PolarisCredentialProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
                 polarisContext,
@@ -1541,9 +1560,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThat(credentials)
         .isNotNull()
         .isNotEmpty()
-        .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
-        .containsEntry(PolarisCredentialProperty.AWS_TOKEN, SESSION_TOKEN);
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
     MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
     FileIO fileIO =
         new TaskFileIOSupplier(
@@ -1594,7 +1613,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1702,7 +1722,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            measured);
+            measured,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1712,8 +1733,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .as("Nothing was created yet")
         .isEqualTo(0);
 
-    catalog.createNamespace(NS);
-    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    catalog.createNamespace(TestData.NAMESPACE);
+    Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
 
     // Asserting greaterThan 0 is sufficient for validating that the wrapper works without making
     // assumptions about the
@@ -1725,7 +1746,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .as("A table was read and written, but a trip to storage was made")
         .isEqualTo(0);
 
-    Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
+    Assertions.assertThat(catalog.dropTable(TestData.TABLE))
+        .as("Table deletion should succeed")
+        .isTrue();
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
@@ -1806,7 +1829,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(TaskExecutor.class),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1854,7 +1878,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(TaskExecutor.class),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1927,6 +1952,35 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     } finally {
       catalog.dropTable(TABLE, true);
     }
+  }
+
+  @Test
+  public void testEventsAreEmitted() {
+    IcebergCatalog catalog = catalog();
+    catalog.createNamespace(TestData.NAMESPACE);
+    Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
+
+    String key = "foo";
+    String valOld = "bar1";
+    String valNew = "bar2";
+    table.updateProperties().set(key, valOld).commit();
+    table.updateProperties().set(key, valNew).commit();
+
+    var beforeRefreshEvent = testPolarisEventListener.getLatest(BeforeTableRefreshedEvent.class);
+    Assertions.assertThat(beforeRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+
+    var afterRefreshEvent = testPolarisEventListener.getLatest(AfterTableRefreshedEvent.class);
+    Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+
+    var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
+    Assertions.assertThat(beforeTableEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+
+    var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
+    Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
 
   private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {

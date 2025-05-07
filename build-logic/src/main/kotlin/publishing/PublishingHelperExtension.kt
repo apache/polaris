@@ -36,13 +36,40 @@ abstract class PublishingHelperExtension
 @Inject
 constructor(objectFactory: ObjectFactory, project: Project) {
   // the following are only relevant on the root project
-  val asfProjectName = objectFactory.property<String>().convention(project.name)
+
+  /**
+   * Lowercase ASF project ID, as present in keys in the JSON docs describing the projects (for
+   * example in `https://whimsy.apache.org/public/public_ldap_projects.json`).
+   */
+  val asfProjectId = objectFactory.property<String>().convention(project.name)
+
+  /** Used to override the full project name, for example `Apache Polaris`. */
   val overrideName = objectFactory.property<String>()
+  /** Used to override the project description as it appears in published Maven poms. */
   val overrideDescription = objectFactory.property<String>()
+  /** Used to override the project URL as it appears in published Maven poms. */
+  val overrideProjectUrl = objectFactory.property<String>()
+  /**
+   * Used to override the name of the GitHub repo in the apache organization. Defaults to the
+   * project ID.
+   */
+  val githubRepositoryName = objectFactory.property<String>()
+  /**
+   * Used to override the project's SCM as it appears in published Maven poms. Default is derived
+   * from `githubRepoName`.
+   */
+  val overrideScm = objectFactory.property<String>()
+  /** Used to override the project's issue management URL as it appears in published Maven poms. */
+  val overrideIssueManagement = objectFactory.property<String>()
+  /** Prefix for the tag published for non-SNAPSHOT versions in the Maven poms. */
+  val overrideTagPrefix = objectFactory.property<String>()
+
+  /** The published distributables, including the source tarball, base file name. */
   val baseName =
     objectFactory
       .property<String>()
-      .convention(project.provider { "apache-${asfProjectName.get()}-${project.version}" })
+      .convention(project.provider { "apache-${asfProjectId.get()}-${project.version}" })
+
   val distributionDir =
     objectFactory.directoryProperty().convention(project.layout.buildDirectory.dir("distributions"))
   val sourceTarball =
@@ -50,6 +77,7 @@ constructor(objectFactory: ObjectFactory, project: Project) {
       .fileProperty()
       .convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz") })
 
+  /** List of mailing-lists. */
   val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
 
   fun distributionFile(ext: String): File =

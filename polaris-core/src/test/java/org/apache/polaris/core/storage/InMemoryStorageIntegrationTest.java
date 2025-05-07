@@ -207,7 +207,7 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+    public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
         @Nonnull PolarisDiagnostics diagnostics,
         @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,

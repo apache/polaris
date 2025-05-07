@@ -32,6 +32,27 @@ In order to add other JDBC drivers, you have to build Polaris using the `eclipse
 
 ## Polaris Server Configuration
 
+### Relational JDBC
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+
+
+```
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
+
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
+```
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+Please refer to the documentation here:
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+
+### EclipseLink
+> [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
 
@@ -58,7 +79,7 @@ Polaris creates and connects to a separate database for each realm. Specifically
 
 A single `persistence.xml` can describe multiple [persistence units](https://eclipse.dev/eclipselink/documentation/4.0/concepts/concepts.html#APPDEV001). For example, with both a `polaris-dev` and `polaris` persistence unit defined, you could use a single `persistence.xml` to easily switch between development and production databases. Use the `persistence-unit` option in the Polaris server configuration to easily switch between persistence units.
 
-### Using H2
+#### Using H2
 
 > [!IMPORTANT] H2 is an in-memory database and is not suitable for production!
 
@@ -101,7 +122,7 @@ java -Dpolaris.persistence.type=eclipse-link \
      -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
 
-### Using Postgres
+#### Using Postgres
 
 PostgreSQL is included by default in the Polaris server distribution.
 
@@ -130,3 +151,4 @@ The following shows a sample configuration for integrating Polaris with Postgres
   </properties>
 </persistence-unit>
 ```
+

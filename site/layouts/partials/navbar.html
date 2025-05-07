@@ -39,60 +39,58 @@ under the License.
       {{ $p := . -}}
       {{ $s := .Site -}}
       {{ range .Site.Menus.main -}}
-      {{ if .HasChildren }}
-      <!-- Menu items with children -->
-      <div class="dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          {{- .Pre -}}
-          <span>{{ .Name }}</span>
-        </a>
-        <ul class="dropdown-menu">
-          {{ $children := .Children.ByWeight -}}
-          {{ if eq .Identifier "releases" -}}
-            {{ with (partial "releasePages.html" (dict "site" $s)).active -}}
-              {{ range . -}}
-                <a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
-              {{- end -}}
-            {{ else -}}
-              {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
-            {{ end -}}
-          {{ end -}}
-          {{ range $children -}}
-          <a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a>
-          {{- end -}}
-        </ul>
-      </div>
-      {{ else -}}
-      <!-- Menu items without children -->
-      {{ $topHidden := false }}
-      {{ if .Page }}
-      {{ $topHidden = .Page.Params.top_hidden | default false }}
-      {{ else }}
-      {{ $topHidden = .Params.top_hidden | default false }}
-      {{ end }}
-      {{ if not $topHidden }}
-      <li class="nav-item">
-        {{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
-        {{ $href := "" -}}
-        {{ with .Page -}}
-          {{ $active = or $active ( $.IsDescendant .) -}}
-          {{ $href = .RelPermalink -}}
-        {{ else -}}
-          {{ $href = .URL | relLangURL -}}
-        {{ end -}}
-        {{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
-        <a {{/**/ -}}
-          class="nav-link {{- if $active }} active {{- end }}" {{/**/ -}}
-          href="{{ $href }}"
-          {{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}
-        >
-            {{- .Pre -}}
-            <span>{{ .Name }}</span>
-            {{- .Post -}}
-        </a>
-      </li>
-      {{ end -}}
-      {{ end -}}
+			<li class="nav-item">
+				{{ if .HasChildren }}
+				<!-- Menu items with children -->
+				<button class="btn btn-link nav-link dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+					{{- .Pre -}}
+					<span>{{ .Name }}</span>
+				</button>
+				<ul class="dropdown-menu">
+					{{ $children := .Children.ByWeight -}}
+					{{ if eq .Identifier "releases" -}}
+						{{ with (partial "releasePages.html" (dict "site" $s)).active -}}
+							{{ range . -}}
+								<a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
+							{{- end -}}
+						{{ else -}}
+							{{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
+						{{ end -}}
+					{{ end -}}
+					{{ range $children -}}
+					<li><a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a></li>
+					{{- end -}}
+				</ul>
+				{{ else -}}
+				<!-- Menu items without children -->
+				{{ $topHidden := false }}
+				{{ if .Page }}
+				{{ $topHidden = .Page.Params.top_hidden | default false }}
+				{{ else }}
+				{{ $topHidden = .Params.top_hidden | default false }}
+				{{ end }}
+				{{ if not $topHidden }}
+					{{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
+					{{ $href := "" -}}
+					{{ with .Page -}}
+						{{ $active = or $active ( $.IsDescendant .) -}}
+						{{ $href = .RelPermalink -}}
+					{{ else -}}
+						{{ $href = .URL | relLangURL -}}
+					{{ end -}}
+					{{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
+					<a {{/**/ -}}
+						class="nav-link {{- if $active }} active {{- end }}" {{/**/ -}}
+						href="{{ $href }}"
+						{{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}
+					>
+							{{- .Pre -}}
+							<span>{{ .Name }}</span>
+							{{- .Post -}}
+					</a>
+				{{ end -}}
+				{{ end -}}
+			</li>
       {{ end -}}
       <!-- Other navbar items -->
       {{ if .Site.Params.versions -}}
