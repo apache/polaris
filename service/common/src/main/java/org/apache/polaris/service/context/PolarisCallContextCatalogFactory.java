@@ -38,6 +38,7 @@ import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final FileIOFactory fileIOFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final UserSecretsManagerFactory userSecretsManagerFactory;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisCallContextCatalogFactory(
@@ -62,12 +64,14 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       MetaStoreManagerFactory metaStoreManagerFactory,
       UserSecretsManagerFactory userSecretsManagerFactory,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -95,7 +99,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
 
     context.contextVariables().put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, catalogInstance);
 
