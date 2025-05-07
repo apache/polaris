@@ -43,7 +43,7 @@ public class ListNamespacesResponseWithPageToken extends ListNamespacesResponse 
     Preconditions.checkArgument(this.namespaces != null, "Invalid namespace: null");
   }
 
-  public static ListNamespacesResponseWithPageToken fromPolarisPage(Page<Namespace> page) {
+  public static ListNamespacesResponseWithPageToken fromPage(Page<Namespace> page) {
     return new ListNamespacesResponseWithPageToken(page.pageToken, page.items);
   }
 

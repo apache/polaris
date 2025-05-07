@@ -35,7 +35,7 @@ public class EntitiesResult extends BaseResult {
   private final List<PolarisBaseEntity> entities;
   private final Optional<PageToken> pageTokenOpt;
 
-  public static EntitiesResult fromPolarisPage(Page<PolarisBaseEntity> page) {
+  public static EntitiesResult fromPage(Page<PolarisBaseEntity> page) {
     return new EntitiesResult(page.items, Optional.ofNullable(page.pageToken));
   }
 

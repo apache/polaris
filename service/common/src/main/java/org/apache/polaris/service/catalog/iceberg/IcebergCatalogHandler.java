@@ -178,10 +178,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListNamespacesResponseWithPageToken.fromPolarisPage(
+      return ListNamespacesResponseWithPageToken.fromPage(
           polarisCatalog.listNamespaces(parent, pageToken));
     } else {
-      return ListNamespacesResponseWithPageToken.fromPolarisPage(
+      return ListNamespacesResponseWithPageToken.fromPage(
           Page.fromData(CatalogHandlers.listNamespaces(namespaceCatalog, parent).namespaces()));
     }
   }
@@ -326,10 +326,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListTablesResponseWithPageToken.fromPolarisPage(
+      return ListTablesResponseWithPageToken.fromPage(
           polarisCatalog.listTables(namespace, pageToken));
     } else {
-      return ListTablesResponseWithPageToken.fromPolarisPage(
+      return ListTablesResponseWithPageToken.fromPage(
           Page.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }
@@ -977,10 +977,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListTablesResponseWithPageToken.fromPolarisPage(
+      return ListTablesResponseWithPageToken.fromPage(
           polarisCatalog.listViews(namespace, pageToken));
     } else {
-      return ListTablesResponseWithPageToken.fromPolarisPage(
+      return ListTablesResponseWithPageToken.fromPage(
           Page.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }

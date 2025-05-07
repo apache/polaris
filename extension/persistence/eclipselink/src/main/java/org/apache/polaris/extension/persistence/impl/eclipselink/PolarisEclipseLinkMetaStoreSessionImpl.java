@@ -770,7 +770,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     }
   }
 
-  // TODO support pagination
   @Nonnull
   @Override
   public PageToken.PageTokenBuilder<?> pageTokenBuilder() {

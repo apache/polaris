@@ -721,7 +721,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // in-flight request (the cache-based resolution follows a different path entirely).
 
     // done
-    return ListEntitiesResult.fromPolarisPage(resultPage);
+    return ListEntitiesResult.fromPage(resultPage);
   }
 
   /** {@inheritDoc} */
@@ -1559,7 +1559,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       throw new RetryOnConcurrencyException(
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
-    return EntitiesResult.fromPolarisPage(Page.fromData(loadedTasks));
+    return EntitiesResult.fromPage(Page.fromData(loadedTasks));
   }
 
   /** {@inheritDoc} */

@@ -36,7 +36,7 @@ public class ListEntitiesResult extends BaseResult {
   private final Optional<PageToken> pageTokenOpt;
 
   /** Create a {@link ListEntitiesResult} from a {@link Page} */
-  public static ListEntitiesResult fromPolarisPage(Page<EntityNameLookupRecord> page) {
+  public static ListEntitiesResult fromPage(Page<EntityNameLookupRecord> page) {
     return new ListEntitiesResult(page.items, Optional.ofNullable(page.pageToken));
   }
 

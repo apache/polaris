@@ -43,7 +43,7 @@ public class ListTablesResponseWithPageToken extends ListTablesResponse {
     Preconditions.checkArgument(this.identifiers != null, "Invalid identifier list: null");
   }
 
-  public static ListTablesResponseWithPageToken fromPolarisPage(Page<TableIdentifier> page) {
+  public static ListTablesResponseWithPageToken fromPage(Page<TableIdentifier> page) {
     return new ListTablesResponseWithPageToken(page.pageToken, page.items);
   }
 

@@ -714,7 +714,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // done
-    return ListEntitiesResult.fromPolarisPage(resultPage);
+    return ListEntitiesResult.fromPage(resultPage);
   }
 
   /** {@inheritDoc} */
@@ -1992,7 +1992,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 result.getReturnStatus(), result.getExtraInformation());
           }
         });
-    return EntitiesResult.fromPolarisPage(Page.fromData(loadedTasks));
+    return EntitiesResult.fromPage(Page.fromData(loadedTasks));
   }
 
   @Override
