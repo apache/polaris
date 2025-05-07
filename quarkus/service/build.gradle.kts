@@ -53,7 +53,6 @@ dependencies {
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
-
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
@@ -71,6 +70,7 @@ dependencies {
   implementation(libs.auth0.jwt)
 
   implementation(libs.bouncycastle.bcprov)
+  implementation("io.quarkus:quarkus-scheduler")
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)

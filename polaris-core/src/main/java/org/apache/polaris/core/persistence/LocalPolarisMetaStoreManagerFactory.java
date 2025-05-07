@@ -193,6 +193,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     return entityCacheMap.get(realmContext.getRealmIdentifier());
   }
 
+  @Override
+  public Map<String, PolarisMetaStoreManager> getMetaStoreManagerMap() {
+    return metaStoreManagerMap;
+  }
+
   /**
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
    * metastore and creates a root service principal. After that we rotate the root principal

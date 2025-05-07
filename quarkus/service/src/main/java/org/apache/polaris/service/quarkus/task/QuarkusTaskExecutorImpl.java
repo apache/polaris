@@ -25,6 +25,7 @@ import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
 import io.quarkus.scheduler.Scheduled;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +35,7 @@ import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
+import io.quarkus.scheduler.Scheduled;
 
 @ApplicationScoped
 public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
@@ -59,6 +61,18 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   @Override
   public void init() {
     super.init();
+  }
+
+  @PostConstruct
+  @Override
+  public void postConstruct() {
+    super.postConstruct();
+  }
+
+  @Scheduled(every = "PT10M")
+  @Override
+  public void scheduled() {
+    super.scheduled();
   }
 
   @Override

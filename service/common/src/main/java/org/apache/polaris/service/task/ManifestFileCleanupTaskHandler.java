@@ -103,8 +103,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
                     .atInfo()
                     .addKeyValue("manifestFile", manifestFile.path())
                     .log("All data files in manifest deleted - deleting manifest");
-                return tryDelete(
-                    tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
+                return tryDelete(tableId, fileIO, manifestFile.path(), manifestFile.path());
               })
           .get();
       return true;

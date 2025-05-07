@@ -24,6 +24,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -49,7 +50,9 @@ import org.slf4j.LoggerFactory;
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
+  private static final String EXECUTOR_ID_PREFIX = "TaskExecutor-";
 
+  private final String executorId;
   private final Executor executor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
@@ -116,6 +119,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   private @Nonnull CompletableFuture<Void> tryHandleTask(
       long taskEntityId, CallContext callContext, Throwable e, int attempt) {
     if (attempt > 3) {
+      // When fail to handle a task, we will leave the task entity in the metastore and handle it
+      // later
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
