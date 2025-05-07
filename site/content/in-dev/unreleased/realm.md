@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Entities
+Title: Realm
 type: docs
-weight: 400
+weight: 350
 ---
 
 This page explains what a realm is and what it is used for in Polaris.
@@ -50,8 +50,4 @@ This ensures that each realm's data is stored separately.
 authorization.
 
 **Isolation:** In methods like `createEntityManagerFactory(@Nonnull RealmContext realmContext)` from `PolarisEclipseLinkPersistenceUnit` interface, the realm context influence how resources are created or managed based on the security policies of that realm.
-An example of this is the way a realm name is used to create a database connection url so that you have one database instance per realm, or it can be more granular and applied at primary key level (within the same database instance).
-
-**MetaStore and Cache Management:** Realms are used to manage different instances or configurations of metadata stores and caches. An example of this is `LocalPolarisMetaStoreManagerFactory`.
-
-**Persistence:** Some implementations of Polaris Persistence may use realm IDs in primary keys for Polaris data.
+An example of this is the way a realm name can be used to create a database connection url so that you have one database instance per realm, when applicable. Or it can be more granular and applied at primary key level (within the same database instance).
