@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.auth;
+package org.apache.polaris.service.quarkus.auth.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.TokenCredential;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -31,19 +33,53 @@ import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.DecodedToken;
+import org.apache.polaris.service.auth.TokenBroker;
+import org.apache.polaris.service.quarkus.auth.QuarkusPrincipalAuthInfo;
 
-/** A custom {@link HttpAuthenticationMechanism} that handles Polaris token authentication. */
+/**
+ * A custom {@link HttpAuthenticationMechanism} that handles internal token authentication, that is,
+ * authentication using tokens provided by Polaris itself.
+ */
 @ApplicationScoped
-public class PolarisAuthenticationMechanism implements HttpAuthenticationMechanism {
+class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
+
+  // Must be higher than the OIDC authentication mechanism priority, which is
+  // HttpAuthenticationMechanism.DEFAULT_PRIORITY + 1, since this mechanism must be tried first.
+  // See io.quarkus.oidc.runtime.OidcAuthenticationMechanism
+  public static final int PRIORITY = HttpAuthenticationMechanism.DEFAULT_PRIORITY + 100;
 
   private static final String BEARER = "Bearer";
+
+  @VisibleForTesting final AuthenticationRealmConfiguration configuration;
+  private final TokenBroker tokenBroker;
+
+  @Inject
+  public InternalAuthenticationMechanism(
+      AuthenticationRealmConfiguration configuration, TokenBroker tokenBroker) {
+    this.configuration = configuration;
+    this.tokenBroker = tokenBroker;
+  }
+
+  @Override
+  public int getPriority() {
+    return PRIORITY;
+  }
 
   @Override
   public Uni<SecurityIdentity> authenticate(
       RoutingContext context, IdentityProviderManager identityProviderManager) {
+
+    if (configuration.type() == AuthenticationType.EXTERNAL) {
+      return Uni.createFrom().nullItem();
+    }
 
     String authHeader = context.request().getHeader("Authorization");
     if (authHeader == null) {
@@ -56,9 +92,24 @@ public class PolarisAuthenticationMechanism implements HttpAuthenticationMechani
     }
 
     String credential = authHeader.substring(spaceIdx + 1);
+
+    DecodedToken token;
+    try {
+      token = tokenBroker.verify(credential);
+    } catch (Exception e) {
+      return configuration.type() == AuthenticationType.MIXED
+          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
+          : Uni.createFrom().failure(new AuthenticationFailedException(e)); // stop here
+    }
+
+    if (token == null) {
+      return Uni.createFrom().nullItem();
+    }
+
     return identityProviderManager.authenticate(
         HttpSecurityUtils.setRoutingContextAttribute(
-            new TokenAuthenticationRequest(new PolarisTokenCredential(credential)), context));
+            new TokenAuthenticationRequest(new InternalPrincipalAuthInfo(credential, token)),
+            context));
   }
 
   @Override
@@ -80,9 +131,31 @@ public class PolarisAuthenticationMechanism implements HttpAuthenticationMechani
         .item(new HttpCredentialTransport(HttpCredentialTransport.Type.AUTHORIZATION, BEARER));
   }
 
-  static class PolarisTokenCredential extends TokenCredential {
-    PolarisTokenCredential(String credential) {
+  static class InternalPrincipalAuthInfo extends TokenCredential
+      implements QuarkusPrincipalAuthInfo {
+
+    private final DecodedToken token;
+
+    InternalPrincipalAuthInfo(String credential, DecodedToken token) {
       super(credential, "bearer");
+      this.token = token;
+    }
+
+    @Nullable
+    @Override
+    public Long getPrincipalId() {
+      return token.getPrincipalId();
+    }
+
+    @Nullable
+    @Override
+    public String getPrincipalName() {
+      return token.getPrincipalName();
+    }
+
+    @Override
+    public Set<String> getPrincipalRoles() {
+      return token.getPrincipalRoles();
     }
   }
 }

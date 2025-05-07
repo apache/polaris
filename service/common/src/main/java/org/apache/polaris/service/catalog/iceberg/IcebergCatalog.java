@@ -113,6 +113,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -122,6 +123,15 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
+import org.apache.polaris.service.events.AfterTableCommitedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.AfterViewCommitedEvent;
+import org.apache.polaris.service.events.AfterViewRefreshedEvent;
+import org.apache.polaris.service.events.BeforeTableCommitedEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
+import org.apache.polaris.service.events.BeforeViewCommitedEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -170,6 +180,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
   private final SecurityContext securityContext;
+  private final PolarisEventListener polarisEventListener;
+
   private String ioImplClassName;
   private FileIO catalogFileIO;
   private final String catalogName;
@@ -196,7 +208,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
     this.entityManager = entityManager;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
@@ -208,6 +221,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -863,7 +877,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public Map<String, String> getCredentialConfig(
+  public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions) {
@@ -873,9 +887,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return Map.of();
+      return AccessConfig.builder().build();
     }
-    return FileIOUtil.refreshCredentials(
+    return FileIOUtil.refreshAccessConfig(
         callContext,
         entityManager,
         getCredentialVendor(),
@@ -1318,6 +1332,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
+        polarisEventListener.onBeforeTableRefreshed(new BeforeTableRefreshedEvent(tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1337,10 +1352,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
+        polarisEventListener.onAfterTableRefreshed(new AfterTableRefreshedEvent(tableIdentifier));
       }
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
+      polarisEventListener.onBeforeTableCommited(
+          new BeforeTableCommitedEvent(tableIdentifier, base, metadata));
+
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
@@ -1493,6 +1512,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(tableIdentifier, entity);
       }
+
+      polarisEventListener.onAfterTableCommited(
+          new AfterTableCommitedEvent(tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1683,6 +1705,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
+        polarisEventListener.onBeforeViewRefreshed(new BeforeViewRefreshedEvent(identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1704,10 +1727,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
+        polarisEventListener.onAfterViewRefreshed(new AfterViewRefreshedEvent(identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
+      polarisEventListener.onBeforeViewCommited(
+          new BeforeViewCommitedEvent(identifier, base, metadata));
+
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
@@ -1801,6 +1828,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(identifier, entity);
       }
+
+      polarisEventListener.onAfterViewCommited(
+          new AfterViewCommitedEvent(identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

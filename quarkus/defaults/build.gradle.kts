@@ -35,6 +35,7 @@ dependencies {
   compileOnly("io.quarkus:quarkus-smallrye-health")
   compileOnly("io.quarkus:quarkus-micrometer")
   compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
+  compileOnly("io.quarkus:quarkus-oidc")
   compileOnly("io.quarkus:quarkus-opentelemetry")
   compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
 }

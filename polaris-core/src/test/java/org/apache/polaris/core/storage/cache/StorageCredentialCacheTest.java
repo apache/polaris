@@ -44,7 +44,8 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -395,28 +396,28 @@ public class StorageCredentialCacheTest {
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<PolarisCredentialProperty, String>builder()
-                      .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
-                      .put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
-                      .put(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
-                      .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
+                      .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
+                      .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<PolarisCredentialProperty, String>builder()
-                      .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
-                      .put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "account_host")
-                      .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
+                      .put(StorageAccessProperty.AZURE_ACCOUNT_HOST, "account_host")
+                      .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
               new EnumMap<>(
-                  ImmutableMap.<PolarisCredentialProperty, String>builder()
-                      .put(PolarisCredentialProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
-                      .put(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
+                  ImmutableMap.<StorageAccessProperty, String>builder()
+                      .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
+                      .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
                       .buildOrThrow())));
     }
     return res;
@@ -447,34 +448,28 @@ public class StorageCredentialCacheTest {
         List.of(
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<PolarisCredentialProperty, String>builder()
-                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
-                        .put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "some_account")
-                        .put(
-                            PolarisCredentialProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
+                        .put(StorageAccessProperty.AZURE_ACCOUNT_HOST, "some_account")
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())),
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<PolarisCredentialProperty, String>builder()
-                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
                         .put(
-                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            StorageAccessProperty.AZURE_ACCOUNT_HOST,
                             "some_account." + AzureLocation.ADLS_ENDPOINT)
-                        .put(
-                            PolarisCredentialProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())),
             new ScopedCredentialsResult(
                 new EnumMap<>(
-                    ImmutableMap.<PolarisCredentialProperty, String>builder()
-                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
+                    ImmutableMap.<StorageAccessProperty, String>builder()
+                        .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
                         .put(
-                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            StorageAccessProperty.AZURE_ACCOUNT_HOST,
                             "some_account." + AzureLocation.BLOB_ENDPOINT)
-                        .put(
-                            PolarisCredentialProperty.EXPIRATION_TIME,
-                            String.valueOf(Long.MAX_VALUE))
+                        .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(Long.MAX_VALUE))
                         .buildOrThrow())));
 
     Mockito.when(
@@ -492,6 +487,73 @@ public class StorageCredentialCacheTest {
     List<PolarisEntity> entityList = getPolarisEntities();
 
     Map<String, String> noSuffixResult =
+        storageCredentialCache
+            .getOrGenerateSubScopeCreds(
+                metaStoreManager,
+                callCtx,
+                entityList.get(0),
+                true,
+                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+            .credentials();
+    Assertions.assertThat(noSuffixResult.size()).isEqualTo(2);
+    Assertions.assertThat(noSuffixResult).containsKey("adls.sas-token.some_account");
+
+    Map<String, String> adlsSuffixResult =
+        storageCredentialCache
+            .getOrGenerateSubScopeCreds(
+                metaStoreManager,
+                callCtx,
+                entityList.get(1),
+                true,
+                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+            .credentials();
+    Assertions.assertThat(adlsSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(adlsSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(adlsSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
+
+    Map<String, String> blobSuffixResult =
+        storageCredentialCache
+            .getOrGenerateSubScopeCreds(
+                metaStoreManager,
+                callCtx,
+                entityList.get(2),
+                true,
+                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+            .credentials();
+    Assertions.assertThat(blobSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(blobSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(blobSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.BLOB_ENDPOINT);
+  }
+
+  @Test
+  public void testExtraProperties() {
+    storageCredentialCache = new StorageCredentialCache();
+    ScopedCredentialsResult properties =
+        new ScopedCredentialsResult(
+            new EnumMap<>(
+                ImmutableMap.<StorageAccessProperty, String>builder()
+                    .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
+                    .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
+                    .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
+                    .buildOrThrow()));
+    Mockito.when(
+            metaStoreManager.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyLong(),
+                Mockito.anyLong(),
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet()))
+        .thenReturn(properties);
+    List<PolarisEntity> entityList = getPolarisEntities();
+
+    AccessConfig config =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             metaStoreManager,
             callCtx,
@@ -499,33 +561,10 @@ public class StorageCredentialCacheTest {
             true,
             new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
             new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-    Assertions.assertThat(noSuffixResult.size()).isEqualTo(2);
-    Assertions.assertThat(noSuffixResult).containsKey("adls.sas-token.some_account");
-
-    Map<String, String> adlsSuffixResult =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            metaStoreManager,
-            callCtx,
-            entityList.get(1),
-            true,
-            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-    Assertions.assertThat(adlsSuffixResult.size()).isEqualTo(3);
-    Assertions.assertThat(adlsSuffixResult).containsKey("adls.sas-token.some_account");
-    Assertions.assertThat(adlsSuffixResult)
-        .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
-
-    Map<String, String> blobSuffixResult =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            metaStoreManager,
-            callCtx,
-            entityList.get(2),
-            true,
-            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-    Assertions.assertThat(blobSuffixResult.size()).isEqualTo(3);
-    Assertions.assertThat(blobSuffixResult).containsKey("adls.sas-token.some_account");
-    Assertions.assertThat(blobSuffixResult)
-        .containsKey("adls.sas-token.some_account." + AzureLocation.BLOB_ENDPOINT);
+    Assertions.assertThat(config.credentials())
+        .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));
+    Assertions.assertThat(config.extraProperties())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of("s3.endpoint", "test-endpoint1", "s3.path-style-access", "true"));
   }
 }

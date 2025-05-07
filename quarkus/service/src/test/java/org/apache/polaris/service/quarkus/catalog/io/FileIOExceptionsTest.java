@@ -136,6 +136,7 @@ public class FileIOExceptionsTest {
                 "ns1",
                 "t1",
                 null,
+                null,
                 "ALL",
                 services.realmContext(),
                 services.securityContext());

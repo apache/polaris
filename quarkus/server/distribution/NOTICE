@@ -141,10 +141,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.5
-Group: io.micrometer Name: micrometer-core Version: 1.14.5
-Group: io.micrometer Name: micrometer-observation Version: 1.14.5
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.5
+Group: io.micrometer Name: micrometer-commons Version: 1.14.6
+Group: io.micrometer Name: micrometer-core Version: 1.14.6
+Group: io.micrometer Name: micrometer-observation Version: 1.14.6
+Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.6
 
 NOTICE:
 | Micrometer
@@ -554,10 +554,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.11.4
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.11.4
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.11.4
-Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.11.4
+Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
+Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.12.4
 
 NOTICE:
 | Copyright 2009-2017 Mark Struberg
@@ -1032,36 +1032,36 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.26
-Group: software.amazon.awssdk Name: arns Version: 2.31.26
-Group: software.amazon.awssdk Name: auth Version: 2.31.26
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.26
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.26
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.26
-Group: software.amazon.awssdk Name: checksums Version: 2.31.26
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.26
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.26
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.26
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.26
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.26
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.26
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.26
-Group: software.amazon.awssdk Name: profiles Version: 2.31.26
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.26
-Group: software.amazon.awssdk Name: regions Version: 2.31.26
-Group: software.amazon.awssdk Name: retries Version: 2.31.26
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.26
-Group: software.amazon.awssdk Name: s3 Version: 2.31.26
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.26
-Group: software.amazon.awssdk Name: sts Version: 2.31.26
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.26
-Group: software.amazon.awssdk Name: utils Version: 2.31.26
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.30
+Group: software.amazon.awssdk Name: arns Version: 2.31.30
+Group: software.amazon.awssdk Name: auth Version: 2.31.30
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.30
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.30
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.30
+Group: software.amazon.awssdk Name: checksums Version: 2.31.30
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.30
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.30
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.30
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.30
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.30
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.30
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.30
+Group: software.amazon.awssdk Name: profiles Version: 2.31.30
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.30
+Group: software.amazon.awssdk Name: regions Version: 2.31.30
+Group: software.amazon.awssdk Name: retries Version: 2.31.30
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.30
+Group: software.amazon.awssdk Name: s3 Version: 2.31.30
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.30
+Group: software.amazon.awssdk Name: sts Version: 2.31.30
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.30
+Group: software.amazon.awssdk Name: utils Version: 2.31.30
 
 NOTICE:
 | AWS SDK for Java
@@ -1086,5 +1086,24 @@ Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
 NOTICE:
 | AWS EventStream for Java
 | Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+
+--------------------------------------------------------------------------------
+
+Group: org.bitbucket.b_c Name: jose4j Version: 0.9.6
+
+NOTICE:
+| jose4j
+| Copyright 2012-2015 Brian Campbell
+| 
+| EcdsaUsingShaAlgorithm contains code for converting the concatenated
+| R & S values of the signature to and from DER, which was originally
+| derived from the Apache Santuario XML Security library's SignatureECDSA
+| implementation. http://santuario.apache.org/
+| 
+| The Base64 implementation in this software was derived from the
+| Apache Commons Codec project. http://commons.apache.org/proper/commons-codec/
+| 
+| JSON processing in this software was derived from the JSON.simple toolkit.
+| https://code.google.com/p/json-simple/
 
 --------------------------------------------------------------------------------

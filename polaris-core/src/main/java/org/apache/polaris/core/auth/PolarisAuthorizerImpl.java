@@ -547,12 +547,14 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
+      @Nonnull CallContext callContext,
       @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         activatedEntities,
         authzOp,
@@ -562,6 +564,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
+      @Nonnull CallContext callContext,
       @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
@@ -569,7 +572,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
         featureConfig.getConfiguration(
-            CallContext.getCurrentContext().getPolarisCallContext(),
+            callContext.getPolarisCallContext(),
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal

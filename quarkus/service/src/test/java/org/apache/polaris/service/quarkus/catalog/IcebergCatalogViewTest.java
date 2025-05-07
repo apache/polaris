@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -67,12 +68,21 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.AfterViewCommitedEvent;
+import org.apache.polaris.service.events.AfterViewRefreshedEvent;
+import org.apache.polaris.service.events.BeforeViewCommitedEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -98,7 +108,9 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.event-listener.type",
+          "test");
     }
   }
 
@@ -116,6 +128,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
+  @Inject PolarisEventListener polarisEventListener;
 
   private IcebergCatalog catalog;
 
@@ -123,6 +136,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
+
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -212,6 +227,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
             new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
+
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
         new IcebergCatalog(
             entityManager,
@@ -220,7 +237,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
@@ -248,5 +266,40 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   @Override
   protected boolean requiresNamespaceCreate() {
     return true;
+  }
+
+  @Test
+  public void testEventsAreEmitted() {
+    IcebergCatalog catalog = catalog();
+    catalog.createNamespace(TestData.NAMESPACE);
+    View view =
+        catalog
+            .buildView(TestData.TABLE)
+            .withDefaultNamespace(TestData.NAMESPACE)
+            .withSchema(TestData.SCHEMA)
+            .withQuery("a", "b")
+            .create();
+
+    String key = "foo";
+    String valOld = "bar1";
+    String valNew = "bar2";
+    view.updateProperties().set(key, valOld).commit();
+    view.updateProperties().set(key, valNew).commit();
+
+    var beforeRefreshEvent = testPolarisEventListener.getLatest(BeforeViewRefreshedEvent.class);
+    Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+
+    var afterRefreshEvent = testPolarisEventListener.getLatest(AfterViewRefreshedEvent.class);
+    Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+
+    var beforeCommitEvent = testPolarisEventListener.getLatest(BeforeViewCommitedEvent.class);
+    Assertions.assertThat(beforeCommitEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeCommitEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
+
+    var afterCommitEvent = testPolarisEventListener.getLatest(AfterViewCommitedEvent.class);
+    Assertions.assertThat(afterCommitEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(afterCommitEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
 }

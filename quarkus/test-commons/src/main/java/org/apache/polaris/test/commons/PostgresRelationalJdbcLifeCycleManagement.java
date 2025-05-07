@@ -42,7 +42,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
   @SuppressWarnings("resource")
   public Map<String, String> start() {
     postgres =
-        new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"))
+        new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"))
             .withDatabaseName("polaris_db")
             .withUsername("polaris")
             .withPassword("polaris");

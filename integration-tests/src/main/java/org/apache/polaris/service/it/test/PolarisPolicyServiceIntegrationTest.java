@@ -372,7 +372,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
     restCatalog
         .buildTable(
-            NS2_T1, new Schema(Types.NestedField.of(1, true, "string", Types.StringType.get())))
+            NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
         .create();
 
     PolicyAttachmentTarget catalogTarget =

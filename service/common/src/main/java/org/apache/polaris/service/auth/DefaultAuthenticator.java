@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.service.auth;
 
-import java.util.Arrays;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -27,7 +29,6 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -38,48 +39,51 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Base implementation of {@link Authenticator} constructs a {@link AuthenticatedPolarisPrincipal}
- * from the token parsed by subclasses. The {@link AuthenticatedPolarisPrincipal} is read from the
- * {@link PolarisMetaStoreManager} for the current {@link RealmContext}. If the token defines a
- * non-empty set of scopes, only the principal roles specified in the scopes will be active for the
- * current principal. Only the grants assigned to these roles will be active in the current request.
+ * The default authenticator that resolves a {@link PrincipalAuthInfo} to an {@link
+ * AuthenticatedPolarisPrincipal}.
+ *
+ * <p>This authenticator is used in both internal and external authentication scenarios.
  */
-public abstract class BasePolarisAuthenticator
-    implements Authenticator<String, AuthenticatedPolarisPrincipal> {
+@RequestScoped
+@Identifier("default")
+public class DefaultAuthenticator
+    implements Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> {
+
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
-  private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisAuthenticator.class);
 
-  protected final MetaStoreManagerFactory metaStoreManagerFactory;
-  protected final CallContext callContext;
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
-  protected BasePolarisAuthenticator(
-      MetaStoreManagerFactory metaStoreManagerFactory, CallContext callContext) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.callContext = callContext;
-  }
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject CallContext callContext;
 
-  protected Optional<AuthenticatedPolarisPrincipal> getPrincipal(DecodedToken tokenInfo) {
-    LOGGER.debug("Resolving principal for tokenInfo client_id={}", tokenInfo.getClientId());
+  @Override
+  public Optional<AuthenticatedPolarisPrincipal> authenticate(PrincipalAuthInfo credentials) {
+    LOGGER.debug("Resolving principal for credentials={}", credentials);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
-    PolarisEntity principal;
+    PolarisEntity principal = null;
     try {
-      principal =
-          tokenInfo.getPrincipalId() > 0
-              ? PolarisEntity.of(
-                  metaStoreManager.loadEntity(
-                      callContext.getPolarisCallContext(),
-                      0L,
-                      tokenInfo.getPrincipalId(),
-                      PolarisEntityType.PRINCIPAL))
-              : PolarisEntity.of(
-                  metaStoreManager.readEntityByName(
-                      callContext.getPolarisCallContext(),
-                      null,
-                      PolarisEntityType.PRINCIPAL,
-                      PolarisEntitySubType.NULL_SUBTYPE,
-                      tokenInfo.getSub()));
+      // If the principal id is present, prefer to use it to load the principal entity,
+      // otherwise, use the principal name to load the entity.
+      if (credentials.getPrincipalId() != null && credentials.getPrincipalId() > 0) {
+        principal =
+            PolarisEntity.of(
+                metaStoreManager.loadEntity(
+                    callContext.getPolarisCallContext(),
+                    0L,
+                    credentials.getPrincipalId(),
+                    PolarisEntityType.PRINCIPAL));
+      } else if (credentials.getPrincipalName() != null) {
+        principal =
+            PolarisEntity.of(
+                metaStoreManager.readEntityByName(
+                    callContext.getPolarisCallContext(),
+                    null,
+                    PolarisEntityType.PRINCIPAL,
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    credentials.getPrincipalName()));
+      }
     } catch (Exception e) {
       LOGGER
           .atError()
@@ -88,22 +92,21 @@ public abstract class BasePolarisAuthenticator
           .log("Unable to authenticate user with token");
       throw new ServiceFailureException("Unable to fetch principal entity");
     }
-    if (principal == null) {
-      LOGGER.warn(
-          "Failed to resolve principal from tokenInfo client_id={}", tokenInfo.getClientId());
+    if (principal == null || principal.getType() != PolarisEntityType.PRINCIPAL) {
+      LOGGER.warn("Failed to resolve principal from credentials={}", credentials);
       throw new NotAuthorizedException("Unable to authenticate");
     }
 
+    LOGGER.debug("Resolved principal: {}", principal);
+
+    boolean allRoles = credentials.getPrincipalRoles().contains(PRINCIPAL_ROLE_ALL);
+
     Set<String> activatedPrincipalRoles = new HashSet<>();
-    // TODO: Consolidate the divergent "scopes" logic between test-bearer-token and token-exchange.
-    if (tokenInfo.getScope() != null && !tokenInfo.getScope().equals(PRINCIPAL_ROLE_ALL)) {
+    if (!allRoles) {
       activatedPrincipalRoles.addAll(
-          Arrays.stream(tokenInfo.getScope().split(" "))
-              .map(
-                  s -> // strip the principal_role prefix, if present
-                  s.startsWith(PRINCIPAL_ROLE_PREFIX)
-                          ? s.substring(PRINCIPAL_ROLE_PREFIX.length())
-                          : s)
+          credentials.getPrincipalRoles().stream()
+              .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
+              .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
               .toList());
     }
 

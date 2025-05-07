@@ -22,15 +22,31 @@ type: docs
 weight: 700
 ---
 
-This page documents important configurations for connecting to a production database through [EclipseLink](https://eclipse.dev/eclipselink/).
+This page explains how to configure and use Polaris metastores with either the recommended Relational JDBC or the
+deprecated EclipseLink persistence backends.
 
-## Polaris EclipseLink
+## Relational JDBC
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+
+
+```
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
+
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
+```
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+Please refer to the documentation here:
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+
+## EclipseLink (Deprecated)
+> [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
 
 Polaris includes EclipseLink plugin by default with PostgreSQL driver.
-
-In order to add other JDBC drivers, you have to build Polaris using the `eclipseLinkDeps` build property.
-
-## Polaris Server Configuration
 
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
@@ -130,3 +146,4 @@ The following shows a sample configuration for integrating Polaris with Postgres
   </properties>
 </persistence-unit>
 ```
+

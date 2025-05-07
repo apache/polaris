@@ -30,7 +30,7 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
   public AuthenticatedPolarisPrincipal(
       @Nonnull PolarisEntity principalEntity, @Nonnull Set<String> activatedPrincipalRoles) {
     this.principalEntity = principalEntity;
-    this.activatedPrincipalRoleNames = activatedPrincipalRoles;
+    this.activatedPrincipalRoleNames = Set.copyOf(activatedPrincipalRoles);
   }
 
   @Override
@@ -42,6 +42,13 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
     return principalEntity;
   }
 
+  /**
+   * Returns the set of activated principal role names. Activated role names are the roles that were
+   * explicitly requested by the client when authenticating, through JWT claims or other means.
+   *
+   * <p>By convention, this method returns an empty set when the principal is requesting all
+   * available principal roles.
+   */
   public Set<String> getActivatedPrincipalRoleNames() {
     return activatedPrincipalRoleNames;
   }
