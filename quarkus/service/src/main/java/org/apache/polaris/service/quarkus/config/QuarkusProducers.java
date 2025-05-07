@@ -62,11 +62,13 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfiguration;
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
+import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfiguration;
@@ -153,6 +155,13 @@ public class QuarkusProducers {
   public FileIOFactory fileIOFactory(
       QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  public PolarisEventListener polarisEventListener(
+      QuarkusPolarisEventListenerConfiguration config,
+      @Any Instance<PolarisEventListener> polarisEventListeners) {
+    return polarisEventListeners.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces

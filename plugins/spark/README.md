@@ -96,5 +96,5 @@ Following describes the current functionality limitations of the Polaris Spark c
    is also not supported, since it relies on the CTAS support.
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
-4) ALTER TABLE ... SET LOCATION/SET FILEFORMAT/ADD PARTITION is not supported for DELTA table.
+4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
 5) For other non-Iceberg tables like csv, it is not supported today.

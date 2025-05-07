@@ -158,7 +158,7 @@ internal fun configureOnRootProject(project: Project) =
               * https://dist.apache.org/repos/dist/dev/incubator/$asfName/apache-$asfName-$version
 
               You can find the KEYS file here:
-              * https://dist.apache.org/repos/dist/release/incubator/$asfName/KEYS
+              * https://downloads.apache.org/incubator/$asfName/KEYS
 
               Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
               * $staginRepoUrl
