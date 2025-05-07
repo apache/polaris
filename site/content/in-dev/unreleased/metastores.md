@@ -46,6 +46,8 @@ Please refer to the documentation here:
 ## EclipseLink(Deprecated)
 > [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
 
+Polaris includes EclipseLink plugin by default with PostgreSQL driver.
+
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
 
