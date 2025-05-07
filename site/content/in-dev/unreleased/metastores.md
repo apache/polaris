@@ -22,17 +22,10 @@ type: docs
 weight: 700
 ---
 
-This page documents important configurations for connecting to a production database through [EclipseLink](https://eclipse.dev/eclipselink/).
+This page explains how to configure and use Polaris metastores with either the recommended Relational JDBC or the
+deprecated EclipseLink persistence backends.
 
-## Polaris EclipseLink
-
-Polaris includes EclipseLink plugin by default with PostgreSQL driver.
-
-In order to add other JDBC drivers, you have to build Polaris using the `eclipseLinkDeps` build property.
-
-## Polaris Server Configuration
-
-### Relational JDBC
+## Relational JDBC
 This implementation leverages Quarkus for datasource management and supports configuration through
 environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
@@ -50,8 +43,10 @@ The Relational JDBC metastore currently relies on a Quarkus-managed datasource a
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-### EclipseLink
+## EclipseLink (Deprecated)
 > [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+
+Polaris includes EclipseLink plugin by default with PostgreSQL driver.
 
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
@@ -79,7 +74,7 @@ Polaris creates and connects to a separate database for each realm. Specifically
 
 A single `persistence.xml` can describe multiple [persistence units](https://eclipse.dev/eclipselink/documentation/4.0/concepts/concepts.html#APPDEV001). For example, with both a `polaris-dev` and `polaris` persistence unit defined, you could use a single `persistence.xml` to easily switch between development and production databases. Use the `persistence-unit` option in the Polaris server configuration to easily switch between persistence units.
 
-#### Using H2
+### Using H2
 
 > [!IMPORTANT] H2 is an in-memory database and is not suitable for production!
 
@@ -122,7 +117,7 @@ java -Dpolaris.persistence.type=eclipse-link \
      -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
 
-#### Using Postgres
+### Using Postgres
 
 PostgreSQL is included by default in the Polaris server distribution.
 
