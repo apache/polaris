@@ -20,6 +20,7 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -36,6 +37,7 @@ import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,18 +49,19 @@ public class DatasourceOperations {
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
   // POSTGRES RETRYABLE EXCEPTIONS
-  private static final String DEADLOCK_SQL_CODE = "40P01";
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
+  private final Clock clock;
 
   private final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration, Clock clock) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+    this.clock = clock;
   }
 
   /**
@@ -144,11 +147,6 @@ public class DatasourceOperations {
             ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
             consumer.accept(iterator.toStream());
             return null;
-          } catch (RuntimeException e) {
-            if (e.getCause() instanceof SQLException ex) {
-              throw ex;
-            }
-            throw e;
           }
         });
   }
@@ -210,9 +208,7 @@ public class DatasourceOperations {
     String sqlState = e.getSQLState();
 
     if (sqlState != null) {
-      return sqlState.equals(DEADLOCK_SQL_CODE)
-          || // Deadlock detected
-          sqlState.equals(SERIALIZATION_FAILURE_SQL_CODE); // Serialization failure
+      return sqlState.equals(SERIALIZATION_FAILURE_SQL_CODE); // Serialization failure
     }
 
     // Additionally, one might check for specific error messages or other conditions
@@ -220,6 +216,9 @@ public class DatasourceOperations {
         || e.getMessage().contains("connection reset");
   }
 
+  // TODO: consider refactoring to use a retry library, inorder to have fair retries
+  // and more knobs for tuning retry pattern.
+  @VisibleForTesting
   public <T> T withRetries(Operation<T> operation) throws SQLException {
     int attempts = 0;
     // maximum number of retries.
@@ -230,20 +229,38 @@ public class DatasourceOperations {
     long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
 
     // maximum time we will retry till.
-    long maxRetryTime = Clock.systemUTC().millis() + maxDuration;
+    long maxRetryTime = clock.millis() + maxDuration;
 
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
-      } catch (SQLException e) {
+      } catch (SQLException | RuntimeException e) {
+        SQLException sqlException;
+        if (e instanceof RuntimeException) {
+          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
+          // the transactions.
+          if (e.getCause() instanceof SQLException
+              && !(e instanceof EntityAlreadyExistsException)) {
+            sqlException = (SQLException) e.getCause();
+          } else {
+            throw e;
+          }
+        } else {
+          sqlException = (SQLException) e;
+        }
+
         attempts++;
-        long timeLeft = Math.max((maxRetryTime - Clock.systemUTC().millis()), 0L);
-        if (attempts >= maxAttempts || !isRetryable(e) || timeLeft == 0) {
+        long timeLeft = Math.max((maxRetryTime - clock.millis()), 0L);
+        if (attempts >= maxAttempts || !isRetryable(sqlException) || timeLeft == 0) {
           String exceptionMessage =
               String.format(
                   "Failed due to %s, after , %s attempts and %s milliseconds",
-                  e.getMessage(), attempts, maxDuration);
-          throw new SQLException(exceptionMessage, e.getSQLState(), e.getErrorCode());
+                  sqlException.getMessage(), attempts, maxDuration);
+          throw new SQLException(
+              exceptionMessage,
+              sqlException.getSQLState(),
+              sqlException.getErrorCode(),
+              sqlException);
         }
         // Add jitter
         long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextFloat() * 0.2 * delay));
