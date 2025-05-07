@@ -24,6 +24,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -66,7 +69,10 @@ import org.slf4j.LoggerFactory;
 
 @QuarkusTest
 class TableCleanupTaskHandlerTest {
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisDiagnostics diagServices;
+
   private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -90,7 +96,13 @@ class TableCleanupTaskHandlerTest {
 
   @BeforeEach
   void setup() {
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            diagServices,
+            configurationStore,
+            Clock.systemDefaultZone());
+
     callContext = CallContext.of(realmContext, polarisCallContext);
   }
 

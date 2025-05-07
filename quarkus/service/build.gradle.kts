@@ -147,7 +147,11 @@ tasks.withType(Test::class.java).configureEach {
   systemProperty("java.security.manager", "allow")
 }
 
-tasks.named<Test>("test").configure { maxParallelForks = 4 }
+tasks.named<Test>("test").configure {
+  maxParallelForks = 4
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
+}
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1

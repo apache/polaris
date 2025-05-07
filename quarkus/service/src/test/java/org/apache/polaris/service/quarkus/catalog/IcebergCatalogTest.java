@@ -769,9 +769,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified is outside of the table's base location
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableSuffix = UUID.randomUUID().toString();
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
@@ -820,15 +823,18 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assumptions.assumeTrue(
         supportsNotifications(), "Only applicable if notifications are supported");
 
+    final String tableSuffix = UUID.randomUUID().toString();
     // The location of the metadata JSON file specified is outside of the table's metadata directory
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v3.metadata.json";
 
     // this passes the first validation, since it's within the namespace subdirectory, but
     // the location is in another table's subdirectory
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
@@ -880,9 +886,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified is outside of the table's base location
     // according to the
     // metadata. We assume this is fraudulent and disallowed
-    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableSuffix = UUID.randomUUID().toString();
+    final String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", tableSuffix);
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+    final String anotherTableLocation =
+        String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         polarisContext,
