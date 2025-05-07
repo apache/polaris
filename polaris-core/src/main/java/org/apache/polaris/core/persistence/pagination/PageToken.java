@@ -71,14 +71,8 @@ public abstract class PageToken {
 
     /** Deserialize a string into a {@link PageToken} */
     public final PageToken fromString(String tokenString) {
-      if (tokenString == null) {
-        throw new IllegalArgumentException("Cannot build page token from null string");
-      } else if (tokenString.isEmpty()) {
-        if (this instanceof ReadEverythingPageToken.ReadEverythingPageTokenBuilder) {
-          return ReadEverythingPageToken.get();
-        } else {
-          return fromLimit(DEFAULT_PAGE_SIZE);
-        }
+      if (tokenString == null || tokenString.isEmpty()) {
+        throw new IllegalArgumentException("Cannot build page token from empty string");
       } else {
         try {
           String decoded =
@@ -94,8 +88,8 @@ public abstract class PageToken {
           T result = fromStringComponents(Arrays.asList(parts).subList(1, parts.length - 1));
           result.validate();
           return result;
-        } catch (Exception e) {
-          throw new IllegalArgumentException("Failed to decode page token: " + tokenString, e);
+        } catch (RuntimeException e) {
+          throw new IllegalArgumentException("Invalid page token: " + tokenString, e);
         }
       }
     }
