@@ -48,6 +48,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
@@ -197,6 +198,7 @@ public class ManagementServiceTest {
         CallContext.of(realmContext, callContext),
         services.entityManagerFactory().getOrCreateEntityManager(realmContext),
         metaStoreManager,
+        new UnsafeInMemorySecretsManager(),
         new SecurityContext() {
           @Override
           public Principal getUserPrincipal() {
