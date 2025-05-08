@@ -31,7 +31,10 @@ public class PageTokenTest {
 
   @Test
   void testDoneToken() {
-    Assertions.assertThat(new DonePageToken()).returns(null, PageToken::toString);
+    Assertions.assertThat(new DonePageToken()).doesNotReturn(null, PageToken::toString);
+    Assertions.assertThat(new DonePageToken()).returns(null, PageToken::toTokenString);
+    Assertions.assertThat(new DonePageToken()).isEqualTo(new DonePageToken());
+    Assertions.assertThat(new DonePageToken().hashCode()).isEqualTo(new DonePageToken().hashCode());
   }
 
   @Test
@@ -39,6 +42,9 @@ public class PageTokenTest {
     PageToken token = PageToken.readEverything();
 
     Assertions.assertThat(token.toString()).isNotNull();
+    Assertions.assertThat(token.toTokenString()).isNotNull();
     Assertions.assertThat(token).isNotInstanceOf(HasPageSize.class);
+
+    Assertions.assertThat(PageToken.readEverything()).isEqualTo(PageToken.readEverything());
   }
 }

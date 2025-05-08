@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a page token that can be used by operations like `listTables`. Clients that specify a
@@ -50,23 +51,22 @@ public abstract class PageToken {
   public static PageToken build(String token, Integer pageSize) {
     if (token == null || token.isEmpty()) {
       if (pageSize != null) {
-        return new ReadFromStartPageToken(pageSize);
+        return new LimitPageToken(pageSize);
       } else {
         return new ReadEverythingPageToken();
       }
     } else {
       // TODO implement, split out by the token's prefix
-      return new ReadEverythingPageToken();
+      throw new IllegalArgumentException("Unrecognized page token: " + token);
     }
   }
 
   /** Serialize a {@link PageToken} into a string */
-  @Override
-  public abstract String toString();
+  public abstract String toTokenString();
 
   /**
    * Builds a new page token to reflect new data that's been read. If the amount of data read is
-   * less than the pageSize, this will return a {@link DonePageToken}(null)
+   * less than the pageSize, this will return a {@link DonePageToken}
    */
   protected abstract PageToken updated(List<?> newData);
 
@@ -82,7 +82,7 @@ public abstract class PageToken {
   @Override
   public final boolean equals(Object o) {
     if (o instanceof PageToken) {
-      return this.toString().equals(o.toString());
+      return Objects.equals(this.toTokenString(), ((PageToken) o).toTokenString());
     } else {
       return false;
     }
@@ -90,10 +90,10 @@ public abstract class PageToken {
 
   @Override
   public final int hashCode() {
-    if (toString() == null) {
+    if (toTokenString() == null) {
       return 0;
     } else {
-      return toString().hashCode();
+      return toTokenString().hashCode();
     }
   }
 }

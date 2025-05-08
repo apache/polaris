@@ -31,7 +31,7 @@ public class ReadEverythingPageToken extends PageToken {
   public ReadEverythingPageToken() {}
 
   @Override
-  public String toString() {
+  public String toTokenString() {
     return PREFIX;
   }
 

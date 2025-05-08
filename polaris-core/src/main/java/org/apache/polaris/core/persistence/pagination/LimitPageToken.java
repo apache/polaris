@@ -22,15 +22,16 @@ import java.util.List;
 
 /**
  * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
- * represent a `limit`. When updated, it returns a token with the same semantics.
+ * represent a `limit`. When updated, it returns {@link DonePageToken}. As such it should never be
+ * user-facing and doesn't truly paginate.
  */
-public class ReadFromStartPageToken extends PageToken implements HasPageSize {
+public class LimitPageToken extends PageToken implements HasPageSize {
 
-  public static final String PREFIX = "read-from-start";
+  public static final String PREFIX = "limit";
 
   private final int pageSize;
 
-  public ReadFromStartPageToken(int pageSize) {
+  public LimitPageToken(int pageSize) {
     this.pageSize = pageSize;
   }
 
@@ -40,12 +41,12 @@ public class ReadFromStartPageToken extends PageToken implements HasPageSize {
   }
 
   @Override
-  public String toString() {
+  public String toTokenString() {
     return String.format("%s/%d", PREFIX, pageSize);
   }
 
   @Override
   protected PageToken updated(List<?> newData) {
-    return new ReadFromStartPageToken(pageSize);
+    return new DonePageToken();
   }
 }
