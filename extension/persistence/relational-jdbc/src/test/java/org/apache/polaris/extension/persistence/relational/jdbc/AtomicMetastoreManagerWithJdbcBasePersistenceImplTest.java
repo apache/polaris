@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.relational.jdbc;
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
@@ -32,10 +32,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatabaseType;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
-import org.apache.polaris.extension.persistence.relational.jdbc.JdbcBasePersistenceImpl;
-import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.mockito.Mockito;
 

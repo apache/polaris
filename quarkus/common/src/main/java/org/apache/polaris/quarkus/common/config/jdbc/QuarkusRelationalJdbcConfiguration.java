@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.quarkus.common;
+package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
