@@ -80,7 +80,7 @@ public class ReadEverythingPageToken extends PageToken {
   /** Any time {@link ReadEverythingPageToken} is updated, everything has been read */
   @Override
   public PageToken updated(List<?> newData) {
-    return PageToken.END;
+    return DonePageToken.get();
   }
 
   /** {@link ReadEverythingPageToken} does not support page size */

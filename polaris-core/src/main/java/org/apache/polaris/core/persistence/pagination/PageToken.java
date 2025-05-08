@@ -39,9 +39,6 @@ public abstract class PageToken {
 
   public int pageSize;
 
-  public static final PageToken END = null;
-  public static final int DEFAULT_PAGE_SIZE = 1000;
-
   protected void validate() {
     if (pageSize <= 0) {
       throw new IllegalArgumentException("Page size must be greater than zero");
@@ -141,7 +138,7 @@ public abstract class PageToken {
 
   /** Serialize a {@link PageToken} into a string */
   @Override
-  public final String toString() {
+  public String toString() {
     List<String> components = getComponents();
     String prefix = getBuilder().tokenPrefix();
     String componentString = String.join(":", components);

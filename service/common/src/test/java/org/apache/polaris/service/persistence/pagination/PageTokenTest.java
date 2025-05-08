@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.persistence.pagination;
 
-import java.util.List;
+import org.apache.polaris.core.persistence.pagination.DonePageToken;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.assertj.core.api.Assertions;
@@ -31,7 +31,7 @@ public class PageTokenTest {
 
   @Test
   void testEndToken() {
-    Assertions.assertThat(PageToken.END).isNull();
+    Assertions.assertThat(DonePageToken.get()).returns(null, PageToken::toString);
   }
 
   @Test
@@ -39,8 +39,6 @@ public class PageTokenTest {
     PageToken token = ReadEverythingPageToken.get();
 
     Assertions.assertThat(token.toString()).isNotNull();
-    Assertions.assertThat(token.buildNextPage(List.of("anything")).pageToken)
-        .isEqualTo(PageToken.END);
     Assertions.assertThat(token.pageSize).isEqualTo(Integer.MAX_VALUE);
   }
 }

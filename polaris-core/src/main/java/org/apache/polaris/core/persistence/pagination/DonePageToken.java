@@ -18,23 +18,38 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
+import jakarta.annotation.Nullable;
 import java.util.List;
 
-/**
- * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
- * continue the listing operation that generated the `items`.
- */
-public class Page<T> {
-  public final PageToken pageToken;
-  public final List<T> items;
+public class DonePageToken extends PageToken {
 
-  public Page(PageToken pageToken, List<T> items) {
-    this.pageToken = pageToken;
-    this.items = items;
+  /** Get a {@link DonePageToken} */
+  public static DonePageToken get() {
+    return new DonePageToken();
   }
 
-  /** Used to wrap a {@link List<T>} of data into a {@link Page <T>} when there is no more data */
-  public static <T> Page<T> fromData(List<T> data) {
-    return new Page<>(DonePageToken.get(), data);
+  @Override
+  protected PageTokenBuilder<?> getBuilder() {
+    throw new IllegalStateException("This page token is DONE");
+  }
+
+  @Override
+  protected List<String> getComponents() {
+    throw new IllegalStateException("This page token is DONE");
+  }
+
+  @Override
+  protected PageToken updated(List<?> newData) {
+    throw new IllegalStateException("This page token is DONE");
+  }
+
+  @Override
+  public PageToken withPageSize(@Nullable Integer pageSize) {
+    throw new IllegalStateException("This page token is DONE");
+  }
+
+  @Override
+  public String toString() {
+    return null;
   }
 }
