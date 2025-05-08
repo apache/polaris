@@ -34,10 +34,14 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.RESTException;
+import org.apache.iceberg.rest.ErrorHandler;
+import org.apache.iceberg.rest.ErrorHandlers;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
 /**
@@ -146,6 +150,24 @@ public class CatalogApi extends RestApi {
                 Map.of("cat", catalog, "table", id.name()))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
+  public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                Map.of("cat", catalog, "table", id.name()),
+                snapshots == null ? Map.of() : Map.of("snapshots", snapshots))
+            .get()) {
+      if (res.getStatus() == Response.Status.OK.getStatusCode()) {
+        return res.readEntity(LoadTableResponse.class);
+      }
+      throw new RESTException(
+          "Unhandled error: %s",
+          ((ErrorHandler) ErrorHandlers.defaultErrorHandler())
+              .parseResponse(res.getStatus(), res.readEntity(String.class)));
     }
   }
 

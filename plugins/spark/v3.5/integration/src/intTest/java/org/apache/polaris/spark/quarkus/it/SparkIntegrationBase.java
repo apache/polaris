@@ -20,9 +20,14 @@ package org.apache.polaris.spark.quarkus.it;
 
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
+import java.io.File;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.polaris.service.it.ext.PolarisSparkIntegrationTestBase;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -33,11 +38,13 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
   protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
     return builder
         .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.polaris.spark.SparkCatalog")
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
@@ -52,26 +59,6 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
-  }
-
-  @Override
-  protected void cleanupCatalog(String catalogName) {
-    onSpark("USE " + catalogName);
-    List<Row> namespaces = onSpark("SHOW NAMESPACES").collectAsList();
-    for (Row namespace : namespaces) {
-      // TODO: once all table operations are supported, remove the override of this function
-      // List<Row> tables = onSpark("SHOW TABLES IN " + namespace.getString(0)).collectAsList();
-      // for (Row table : tables) {
-      // onSpark("DROP TABLE " + namespace.getString(0) + "." + table.getString(1));
-      // }
-      List<Row> views = onSpark("SHOW VIEWS IN " + namespace.getString(0)).collectAsList();
-      for (Row view : views) {
-        onSpark("DROP VIEW " + namespace.getString(0) + "." + view.getString(1));
-      }
-      onSpark("DROP NAMESPACE " + namespace.getString(0));
-    }
-
-    managementApi.deleteCatalog(catalogName);
   }
 
   @FormatMethod
@@ -107,5 +94,20 @@ public abstract class SparkIntegrationBase extends PolarisSparkIntegrationTestBa
               }
             })
         .toArray(Object[]::new);
+  }
+
+  /** List the name of directories under a given path non-recursively. */
+  protected List<String> listDirs(String path) {
+    File directory = new File(path);
+    return FileUtils.listFilesAndDirs(
+            directory, FalseFileFilter.INSTANCE, DirectoryFileFilter.DIRECTORY)
+        .stream()
+        .map(File::getName)
+        .toList();
+  }
+
+  /** Generate a string name with given prefix and a random suffix */
+  protected String generateName(String prefix) {
+    return prefix + "_" + UUID.randomUUID().toString().replaceAll("-", "");
   }
 }

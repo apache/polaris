@@ -38,11 +38,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
@@ -58,6 +58,8 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -77,7 +79,8 @@ public record TestServices(
     RealmContext realmContext,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
-    TaskExecutor taskExecutor) {
+    TaskExecutor taskExecutor,
+    PolarisEventListener polarisEventListener) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -140,7 +143,7 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      TransactionalPersistence metaStoreSession =
+      BasePersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
       CallContext callContext =
           new CallContext() {
@@ -177,13 +180,15 @@ public record TestServices(
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
+      PolarisEventListener polarisEventListener = new TestPolarisEventListener();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               realmEntityManagerFactory,
               metaStoreManagerFactory,
               userSecretsManagerFactory,
               taskExecutor,
-              fileIOFactory);
+              fileIOFactory,
+              polarisEventListener);
 
       ReservedProperties reservedProperties =
           new ReservedProperties() {
@@ -264,7 +269,8 @@ public record TestServices(
           realmContext,
           securityContext,
           fileIOFactory,
-          taskExecutor);
+          taskExecutor,
+          polarisEventListener);
     }
   }
 }

@@ -75,6 +75,15 @@ public class PolicyEntity extends PolarisEntity {
     return Integer.parseInt(getPropertiesAsMap().get(POLICY_VERSION_KEY));
   }
 
+  @JsonIgnore
+  public Namespace getParentNamespace() {
+    String parentNamespace = getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
+    if (parentNamespace != null) {
+      return RESTUtil.decodeNamespace(parentNamespace);
+    }
+    return null;
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<PolicyEntity, Builder> {
     public Builder(Namespace namespace, String policyName, PolicyType policyType) {
       super();

@@ -114,7 +114,7 @@ menu:
 
     - name: "Downloads"
       identifier: "downloads"
-      url: "/downloads" 
+      url: "/downloads"
       weight: 200
 
     - name: "Community"
@@ -236,6 +236,9 @@ markup:
     noHl: false
     style: 'monokai'
     tabWidth: 4
+  goldmark:
+    renderer:
+      unsafe: true
 
 security:
   exec:
@@ -255,4 +258,3 @@ privacy:
     simple: true
   youtube:
     privacyEnhanced: true
-

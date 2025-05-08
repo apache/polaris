@@ -48,9 +48,10 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
 
-  if (project.hasProperty("eclipseLinkDeps")) {
-    runtimeOnly(project(":polaris-eclipselink"))
-  }
+  runtimeOnly(project(":polaris-eclipselink"))
+  runtimeOnly("org.postgresql:postgresql")
+  runtimeOnly(project(":polaris-relational-jdbc"))
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
@@ -90,7 +91,7 @@ distributions {
       from(project.layout.buildDirectory.dir("quarkus-app"))
       from("distribution/NOTICE")
       from("distribution/LICENSE")
-      exclude("lib/main/io.quarkus.quarkus-container-image*")
+      from("distribution/README.md")
     }
   }
 }

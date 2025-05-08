@@ -34,10 +34,9 @@ cd ~/polaris
   :polaris-quarkus-server:assemble \
   :polaris-quarkus-server:quarkusAppPartsBuild \
   :polaris-quarkus-admin:assemble --rerun \
-  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
-docker compose -f getting-started/eclipselink/docker-compose.yml up
+docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
 ```
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:
@@ -56,7 +55,7 @@ export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 ```
 
-The Docker image pre-configures a sample catalog called `polaris_demo` that uses a local file system.
+The Docker image pre-configures a sample catalog called `quickstart_catalog` that uses a local file system.
 
 ## Running Polaris as a Standalone Process
 
@@ -73,7 +72,6 @@ cd ~/polaris
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-realm: <realm> root principal credentials: <client-id>:<client-secret>
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
@@ -81,20 +79,14 @@ INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 
 At this point, Polaris is running.
 
-When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
+When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. 
+For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
-When Polaris is launched using an in-memory metastore, the root principal credentials can be found
-in stdout on initial startup. Look for a line that resembles the following:
-
-```
-realm: <realm> root principal credentials: <client-id>:<client-secret>
-```
-
-Be sure to take note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
-
+When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `secret` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
+You can also set these credentials as environment variables for use with the Polaris CLI:
 ```shell
-export CLIENT_ID=<client-id>
-export CLIENT_SECRET=<client-secret>
+export CLIENT_ID=root
+export CLIENT_SECRET=secret
 ```
 
 ### Installing Apache Spark and Trino Locally for Testing

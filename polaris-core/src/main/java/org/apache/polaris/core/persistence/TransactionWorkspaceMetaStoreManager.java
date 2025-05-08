@@ -50,10 +50,8 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
-import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -344,20 +342,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations);
-  }
-
-  @Override
-  public ValidateAccessResult validateAccessToLocations(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      @Nonnull Set<PolarisStorageActions> actions,
-      @Nonnull Set<String> locations) {
-    callCtx
-        .getDiagServices()
-        .fail("illegal_method_in_transaction_workspace", "validateAccessToLocations");
-    return null;
   }
 
   @Override

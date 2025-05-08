@@ -40,7 +40,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -57,7 +57,7 @@ public abstract class BaseResolverTest {
   protected PolarisBaseEntity P1;
 
   // cache we are using
-  protected EntityCache cache;
+  protected InMemoryEntityCache cache;
 
   // whenever constructing a new Resolver instance, if false, disable cache for that Resolver
   // instance by giving it a null cache regardless of the current state of the test-level
@@ -433,7 +433,7 @@ public abstract class BaseResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver(@Nullable EntityCache cache) {
+  private Resolver allocateResolver(@Nullable InMemoryEntityCache cache) {
     return this.allocateResolver(cache, null);
   }
 
@@ -447,7 +447,7 @@ public abstract class BaseResolverTest {
    */
   @Nonnull
   private Resolver allocateResolver(
-      @Nullable EntityCache cache, @Nullable String referenceCatalogName) {
+      @Nullable InMemoryEntityCache cache, @Nullable String referenceCatalogName) {
     return this.allocateResolver(cache, null, referenceCatalogName);
   }
 
@@ -462,13 +462,13 @@ public abstract class BaseResolverTest {
    */
   @Nonnull
   private Resolver allocateResolver(
-      @Nullable EntityCache cache,
+      @Nullable InMemoryEntityCache cache,
       Set<String> principalRolesScope,
       @Nullable String referenceCatalogName) {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new EntityCache(metaStoreManager());
+      this.cache = new InMemoryEntityCache(metaStoreManager());
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =
@@ -531,7 +531,7 @@ public abstract class BaseResolverTest {
    * @param principalRoleName name of the principal role, should exist
    */
   private void resolvePrincipalAndPrincipalRole(
-      EntityCache cache, String principalName, boolean exists, String principalRoleName) {
+      InMemoryEntityCache cache, String principalName, boolean exists, String principalRoleName) {
     Resolver resolver = allocateResolver(cache);
 
     // for a principal creation, we simply want to test if the principal we are creating exists
@@ -600,7 +600,7 @@ public abstract class BaseResolverTest {
    * @return resolver we created and which has been validated.
    */
   private Resolver resolveDriver(
-      EntityCache cache,
+      InMemoryEntityCache cache,
       Set<String> principalRolesScope,
       String principalName,
       boolean isPrincipalNameOptional,
@@ -631,7 +631,7 @@ public abstract class BaseResolverTest {
    * @return resolver we created and which has been validated.
    */
   private Resolver resolveDriver(
-      EntityCache cache,
+      InMemoryEntityCache cache,
       String catalogName,
       ResolverPath path,
       List<ResolverPath> paths,
@@ -651,7 +651,7 @@ public abstract class BaseResolverTest {
    * @return resolver we created and which has been validated.
    */
   private Resolver resolveDriver(
-      EntityCache cache,
+      InMemoryEntityCache cache,
       Set<String> principalRolesScope,
       String catalogName,
       Set<String> expectedActivatedCatalogRoles) {
@@ -679,7 +679,7 @@ public abstract class BaseResolverTest {
    * @return resolver we created and which has been validated.
    */
   private Resolver resolveDriver(
-      EntityCache cache,
+      InMemoryEntityCache cache,
       String catalogName,
       String catalogRoleName,
       ResolverStatus.StatusEnum expectedStatus) {
@@ -715,7 +715,7 @@ public abstract class BaseResolverTest {
    * @return resolver we created and which has been validated.
    */
   private Resolver resolveDriver(
-      EntityCache cache,
+      InMemoryEntityCache cache,
       Set<String> principalRolesScope,
       String principalName,
       boolean isPrincipalNameOptional,

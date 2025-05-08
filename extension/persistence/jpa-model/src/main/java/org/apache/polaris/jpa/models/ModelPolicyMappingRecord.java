@@ -135,6 +135,15 @@ public class ModelPolicyMappingRecord {
     }
   }
 
+  public void update(PolarisPolicyMappingRecord record) {
+    this.targetCatalogId = record.getTargetCatalogId();
+    this.targetId = record.getTargetId();
+    this.policyTypeCode = record.getPolicyTypeCode();
+    this.policyCatalogId = record.getPolicyCatalogId();
+    this.policyId = record.getPolicyId();
+    this.parameters = record.getParameters();
+  }
+
   public static ModelPolicyMappingRecord fromPolicyMappingRecord(
       PolarisPolicyMappingRecord record) {
     if (record == null) return null;

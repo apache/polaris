@@ -46,7 +46,6 @@ In Polaris, namespaces can be nested. For example, `a.b.c.d.e.f.g` is a valid na
 
 For information on managing namespaces with the REST API or for more information on what data can be associated with a namespace, see [the API docs]({{% github-polaris "client/python/docs/CreateNamespaceRequest.md" %}}).
 
-
 ## Table
 
 Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/), [Delta tables](https://docs.databricks.com/aws/en/delta/table-properties), or [Hudi tables](https://hudi.apache.org/docs/next/configurations#TABLE_CONFIG).
@@ -71,12 +70,17 @@ Polaris principal roles are labels that may be granted to [principals](#principa
 
 For information on managing principal roles with the REST API or for more information on what data can be associated with a principal role, see [the API docs]({{% github-polaris "client/python/docs/CreatePrincipalRoleRequest.md" %}}).
 
-
 ## Catalog Role
 
 Polaris catalog roles are labels that may be granted to [catalogs](#catalog). Each catalog may have one or more catalog roles, and the same catalog role may be granted to multiple catalogs. Catalog roles may be assigned based on the nature of data that will reside in a catalog, or by the groups of users and services that might need to access that data. 
 
 Each catalog role may have multiple [privileges](#privilege) granted to it, and each catalog role can be granted to one or more [principal roles](#principal-role). This is the mechanism by which principals are granted access to entities inside a catalog such as namespaces and tables.
+
+## Policy
+
+Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions. 
+
+Policy can be applied at catalog level, namespace level, or table level. Policy inheritance can be achieved by attaching one to a higher-level scope, such as namespace or catalog. As a result, tables registered under those entities do not need to be declared individually for the same policy. If a table or a namespace requires a different policy, user can assign a different policy, hence overriding policy of the same type declared at the higher level entities.   
 
 ## Privilege
 

@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -36,6 +37,7 @@ import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -89,6 +91,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -128,6 +131,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected Catalog baseCatalog = null;
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
+
+  public static final String SNAPSHOTS_ALL = "all";
+  public static final String SNAPSHOTS_REFS = "refs";
 
   public IcebergCatalogHandler(
       CallContext callContext,
@@ -396,7 +402,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST))
+                  PolarisStorageActions.LIST),
+              SNAPSHOTS_ALL)
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -487,7 +494,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-            ident, metadata, Set.of(PolarisStorageActions.ALL))
+            ident, metadata, Set.of(PolarisStorageActions.ALL), SNAPSHOTS_ALL)
         .build();
   }
 
@@ -596,7 +603,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+    LoadTableResponse rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -695,7 +703,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableMetadata tableMetadata = baseTable.operations().current();
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested)
+                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
               .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -708,7 +716,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> actions) {
+      Set<PolarisStorageActions> actions,
+      String snapshots) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -717,9 +726,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
-      Map<String, String> credentialConfig =
-          credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
+      AccessConfig accessConfig =
+          credentialDelegation.getAccessConfig(tableIdentifier, tableMetadata, actions);
+      Map<String, String> credentialConfig = accessConfig.credentials();
       responseBuilder.addAllConfig(credentialConfig);
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
       if (!credentialConfig.isEmpty()) {
         responseBuilder.addCredential(
             ImmutableCredential.builder()
@@ -1024,6 +1035,31 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new BadRequestException("Cannot rename view on static-facade external catalogs.");
     }
     CatalogHandlers.renameView(viewCatalog, request);
+  }
+
+  private @Nonnull LoadTableResponse filterResponseToSnapshots(
+      LoadTableResponse loadTableResponse, String snapshots) {
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return loadTableResponse;
+    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+      TableMetadata metadata = loadTableResponse.tableMetadata();
+
+      Set<Long> referencedSnapshotIds =
+          metadata.refs().values().stream()
+              .map(SnapshotRef::snapshotId)
+              .collect(Collectors.toSet());
+
+      TableMetadata filteredMetadata =
+          metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+
+      return LoadTableResponse.builder()
+          .withTableMetadata(filteredMetadata)
+          .addAllConfig(loadTableResponse.config())
+          .addAllCredentials(loadTableResponse.credentials())
+          .build();
+    } else {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
   }
 
   @Override

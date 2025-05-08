@@ -27,6 +27,7 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.util.Arrays;
 import java.util.Map;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
@@ -107,7 +108,10 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
     // directly drop lv1ns[0] should fail
     assertThatThrownBy(() -> namespaceCatalog.dropNamespace(lv1ns[0], true))
-        .isInstanceOf(BadRequestException.class);
+        .isInstanceOfAny(
+            BadRequestException.class, // Iceberg < 1.9.0
+            NamespaceNotEmptyException.class // Iceberg >= 1.9.0
+            );
     for (String[] namespace : lv2ns1) {
       namespaceCatalog.dropNamespace(namespace, true);
     }
@@ -249,7 +253,10 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
 
     // drop namespace fails since there are views under it
     assertThatThrownBy(() -> namespaceCatalog.dropNamespace(l2ns, true))
-        .isInstanceOf(BadRequestException.class);
+        .isInstanceOfAny(
+            BadRequestException.class, // Iceberg < 1.9.0
+            NamespaceNotEmptyException.class // Iceberg >= 1.9.0
+            );
     // drop the views
     for (String name : nsl2ViewNames) {
       viewCatalog.dropView(Identifier.of(l2ns, name));

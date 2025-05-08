@@ -79,7 +79,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId));
+      bootstrapRealmsFromEnvironment(List.of(realmId));
     }
     return super.getOrCreateMetaStoreManager(realmContext);
   }
@@ -89,12 +89,12 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId));
+      bootstrapRealmsFromEnvironment(List.of(realmId));
     }
     return super.getOrCreateSessionSupplier(realmContext);
   }
 
-  private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
+  private void bootstrapRealmsFromEnvironment(List<String> realms) {
     RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
     this.bootstrapRealms(realms, rootCredentialsSet);
   }

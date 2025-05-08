@@ -39,13 +39,12 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   private final String remoteCatalogName;
 
   public IcebergRestConnectionConfigInfoDpo(
-      @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName) {
-    super(connectionTypeCode, uri, authenticationParameters);
+    super(ConnectionType.ICEBERG_REST.getCode(), uri, authenticationParameters);
     this.remoteCatalogName = remoteCatalogName;
   }
 

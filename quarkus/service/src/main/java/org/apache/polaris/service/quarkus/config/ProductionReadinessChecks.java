@@ -25,25 +25,21 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.AuthenticationConfiguration;
-import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
-import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
-import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.JWTRSAKeyPairFactory;
-import org.apache.polaris.service.auth.JWTSymmetricKeyFactory;
-import org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator;
-import org.apache.polaris.service.auth.TestOAuth2ApiService;
-import org.apache.polaris.service.auth.TokenBrokerFactory;
-import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
+import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -85,67 +81,54 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
-  public ProductionReadinessCheck checkAuthenticator(
-      Authenticator<String, AuthenticatedPolarisPrincipal> authenticator) {
-    if (authenticator instanceof TestInlineBearerTokenPolarisAuthenticator) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "The current authenticator is intended for tests only.",
-              "polaris.authentication.authenticator.type"));
-    }
-
-    return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkTokenService(IcebergRestOAuth2ApiService service) {
-    if (service instanceof TestOAuth2ApiService) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "The current token service is intended for tests only.",
-              "polaris.authentication.token-service.type"));
-    }
-    return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkTokenBroker(
-      AuthenticationConfiguration configuration, TokenBrokerFactory factory) {
-    if (factory instanceof JWTRSAKeyPairFactory) {
-      if (configuration
-          .tokenBroker()
-          .rsaKeyPair()
-          .map(RSAKeyPairConfiguration::publicKeyFile)
-          .isEmpty()) {
-        return ProductionReadinessCheck.of(
-            Error.of(
-                "A public key file wasn't provided and will be generated.",
-                "polaris.authentication.token-broker.rsa-key-pair.public-key-file"));
-      }
-      if (configuration
-          .tokenBroker()
-          .rsaKeyPair()
-          .map(RSAKeyPairConfiguration::privateKeyFile)
-          .isEmpty()) {
-        return ProductionReadinessCheck.of(
-            Error.of(
-                "A private key file wasn't provided and will be generated.",
-                "polaris.authentication.token-broker.rsa-key-pair.private-key-file"));
-      }
-    }
-    if (factory instanceof JWTSymmetricKeyFactory) {
-      if (configuration
-          .tokenBroker()
-          .symmetricKey()
-          .map(SymmetricKeyConfiguration::secret)
-          .isPresent()) {
-        return ProductionReadinessCheck.of(
-            Error.of(
-                "A symmetric key secret was provided through configuration rather than through a secret file.",
-                "polaris.authentication.token-broker.symmetric-key.secret"));
-      }
-    }
-    return ProductionReadinessCheck.OK;
+  public ProductionReadinessCheck checkTokenBrokers(
+      QuarkusAuthenticationConfiguration configuration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    configuration
+        .realms()
+        .forEach(
+            (realm, config) -> {
+              if (config.type() != AuthenticationType.EXTERNAL) {
+                if (config.tokenBroker().type().equals("rsa-key-pair")) {
+                  if (config
+                      .tokenBroker()
+                      .rsaKeyPair()
+                      .map(RSAKeyPairConfiguration::publicKeyFile)
+                      .isEmpty()) {
+                    errors.add(
+                        Error.of(
+                            "A public key file wasn't provided and will be generated.",
+                            "polaris.authentication.%stoken-broker.rsa-key-pair.public-key-file"
+                                .formatted(authRealmSegment(realm))));
+                  }
+                  if (config
+                      .tokenBroker()
+                      .rsaKeyPair()
+                      .map(RSAKeyPairConfiguration::privateKeyFile)
+                      .isEmpty()) {
+                    errors.add(
+                        Error.of(
+                            "A private key file wasn't provided and will be generated.",
+                            "polaris.authentication.%stoken-broker.rsa-key-pair.private-key-file"
+                                .formatted(authRealmSegment(realm))));
+                  }
+                }
+                if (config.tokenBroker().type().equals("symmetric-key")) {
+                  if (config
+                      .tokenBroker()
+                      .symmetricKey()
+                      .map(SymmetricKeyConfiguration::secret)
+                      .isPresent()) {
+                    errors.add(
+                        Error.of(
+                            "A symmetric key secret was provided through configuration rather than through a secret file.",
+                            "polaris.authentication.%stoken-broker.symmetric-key.secret"
+                                .formatted(authRealmSegment(realm))));
+                  }
+                }
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
   }
 
   @Produces
@@ -178,5 +161,19 @@ public class ProductionReadinessChecks {
       }
     }
     return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkPolarisEventListener(
+      PolarisEventListener polarisEventListener) {
+    if (polarisEventListener instanceof TestPolarisEventListener) {
+      return ProductionReadinessCheck.of(
+          Error.of("TestPolarisEventListener is intended for tests only.", "polaris.events.type"));
+    }
+    return ProductionReadinessCheck.OK;
+  }
+
+  private static String authRealmSegment(String realm) {
+    return realm.equals(QuarkusAuthenticationConfiguration.DEFAULT_REALM_KEY) ? "" : realm + ".";
   }
 }

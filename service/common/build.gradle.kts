@@ -90,6 +90,8 @@ dependencies {
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
 
+  implementation(libs.microprofile.fault.tolerance.api)
+
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)

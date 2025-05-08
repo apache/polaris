@@ -22,16 +22,31 @@ type: docs
 weight: 700
 ---
 
-This page documents important configurations for connecting to a production database through [EclipseLink](https://eclipse.dev/eclipselink/).
+This page explains how to configure and use Polaris metastores with either the recommended Relational JDBC or the
+deprecated EclipseLink persistence backends.
 
-## Building Polaris with EclipseLink
+## Relational JDBC
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
-Polaris doesn't ship with any JDBC driver. You must specify them when building Polaris with
-EclipseLink by using Gradle's project property:
-`-PeclipseLinkDeps=<jdbc-driver-artifact1>,<jdbc-driver-artifact2>,...`. See below examples for H2
-and Postgres.
 
-## Polaris Server Configuration
+```
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
+
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
+```
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+Please refer to the documentation here:
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+
+## EclipseLink (Deprecated)
+> [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+
+Polaris includes EclipseLink plugin by default with PostgreSQL driver.
 
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
@@ -104,6 +119,8 @@ java -Dpolaris.persistence.type=eclipse-link \
 
 ### Using Postgres
 
+PostgreSQL is included by default in the Polaris server distribution.
+
 The following shows a sample configuration for integrating Polaris with Postgres.
 
 ```xml
@@ -130,15 +147,3 @@ The following shows a sample configuration for integrating Polaris with Postgres
 </persistence-unit>
 ```
 
-To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
-
-```shell
-./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
-java -Dpolaris.persistence.type=eclipse-link \
-     -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
-     -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-     -jar quarkus/server/build/quarkus-app/quarkus-run.jar
-```

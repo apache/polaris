@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.core.connection;
 
-import jakarta.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import java.util.Arrays;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo.ConnectionTypeEnum defined in
@@ -29,21 +30,22 @@ import jakarta.annotation.Nullable;
  * ConnectionConfigInfoDpo}.
  */
 public enum ConnectionType {
-  ICEBERG_REST(1);
+  NULL_TYPE(0),
+  ICEBERG_REST(1),
+  ;
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
   static {
     // find max array size
-    int maxId = 0;
-    for (ConnectionType connectionType : ConnectionType.values()) {
-      if (maxId < connectionType.code) {
-        maxId = connectionType.code;
-      }
-    }
+    int maxCode =
+        Arrays.stream(AuthenticationType.values())
+            .mapToInt(AuthenticationType::getCode)
+            .max()
+            .orElse(0);
 
     // allocate mapping array
-    REVERSE_MAPPING_ARRAY = new ConnectionType[maxId + 1];
+    REVERSE_MAPPING_ARRAY = new ConnectionType[maxCode + 1];
 
     // populate mapping array
     for (ConnectionType connectionType : ConnectionType.values()) {
@@ -61,13 +63,13 @@ public enum ConnectionType {
    * Given the code associated to the type, return the associated ConnectionType. Return null if not
    * found
    *
-   * @param connectionTypeCode code associated to the entity type
+   * @param connectionTypeCode code associated to the connection type
    * @return ConnectionType corresponding to that code or null if mapping not found
    */
-  public static @Nullable ConnectionType fromCode(int connectionTypeCode) {
+  public static @Nonnull ConnectionType fromCode(int connectionTypeCode) {
     // ensure it is within bounds
-    if (connectionTypeCode >= REVERSE_MAPPING_ARRAY.length) {
-      return null;
+    if (connectionTypeCode < 0 || connectionTypeCode >= REVERSE_MAPPING_ARRAY.length) {
+      return ConnectionType.NULL_TYPE;
     }
 
     // get value

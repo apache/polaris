@@ -218,6 +218,7 @@ This product includes code from Apache Iceberg.
 * spec/iceberg-rest-catalog-open-api.yaml
 * spec/polaris-catalog-apis/oauth-tokens-api.yaml
 * integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationTest.java
+* service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org

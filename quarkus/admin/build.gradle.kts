@@ -43,14 +43,20 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
 
-  runtimeOnly(project(":polaris-eclipselink"))
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
+  runtimeOnly(project(":polaris-eclipselink"))
+  runtimeOnly(project(":polaris-relational-jdbc"))
+  runtimeOnly("org.postgresql:postgresql")
+
+  implementation("io.quarkus:quarkus-jdbc-postgresql")
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
+  testImplementation(project(":polaris-quarkus-test-commons"))
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
@@ -90,6 +96,7 @@ distributions {
       from(project.layout.buildDirectory.dir("quarkus-app"))
       from("distribution/NOTICE")
       from("distribution/LICENSE")
+      from("distribution/README.md")
     }
   }
 }

@@ -41,8 +41,13 @@ POSTGRES_ADDR=$(gcloud sql instances describe $DB_INSTANCE_NAME --format="get(ip
 FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
 sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
 
+GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"
+echo "GCS Bucket Name: $GCS_BUCKET_NAME"
+
+gcloud storage buckets create "gs://$GCS_BUCKET_NAME" --location=$CURRENT_REGION
+export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
+
 ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
-       -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

@@ -63,7 +63,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -82,6 +82,7 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -173,7 +174,9 @@ public class GenericTableCatalogTest {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -274,7 +277,8 @@ public class GenericTableCatalogTest {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -305,8 +309,8 @@ public class GenericTableCatalogTest {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
+        return new InMemoryEntityCache(metaStoreManager);
       }
 
       @Override

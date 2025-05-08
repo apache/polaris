@@ -28,6 +28,7 @@ import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.service.context.UnresolvableRealmContextException;
@@ -59,6 +60,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
       return Response.Status.CONFLICT;
     } else if (exception instanceof PolicyMappingAlreadyExistsException) {
       return Response.Status.CONFLICT;
+    } else if (exception instanceof PolicyInUseException) {
+      return Response.Status.BAD_REQUEST;
     } else {
       return Response.Status.INTERNAL_SERVER_ERROR;
     }

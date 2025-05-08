@@ -1,0 +1,39 @@
+{
+  "license": "Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
+  "$id": "https://polaris.apache.org/schemas/policies/system/snapshot-expiry/2025-02-03.json",
+  "title": "Snapshot Expiry Policy",
+  "description": "Inheritable Polaris policy schema for managing Iceberg table snapshot expiry. This policy allows a table (or its parent) to indicate that snapshot expiry is enabled. It also defines how snapshots should be expired. Engines or clients can use this policy to safely remove expired snapshots and delete associated files, helping maintain a clean and efficient table state.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2025-02-03",
+      "description": "Schema version"
+    },
+    "enable": {
+      "type": "boolean",
+      "description": "Enable or disable snapshot expiry."
+    },
+    "config": {
+      "type": "object",
+      "description": "A map containing custom configuration properties. Please note that interoperability is not guaranteed.",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
+    }
+  },
+  "required": ["enable"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "2025-02-03",
+      "enable": true,
+      "config": {
+        "min_snapshot_to_keep": 1,
+        "max_snapshot_age_days": 2,
+        "max_ref_age_days": 3,
+        "key1": "value1"
+      }
+    }
+  ]
+}

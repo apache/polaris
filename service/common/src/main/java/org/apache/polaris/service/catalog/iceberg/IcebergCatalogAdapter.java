@@ -188,11 +188,7 @@ public class IcebergCatalogAdapter
 
   private IcebergCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String catalogName) {
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
+    validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
         callContext,
@@ -383,6 +379,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
+      String ifNoneMatchString,
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -391,9 +388,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    // TODO: Populate with header value from parameter once the generated interface
-    //  contains the if-none-match header
-    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(null);
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchString);
 
     if (ifNoneMatch.isWildcard()) {
       throw new BadRequestException("If-None-Match may not take the value of '*'");
@@ -768,6 +763,7 @@ public class IcebergCatalogAdapter
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
+                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
                         .build())
                 .build())
         .build();

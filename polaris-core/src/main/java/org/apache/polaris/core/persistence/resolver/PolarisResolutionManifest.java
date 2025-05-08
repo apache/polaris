@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -35,7 +34,6 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -56,7 +54,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
   private final SecurityContext securityContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
@@ -96,8 +93,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         "invalid_principal_type_for_resolution_manifest",
         "principal={}",
         securityContext.getUserPrincipal());
-    this.authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
 
     // TODO: Make the rootContainer lookup no longer optional in the persistence store.
     // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
@@ -149,14 +144,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
-    // activated principal roles are known, add them to the call context
-    if (primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
-      List<PrincipalRoleEntity> activatedPrincipalRoles =
-          primaryResolver.getResolvedCallerPrincipalRoles().stream()
-              .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
-              .collect(Collectors.toList());
-      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
-    }
     return primaryResolverStatus;
   }
 

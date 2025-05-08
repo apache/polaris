@@ -38,6 +38,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,12 +71,13 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -93,8 +95,10 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -194,7 +198,9 @@ public class PolicyCatalogTest {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -294,7 +300,8 @@ public class PolicyCatalogTest {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -325,8 +332,8 @@ public class PolicyCatalogTest {
       }
 
       @Override
-      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager);
+      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
+        return new InMemoryEntityCache(metaStoreManager);
       }
 
       @Override
@@ -373,7 +380,7 @@ public class PolicyCatalogTest {
             () ->
                 policyCatalog.createPolicy(
                     POLICY1,
-                    PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(),
+                    PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(),
                     "test",
                     "{\"enable\": false}"))
         .isInstanceOf(AlreadyExistsException.class);
@@ -392,7 +399,7 @@ public class PolicyCatalogTest {
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
         POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
@@ -415,7 +422,7 @@ public class PolicyCatalogTest {
         "{\"enable\": false}");
 
     policyCatalog.createPolicy(
-        POLICY3, PredefinedPolicyTypes.SNAPSHOT_RETENTION.getName(), "test", "{\"enable\": false}");
+        POLICY3, PredefinedPolicyTypes.SNAPSHOT_EXPIRY.getName(), "test", "{\"enable\": false}");
 
     policyCatalog.createPolicy(
         POLICY4, ORPHAN_FILE_REMOVAL.getName(), "test", "{\"enable\": false}");
@@ -515,6 +522,30 @@ public class PolicyCatalogTest {
   }
 
   @Test
+  public void testDropPolicyInUse() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    policyCatalog.attachPolicy(POLICY1, target, null);
+
+    assertThatThrownBy(() -> policyCatalog.dropPolicy(POLICY1, false))
+        .isInstanceOf(PolicyInUseException.class);
+
+    // The policy is still attached to the catalog
+    List<ApplicablePolicy> applicablePolicies =
+        policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(1);
+
+    // Drop the policy with detach-all flag
+    policyCatalog.dropPolicy(POLICY1, true);
+
+    // The policy should be detached from the catalog and dropped
+    applicablePolicies = policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies.size()).isEqualTo(0);
+  }
+
+  @Test
   public void testDropPolicyNotExist() {
     icebergCatalog.createNamespace(NS);
 
@@ -597,8 +628,8 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(2);
-    assertThat(applicablePolicies.contains(p1)).isTrue();
-    assertThat(applicablePolicies.contains(p2)).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p1, true, NS))).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
 
     // attach policies to a table
     icebergCatalog.createTable(TABLE, SCHEMA);
@@ -617,8 +648,8 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY4, POLICY_ATTACH_TARGET_TBL, null);
     applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
     // p2 should be overwritten by p4, as they are the same type
-    assertThat(applicablePolicies.contains(p4)).isTrue();
-    assertThat(applicablePolicies.contains(p2)).isFalse();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p4, false, NS))).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, true, NS))).isFalse();
   }
 
   @Test
@@ -638,6 +669,19 @@ public class PolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, DATA_COMPACTION);
     // only p2 is with the type fetched
-    assertThat(applicablePolicies.contains(p2)).isTrue();
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
+  }
+
+  private static ApplicablePolicy policyToApplicablePolicy(
+      Policy policy, boolean inherited, Namespace parent) {
+    return new ApplicablePolicy(
+        policy.getPolicyType(),
+        policy.getInheritable(),
+        policy.getName(),
+        policy.getDescription(),
+        policy.getContent(),
+        policy.getVersion(),
+        inherited,
+        Arrays.asList(parent.levels()));
   }
 }

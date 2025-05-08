@@ -28,7 +28,7 @@ public enum PredefinedPolicyTypes implements PolicyType {
   DATA_COMPACTION(0, "system.data-compaction", true),
   METADATA_COMPACTION(1, "system.metadata-compaction", true),
   ORPHAN_FILE_REMOVAL(2, "system.orphan-file-removal", true),
-  SNAPSHOT_RETENTION(3, "system.snapshot-retention", true);
+  SNAPSHOT_EXPIRY(3, "system.snapshot-expiry", true);
 
   private final int code;
   private final String name;
