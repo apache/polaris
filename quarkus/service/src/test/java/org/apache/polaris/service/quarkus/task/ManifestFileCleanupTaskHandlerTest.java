@@ -224,10 +224,10 @@ class ManifestFileCleanupTaskHandlerTest {
                   retryCounter
                       .computeIfAbsent(location, k -> new AtomicInteger(0))
                       .incrementAndGet();
-              if (attempts < 3) {
+              if (attempts == 1) {
                 throw new RuntimeException("I'm failing to test retries");
               } else {
-                // succeed on the third attempt
+                // succeed on the new attempt
                 super.deleteFile(location);
               }
             }
@@ -260,6 +260,21 @@ class ManifestFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
       addTaskLocation(task);
+
+      // First attempt, fail on data file deletion
+      assertThatPredicate(handler::canHandleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isFalse();
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(dataFile1Path);
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(dataFile2Path);
+
+      // Second attempt, fail on manifest file deletion
+      assertThatPredicate(handler::canHandleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isFalse();
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(manifestFile.path());
+
+      // Third attempt, deleted all files
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);

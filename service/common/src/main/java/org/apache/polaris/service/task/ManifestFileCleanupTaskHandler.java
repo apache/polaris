@@ -85,15 +85,15 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     try {
       ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO);
       List<CompletableFuture<Void>> dataFileDeletes =
-          StreamSupport.stream(
-                  Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
-                  false)
-              .map(file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location()))
-              .toList();
+              StreamSupport.stream(
+                              Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
+                              false)
+                      .map(file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location()))
+                      .toList();
       LOGGER.debug(
-          "Scheduled {} data files to be deleted from manifest {}",
-          dataFileDeletes.size(),
-          manifestFile.path());
+              "Scheduled {} data files to be deleted from manifest {}",
+              dataFileDeletes.size(),
+              manifestFile.path());
 
       // wait for all data files to be deleted, then wait for the manifest itself to be deleted
       CompletableFuture.allOf(dataFileDeletes.toArray(CompletableFuture[]::new))
