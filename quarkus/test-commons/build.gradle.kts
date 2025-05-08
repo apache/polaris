@@ -28,11 +28,6 @@ configurations.all {
   exclude(group = "org.scala-lang", module = "scala-reflect")
 }
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_21
-  targetCompatibility = JavaVersion.VERSION_21
-}
-
 dependencies {
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-junit5")

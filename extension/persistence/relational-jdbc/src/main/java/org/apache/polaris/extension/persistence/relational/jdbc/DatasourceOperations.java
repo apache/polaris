@@ -29,7 +29,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -54,15 +53,13 @@ public class DatasourceOperations {
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
-  private final Clock clock;
 
   private final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration, Clock clock) {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
-    this.clock = clock;
   }
 
   /**
@@ -233,7 +230,7 @@ public class DatasourceOperations {
     long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
 
     // maximum time we will retry till.
-    long maxRetryTime = clock.millis() + maxDuration;
+    long maxRetryTime = System.nanoTime() / 1000000 + maxDuration;
 
     while (attempts < maxAttempts) {
       try {
@@ -254,7 +251,7 @@ public class DatasourceOperations {
         }
 
         attempts++;
-        long timeLeft = Math.max((maxRetryTime - clock.millis()), 0L);
+        long timeLeft = Math.max((maxRetryTime - (System.nanoTime() / 1000000)), 0L);
         if (attempts >= maxAttempts || !isRetryable(sqlException) || timeLeft == 0) {
           String exceptionMessage =
               String.format(
