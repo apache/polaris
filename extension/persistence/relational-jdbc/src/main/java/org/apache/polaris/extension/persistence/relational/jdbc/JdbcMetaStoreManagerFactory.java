@@ -25,7 +25,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -76,7 +75,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
-  @Inject Clock clock;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -112,7 +110,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
     DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration, clock);
+        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
         DatabaseType databaseType;

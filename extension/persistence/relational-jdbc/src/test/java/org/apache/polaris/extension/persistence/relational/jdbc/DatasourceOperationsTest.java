@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Function;
@@ -59,8 +58,7 @@ public class DatasourceOperationsTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    datasourceOperations =
-        new DatasourceOperations(mockDataSource, relationalJdbcConfiguration, Clock.systemUTC());
+    datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
   }
 
   @Test

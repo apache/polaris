@@ -21,7 +21,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 import java.sql.SQLException;
-import java.time.Clock;
 import java.time.ZoneId;
 import java.util.Optional;
 import javax.sql.DataSource;
@@ -46,8 +45,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations =
-        new DatasourceOperations(
-            createH2DataSource(), new H2JdbcConfiguration(), Clock.systemUTC());
+        new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
     try {
       datasourceOperations.executeScript(
           String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));
