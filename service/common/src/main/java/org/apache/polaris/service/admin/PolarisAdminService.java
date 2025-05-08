@@ -95,7 +95,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -887,7 +887,7 @@ public class PolarisAdminService {
             null,
             PolarisEntityType.CATALOG,
             PolarisEntitySubType.ANY_SUBTYPE,
-            ReadEverythingPageToken.get())
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1054,7 +1054,7 @@ public class PolarisAdminService {
             null,
             PolarisEntityType.PRINCIPAL,
             PolarisEntitySubType.NULL_SUBTYPE,
-            ReadEverythingPageToken.get())
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1164,7 +1164,7 @@ public class PolarisAdminService {
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            ReadEverythingPageToken.get())
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1293,7 +1293,7 @@ public class PolarisAdminService {
             PolarisEntity.toCoreList(List.of(catalogEntity)),
             PolarisEntityType.CATALOG_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            ReadEverythingPageToken.get())
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(

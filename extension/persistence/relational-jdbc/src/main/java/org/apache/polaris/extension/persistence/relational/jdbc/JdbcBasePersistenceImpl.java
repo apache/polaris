@@ -49,9 +49,9 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadFromStartPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -420,11 +420,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           query,
           new ModelEntity(),
           stream -> {
-            stream
-                .map(ModelEntity::toEntity)
-                .filter(entityFilter)
-                .limit(pageToken.pageSize)
-                .forEach(results::add);
+            var data = stream.map(ModelEntity::toEntity).filter(entityFilter);
+            if (pageToken instanceof HasPageSize hasPageSize) {
+              data = data.limit(hasPageSize.getPageSize());
+            }
+            data.forEach(results::add);
           });
       List<T> resultsOrEmpty =
           results == null
@@ -562,13 +562,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
           e);
     }
-  }
-
-  // TODO support pagination
-  @Nonnull
-  @Override
-  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
-    return ReadFromStartPageToken.builder();
   }
 
   @Nullable

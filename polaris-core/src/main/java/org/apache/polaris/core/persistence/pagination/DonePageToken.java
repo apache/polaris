@@ -18,38 +18,19 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import jakarta.annotation.Nullable;
 import java.util.List;
 
 public class DonePageToken extends PageToken {
 
-  /** Get a {@link DonePageToken} */
-  public static DonePageToken get() {
-    return new DonePageToken();
-  }
-
-  @Override
-  protected PageTokenBuilder<?> getBuilder() {
-    throw new IllegalStateException("This page token is DONE");
-  }
-
-  @Override
-  protected List<String> getComponents() {
-    throw new IllegalStateException("This page token is DONE");
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    throw new IllegalStateException("This page token is DONE");
-  }
-
-  @Override
-  public PageToken withPageSize(@Nullable Integer pageSize) {
-    throw new IllegalStateException("This page token is DONE");
-  }
+  public DonePageToken() {}
 
   @Override
   public String toString() {
     return null;
+  }
+
+  @Override
+  protected PageToken updated(List<?> newData) {
+    return new DonePageToken();
   }
 }

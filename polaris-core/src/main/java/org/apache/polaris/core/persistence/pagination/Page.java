@@ -35,6 +35,6 @@ public class Page<T> {
 
   /** Used to wrap a {@link List<T>} of data into a {@link Page <T>} when there is no more data */
   public static <T> Page<T> fromData(List<T> data) {
-    return new Page<>(DonePageToken.get(), data);
+    return new Page<>(new DonePageToken(), data);
   }
 }

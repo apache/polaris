@@ -19,8 +19,8 @@
 package org.apache.polaris.service.persistence.pagination;
 
 import org.apache.polaris.core.persistence.pagination.DonePageToken;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -30,15 +30,15 @@ public class PageTokenTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageTokenTest.class);
 
   @Test
-  void testEndToken() {
-    Assertions.assertThat(DonePageToken.get()).returns(null, PageToken::toString);
+  void testDoneToken() {
+    Assertions.assertThat(new DonePageToken()).returns(null, PageToken::toString);
   }
 
   @Test
   void testReadEverythingPageToken() {
-    PageToken token = ReadEverythingPageToken.get();
+    PageToken token = PageToken.readEverything();
 
     Assertions.assertThat(token.toString()).isNotNull();
-    Assertions.assertThat(token.pageSize).isEqualTo(Integer.MAX_VALUE);
+    Assertions.assertThat(token).isNotInstanceOf(HasPageSize.class);
   }
 }

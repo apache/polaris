@@ -37,6 +37,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -52,9 +53,9 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadFromStartPageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -468,16 +469,19 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
-    return Page.fromData(
+    Stream<PolarisBaseEntity> data =
         this.store
             .lookupFullEntitiesActive(
                 localSession.get(), catalogId, parentId, entityType, pageToken)
             .stream()
             .map(ModelEntity::toEntity)
-            .filter(entityFilter)
-            .limit(pageToken.pageSize)
-            .map(transformer)
-            .collect(Collectors.toList()));
+            .filter(entityFilter);
+
+    if (pageToken instanceof HasPageSize hasPageSize) {
+      data = data.limit(hasPageSize.getPageSize());
+    }
+
+    return Page.fromData(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -768,11 +772,5 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     if (session != null) {
       session.getTransaction().rollback();
     }
-  }
-
-  @Nonnull
-  @Override
-  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
-    return ReadFromStartPageToken.builder();
   }
 }

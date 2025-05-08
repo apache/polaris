@@ -1186,7 +1186,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   PolarisEntityType.CATALOG_ROLE,
                   entity -> true,
                   Function.identity(),
-                  ms.pageTokenBuilder().fromLimit(2))
+                  PageToken.fromLimit(2))
               .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role

@@ -51,7 +51,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -768,7 +768,7 @@ public class PolarisTestMetaStoreManager {
                     path,
                     PolarisEntityType.NAMESPACE,
                     PolarisEntitySubType.NULL_SUBTYPE,
-                    ReadEverythingPageToken.get())
+                    PageToken.readEverything())
                 .getEntities();
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
@@ -779,7 +779,7 @@ public class PolarisTestMetaStoreManager {
                       path,
                       PolarisEntityType.TABLE_LIKE,
                       PolarisEntitySubType.ANY_SUBTYPE,
-                      ReadEverythingPageToken.get())
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
@@ -790,7 +790,7 @@ public class PolarisTestMetaStoreManager {
                       path,
                       PolarisEntityType.CATALOG_ROLE,
                       PolarisEntitySubType.ANY_SUBTYPE,
-                      ReadEverythingPageToken.get())
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
@@ -1564,7 +1564,7 @@ public class PolarisTestMetaStoreManager {
                 path,
                 entityType,
                 entitySubType,
-                ReadEverythingPageToken.get())
+                PageToken.readEverything())
             .getEntities();
     Assertions.assertThat(result).isNotNull();
 
@@ -1882,7 +1882,7 @@ public class PolarisTestMetaStoreManager {
                 null,
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
-                ReadEverythingPageToken.get())
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -1909,7 +1909,7 @@ public class PolarisTestMetaStoreManager {
                 null,
                 PolarisEntityType.PRINCIPAL_ROLE,
                 PolarisEntitySubType.NULL_SUBTYPE,
-                ReadEverythingPageToken.get())
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -2648,7 +2648,7 @@ public class PolarisTestMetaStoreManager {
                 null,
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
-                ReadEverythingPageToken.get())
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only

@@ -26,70 +26,17 @@ import java.util.List;
  */
 public class ReadEverythingPageToken extends PageToken {
 
-  private ReadEverythingPageToken() {
-    this.pageSize = Integer.MAX_VALUE;
-    validate();
-  }
+  public static String PREFIX = "read-everything";
 
-  /** Get a {@link ReadEverythingPageToken} */
-  public static ReadEverythingPageToken get() {
-    return new ReadEverythingPageToken();
-  }
+  public ReadEverythingPageToken() {}
 
-  public static PageTokenBuilder<ReadEverythingPageToken> builder() {
-    return new ReadEverythingPageTokenBuilder();
+  @Override
+  public String toString() {
+    return PREFIX;
   }
 
   @Override
-  protected PageTokenBuilder<?> getBuilder() {
-    return builder();
-  }
-
-  /** A {@link PageTokenBuilder} implementation for {@link ReadEverythingPageToken} */
-  public static class ReadEverythingPageTokenBuilder
-      extends PageTokenBuilder<ReadEverythingPageToken> {
-
-    private ReadEverythingPageTokenBuilder() {}
-
-    @Override
-    public String tokenPrefix() {
-      return "polaris-read-everything";
-    }
-
-    @Override
-    public int expectedComponents() {
-      return 0;
-    }
-
-    @Override
-    protected ReadEverythingPageToken fromStringComponents(List<String> components) {
-      return ReadEverythingPageToken.get();
-    }
-
-    @Override
-    protected ReadEverythingPageToken fromLimitImpl(int limit) {
-      throw new UnsupportedOperationException();
-    }
-  }
-
-  @Override
-  protected List<String> getComponents() {
-    return List.of();
-  }
-
-  /** Any time {@link ReadEverythingPageToken} is updated, everything has been read */
-  @Override
-  public PageToken updated(List<?> newData) {
-    return DonePageToken.get();
-  }
-
-  /** {@link ReadEverythingPageToken} does not support page size */
-  @Override
-  public PageToken withPageSize(Integer pageSize) {
-    if (pageSize == null || pageSize == Integer.MAX_VALUE) {
-      return ReadEverythingPageToken.get();
-    } else {
-      throw new UnsupportedOperationException();
-    }
+  protected PageToken updated(List<?> newData) {
+    return new DonePageToken();
   }
 }

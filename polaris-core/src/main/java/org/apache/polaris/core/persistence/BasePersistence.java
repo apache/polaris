@@ -414,7 +414,4 @@ public interface BasePersistence extends PolicyMappingPersistence {
   default BasePersistence detach() {
     return this;
   }
-
-  @Nonnull
-  PageToken.PageTokenBuilder<?> pageTokenBuilder();
 }

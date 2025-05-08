@@ -111,7 +111,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -195,7 +194,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
-  private final PageToken.PageTokenBuilder<?> pageTokenBuilder;
 
   /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
@@ -225,7 +223,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
-    this.pageTokenBuilder = callContext.getPolarisCallContext().getMetaStore().pageTokenBuilder();
     this.polarisEventListener = polarisEventListener;
   }
 
@@ -505,7 +502,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-    return listTables(namespace, ReadEverythingPageToken.get()).items;
+    return listTables(namespace, PageToken.readEverything()).items;
   }
 
   public Page<TableIdentifier> listTables(Namespace namespace, String pageToken, Integer pageSize) {
@@ -828,7 +825,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
-    return listNamespaces(namespace, ReadEverythingPageToken.get()).items;
+    return listNamespaces(namespace, PageToken.readEverything()).items;
   }
 
   public Page<Namespace> listNamespaces(Namespace namespace, String pageToken, Integer pageSize) {
@@ -869,7 +866,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-    return listViews(namespace, ReadEverythingPageToken.get()).items;
+    return listViews(namespace, PageToken.readEverything()).items;
   }
 
   public Page<TableIdentifier> listViews(Namespace namespace, String pageToken, Integer pageSize) {
@@ -1110,7 +1107,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 parentPath.stream().map(PolarisEntity::toCore).collect(Collectors.toList()),
                 PolarisEntityType.NAMESPACE,
                 PolarisEntitySubType.ANY_SUBTYPE,
-                ReadEverythingPageToken.get());
+                PageToken.readEverything());
     if (!siblingNamespacesResult.isSuccess()) {
       throw new IllegalStateException(
           "Unable to resolve siblings entities to validate location - could not list namespaces");
@@ -1136,7 +1133,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                                   .collect(Collectors.toList()),
                               PolarisEntityType.TABLE_LIKE,
                               PolarisEntitySubType.ANY_SUBTYPE,
-                              ReadEverythingPageToken.get());
+                              PageToken.readEverything());
                   if (!siblingTablesResult.isSuccess()) {
                     throw new IllegalStateException(
                         "Unable to resolve siblings entities to validate location - could not list tables");
@@ -2582,13 +2579,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 catalogEntity,
                 FeatureConfiguration.LIST_PAGINATION_ENABLED);
     if (!paginationEnabled) {
-      return ReadEverythingPageToken.get();
+      return PageToken.readEverything();
     } else {
-      if (tokenString != null) {
-        return pageTokenBuilder.fromString(tokenString).withPageSize(pageSize);
-      } else {
-        return pageTokenBuilder.fromLimit(pageSize);
-      }
+      return PageToken.build(tokenString, pageSize);
     }
   }
 }

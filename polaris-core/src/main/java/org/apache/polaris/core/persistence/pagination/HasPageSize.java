@@ -18,34 +18,10 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
-
 /**
- * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
- * represent a `limit`. When updated, it returns a token with the same semantics.
+ * A light interface for {@link PageToken} implementations to express that they have a page size
+ * that should be respected
  */
-public class ReadFromStartPageToken extends PageToken implements HasPageSize {
-
-  public static final String PREFIX = "read-from-start";
-
-  private final int pageSize;
-
-  public ReadFromStartPageToken(int pageSize) {
-    this.pageSize = pageSize;
-  }
-
-  @Override
-  public int getPageSize() {
-    return pageSize;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s/%d", PREFIX, pageSize);
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    return new ReadFromStartPageToken(pageSize);
-  }
+public interface HasPageSize {
+  int getPageSize();
 }

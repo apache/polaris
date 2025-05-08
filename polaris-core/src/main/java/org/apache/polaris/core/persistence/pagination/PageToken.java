@@ -18,13 +18,7 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import jakarta.annotation.Nullable;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Represents a page token that can be used by operations like `listTables`. Clients that specify a
@@ -37,87 +31,42 @@ import java.util.stream.Stream;
  */
 public abstract class PageToken {
 
-  public int pageSize;
+  /** Build a new PageToken that reads everything */
+  public static PageToken readEverything() {
+    return build(null, null);
+  }
 
-  protected void validate() {
-    if (pageSize <= 0) {
-      throw new IllegalArgumentException("Page size must be greater than zero");
+  /** Build a new PageToken from an input String, without a specified page size */
+  public static PageToken fromString(String token) {
+    return build(token, null);
+  }
+
+  /** Build a new PageToken from a limit */
+  public static PageToken fromLimit(Integer pageSize) {
+    return build(null, pageSize);
+  }
+
+  /** Build a {@link PageToken} from the input string and page size */
+  public static PageToken build(String token, Integer pageSize) {
+    if (token == null || token.isEmpty()) {
+      if (pageSize != null) {
+        return new ReadFromStartPageToken(pageSize);
+      } else {
+        return new ReadEverythingPageToken();
+      }
+    } else {
+      // TODO implement, split out by the token's prefix
+      return new ReadEverythingPageToken();
     }
   }
 
-  /**
-   * Get a new PageTokenBuilder from a PageToken. The PageTokenBuilder type should match the
-   * PageToken type. Implementations may also provide a static `builder` method to obtain the same
-   * PageTokenBuilder.
-   */
-  protected abstract PageTokenBuilder<?> getBuilder();
-
-  /** Allows `PageToken` implementations to implement methods like `fromLimit` */
-  public abstract static class PageTokenBuilder<T extends PageToken> {
-
-    /**
-     * A prefix that tokens are expected to start with, ideally unique across `PageTokenBuilder`
-     * implementations.
-     */
-    public abstract String tokenPrefix();
-
-    /**
-     * The number of expected components in a token. This should match the number of components
-     * returned by getComponents and shouldn't account for the prefix or the checksum.
-     */
-    public abstract int expectedComponents();
-
-    /** Deserialize a string into a {@link PageToken} */
-    public final PageToken fromString(String tokenString) {
-      if (tokenString == null || tokenString.isEmpty()) {
-        throw new IllegalArgumentException("Cannot build page token from empty string");
-      } else {
-        try {
-          String decoded =
-              new String(Base64.getDecoder().decode(tokenString), StandardCharsets.UTF_8);
-          String[] parts = decoded.split(":");
-
-          // +2 to account for the prefix and checksum.
-          if (parts.length != expectedComponents() + 2 || !parts[0].equals(tokenPrefix())) {
-            throw new IllegalArgumentException("Invalid token format in token: " + tokenString);
-          }
-
-          // Cut off prefix and checksum
-          T result = fromStringComponents(Arrays.asList(parts).subList(1, parts.length - 1));
-          result.validate();
-          return result;
-        } catch (RuntimeException e) {
-          throw new IllegalArgumentException("Invalid page token: " + tokenString, e);
-        }
-      }
-    }
-
-    /** Construct a {@link PageToken} from a plain limit */
-    public final PageToken fromLimit(Integer limit) {
-      if (limit == null) {
-        return ReadEverythingPageToken.get();
-      } else {
-        return fromLimitImpl(limit);
-      }
-    }
-
-    /** Construct a {@link PageToken} from a plain limit */
-    protected abstract T fromLimitImpl(int limit);
-
-    /**
-     * {@link PageTokenBuilder} implementations should implement this to build a {@link PageToken}
-     * from components in a string token. These components should be the same ones returned by
-     * {@link #getComponents()} and won't include the token prefix or the checksum.
-     */
-    protected abstract T fromStringComponents(List<String> components);
-  }
-
-  /** Convert this into components that the serialized token string will be built from. */
-  protected abstract List<String> getComponents();
+  /** Serialize a {@link PageToken} into a string */
+  @Override
+  public abstract String toString();
 
   /**
    * Builds a new page token to reflect new data that's been read. If the amount of data read is
-   * less than the pageSize, this will return {@link PageToken#END}(null)
+   * less than the pageSize, this will return a {@link DonePageToken}(null)
    */
   protected abstract PageToken updated(List<?> newData);
 
@@ -128,27 +77,6 @@ public abstract class PageToken {
    */
   public final <T> Page<T> buildNextPage(List<T> data) {
     return new Page<T>(updated(data), data);
-  }
-
-  /**
-   * Return a new {@link PageToken} with an updated page size. If the pageSize provided is null, the
-   * existing page size will be preserved.
-   */
-  public abstract PageToken withPageSize(@Nullable Integer pageSize);
-
-  /** Serialize a {@link PageToken} into a string */
-  @Override
-  public String toString() {
-    List<String> components = getComponents();
-    String prefix = getBuilder().tokenPrefix();
-    String componentString = String.join(":", components);
-    String checksum = String.valueOf(componentString.hashCode());
-    List<String> allElements =
-        Stream.of(prefix, componentString, checksum)
-            .filter(s -> !s.isEmpty())
-            .collect(Collectors.toList());
-    String rawString = String.join(":", allElements);
-    return Base64.getUrlEncoder().encodeToString(rawString.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override

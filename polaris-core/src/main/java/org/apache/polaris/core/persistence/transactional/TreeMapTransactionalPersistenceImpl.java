@@ -26,6 +26,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -38,9 +39,9 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.ReadFromStartPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -350,7 +351,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
-    return Page.fromData(
+    Stream<PolarisBaseEntity> data =
         this.store
             .getSliceEntitiesActive()
             .readRange(
@@ -360,10 +361,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
                         callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-            .filter(entityFilter)
-            .limit(pageToken.pageSize)
-            .map(transformer)
-            .collect(Collectors.toList()));
+            .filter(entityFilter);
+    if (pageToken instanceof HasPageSize) {
+      data = data.limit(((HasPageSize) pageToken).getPageSize());
+    }
+
+    return Page.fromData(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -645,12 +648,5 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyCatalogId, policyId));
-  }
-
-  // TODO support pagination
-  @Nonnull
-  @Override
-  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
-    return ReadFromStartPageToken.builder();
   }
 }
