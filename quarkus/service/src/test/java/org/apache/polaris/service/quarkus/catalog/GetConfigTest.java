@@ -39,7 +39,16 @@ public class GetConfigTest {
   @ValueSource(booleans = {true, false})
   public void testGetConfig(boolean enableGenericTable) {
     TestServices services =
-        TestServices.builder().config(Map.of("ENABLE_GENERIC_TABLES", enableGenericTable)).build();
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3"),
+                    "ENABLE_GENERIC_TABLES",
+                    enableGenericTable))
+            .build();
 
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
