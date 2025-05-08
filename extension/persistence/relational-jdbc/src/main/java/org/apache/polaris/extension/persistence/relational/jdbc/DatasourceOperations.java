@@ -30,10 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -188,15 +185,18 @@ public class DatasourceOperations {
             boolean success = false;
             connection.setAutoCommit(false);
             try {
-              try (Statement statement = connection.createStatement()) {
-                success = callback.execute(statement);
+              try {
+                try (Statement statement = connection.createStatement()) {
+                  success = callback.execute(statement);
+                }
+              } finally {
+                if (success) {
+                  connection.commit();
+                } else {
+                  connection.rollback();
+                }
               }
             } finally {
-              if (success) {
-                connection.commit();
-              } else {
-                connection.rollback();
-              }
               connection.setAutoCommit(autoCommit);
             }
           }
@@ -212,8 +212,8 @@ public class DatasourceOperations {
     }
 
     // Additionally, one might check for specific error messages or other conditions
-    return e.getMessage().contains("connection refused")
-        || e.getMessage().contains("connection reset");
+    return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
+        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
   }
 
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
@@ -257,10 +257,7 @@ public class DatasourceOperations {
                   "Failed due to %s, after , %s attempts and %s milliseconds",
                   sqlException.getMessage(), attempts, maxDuration);
           throw new SQLException(
-              exceptionMessage,
-              sqlException.getSQLState(),
-              sqlException.getErrorCode(),
-              sqlException);
+              exceptionMessage, sqlException.getSQLState(), sqlException.getErrorCode(), e);
         }
         // Add jitter
         long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextFloat() * 0.2 * delay));

@@ -145,17 +145,18 @@ public class DatasourceOperationsTest {
 
   @Test
   void testSuccessfulExecutionAfterOneRetry() throws SQLException {
-    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
-    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
-    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(100L));
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(4));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(2000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
     when(mockOperation.execute())
-        .thenThrow(
-            new SQLException("Retryable error", "40001", new SQLException("Retryable error")))
+        .thenThrow(new SQLException("Retryable error", "40001"))
+        .thenThrow(new SQLException("connection refused"))
+        .thenThrow(new SQLException("connection reset"))
         .thenReturn("Success!");
 
     String result = datasourceOperations.withRetries(mockOperation);
     assertEquals("Success!", result);
-    verify(mockOperation, times(2)).execute();
+    verify(mockOperation, times(4)).execute();
   }
 
   @Test
