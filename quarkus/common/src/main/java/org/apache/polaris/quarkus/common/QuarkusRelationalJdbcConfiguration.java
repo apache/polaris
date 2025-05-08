@@ -17,27 +17,11 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  alias(libs.plugins.jandex)
-}
+package org.apache.polaris.quarkus.common;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.slf4j.api)
-  implementation(libs.guava)
+import io.smallrye.config.ConfigMapping;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-
-  compileOnly(libs.jakarta.inject.api)
-
-  implementation(libs.smallrye.common.annotation) // @Identifier
-
-  testImplementation(libs.mockito.junit.jupiter)
-
-  testImplementation(libs.h2)
-  testImplementation(testFixtures(project(":polaris-core")))
+@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
 }
