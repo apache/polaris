@@ -8,4 +8,7 @@ Organizations and other open-source projects that contribute continuously and si
 This documentation will help you get started.
 Contribute bug reports and feature requests You can report an issue in the Polaris Catalog issue tracker.
 How to report a bug Note: If you find a security vulnerability, do NOT open an issue. Please email security@apache.org instead.
-When filing an issue, make sure to answer these five questions:</description></item></channel></rss>
+When filing an issue, make sure to answer these five questions:</description></item><item><title/><link>https://polaris.apache.org/community/release-guide/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/release-guide/</guid><description>Release Guide This guide walks you through the release process of the Apache Polaris podling.
+Setup To create a release candidate, you will need:
+your Apache credentials (for repository.apache.org and dist.apache.org repositories) a GPG key for signing artifacts, published in KEYS file If you haven&amp;rsquo;t published your GPG key yet, you must publish it before starting the release process:
+svn co https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release cd polaris-dist-release echo &amp;#34;&amp;#34; &amp;gt;&amp;gt; KEYS # append a new line gpg --list-sigs &amp;lt;YOUR KEY ID HERE&amp;gt; &amp;gt;&amp;gt; KEYS # append signatures gpg --armor --export &amp;lt;YOUR KEY ID HERE&amp;gt; &amp;gt;&amp;gt; KEYS # append public key block svn commit -m &amp;#34;add key for &amp;lt;YOUR NAME HERE&amp;gt;&amp;#34; Dist repository The Apache dist repository (dist.</description></item></channel></rss>
