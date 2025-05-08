@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -230,7 +231,7 @@ public class DatasourceOperations {
     long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
 
     // maximum time we will retry till.
-    long maxRetryTime = System.nanoTime() / 1000000 + maxDuration;
+    long maxRetryTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + maxDuration;
 
     while (attempts < maxAttempts) {
       try {
@@ -251,8 +252,9 @@ public class DatasourceOperations {
         }
 
         attempts++;
-        long timeLeft = Math.max((maxRetryTime - (System.nanoTime() / 1000000)), 0L);
-        if (attempts >= maxAttempts || !isRetryable(sqlException) || timeLeft == 0) {
+        long timeLeft =
+            Math.max((maxRetryTime - TimeUnit.NANOSECONDS.toMillis(System.nanoTime())), 0L);
+        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
           String exceptionMessage =
               String.format(
                   "Failed due to %s, after , %s attempts and %s milliseconds",
@@ -262,7 +264,14 @@ public class DatasourceOperations {
         }
         // Add jitter
         long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextFloat() * 0.2 * delay));
-        LOGGER.debug("Retrying {} after {} attempts on {}", operation, attempts, e.getMessage(), e);
+        LOGGER.debug(
+            "Sleeping {} ms before retrying {} on attempt {} / {}, reason {}",
+            timeToSleep,
+            operation,
+            attempts,
+            maxAttempts,
+            e.getMessage(),
+            e);
         try {
           Thread.sleep(timeToSleep);
         } catch (InterruptedException ie) {
