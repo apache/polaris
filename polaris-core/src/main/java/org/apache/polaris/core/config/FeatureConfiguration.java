@@ -156,8 +156,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
+                  StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
@@ -268,5 +267,39 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.iceberg-commit-max-retries")
           .description("The max number of times to try committing to an Iceberg table")
           .defaultValue(4)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_SPECIFYING_FILE_IO_IMPL =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_SPECIFYING_FILE_IO_IMPL")
+          .description(
+              "Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. "
+                  + "Must only be enabled in dev/test environments, never in production systems.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS")
+              .description(
+                  "Allow usage of FileIO implementations that are considered insecure. "
+                      + "Enabling this setting exposes the service to SEVERE security risks, including "
+                      + "denial of service, corruption, data loss and more!"
+                      + "This must NEVER be set to 'true' for anything except tests! ")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST")
+          .description(
+              "Config key for initializing a default \"catalogFileIO\" that is available either via "
+                  + "getIo() or for any TableOperations/ViewOperations instantiated, via ops.io() "
+                  + "before entity-specific FileIO initialization is triggered for any such operations. "
+                  + "Typically this should only be used in test scenarios where a PolarisIcebergCatalog "
+                  + "instance is used for both the \"client-side\" and \"server-side\" logic instead of "
+                  + "being access through a REST layer.")
+          .defaultValue(false)
           .buildFeatureConfiguration();
 }

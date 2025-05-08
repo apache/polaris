@@ -24,6 +24,7 @@ import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHE
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -73,10 +74,25 @@ public class PolarisOverlappingTableTest {
 
   static Stream<Arguments> testTableLocationRestrictions() {
     Map<String, Object> laxServices =
-        Map.of("ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true", "ALLOW_TABLE_LOCATION_OVERLAP", "true");
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "true",
+            "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
     Map<String, Object> strictServices =
         Map.of(
-            "ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false", "ALLOW_TABLE_LOCATION_OVERLAP", "false");
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "false",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
     Map<String, Object> laxCatalog =
         Map.of(
             ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),

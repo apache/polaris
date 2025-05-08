@@ -126,7 +126,11 @@ public class PolicyCatalogTest {
           "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "true",
+          "polaris.readiness.ignore-security-issues",
+          "true");
     }
   }
 

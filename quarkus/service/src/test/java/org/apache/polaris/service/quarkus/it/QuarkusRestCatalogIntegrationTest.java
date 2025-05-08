@@ -32,7 +32,17 @@ public class QuarkusRestCatalogIntegrationTest extends PolarisRestCatalogIntegra
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"", "false");
+      return Map.of(
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"",
+          "false",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.readiness.ignore-security-issues",
+          "true");
     }
   }
 }

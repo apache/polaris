@@ -108,10 +108,14 @@ public class PolarisGenericTableCatalogTest {
       return Map.of(
           "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "true",
           "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.readiness.ignore-security-issues",
+          "true");
     }
   }
 

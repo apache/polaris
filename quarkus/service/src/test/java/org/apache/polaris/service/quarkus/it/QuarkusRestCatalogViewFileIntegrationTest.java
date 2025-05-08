@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
+@TestProfile(QuarkusRestCatalogViewFileIntegrationTest.Profile.class)
 public class QuarkusRestCatalogViewFileIntegrationTest
     extends PolarisRestCatalogViewFileIntegrationTest {
 
@@ -36,7 +38,13 @@ public class QuarkusRestCatalogViewFileIntegrationTest
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
+      return Map.of(
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\"]",
+          "polaris.readiness.ignore-security-issues",
+          "true");
     }
   }
 
