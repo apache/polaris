@@ -35,10 +35,21 @@ public interface ReservedProperties {
   Logger LOGGER = LoggerFactory.getLogger(ReservedProperties.class);
 
   /**
+   * Provides a {@link ReservedProperties} implementation that reserves nothing. Used for testing.
+   */
+  ReservedProperties NONE =
+      new ReservedProperties() {
+        @Override
+        public List<String> prefixes() {
+          return List.of();
+        }
+      };
+
+  /**
    * A list of prefixes that are considered reserved. Any property starting with one of these
    * prefixes is a reserved property.
    */
-  List<String> reservedPrefixes();
+  List<String> prefixes();
 
   /** If true, attempts to modify a reserved property should throw an exception. */
   default boolean shouldThrow() {
@@ -46,12 +57,12 @@ public interface ReservedProperties {
   }
 
   /**
-   * Removes reserved properties from a planned change to an entity. If `shouldThrow`returns true,
+   * Removes reserved properties from a planned change to an entity. If `shouldThrow` returns true,
    * this will throw an IllegalArgumentException.
    *
    * @param existingProperties The properties currently present for an entity
    * @param updateProperties The properties present in an update to an entity
-   * @return The keys from the new key list which are not reserved properties
+   * @return The properties in the update, with changes to reserved properties removed
    */
   default Map<String, String> removeReservedPropertiesFromUpdate(
       Map<String, String> existingProperties, Map<String, String> updateProperties)
@@ -59,8 +70,7 @@ public interface ReservedProperties {
     Map<String, String> updatePropertiesWithoutReservedProperties =
         removeReservedProperties(updateProperties);
     for (var entry : updateProperties.entrySet()) {
-      // If a key was removed from the update, we substitute in the existing value as to not remove
-      // it
+      // If a key was removed from the update, we substitute back the existing value
       if (!updatePropertiesWithoutReservedProperties.containsKey(entry.getKey())) {
         if (existingProperties.containsKey(entry.getKey())) {
           updatePropertiesWithoutReservedProperties.put(
@@ -81,18 +91,18 @@ public interface ReservedProperties {
   default Map<String, String> removeReservedProperties(Map<String, String> properties)
       throws IllegalArgumentException {
     Map<String, String> results = new HashMap<>();
-    List<String> prefixes = reservedPrefixes();
+    List<String> prefixes = prefixes();
     for (var entry : properties.entrySet()) {
       boolean isReserved = false;
       for (String prefix : prefixes) {
         if (entry.getKey().startsWith(prefix)) {
+          isReserved = true;
           String message =
               String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
           if (shouldThrow()) {
             throw new IllegalArgumentException(message);
           } else {
             LOGGER.debug(message);
-            isReserved = true;
           }
         }
       }

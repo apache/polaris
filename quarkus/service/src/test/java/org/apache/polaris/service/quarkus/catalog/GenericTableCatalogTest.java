@@ -198,13 +198,7 @@ public class GenericTableCatalogTest {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
-    reservedProperties =
-        new ReservedProperties() {
-          @Override
-          public List<String> reservedPrefixes() {
-            return List.of();
-          }
-        };
+    reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(

@@ -26,7 +26,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
@@ -190,13 +189,7 @@ public record TestServices(
               fileIOFactory,
               polarisEventListener);
 
-      ReservedProperties reservedProperties =
-          new ReservedProperties() {
-            @Override
-            public List<String> reservedPrefixes() {
-              return List.of();
-            }
-          };
+      ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(

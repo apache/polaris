@@ -25,7 +25,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 @ConfigMapping(prefix = "polaris.reserved-properties")
 public interface QuarkusReservedProperties extends ReservedProperties {
   @Override
-  default List<String> reservedPrefixes() {
+  default List<String> prefixes() {
     return List.of("polaris.");
   }
 }
