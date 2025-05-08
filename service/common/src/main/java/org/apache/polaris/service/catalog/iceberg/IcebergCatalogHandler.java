@@ -179,7 +179,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Page<Namespace> results = polarisCatalog.listNamespaces(parent, pageToken, pageSize);
       return ListNamespacesResponse.builder()
           .addAll(results.items)
-          .nextPageToken(results.pageToken.toString())
+          .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else {
       return CatalogHandlers.listNamespaces(
@@ -330,7 +330,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Page<TableIdentifier> results = polarisCatalog.listTables(namespace, pageToken, pageSize);
       return ListTablesResponse.builder()
           .addAll(results.items)
-          .nextPageToken(results.pageToken.toString())
+          .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else {
       return CatalogHandlers.listTables(
@@ -984,7 +984,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Page<TableIdentifier> results = polarisCatalog.listViews(namespace, pageToken, pageSize);
       return ListTablesResponse.builder()
           .addAll(results.items)
-          .nextPageToken(results.pageToken.toString())
+          .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
       return CatalogHandlers.listViews(viewCatalog, namespace, pageToken, String.valueOf(pageSize));
