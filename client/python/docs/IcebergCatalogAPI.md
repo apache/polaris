@@ -968,7 +968,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_namespaces**
-> ListNamespacesResponse list_namespaces(page_token=page_token, page_size=page_size, parent=parent)
+> ListNamespacesResponse list_namespaces(prefix, page_token=page_token, page_size=page_size, parent=parent)
 
 List namespaces, optionally providing a parent namespace to list underneath
 
@@ -1007,13 +1007,14 @@ configuration = polaris.catalog.Configuration(
 with polaris.catalog.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
     page_token = 'page_token_example' # str |  (optional)
     page_size = 56 # int | For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`. (optional)
     parent = 'accounting%1Ftax' # str | An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (`0x1F`) byte. (optional)
 
     try:
         # List namespaces, optionally providing a parent namespace to list underneath
-        api_response = api_instance.list_namespaces(page_token=page_token, page_size=page_size, parent=parent)
+        api_response = api_instance.list_namespaces(prefix, page_token=page_token, page_size=page_size, parent=parent)
         print("The response of IcebergCatalogAPI->list_namespaces:\n")
         pprint(api_response)
     except Exception as e:
@@ -1027,6 +1028,7 @@ with polaris.catalog.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
  **page_token** | **str**|  | [optional] 
  **page_size** | **int**| For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated &#x60;pageSize&#x60;. | [optional] 
  **parent** | **str**| An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (&#x60;0x1F&#x60;) byte. | [optional] 

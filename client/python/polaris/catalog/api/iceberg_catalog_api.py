@@ -3276,6 +3276,7 @@ class IcebergCatalogAPI:
     @validate_call
     def list_namespaces(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         parent: Annotated[Optional[StrictStr], Field(description="An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (`0x1F`) byte.")] = None,
@@ -3296,6 +3297,8 @@ class IcebergCatalogAPI:
 
         List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, [\"accounting\", \"tax\"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, [\"accounting\", \"tax\", \"paid\"]. If `parent` is not provided, all top-level namespaces should be listed.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -3325,6 +3328,7 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_namespaces_serialize(
+            prefix=prefix,
             page_token=page_token,
             page_size=page_size,
             parent=parent,
@@ -3358,6 +3362,7 @@ class IcebergCatalogAPI:
     @validate_call
     def list_namespaces_with_http_info(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         parent: Annotated[Optional[StrictStr], Field(description="An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (`0x1F`) byte.")] = None,
@@ -3378,6 +3383,8 @@ class IcebergCatalogAPI:
 
         List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, [\"accounting\", \"tax\"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, [\"accounting\", \"tax\", \"paid\"]. If `parent` is not provided, all top-level namespaces should be listed.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -3407,6 +3414,7 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_namespaces_serialize(
+            prefix=prefix,
             page_token=page_token,
             page_size=page_size,
             parent=parent,
@@ -3440,6 +3448,7 @@ class IcebergCatalogAPI:
     @validate_call
     def list_namespaces_without_preload_content(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         parent: Annotated[Optional[StrictStr], Field(description="An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (`0x1F`) byte.")] = None,
@@ -3460,6 +3469,8 @@ class IcebergCatalogAPI:
 
         List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, [\"accounting\", \"tax\"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, [\"accounting\", \"tax\", \"paid\"]. If `parent` is not provided, all top-level namespaces should be listed.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -3489,6 +3500,7 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_namespaces_serialize(
+            prefix=prefix,
             page_token=page_token,
             page_size=page_size,
             parent=parent,
@@ -3517,6 +3529,7 @@ class IcebergCatalogAPI:
 
     def _list_namespaces_serialize(
         self,
+        prefix,
         page_token,
         page_size,
         parent,
@@ -3539,6 +3552,8 @@ class IcebergCatalogAPI:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
         # process the query parameters
         if page_token is not None:
             
