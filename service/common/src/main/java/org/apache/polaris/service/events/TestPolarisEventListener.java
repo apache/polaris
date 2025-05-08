@@ -31,7 +31,8 @@ public class TestPolarisEventListener extends PolarisEventListener {
   private final List<PolarisEvent> history = new ArrayList<>();
 
   public <T> T getLatest(Class<T> type) {
-    return (T) Streams.findLast(history.stream().filter(type::isInstance)).orElseThrow();
+    return (T)
+        Streams.findLast(history.stream().filter(type::isInstance)).map(type::cast).orElseThrow();
   }
 
   @Override
