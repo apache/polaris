@@ -3938,6 +3938,8 @@ class IcebergCatalogAPI:
     @validate_call
     def list_views(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         _request_timeout: Union[
@@ -3957,6 +3959,10 @@ class IcebergCatalogAPI:
 
         Return all view identifiers under this namespace
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -3984,6 +3990,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_views_serialize(
+            prefix=prefix,
+            namespace=namespace,
             page_token=page_token,
             page_size=page_size,
             _request_auth=_request_auth,
@@ -4016,6 +4024,8 @@ class IcebergCatalogAPI:
     @validate_call
     def list_views_with_http_info(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         _request_timeout: Union[
@@ -4035,6 +4045,10 @@ class IcebergCatalogAPI:
 
         Return all view identifiers under this namespace
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -4062,6 +4076,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_views_serialize(
+            prefix=prefix,
+            namespace=namespace,
             page_token=page_token,
             page_size=page_size,
             _request_auth=_request_auth,
@@ -4094,6 +4110,8 @@ class IcebergCatalogAPI:
     @validate_call
     def list_views_without_preload_content(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         page_token: Optional[StrictStr] = None,
         page_size: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.")] = None,
         _request_timeout: Union[
@@ -4113,6 +4131,10 @@ class IcebergCatalogAPI:
 
         Return all view identifiers under this namespace
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param page_token:
         :type page_token: str
         :param page_size: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
@@ -4140,6 +4162,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._list_views_serialize(
+            prefix=prefix,
+            namespace=namespace,
             page_token=page_token,
             page_size=page_size,
             _request_auth=_request_auth,
@@ -4167,6 +4191,8 @@ class IcebergCatalogAPI:
 
     def _list_views_serialize(
         self,
+        prefix,
+        namespace,
         page_token,
         page_size,
         _request_auth,
@@ -4188,6 +4214,10 @@ class IcebergCatalogAPI:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
         # process the query parameters
         if page_token is not None:
             
