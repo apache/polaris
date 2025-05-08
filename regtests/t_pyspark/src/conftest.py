@@ -155,7 +155,7 @@ def create_catalog_role(api, catalog, role_name):
 
 def clear_namespace(catalog: str, catalog_client: IcebergCatalogAPI, namespace: List[str]):
   formatted_namespace = format_namespace(namespace)
-  tables = catalog_client.list_tables(catalog, formatted_namespace)
+  tables = catalog_client.list_tables(prefix=catalog, namespace=formatted_namespace)
   for t in tables.identifiers:
     catalog_client.drop_table(catalog, format_namespace(t.namespace), t.name, purge_requested=True)
   views = catalog_client.list_views(catalog, formatted_namespace)

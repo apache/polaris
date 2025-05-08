@@ -1062,7 +1062,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_tables**
-> ListTablesResponse list_tables(prefix, page_token=page_token, page_size=page_size)
+> ListTablesResponse list_tables(prefix, namespace, page_token=page_token, page_size=page_size)
 
 List all table identifiers underneath a given namespace
 
@@ -1102,12 +1102,13 @@ with polaris.catalog.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
     prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
     page_token = 'page_token_example' # str |  (optional)
     page_size = 56 # int | For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`. (optional)
 
     try:
         # List all table identifiers underneath a given namespace
-        api_response = api_instance.list_tables(prefix, page_token=page_token, page_size=page_size)
+        api_response = api_instance.list_tables(prefix, namespace, page_token=page_token, page_size=page_size)
         print("The response of IcebergCatalogAPI->list_tables:\n")
         pprint(api_response)
     except Exception as e:
@@ -1122,6 +1123,7 @@ with polaris.catalog.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
  **page_token** | **str**|  | [optional] 
  **page_size** | **int**| For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated &#x60;pageSize&#x60;. | [optional] 
 

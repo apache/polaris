@@ -511,9 +511,10 @@ paths:
       description: Return all table identifiers under this namespace
       operationId: listTables
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
-        - $ref: '#/components/parameters/prefix'
       responses:
         200:
           $ref: '#/components/responses/ListTablesResponse'
