@@ -854,7 +854,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listResult
         .getPageToken()
         .map(token -> new Page<>(token, namespaces))
-        .orElseGet(() -> Page.fromData(namespaces));
+        .orElseGet(() -> Page.fromItems(namespaces));
   }
 
   @Override
@@ -2518,7 +2518,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listResult
         .getPageToken()
         .map(token -> new Page<>(token, identifiers))
-        .orElseGet(() -> Page.fromData(identifiers));
+        .orElseGet(() -> Page.fromItems(identifiers));
   }
 
   /**

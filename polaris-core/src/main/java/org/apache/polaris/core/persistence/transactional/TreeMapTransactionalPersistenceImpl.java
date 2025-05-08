@@ -366,7 +366,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       data = data.limit(((HasPageSize) pageToken).getPageSize());
     }
 
-    return Page.fromData(data.map(transformer).collect(Collectors.toList()));
+    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */

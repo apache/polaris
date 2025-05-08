@@ -1992,7 +1992,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 result.getReturnStatus(), result.getExtraInformation());
           }
         });
-    return EntitiesResult.fromPage(Page.fromData(loadedTasks));
+    return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
   @Override

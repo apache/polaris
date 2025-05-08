@@ -430,7 +430,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           results == null
               ? Collections.emptyList()
               : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
-      return Page.fromData(resultsOrEmpty);
+      return Page.fromItems(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);

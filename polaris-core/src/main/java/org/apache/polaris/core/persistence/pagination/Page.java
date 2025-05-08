@@ -33,8 +33,8 @@ public class Page<T> {
     this.items = items;
   }
 
-  /** Used to wrap a {@link List<T>} of data into a {@link Page <T>} when there is no more data */
-  public static <T> Page<T> fromData(List<T> data) {
-    return new Page<>(new DonePageToken(), data);
+  /** Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages */
+  public static <T> Page<T> fromItems(List<T> items) {
+    return new Page<>(new DonePageToken(), items);
   }
 }

@@ -1559,7 +1559,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       throw new RetryOnConcurrencyException(
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
-    return EntitiesResult.fromPage(Page.fromData(loadedTasks));
+    return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
   /** {@inheritDoc} */
