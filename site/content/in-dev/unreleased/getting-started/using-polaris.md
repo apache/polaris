@@ -22,10 +22,10 @@ type: docs
 weight: 400
 ---
 ## Setup
-Define your `CLIENT_ID` & `CLIENT_SECRET` and put them in .env file for later use.
+Define your `CLIENT_ID` & `CLIENT_SECRET` and export them for future use.
 ```shell
-echo "CLIENT_ID=YOUR_CLIENT_ID" >> .env
-echo "CLIENT_SECRET=YOUR_CLIENT_SECRET" >> .env
+export CLIENT_ID=YOUR_CLIENT_ID
+export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
 ## Defining a Catalog
 
@@ -84,13 +84,13 @@ With a catalog created, we can create a [principal]({{% relref "../entities#prin
 
 Be sure to provide the necessary credentials, hostname, and port as before.
 
-When the `principals create` command completes successfully, it will return the credentials for this new principal. Add the credentials in .env for later. For example:
+When the `principals create` command completes successfully, it will return the credentials for this new principal. Export them for future use. For example:
 
-```
+```shell
 ./polaris ... principals create example
 {"clientId": "XXXX", "clientSecret": "YYYY"}
-echo "USER_CLIENT_ID=XXXX" >> .env
-echo "USER_CLIENT_SECRET=YYYY" >> .env
+export USER_CLIENT_ID=XXXX
+export USER_CLIENT_SECRET=YYYY
 ```
 
 Now, we grant the principal the [principal role]({{% relref "../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
@@ -153,10 +153,6 @@ This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-relea
 _Note: the credentials provided here are those for our principal, not the root credentials._
 
 ```shell
-cd polaris
-set -a
-source .env
-cd spark
 bin/spark-sql \
 --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
@@ -177,10 +173,7 @@ Similar to the CLI commands above, this configures Spark to use the Polaris runn
 Finally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
 #### Using Spark SQL from a Docker container
-Source the .env file before using docker compose.
 ```shell
-set -a
-source .env
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
@@ -242,8 +235,6 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 Replace the credentials used in the Docker container using the following code:
 
 ```shell
-set -a
-source .env
 docker compose -f getting-started/eclipselink/docker-compose.yml down trino
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
