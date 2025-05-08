@@ -47,7 +47,6 @@ class Command(ABC):
             command = CatalogsCommand(
                 options_get(f'{Commands.CATALOGS}_subcommand'),
                 catalog_type=options_get(Arguments.TYPE),
-                remote_url=options_get(Arguments.REMOTE_URL),
                 default_base_location=options_get(Arguments.DEFAULT_BASE_LOCATION),
                 storage_type=options_get(Arguments.STORAGE_TYPE),
                 allowed_locations=options_get(Arguments.ALLOWED_LOCATION),
