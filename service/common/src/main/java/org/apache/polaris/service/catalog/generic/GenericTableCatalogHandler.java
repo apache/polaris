@@ -75,11 +75,12 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     GenericTableEntity createdEntity =
         this.genericTableCatalog.createGenericTable(identifier, format, doc, properties);
     GenericTable createdTable =
-        new GenericTable(
-            createdEntity.getName(),
-            createdEntity.getFormat(),
-            createdEntity.getDoc(),
-            createdEntity.getPropertiesAsMap());
+        GenericTable.builder()
+            .setName(createdEntity.getName())
+            .setFormat(createdEntity.getFormat())
+            .setDoc(createdEntity.getDoc())
+            .setProperties(createdEntity.getPropertiesAsMap())
+            .build();
 
     return LoadGenericTableResponse.builder().setTable(createdTable).build();
   }
@@ -97,11 +98,12 @@ public class GenericTableCatalogHandler extends CatalogHandler {
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
-        new GenericTable(
-            loadedEntity.getName(),
-            loadedEntity.getFormat(),
-            loadedEntity.getDoc(),
-            loadedEntity.getPropertiesAsMap());
+        GenericTable.builder()
+            .setName(loadedEntity.getName())
+            .setFormat(loadedEntity.getFormat())
+            .setDoc(loadedEntity.getDoc())
+            .setProperties(loadedEntity.getPropertiesAsMap())
+            .build();
 
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
   }
