@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import io.smallrye.config.ConfigMapping;
 import java.util.Optional;
 
-@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
 public interface RelationalJdbcConfiguration {
   // max retries before giving up
   Optional<Integer> maxRetries();
