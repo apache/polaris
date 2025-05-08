@@ -33,7 +33,9 @@ public class Page<T> {
     this.items = items;
   }
 
-  /** Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages */
+  /**
+   * Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages
+   */
   public static <T> Page<T> fromItems(List<T> items) {
     return new Page<>(new DonePageToken(), items);
   }
