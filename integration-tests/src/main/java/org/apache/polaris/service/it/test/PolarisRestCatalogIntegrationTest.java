@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -28,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -1412,7 +1411,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
           .isInstanceOf(RESTException.class)
           .hasMessageContaining("Unrecognized snapshots")
-          .hasMessageContaining("code=" + BAD_REQUEST.getStatusCode());
+          .hasMessageContaining("code=" + Response.Status.BAD_REQUEST.getStatusCode());
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
@@ -1473,7 +1472,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                         "format",
                         "doc",
                         Map.of("polaris.reserved", "true"))))) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
       Assertions.assertThat(res.readEntity(String.class)).contains("reserved prefix");
     }
 
@@ -1483,11 +1482,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   public void testCreateNamespaceWithReservedProperty() {
     Namespace namespace = Namespace.of("ns1");
-    Assertions.assertThatCode(
+    assertThatCode(
             () -> {
               restCatalog.createNamespace(namespace, ImmutableMap.of("polaris.reserved", "true"));
             })
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
         .hasMessageContaining("reserved prefix");
   }
 
@@ -1500,7 +1499,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             () -> {
               restCatalog.setProperties(namespace, ImmutableMap.of("polaris.reserved", "true"));
             })
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }
@@ -1514,7 +1513,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             () -> {
               restCatalog.removeProperties(namespace, Sets.newHashSet("polaris.reserved"));
             })
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }

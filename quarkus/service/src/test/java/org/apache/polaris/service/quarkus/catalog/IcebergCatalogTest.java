@@ -117,15 +117,15 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.exception.FakeAzureHttpResponse;
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
-import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTableCommitedEvent;
 import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.exception.FakeAzureHttpResponse;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -217,11 +217,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private FileIOFactory fileIOFactory;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-<<<<<<< HEAD
-  private ReservedProperties reservedProperties;
-=======
   private TestPolarisEventListener testPolarisEventListener;
->>>>>>> f9f197ff9388756a95a02d26268b12627f192977
+  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -1901,7 +1898,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .hasMessageContaining("conflict_table");
   }
 
-<<<<<<< HEAD
   @Test
   public void createCatalogWithReservedProperty() {
     Assertions.assertThatCode(
@@ -1941,7 +1937,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
     adminService.deleteCatalog("updateCatalogWithReservedProperty");
-=======
+  }
+
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   public void testTableOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
@@ -2019,7 +2016,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
->>>>>>> f9f197ff9388756a95a02d26268b12627f192977
   }
 
   private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {
