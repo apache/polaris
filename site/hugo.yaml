@@ -144,6 +144,10 @@ menu:
       parent: "community"
       url: "/community/contributing-guidelines"
       weight: 60
+    - name: "Release Guide"
+      parent: "community"
+      url: "/community/release-guide"
+      wieght: 70
 
     - name: "ASF"
       pre: "<i class='fa-solid fa-feather'></i>"
