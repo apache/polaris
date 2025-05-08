@@ -79,7 +79,10 @@ class PrincipalsCommand(Command):
                     properties=self.properties
                 )
             )
-            print(api.create_principal(request).credentials.to_json())
+            credentials = api.create_principal(request).credentials
+            credentials_map = \
+                {"client_id": credentials.client_id, "client_secret": credentials.client_secret.get_secret_value()}
+            print(credentials_map)
         elif self.principals_subcommand == Subcommands.DELETE:
             api.delete_principal(self.principal_name)
         elif self.principals_subcommand == Subcommands.GET:
