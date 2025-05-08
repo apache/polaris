@@ -113,6 +113,8 @@ git commit -a
 git push
 ```
 
+Note: You should also submit a PR on `main` branch to bump the version in the `version.txt` file.
+
 ### Create release tag
 
 On the release branch, you create a tag for the RC:
