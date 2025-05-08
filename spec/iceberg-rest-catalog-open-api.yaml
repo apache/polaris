@@ -513,6 +513,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/prefix'
       responses:
         200:
           $ref: '#/components/responses/ListTablesResponse'
