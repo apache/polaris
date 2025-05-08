@@ -30,7 +30,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Clock;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -219,7 +223,7 @@ public class DatasourceOperations {
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
   // and more knobs for tuning retry pattern.
   @VisibleForTesting
-  public <T> T withRetries(Operation<T> operation) throws SQLException {
+  <T> T withRetries(Operation<T> operation) throws SQLException {
     int attempts = 0;
     // maximum number of retries.
     int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);

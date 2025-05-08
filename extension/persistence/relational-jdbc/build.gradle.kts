@@ -31,7 +31,6 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
-
   compileOnly(libs.jakarta.inject.api)
 
   implementation(libs.smallrye.common.annotation) // @Identifier

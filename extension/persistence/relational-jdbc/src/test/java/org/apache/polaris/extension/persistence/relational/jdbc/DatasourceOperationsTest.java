@@ -16,10 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.relational.jdbc;
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -28,9 +34,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations.Operation;
-import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
