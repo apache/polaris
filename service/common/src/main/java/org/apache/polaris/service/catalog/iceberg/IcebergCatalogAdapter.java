@@ -24,7 +24,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -64,7 +63,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -197,24 +195,6 @@ public class IcebergCatalogAdapter
         polarisAuthorizer);
   }
 
-  /** Build a {@link PageToken} from a string and page size. */
-  private PageToken buildPageToken(@Nullable String tokenString, @Nullable Integer pageSize) {
-    if (tokenString != null) {
-      return callContext
-          .getPolarisCallContext()
-          .getMetaStore()
-          .pageTokenBuilder()
-          .fromString(tokenString)
-          .withPageSize(pageSize);
-    } else {
-      return callContext
-          .getPolarisCallContext()
-          .getMetaStore()
-          .pageTokenBuilder()
-          .fromLimit(pageSize);
-    }
-  }
-
   @Override
   public Response createNamespace(
       String prefix,
@@ -236,12 +216,13 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Optional<Namespace> namespaceOptional = Optional.ofNullable(parent).map(this::decodeNamespace);
-    PageToken token = buildPageToken(pageToken, pageSize);
     return withCatalog(
         securityContext,
         prefix,
         catalog ->
-            Response.ok(catalog.listNamespaces(namespaceOptional.orElse(Namespace.of()), token))
+            Response.ok(
+                    catalog.listNamespaces(
+                        namespaceOptional.orElse(Namespace.of()), pageToken, pageSize))
                 .build());
   }
 
@@ -377,9 +358,10 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    PageToken token = buildPageToken(pageToken, pageSize);
     return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.listTables(ns, token)).build());
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.listTables(ns, pageToken, pageSize)).build());
   }
 
   @Override
@@ -547,9 +529,10 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    PageToken token = buildPageToken(pageToken, pageSize);
     return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.listViews(ns, token)).build());
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.listViews(ns, pageToken, pageSize)).build());
   }
 
   @Override

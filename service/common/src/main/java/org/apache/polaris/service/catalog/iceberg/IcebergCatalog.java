@@ -503,29 +503,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return true;
   }
 
-  /** Check whether pagination is enabled for list operations */
-  private boolean paginationEnabled() {
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            catalogEntity,
-            FeatureConfiguration.LIST_PAGINATION_ENABLED);
-  }
-
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
     return listTables(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listTables(Namespace namespace, String pageToken, Integer pageSize) {
+    return listTables(namespace, buildPageToken(pageToken, pageSize));
+  }
+
+  private Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
-    }
-    if (!paginationEnabled()) {
-      pageToken = ReadEverythingPageToken.get();
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_TABLE, namespace, pageToken);
@@ -841,18 +831,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listNamespaces(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public Page<Namespace> listNamespaces(PageToken pageToken) throws NoSuchNamespaceException {
-    return listNamespaces(Namespace.empty(), pageToken);
+  public Page<Namespace> listNamespaces(Namespace namespace, String pageToken, Integer pageSize) {
+    return listNamespaces(namespace, buildPageToken(pageToken, pageSize));
   }
 
-  public Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
+  private Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
       throws NoSuchNamespaceException {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    if (!paginationEnabled()) {
-      pageToken = ReadEverythingPageToken.get();
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
@@ -885,13 +872,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listViews(namespace, ReadEverythingPageToken.get()).items;
   }
 
-  public Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listViews(Namespace namespace, String pageToken, Integer pageSize) {
+    return listViews(namespace, buildPageToken(pageToken, pageSize));
+  }
+
+  private Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
-    }
-    if (!paginationEnabled()) {
-      pageToken = ReadEverythingPageToken.get();
     }
 
     return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace, pageToken);
@@ -2580,5 +2568,27 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(), FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
+  }
+
+  /** Build a {@link PageToken} from a string and page size. */
+  private PageToken buildPageToken(@Nullable String tokenString, @Nullable Integer pageSize) {
+
+    boolean paginationEnabled =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                catalogEntity,
+                FeatureConfiguration.LIST_PAGINATION_ENABLED);
+    if (!paginationEnabled) {
+      return ReadEverythingPageToken.get();
+    } else {
+      if (tokenString != null) {
+        return pageTokenBuilder.fromString(tokenString).withPageSize(pageSize);
+      } else {
+        return pageTokenBuilder.fromLimit(pageSize);
+      }
+    }
   }
 }

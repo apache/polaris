@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
+import jakarta.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
@@ -136,7 +137,7 @@ public abstract class PageToken {
    * Return a new {@link PageToken} with an updated page size. If the pageSize provided is null, the
    * existing page size will be preserved.
    */
-  public abstract PageToken withPageSize(Integer pageSize);
+  public abstract PageToken withPageSize(@Nullable Integer pageSize);
 
   /** Serialize a {@link PageToken} into a string */
   @Override
@@ -150,7 +151,7 @@ public abstract class PageToken {
             .filter(s -> !s.isEmpty())
             .collect(Collectors.toList());
     String rawString = String.join(":", allElements);
-    return Base64.getEncoder().encodeToString(rawString.getBytes(StandardCharsets.UTF_8));
+    return Base64.getUrlEncoder().encodeToString(rawString.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override

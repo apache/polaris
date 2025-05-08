@@ -52,7 +52,11 @@ public class ReadFromStartPageToken extends PageToken {
 
   @Override
   public PageToken withPageSize(Integer pageSize) {
-    return new ReadFromStartPageToken(pageSize);
+    if (pageSize != null) {
+      return new ReadFromStartPageToken(pageSize);
+    } else {
+      return new ReadFromStartPageToken(Integer.MAX_VALUE);
+    }
   }
 
   /** A {@link PageTokenBuilder} implementation for {@link ReadFromStartPageToken} */
