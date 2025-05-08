@@ -105,12 +105,16 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
           "true",
           "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
+          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "true",
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
+          "[\"FILE\",\"S3\"]",
           "polaris.event-listener.type",
-          "test");
+          "test",
+          "polaris.readiness.ignore-security-issues",
+          "true");
     }
   }
 
