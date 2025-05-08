@@ -26,7 +26,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
