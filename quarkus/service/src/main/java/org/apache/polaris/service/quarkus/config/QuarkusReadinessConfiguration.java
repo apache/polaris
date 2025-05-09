@@ -32,5 +32,5 @@ public interface QuarkusReadinessConfiguration {
    * risks.
    */
   @WithDefault("false")
-  boolean ignoreSecurityIssues();
+  boolean ignoreSevereIssues();
 }

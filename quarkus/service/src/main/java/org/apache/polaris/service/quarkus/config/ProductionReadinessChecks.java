@@ -101,13 +101,13 @@ public class ProductionReadinessChecks {
               "Refer to https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production for more information.");
 
       if (hasSevere) {
-        if (!config.ignoreSecurityIssues()) {
+        if (!config.ignoreSevereIssues()) {
           throw new IllegalStateException(
               "Severe production readiness issues detected, startup aborted!");
         }
         LOGGER.error(
             "{} severe production readiness issues detected, but user explicitly requested startup by setting "
-                + "polaris.readiness.ignore-security-issues=true and accepts the risk of denial-of-service, "
+                + "polaris.readiness.ignore-severe-issues=true and accepts the risk of denial-of-service, "
                 + "data-loss, corruption and others !",
             severe);
       }
