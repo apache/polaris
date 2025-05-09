@@ -21,6 +21,11 @@ plugins {
     alias(libs.plugins.jandex)
 }
 
+java {
+    sourceCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
+    targetCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
+}
+
 dependencies {
     compileOnly(libs.smallrye.config.core)
     implementation(project(":polaris-relational-jdbc"))
