@@ -966,10 +966,8 @@ components:
           type: string
           description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
           example: "glue"
-        userArn:
-          type: string
-          description: The aws user arn used to assume the aws role, this represents the polaris service itself
-          example: "arn:aws:iam::123456789001:user/polaris-service-user"
+        serviceIdentity:
+          $ref: '#/components/schemas/ServiceIdentityInfo'
       required:
         - roleArn
         - signingRegion
@@ -1058,6 +1056,49 @@ components:
       description: file storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
+
+    ServiceIdentityInfo:
+      type: object
+      description: Identity metadata for the Polaris service used to access external resources.
+      readOnly: true
+      properties:
+        identityType:
+          type: string
+          enum:
+            - AWS_IAM_USER
+            - AWS_IAM_ROLE
+          description: The type of identity used to access external resources
+      required:
+        - identityType
+      discriminator:
+        propertyName: identityType
+        mapping:
+          AWS_IAM_USER: "#/components/schemas/AwsIamUserServiceIdentityInfo"
+          AWS_IAM_ROLE: "#/components/schemas/AwsIamRoleServiceIdentityInfo"
+
+    AwsIamUserServiceIdentityInfo:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ServiceIdentityInfo'
+      properties:
+        userArn:
+          type: string
+          description: The ARN of the IAM user Polaris uses to assume roles and then access external resources.
+          example: "arn:aws:iam::111122223333:user/polaris-service-user"
+      required:
+        - userArn
+
+    AwsIamRoleServiceIdentityInfo:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ServiceIdentityInfo'
+      properties:
+        roleArn:
+          type: string
+          description: The ARN of the IAM role Polaris uses to access external resources.
+          example: "arn:aws:iam::111122223333:role/polaris-service-role"
+      required:
+        - roleArn
 
     UpdateCatalogRequest:
       description: Updates to apply to a Catalog. Any fields which are required in the Catalog
