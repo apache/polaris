@@ -37,6 +37,7 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
+    export PG_JDBC_URL=jdbc:postgresql://postgres:5432/POLARIS
     docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/jdbc/docker-compose.yml up
     ```
 
