@@ -39,14 +39,16 @@ QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgresSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+
+Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration](./configuration.md)
 
 ## EclipseLink (Deprecated)
 > [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
 
-Polaris includes EclipseLink plugin by default with PostgreSQL driver.
+Polaris includes EclipseLink plugin by default with PostgresSQL driver.
 
 Configure the `polaris.persistence` section in your Polaris configuration file
 (`application.properties`) as follows:
