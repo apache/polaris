@@ -128,8 +128,7 @@ public class BatchFileCleanupTaskHandlerTest {
       PartitionStatisticsFile partitionStatisticsFile1 =
           TaskTestUtils.writePartitionStatsFile(
               snapshot.snapshotId(),
-              snapshot.sequenceNumber(),
-              "/metadata/" + UUID.randomUUID() + ".stats",
+              "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
               fileIO);
       String firstMetadataFile = "v1-295495059.metadata.json";
       TableMetadata firstMetadata =
@@ -162,8 +161,7 @@ public class BatchFileCleanupTaskHandlerTest {
       PartitionStatisticsFile partitionStatisticsFile2 =
           TaskTestUtils.writePartitionStatsFile(
               snapshot2.snapshotId(),
-              snapshot2.sequenceNumber(),
-              "/metadata/" + UUID.randomUUID() + ".stats",
+              "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
               fileIO);
       String secondMetadataFile = "v1-295495060.metadata.json";
       TableMetadata secondMetadata =
@@ -182,8 +180,6 @@ public class BatchFileCleanupTaskHandlerTest {
           Stream.of(
                   secondMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
                   secondMetadata.statisticsFiles().stream().map(StatisticsFile::path),
-                  firstMetadata.partitionStatisticsFiles().stream()
-                      .map(PartitionStatisticsFile::path),
                   secondMetadata.partitionStatisticsFiles().stream()
                       .map(PartitionStatisticsFile::path))
               .flatMap(s -> s)

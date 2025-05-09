@@ -510,8 +510,7 @@ class TableCleanupTaskHandlerTest {
     PartitionStatisticsFile partitionStatisticsFile1 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot.snapshotId(),
-            snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
     String firstMetadataFile = "v1-295495059.metadata.json";
     TableMetadata firstMetadata =
@@ -544,8 +543,7 @@ class TableCleanupTaskHandlerTest {
     PartitionStatisticsFile partitionStatisticsFile2 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot2.snapshotId(),
-            snapshot2.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
     String secondMetadataFile = "v1-295495060.metadata.json";
     TaskTestUtils.writeTableMetadata(

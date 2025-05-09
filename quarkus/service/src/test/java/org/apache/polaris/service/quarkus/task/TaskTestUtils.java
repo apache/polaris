@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.task;
 
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -181,24 +182,19 @@ public class TaskTestUtils {
   }
 
   public static PartitionStatisticsFile writePartitionStatsFile(
-      long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
-      throws IOException {
-
-    try (PuffinWriter puffinWriter = Puffin.write(fileIO.newOutputFile(statsLocation)).build()) {
-      puffinWriter.add(
-          new Blob(
-              "some-blob-type",
-              List.of(1),
-              snapshotId,
-              snapshotSequenceNumber,
-              ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
-      puffinWriter.finish();
-
-      return ImmutableGenericPartitionStatisticsFile.builder()
-          .snapshotId(snapshotId)
-          .path(statsLocation)
-          .fileSizeInBytes(puffinWriter.fileSize())
-          .build();
+      long snapshotId, String statsLocation, FileIO fileIO) throws UncheckedIOException {
+    PositionOutputStream positionOutputStream;
+    try {
+      positionOutputStream = fileIO.newOutputFile(statsLocation).create();
+      positionOutputStream.close();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
+
+    return ImmutableGenericPartitionStatisticsFile.builder()
+        .snapshotId(snapshotId)
+        .path(statsLocation)
+        .fileSizeInBytes(42L)
+        .build();
   }
 }
