@@ -94,5 +94,10 @@ public class PageTokenTest {
         .assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid token format");
+
+    Assertions
+        .assertThatCode(() -> PageToken.fromString(EntityIdPageToken.PREFIX + "/1"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid token format");
   }
 }
