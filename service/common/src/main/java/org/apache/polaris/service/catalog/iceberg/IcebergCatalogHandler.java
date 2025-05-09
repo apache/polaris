@@ -92,12 +92,14 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -125,6 +127,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
+  private final ReservedProperties reservedProperties;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -143,11 +146,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
-      PolarisAuthorizer authorizer) {
+      PolarisAuthorizer authorizer,
+      ReservedProperties reservedProperties) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
+    this.reservedProperties = reservedProperties;
   }
 
   /**
@@ -169,6 +174,23 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     return isCreate;
+  }
+
+  public ListNamespacesResponse listNamespaces(
+      Namespace parent, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<Namespace> results = polarisCatalog.listNamespaces(parent, pageToken, pageSize);
+      return ListNamespacesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return CatalogHandlers.listNamespaces(
+          namespaceCatalog, parent, pageToken, String.valueOf(pageSize));
+    }
   }
 
   private UserSecretsManager getUserSecretsManager() {
@@ -256,14 +278,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // For CreateNamespace, we consider this a special case in that the creator is able to
       // retrieve the latest namespace metadata for the duration of the CreateNamespace
       // operation, even if the entityVersion and/or grantsVersion update in the interim.
-      namespaceCatalog.createNamespace(namespace, request.properties());
-      return CreateNamespaceResponse.builder()
-          .withNamespace(namespace)
-          .setProperties(
+      namespaceCatalog.createNamespace(
+          namespace, reservedProperties.removeReservedProperties(request.properties()));
+      Map<String, String> filteredProperties =
+          reservedProperties.removeReservedProperties(
               resolutionManifest
                   .getPassthroughResolvedPath(namespace)
                   .getRawLeafEntity()
-                  .getPropertiesAsMap())
+                  .getPropertiesAsMap());
+      return CreateNamespaceResponse.builder()
+          .withNamespace(namespace)
+          .setProperties(filteredProperties)
           .build();
     } else {
       return CatalogHandlers.createNamespace(namespaceCatalog, request);
@@ -313,6 +338,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return CatalogHandlers.updateNamespaceProperties(namespaceCatalog, namespace, request);
   }
 
+  public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listTables(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return CatalogHandlers.listTables(
+          baseCatalog, namespace, pageToken, String.valueOf(pageSize));
+    }
+  }
+
   public ListTablesResponse listTables(Namespace namespace) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
@@ -341,7 +382,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    return CatalogHandlers.createTable(baseCatalog, namespace, request);
+    CreateTableRequest requestWithoutReservedProperties =
+        CreateTableRequest.builder()
+            .withName(request.name())
+            .withLocation(request.location())
+            .withPartitionSpec(request.spec())
+            .withSchema(request.schema())
+            .withWriteOrder(request.writeOrder())
+            .setProperties(reservedProperties.removeReservedProperties(request.properties()))
+            .build();
+    return CatalogHandlers.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
   }
 
   /**
@@ -376,7 +426,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     Table table =
         baseCatalog
@@ -416,7 +466,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     String location;
     if (request.location() != null) {
@@ -948,6 +998,25 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
+    }
+  }
+
+  public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listViews(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
+      return CatalogHandlers.listViews(viewCatalog, namespace, pageToken, String.valueOf(pageSize));
+    } else {
+      throw new BadRequestException(
+          "Unsupported operation: listViews with baseCatalog type: %s",
+          baseCatalog.getClass().getName());
     }
   }
 

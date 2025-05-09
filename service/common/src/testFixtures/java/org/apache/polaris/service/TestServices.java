@@ -56,6 +56,7 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
@@ -188,6 +189,8 @@ public record TestServices(
               fileIOFactory,
               polarisEventListener);
 
+      ReservedProperties reservedProperties = ReservedProperties.NONE;
+
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(
               realmContext,
@@ -197,7 +200,8 @@ public record TestServices(
               metaStoreManager,
               userSecretsManager,
               authorizer,
-              new DefaultCatalogPrefixParser());
+              new DefaultCatalogPrefixParser(),
+              reservedProperties);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
       IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
@@ -244,7 +248,8 @@ public record TestServices(
                   metaStoreManagerFactory,
                   userSecretsManagerFactory,
                   authorizer,
-                  callContext));
+                  callContext,
+                  reservedProperties));
 
       return new TestServices(
           catalogsApi,

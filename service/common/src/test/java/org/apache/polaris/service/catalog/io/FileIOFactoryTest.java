@@ -46,6 +46,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.*;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -184,7 +185,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));

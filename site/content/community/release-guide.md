@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,22 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+linkTitle: Release Guide
+type: docs
+weight: 500
 ---
-jobs:
-  stale:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/stale@f78de9780efb7a789cf4745957fa3374cbb94fd5
-        with:
-          days-before-close: 5
-          days-before-stale: 30
-          stale-issue-message: "This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-          stale-pr-message: "This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-name: "Close stale issues and PRs"
-on:
-  schedule:
-    - cron: "30 1 * * *"
-permissions:
-  issues: read
-  pull-requests: write
+
+{{< readfile "/release-guide.md" >}}
