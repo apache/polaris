@@ -936,6 +936,9 @@ paths:
         for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration
         key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/table'
         - $ref: '#/components/parameters/data-access'
         - name: If-None-Match
           in: header
