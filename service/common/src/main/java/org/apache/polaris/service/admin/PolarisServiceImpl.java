@@ -23,6 +23,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
@@ -141,6 +143,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
+    validateConnectionConfigInfo(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
@@ -160,6 +163,30 @@ public class PolarisServiceImpl
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
+    }
+  }
+
+  private void validateConnectionConfigInfo(Catalog catalog) {
+    if (catalog.getType() == Catalog.TypeEnum.EXTERNAL) {
+      if (catalog instanceof ExternalCatalog externalCatalog) {
+        if (externalCatalog.getConnectionConfigInfo() != null) {
+          String connectionType =
+              externalCatalog.getConnectionConfigInfo().getConnectionType().name();
+          List<String> supportedConnectionTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+                  .stream()
+                  .map(s -> s.toUpperCase(Locale.ROOT))
+                  .toList();
+          if (!supportedConnectionTypes.contains(connectionType)) {
+            throw new IllegalStateException("Unsupported connection type: " + connectionType);
+          }
+        }
+      }
     }
   }
 

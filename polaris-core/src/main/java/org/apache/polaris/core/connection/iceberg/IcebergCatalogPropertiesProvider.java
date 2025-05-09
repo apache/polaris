@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection;
+package org.apache.polaris.core.connection.iceberg;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
