@@ -226,6 +226,16 @@ License: https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
+This product includes code from Netty.
+
+* extension/persistence/nosql/persistence/cdi/quarkus/src/main/java/org/apache/polaris/persistence/nosql/quarkus/distcache/ResolvConf.java
+
+Copyright: Copyright © 2025 The Netty project
+Home page: https://netty.io/
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 This product includes code from OpenAPITool openapi-generator
 
 * server-templates/formParams.mustache
@@ -304,6 +314,9 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/OtherMapped.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
+
+Code underneath the components/persistence directory, especially pluggable object types, index related, cache,
+atomic commit logic and fundamental persistence implementations.
 
 Copyright: Copyright 2015-2025 Dremio Corporation
 Home page: https://projectnessie.org/

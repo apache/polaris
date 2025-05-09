@@ -72,6 +72,10 @@ tasks.named<RatTask>("rat").configure {
   // Manifest files do not allow comments
   excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
 
+  excludes.add(
+    "extension/persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz"
+  )
+
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
   excludes.add(".git")
