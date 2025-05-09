@@ -43,7 +43,7 @@ public class QuarkusRestCatalogViewFileIntegrationTest
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
-          "polaris.readiness.ignore-security-issues",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }

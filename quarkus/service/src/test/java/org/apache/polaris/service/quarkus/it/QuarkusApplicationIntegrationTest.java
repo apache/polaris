@@ -64,7 +64,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",
-          "polaris.readiness.ignore-security-issues",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }

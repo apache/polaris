@@ -181,7 +181,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "true",
           "polaris.event-listener.type",
           "test",
-          "polaris.readiness.ignore-security-issues",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }

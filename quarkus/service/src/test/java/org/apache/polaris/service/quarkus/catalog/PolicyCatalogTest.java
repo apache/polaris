@@ -129,7 +129,7 @@ public class PolicyCatalogTest {
           "[\"FILE\"]",
           "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
-          "polaris.readiness.ignore-security-issues",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }
