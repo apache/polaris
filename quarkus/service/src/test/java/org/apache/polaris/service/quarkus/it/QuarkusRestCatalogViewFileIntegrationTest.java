@@ -39,7 +39,7 @@ public class QuarkusRestCatalogViewFileIntegrationTest
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",

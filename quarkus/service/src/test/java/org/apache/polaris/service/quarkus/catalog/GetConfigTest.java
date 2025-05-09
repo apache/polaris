@@ -42,7 +42,7 @@ public class GetConfigTest {
         TestServices.builder()
             .config(
                 Map.of(
-                    "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+                    "ALLOW_INSECURE_STORAGE_TYPES",
                     true,
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE", "S3"),
