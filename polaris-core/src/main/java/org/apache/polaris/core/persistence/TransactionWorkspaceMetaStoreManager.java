@@ -326,6 +326,13 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
+  public EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit, boolean txnPerTask) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadTasks");
+    return null;
+  }
+
+  @Override
   public ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,

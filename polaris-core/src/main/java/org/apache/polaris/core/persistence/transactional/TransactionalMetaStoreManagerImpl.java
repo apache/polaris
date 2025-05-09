@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -1973,9 +1974,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
             loadedTasks.add(result.getEntity());
           } else {
-            // TODO: Consider performing incremental leasing of individual tasks one at a time
-            // instead of requiring all-or-none semantics for all the tasks we think we listed,
-            // or else contention could be very bad.
             ms.rollback();
             throw new RetryOnConcurrencyException(
                 "Failed to lease available task with status %s, info: %s",
@@ -1985,11 +1983,60 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return new EntitiesResult(loadedTasks);
   }
 
+  private @Nonnull EntitiesResult loadTasksWithIsolatedTxn(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      String executorId,
+      int limit) {
+    List<EntitiesResult> entitySuccessResults = new ArrayList<>();
+    final AtomicInteger failedLeaseCount = new AtomicInteger(0);
+    for (int i = 0; i < limit; i++) {
+      try {
+        EntitiesResult result =
+            ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, 1));
+        if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+          entitySuccessResults.add(result);
+        } else {
+          failedLeaseCount.incrementAndGet();
+          LOGGER.warn(
+              "Fail to lease task, error status: {}, error info: {}",
+              result.getReturnStatus(),
+              result.getExtraInformation());
+        }
+      } catch (Exception e) {
+        failedLeaseCount.incrementAndGet();
+        LOGGER.warn("Exception while leasing task: {}", e.getMessage());
+      }
+    }
+
+    if (entitySuccessResults.isEmpty() && failedLeaseCount.get() > 0) {
+      throw new RetryOnConcurrencyException(
+          "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
+    }
+
+    List<PolarisBaseEntity> entities =
+        entitySuccessResults.stream()
+            .flatMap(result -> result.getEntities().stream())
+            .collect(Collectors.toList());
+
+    return new EntitiesResult(entities);
+  }
+
   @Override
   public @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
+    return loadTasks(callCtx, executorId, limit, false);
+  }
+
+  @Override
+  public @Nonnull EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit, boolean perTaskTxn) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, limit));
+    if (!perTaskTxn) {
+      return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, limit));
+    } else {
+      return loadTasksWithIsolatedTxn(callCtx, ms, executorId, limit);
+    }
   }
 
   /** {@inheritDoc} */

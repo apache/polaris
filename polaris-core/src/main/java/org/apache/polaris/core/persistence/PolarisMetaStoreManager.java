@@ -296,15 +296,35 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType);
 
   /**
-   * Fetch a list of tasks to be completed. Tasks
+   * Fetch a list of tasks to be completed.
+   *
+   * <p>This method uses the default task selection logic, which selects tasks that are either
+   * unassigned or have timed out. All matching tasks are processed within a single transaction.
    *
    * @param callCtx call context
    * @param executorId executor id
-   * @param limit limit
-   * @return list of tasks to be completed
+   * @param limit max number of tasks to lease
+   * @return list of leased tasks
    */
   @Nonnull
   EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
+
+  /**
+   * Fetch a list of tasks to be completed with customizable behavior.
+   *
+   * <p>Supports custom filtering and per-task transactional execution. When {@code txnPerTask} is
+   * true, each task is leased within its own transaction to avoid aborting the entire batch on a
+   * single failure.
+   *
+   * @param callCtx call context
+   * @param executorId executor id
+   * @param limit max number of tasks to lease
+   * @param txnPerTask whether to lease each task in its own transaction
+   * @return list of successfully leased tasks
+   */
+  @Nonnull
+  EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit, boolean txnPerTask);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each
