@@ -114,7 +114,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
           "[\"FILE\",\"S3\"]",
           "polaris.event-listener.type",
           "test",
-          "polaris.readiness.ignore-security-issues",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }
