@@ -125,7 +125,7 @@ public class FileIOFactoryTest {
                 Map.of(
                     "ALLOW_SPECIFYING_FILE_IO_IMPL",
                     true,
-                    "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+                    "ALLOW_INSECURE_STORAGE_TYPES",
                     true,
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE", "S3")))

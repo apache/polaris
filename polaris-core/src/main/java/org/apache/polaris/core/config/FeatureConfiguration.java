@@ -278,17 +278,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean>
-      ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS =
-          PolarisConfiguration.<Boolean>builder()
-              .key("ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS")
-              .description(
-                  "Allow usage of FileIO implementations that are considered insecure. "
-                      + "Enabling this setting exposes the service to SEVERE security risks, including "
-                      + "denial of service, corruption, data loss and more!"
-                      + "This must NEVER be set to 'true' for anything except tests! ")
-              .defaultValue(false)
-              .buildFeatureConfiguration();
+  public static final FeatureConfiguration<Boolean> ALLOW_INSECURE_STORAGE_TYPES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_INSECURE_STORAGE_TYPES")
+          .description(
+              "Allow usage of FileIO implementations that are considered insecure. "
+                  + "Enabling this setting may expose the service to possibly severe security risks!"
+                  + "This should only be set to 'true' for tests!")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
       PolarisConfiguration.<Boolean>builder()

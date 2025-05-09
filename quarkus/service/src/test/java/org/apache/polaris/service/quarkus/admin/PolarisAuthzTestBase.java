@@ -116,7 +116,7 @@ public abstract class PolarisAuthzTestBase {
       return Map.of(
           "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
           "true",
@@ -234,7 +234,7 @@ public abstract class PolarisAuthzTestBase {
         Map.of(
             "ALLOW_SPECIFYING_FILE_IO_IMPL",
             true,
-            "ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS",
+            "ALLOW_INSECURE_STORAGE_TYPES",
             true,
             "ALLOW_EXTERNAL_METADATA_FILE_LOCATION",
             true,
