@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.TARGET_FORMAT_METADATA_PATH_KEY;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
@@ -95,6 +97,9 @@ import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.conversion.xtable.RunSyncResponse;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConversionUtils;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConverter;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -218,6 +223,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+    initializeConversionServiceIfEnabled();
   }
 
   public ListNamespacesResponse listNamespaces(Namespace parent) {
@@ -332,7 +338,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    return CatalogHandlers.createTable(baseCatalog, namespace, request);
+    // TODO check to see if we will need do this in createTableWriteDelegation, createTableStaged,
+    // etc
+    LoadTableResponse response = CatalogHandlers.createTable(baseCatalog, namespace, request);
+    if (XTableConversionUtils.requiresConversion(callContext, response.config())) {
+      RunSyncResponse runSyncResponse =
+          XTableConverter.getInstance().execute(new IcebergTableLikeEntity(catalog));
+      response
+          .config()
+          .put(TARGET_FORMAT_METADATA_PATH_KEY, runSyncResponse.getTargetMetadataPath());
+    }
+    return response;
   }
 
   /**
@@ -567,9 +583,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
+    IcebergTableLikeEntity tableEntity = null;
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
-      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      tableEntity = getTableEntity(tableIdentifier);
       if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
         LOGGER
             .atWarn()
@@ -588,7 +605,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     LoadTableResponse rawResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
-    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+    Optional<LoadTableResponse> optionalLoadTableResponse = Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+    if (tableEntity != null
+        && XTableConversionUtils.requiresConversion(
+            callContext, optionalLoadTableResponse.get().config())) {
+      RunSyncResponse runSyncResponse = XTableConverter.getInstance().execute(tableEntity);
+      optionalLoadTableResponse
+          .get()
+          .config()
+          .put(TARGET_FORMAT_METADATA_PATH_KEY, runSyncResponse.getTargetMetadataPath());
+    }
+    return optionalLoadTableResponse;
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(

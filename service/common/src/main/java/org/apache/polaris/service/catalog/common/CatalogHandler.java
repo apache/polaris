@@ -35,6 +35,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -44,6 +45,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConverter;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
@@ -370,6 +372,26 @@ public abstract class CatalogHandler {
         secondary);
 
     initializeCatalog();
+  }
+
+  protected void initializeConversionServiceIfEnabled() {
+    boolean conversionServiceEnabled =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.ENABLE_XTABLE_REST_SERVICE);
+    if (conversionServiceEnabled) {
+      String hostUrl =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(),
+                  FeatureConfiguration.XTABLE_REST_SERVICE_HOST_URL);
+      XTableConverter.initialize(hostUrl);
+    }
   }
 
   /**

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.TARGET_FORMAT_METADATA_PATH_KEY;
+
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -31,6 +33,9 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.conversion.xtable.RunSyncResponse;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConversionUtils;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConverter;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -56,6 +61,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
   protected void initializeCatalog() {
     this.genericTableCatalog =
         new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    initializeConversionServiceIfEnabled();
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
@@ -80,7 +86,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             createdEntity.getFormat(),
             createdEntity.getDoc(),
             createdEntity.getPropertiesAsMap());
-
+    convertIfRequired(createdEntity, createdTable);
     return LoadGenericTableResponse.builder().setTable(createdTable).build();
   }
 
@@ -103,6 +109,14 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             loadedEntity.getDoc(),
             loadedEntity.getPropertiesAsMap());
 
+    convertIfRequired(loadedEntity, loadedTable);
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+  }
+
+  private void convertIfRequired(GenericTableEntity entity, GenericTable table) {
+    if (XTableConversionUtils.requiresConversion(callContext, table.getProperties())) {
+      RunSyncResponse response = XTableConverter.getInstance().execute(entity);
+      table.getProperties().put(TARGET_FORMAT_METADATA_PATH_KEY, response.getTargetMetadataPath());
+    }
   }
 }
