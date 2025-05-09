@@ -889,13 +889,14 @@ components:
 
     AuthenticationParameters:
       type: object
-      description: Authentication-specific information for a REST connection
+      description: Authentication-specific information for a connection
       properties:
         authenticationType:
           type: string
           enum:
             - OAUTH
             - BEARER
+            - SIGV4
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -904,6 +905,7 @@ components:
         mapping:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
+          SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -937,6 +939,34 @@ components:
           type: string
           format: password
           description: Bearer token (input-only)
+
+    SigV4AuthenticationParameters:
+      type: object
+      description: AWS Signature Version 4 authentication
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
+      properties:
+        roleArn:
+          type: string
+          description: The aws IAM role arn assume when signing requests
+          example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        externalId:
+          type: string
+          description: An optional external id used to establish a trust relationship with AWS in the trust policy
+        signingRegion:
+          type: string
+          description: Region to be used by the SigV4 protocol for signing requests
+          example: "us-west-2"
+        signingName:
+          type: string
+          description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
+          example: "glue"
+        userArn:
+          type: string
+          description: The aws user arn used to assume the aws role, this represents the polaris service itself
+          example: "arn:aws:iam::123456789001:user/polaris-service-user"
+      required:
+        - roleArn
 
     StorageConfigInfo:
       type: object
