@@ -49,6 +49,7 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -414,6 +415,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
     String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
+
+    if (pageToken instanceof EntityIdPageToken entityIdPageToken) {
+      query += String.format("AND id > %d ORDER BY id ASC", entityIdPageToken.getId());
+    }
+
     try {
       List<PolarisBaseEntity> results = new ArrayList<>();
       datasourceOperations.executeSelectOverStream(
@@ -429,7 +435,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       List<T> resultsOrEmpty =
           results == null
               ? Collections.emptyList()
-              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
+              : results.stream().map(transformer).collect(Collectors.toList());
       return Page.fromItems(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(

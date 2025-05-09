@@ -35,6 +35,8 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelEntity;
@@ -292,15 +294,22 @@ public class PolarisEclipseLinkStore {
     checkInitialized();
 
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
-    String hql =
-        "SELECT m from ModelEntity m where m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode";
+    String hql = "SELECT m from ModelEntity m where" +
+        " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
+
+    long tokenId = EntityIdPageToken.BASE_ID;
+    if (pageToken instanceof EntityIdPageToken entityIdPageToken) {
+      hql += " order by m.id asc";
+      tokenId = entityIdPageToken.getId();
+    }
 
     TypedQuery<ModelEntity> query =
         session
             .createQuery(hql, ModelEntity.class)
             .setParameter("catalogId", catalogId)
             .setParameter("parentId", parentId)
-            .setParameter("typeCode", entityType.getCode());
+            .setParameter("typeCode", entityType.getCode())
+            .setParameter("tokenId", tokenId);
 
     return query.getResultList();
   }

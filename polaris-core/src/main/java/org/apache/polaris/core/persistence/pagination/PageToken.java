@@ -18,12 +18,10 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a page token that can be used by operations like `listTables`. Clients that specify a
@@ -56,7 +54,7 @@ public abstract class PageToken {
   public static PageToken build(String token, Integer pageSize) {
     if (token == null || token.isEmpty()) {
       if (pageSize != null) {
-        return new LimitPageToken(pageSize);
+        return new EntityIdPageToken(pageSize);
       } else {
         return new ReadEverythingPageToken();
       }
@@ -75,7 +73,6 @@ public abstract class PageToken {
         LOGGER.debug(e.getMessage());
         throw new IllegalArgumentException("Invalid token format: " + token);
       }
-
     }
   }
 
