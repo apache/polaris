@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.task;
 
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -30,10 +31,12 @@ import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.GenericBlobMetadata;
 import org.apache.iceberg.GenericStatisticsFile;
+import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestWriter;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SortOrder;
@@ -71,7 +74,7 @@ public class TaskTestUtils {
 
   static TableMetadata writeTableMetadata(FileIO fileIO, String metadataFile, Snapshot... snapshots)
       throws IOException {
-    return writeTableMetadata(fileIO, metadataFile, null, null, null, snapshots);
+    return writeTableMetadata(fileIO, metadataFile, null, null, null, null, snapshots);
   }
 
   static TableMetadata writeTableMetadata(
@@ -80,7 +83,18 @@ public class TaskTestUtils {
       List<StatisticsFile> statisticsFiles,
       Snapshot... snapshots)
       throws IOException {
-    return writeTableMetadata(fileIO, metadataFile, null, null, statisticsFiles, snapshots);
+    return writeTableMetadata(fileIO, metadataFile, null, null, statisticsFiles, null, snapshots);
+  }
+
+  static TableMetadata writeTableMetadata(
+      FileIO fileIO,
+      String metadataFile,
+      List<StatisticsFile> statisticsFiles,
+      List<PartitionStatisticsFile> partitionStatsFiles,
+      Snapshot... snapshots)
+      throws IOException {
+    return writeTableMetadata(
+        fileIO, metadataFile, null, null, statisticsFiles, partitionStatsFiles, snapshots);
   }
 
   static TableMetadata writeTableMetadata(
@@ -89,6 +103,7 @@ public class TaskTestUtils {
       TableMetadata prevMetadata,
       String prevMetadataFile,
       List<StatisticsFile> statisticsFiles,
+      List<PartitionStatisticsFile> partitionStatsFiles,
       Snapshot... snapshots)
       throws IOException {
     TableMetadata.Builder tmBuilder;
@@ -106,10 +121,14 @@ public class TaskTestUtils {
         .addPartitionSpec(PartitionSpec.unpartitioned());
 
     int statisticsFileIndex = 0;
+    int partitionStatsFileIndex = 0;
     for (Snapshot snapshot : snapshots) {
       tmBuilder.addSnapshot(snapshot);
       if (statisticsFiles != null) {
         tmBuilder.setStatistics(statisticsFiles.get(statisticsFileIndex++));
+      }
+      if (partitionStatsFiles != null) {
+        tmBuilder.setPartitionStatistics(partitionStatsFiles.get(partitionStatsFileIndex++));
       }
     }
     TableMetadata tableMetadata = tmBuilder.build();
@@ -160,5 +179,22 @@ public class TaskTestUtils {
           puffinWriter.footerSize(),
           puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
     }
+  }
+
+  public static PartitionStatisticsFile writePartitionStatsFile(
+      long snapshotId, String statsLocation, FileIO fileIO) throws UncheckedIOException {
+    PositionOutputStream positionOutputStream;
+    try {
+      positionOutputStream = fileIO.newOutputFile(statsLocation).create();
+      positionOutputStream.close();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+
+    return ImmutableGenericPartitionStatisticsFile.builder()
+        .snapshotId(snapshotId)
+        .path(statsLocation)
+        .fileSizeInBytes(42L)
+        .build();
   }
 }
