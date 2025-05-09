@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity;
 
 import org.apache.polaris.core.admin.model.Principal;
+import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 
 /** Wrapper for translating between the REST Principal object and the base PolarisEntity type. */
 public class PrincipalEntity extends PolarisEntity {
@@ -36,6 +37,7 @@ public class PrincipalEntity extends PolarisEntity {
   public static PrincipalEntity fromPrincipal(Principal principal) {
     return new Builder()
         .setName(principal.getName())
+        .setFederated(principal.getFederated())
         .setProperties(principal.getProperties())
         .setClientId(principal.getClientId())
         .build();
@@ -45,6 +47,7 @@ public class PrincipalEntity extends PolarisEntity {
     return new Principal(
         getName(),
         getClientId(),
+        FederatedEntities.isFederated(this),
         getPropertiesAsMap(),
         getCreateTimestamp(),
         getLastUpdateTimestamp(),
@@ -75,6 +78,15 @@ public class PrincipalEntity extends PolarisEntity {
     public Builder setCredentialRotationRequiredState() {
       internalProperties.put(
           PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
+      return this;
+    }
+
+    public Builder setFederated(Boolean isFederated) {
+      if (isFederated != null && isFederated) {
+        internalProperties.put(FederatedEntities.FEDERATED_ENTITY, "true");
+      } else {
+        internalProperties.remove(FederatedEntities.FEDERATED_ENTITY);
+      }
       return this;
     }
 

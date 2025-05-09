@@ -22,9 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -34,10 +39,23 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 public class ManagementServiceTest {
@@ -157,5 +175,114 @@ public class ManagementServiceTest {
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
+  }
+
+  private PolarisMetaStoreManager setupMetaStoreManager() {
+    MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
+    RealmContext realmContext = services.realmContext();
+    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  private PolarisCallContext setupCallContext(PolarisMetaStoreManager metaStoreManager) {
+    MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
+    RealmContext realmContext = services.realmContext();
+    return new PolarisCallContext(
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+        services.polarisDiagnostics());
+  }
+
+  private PolarisAdminService setupPolarisAdminService(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+    RealmContext realmContext = services.realmContext();
+    return new PolarisAdminService(
+        CallContext.of(realmContext, callContext),
+        services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+        metaStoreManager,
+        new UnsafeInMemorySecretsManager(),
+        new SecurityContext() {
+          @Override
+          public Principal getUserPrincipal() {
+            return new AuthenticatedPolarisPrincipal(
+                new PrincipalEntity.Builder().setName("root").build(), Set.of("service_admin"));
+          }
+
+          @Override
+          public boolean isUserInRole(String role) {
+            return true;
+          }
+
+          @Override
+          public boolean isSecure() {
+            return false;
+          }
+
+          @Override
+          public String getAuthenticationScheme() {
+            return "";
+          }
+        },
+        new PolarisAuthorizerImpl(new DefaultConfigurationStore(Map.of())));
+  }
+
+  private PrincipalEntity createPrincipal(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext callContext,
+      String name,
+      boolean isFederated) {
+    return new PrincipalEntity.Builder()
+        .setFederated(isFederated)
+        .setName(name)
+        .setCreateTimestamp(Instant.now().toEpochMilli())
+        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .build();
+  }
+
+  private PrincipalRoleEntity createRole(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext callContext,
+      String name,
+      boolean isFederated) {
+    return new PrincipalRoleEntity.Builder()
+        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .setName(name)
+        .setFederated(isFederated)
+        .setProperties(Map.of())
+        .setCreateTimestamp(Instant.now().toEpochMilli())
+        .setLastUpdateTimestamp(Instant.now().toEpochMilli())
+        .build();
+  }
+
+  public static Object[][] federatedIdentityArugments() {
+    return new Object[][] {
+      {true, false},
+      {false, true},
+      {true, true},
+    };
+  }
+
+  @ParameterizedTest
+  @MethodSource("federatedIdentityArugments")
+  public void testCannotAssignFederatedEntities(
+      boolean isFederatedPrincipal, boolean isFederatedRole) {
+    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
+    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    String principalPrefix = isFederatedPrincipal ? "federated_" : "";
+    PrincipalEntity principal =
+        createPrincipal(
+            metaStoreManager, callContext, principalPrefix + "principal_id", isFederatedPrincipal);
+    metaStoreManager.createPrincipal(callContext, principal);
+
+    String rolePrefix = isFederatedRole ? "federated_" : "";
+    PrincipalRoleEntity role =
+        createRole(metaStoreManager, callContext, rolePrefix + "role_id", isFederatedRole);
+    EntityResult result = metaStoreManager.createEntityIfNotExists(callContext, null, role);
+    assertThat(result.isSuccess()).isTrue();
+
+    assertThatThrownBy(
+            () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
+        .isInstanceOf(ValidationException.class);
   }
 }
