@@ -18,13 +18,19 @@
  */
 package org.apache.polaris.service.persistence.pagination;
 
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.pagination.DonePageToken;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class PageTokenTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageTokenTest.class);
@@ -46,5 +52,33 @@ public class PageTokenTest {
     Assertions.assertThat(token).isNotInstanceOf(HasPageSize.class);
 
     Assertions.assertThat(PageToken.readEverything()).isEqualTo(PageToken.readEverything());
+  }
+
+
+  @Test
+  void testEntityIdPageToken() {
+    EntityIdPageToken token = new EntityIdPageToken(2);
+
+    Assertions.assertThat(token).isInstanceOf(EntityIdPageToken.class);
+    Assertions.assertThat(token.getId()).isEqualTo(-1L);
+
+    List<String> badData = List.of("some", "data");
+    Assertions.assertThatThrownBy(() -> token.buildNextPage(badData))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    List<PolarisBaseEntity> data = List.of(
+        new PolarisBaseEntity(0, 101, PolarisEntityType.NULL_TYPE, PolarisEntitySubType.ANY_SUBTYPE, 0, "101"),
+        new PolarisBaseEntity(0, 102, PolarisEntityType.NULL_TYPE, PolarisEntitySubType.ANY_SUBTYPE, 0, "102")
+    );
+    var page = token.buildNextPage(data);
+
+    Assertions.assertThat(page.pageToken).isNotNull();
+    Assertions.assertThat(page.pageToken).isInstanceOf(EntityIdPageToken.class);
+    Assertions.assertThat(((EntityIdPageToken)page.pageToken).getPageSize()).isEqualTo(2);
+    Assertions.assertThat(((EntityIdPageToken) page.pageToken).getId()).isEqualTo(102);
+    Assertions.assertThat(page.items).isEqualTo(data);
+
+    Assertions.assertThat(PageToken.fromString(page.pageToken.toTokenString()))
+        .isEqualTo(page.pageToken);
   }
 }
