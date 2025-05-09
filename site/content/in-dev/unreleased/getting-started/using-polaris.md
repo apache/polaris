@@ -173,6 +173,8 @@ Similar to the CLI commands above, this configures Spark to use the Polaris runn
 Finally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
 #### Using Spark SQL from a Docker container
+
+Refresh the Docker container with the user's credentials:
 ```shell
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
@@ -232,7 +234,7 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 
 ### Connecting with Trino
 
-Replace the credentials used in the Docker container using the following code:
+Refresh the Docker container with the user's credentials:
 
 ```shell
 docker compose -f getting-started/eclipselink/docker-compose.yml down trino
