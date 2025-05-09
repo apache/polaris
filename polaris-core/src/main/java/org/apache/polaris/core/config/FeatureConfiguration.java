@@ -274,7 +274,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ALLOW_SPECIFYING_FILE_IO_IMPL")
           .description(
               "Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. "
-                  + "Must only be enabled in dev/test environments, never in production systems.")
+                  + "Must only be enabled in dev/test environments, should not be in production systems.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
