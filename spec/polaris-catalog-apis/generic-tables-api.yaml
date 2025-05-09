@@ -199,8 +199,6 @@ components:
           type: object
           additionalProperties:
             type: string
-        location:
-          type: string
 
     GenericTable:
       type: object
@@ -228,8 +226,6 @@ components:
           type: object
           additionalProperties:
             type: string
-        location:
-          type: string
 
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
