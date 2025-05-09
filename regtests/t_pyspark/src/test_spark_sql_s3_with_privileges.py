@@ -520,7 +520,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     attempts = 0
 
     # watch the data directory. metadata will be deleted first, so if data directory is clear, we can expect
-    # metadatat diretory to be clear also
+    # metadata directory to be clear also
     while 'Contents' in objects and len(objects['Contents']) > 0 and attempts < 60:
       time.sleep(1)  # seconds, not milliseconds ;)
       objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
@@ -1148,6 +1148,81 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
     spark.sql(f"drop table {table_name}_t1 PURGE")
     spark.sql(f"drop table {table_name}_t2 PURGE")
 
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, snowflake_catalog, polaris_catalog_url,
+                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
+    """
+    Create a using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
+    for the first table.
+    Delete the metadata directory and try to access the table using the vended credentials.
+    It should throw 404 exception
+    :param root_client:
+    :param snowflake_catalog:
+    :param polaris_catalog_url:
+    :param snowman_catalog_client:
+    :param reader_catalog_client:
+    :return:
+    """
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('CREATE NAMESPACE db1')
+        spark.sql('CREATE NAMESPACE db1.schema')
+        spark.sql('USE db1.schema')
+        spark.sql('CREATE TABLE iceberg_table (col1 int, col2 string)')
+
+    response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                        "iceberg_table",
+                                                        "vended-credentials")
+    assert response.config is not None
+    assert 's3.access-key-id' in response.config
+    assert 's3.secret-access-key' in response.config
+    assert 's3.session-token' in response.config
+
+    s3 = boto3.client('s3',
+                      aws_access_key_id=response.config['s3.access-key-id'],
+                      aws_secret_access_key=response.config['s3.secret-access-key'],
+                      aws_session_token=response.config['s3.session-token'])
+
+    # Get metadata files
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+    assert objects is not None
+    assert 'Contents' in objects
+    assert len(objects['Contents']) > 0
+
+    # Verify metadata content
+    metadata_file = next(f for f in objects['Contents'] if f['Key'].endswith('metadata.json'))
+    assert metadata_file is not None
+
+    metadata_contents = s3.get_object(Bucket=test_bucket, Key=metadata_file['Key'])
+    assert metadata_contents is not None
+    assert metadata_contents['ContentLength'] > 0
+
+    # Delete metadata files
+    s3.delete_objects(Bucket=test_bucket,
+                      Delete={'Objects': objects})
+
+    try:
+        response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                     "iceberg_table",
+                                                     "vended-credentials")
+    except Exception as e:
+        assert '404' in str(e)
+
+
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('USE db1.schema')
+        spark.sql('DROP TABLE iceberg_table PURGE')
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('DROP NAMESPACE db1.schema')
+        spark.sql('DROP NAMESPACE db1')
 
 def create_catalog_role(api, catalog, role_name):
   catalog_role = CatalogRole(name=role_name)
