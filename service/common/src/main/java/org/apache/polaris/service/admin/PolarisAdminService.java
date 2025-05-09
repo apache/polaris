@@ -95,6 +95,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -885,7 +886,8 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.CATALOG,
-            PolarisEntitySubType.ANY_SUBTYPE)
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1051,7 +1053,8 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE)
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1160,7 +1163,8 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE)
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(
@@ -1288,7 +1292,8 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             PolarisEntity.toCoreList(List.of(catalogEntity)),
             PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE)
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PageToken.readEverything())
         .getEntities()
         .stream()
         .map(

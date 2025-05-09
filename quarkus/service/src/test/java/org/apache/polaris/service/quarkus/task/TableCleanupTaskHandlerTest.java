@@ -54,6 +54,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
@@ -153,7 +154,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 2)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(2))
                 .getEntities())
         .hasSize(2)
         .satisfiesExactlyInAnyOrder(
@@ -233,7 +234,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(2);
   }
@@ -294,10 +295,10 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(4)
-        .satisfiesExactly(
+        .satisfiesExactlyInAnyOrder(
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
@@ -414,7 +415,7 @@ class TableCleanupTaskHandlerTest {
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
             .getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =
@@ -573,7 +574,7 @@ class TableCleanupTaskHandlerTest {
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(callContext.getRealmContext())
-            .loadTasks(callContext.getPolarisCallContext(), "test", 6)
+            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(6))
             .getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =

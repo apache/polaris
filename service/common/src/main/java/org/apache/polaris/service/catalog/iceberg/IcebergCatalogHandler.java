@@ -90,6 +90,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -167,6 +168,23 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     return isCreate;
+  }
+
+  public ListNamespacesResponse listNamespaces(
+      Namespace parent, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<Namespace> results = polarisCatalog.listNamespaces(parent, pageToken, pageSize);
+      return ListNamespacesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return CatalogHandlers.listNamespaces(
+          namespaceCatalog, parent, pageToken, String.valueOf(pageSize));
+    }
   }
 
   private UserSecretsManager getUserSecretsManager() {
@@ -302,6 +320,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     return CatalogHandlers.updateNamespaceProperties(namespaceCatalog, namespace, request);
+  }
+
+  public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listTables(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return CatalogHandlers.listTables(
+          baseCatalog, namespace, pageToken, String.valueOf(pageSize));
+    }
   }
 
   public ListTablesResponse listTables(Namespace namespace) {
@@ -939,6 +973,25 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
+    }
+  }
+
+  public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listViews(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
+      return CatalogHandlers.listViews(viewCatalog, namespace, pageToken, String.valueOf(pageSize));
+    } else {
+      throw new BadRequestException(
+          "Unsupported operation: listViews with baseCatalog type: %s",
+          baseCatalog.getClass().getName());
     }
   }
 

@@ -220,7 +220,10 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog ->
-            Response.ok(catalog.listNamespaces(namespaceOptional.orElse(Namespace.of()))).build());
+            Response.ok(
+                    catalog.listNamespaces(
+                        namespaceOptional.orElse(Namespace.of()), pageToken, pageSize))
+                .build());
   }
 
   @Override
@@ -356,7 +359,9 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.listTables(ns)).build());
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.listTables(ns, pageToken, pageSize)).build());
   }
 
   @Override
@@ -525,7 +530,9 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.listViews(ns)).build());
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.listViews(ns, pageToken, pageSize)).build());
   }
 
   @Override
