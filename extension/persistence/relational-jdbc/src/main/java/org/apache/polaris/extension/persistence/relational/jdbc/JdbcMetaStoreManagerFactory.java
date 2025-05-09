@@ -21,7 +21,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -41,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.DatasourceSupplier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
@@ -73,7 +73,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  @Inject Instance<DataSource> dataSource;
+  @Inject DatasourceSupplier jdbcDatasource;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -93,7 +93,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
+    DatasourceOperations databaseOperations =
+        getDatasourceOperations(isBootstrap, realmContext.getRealmIdentifier());
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -107,12 +108,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap, String realmId) {
+    DataSource datasource = jdbcDatasource.fromRealmId(realmId);
+    DatasourceOperations databaseOperations = new DatasourceOperations(datasource);
     if (isBootstrap) {
       try {
         DatabaseType databaseType;
-        try (Connection connection = dataSource.get().getConnection()) {
+        try (Connection connection = datasource.getConnection()) {
           String productName = connection.getMetaData().getDatabaseProductName();
           databaseType = DatabaseType.fromDisplayName(productName);
         }

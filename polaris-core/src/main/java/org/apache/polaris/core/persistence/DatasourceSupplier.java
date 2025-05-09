@@ -16,22 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.test.commons;
+package org.apache.polaris.core.persistence;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
+import javax.sql.DataSource;
 
-public class RelationalJdbcProfile implements QuarkusTestProfile {
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of("polaris.persistence.auto-bootstrap-types", "relational-jdbc");
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new QuarkusTestProfile.TestResourceEntry(
-            PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
-  }
+public interface DatasourceSupplier {
+  DataSource fromRealmId(String realmId);
 }

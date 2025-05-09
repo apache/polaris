@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
-import org.apache.polaris.test.common.RelationalJdbcProfile;
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
 
-@TestProfile(RelationalJdbcProfile.class)
-@QuarkusIntegrationTest
-public class JdbcQuarkusApplicationIT extends PolarisApplicationIntegrationTest {}
+-- Note: the database names must follow the pattern polaris_{realm}. That's the pattern
+-- specified by the persistence.xml file used in tests.
+
+CREATE DATABASE realm2;
+GRANT ALL PRIVILEGES ON DATABASE realm2 TO polaris;
+
+CREATE DATABASE realm3;
+GRANT ALL PRIVILEGES ON DATABASE realm3 TO polaris;

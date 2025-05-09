@@ -16,11 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.test.commons;
+package org.apache.polaris.test.common;
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -28,14 +31,18 @@ import org.testcontainers.utility.DockerImageName;
 public class PostgresRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
   public static final String INIT_SCRIPT = "init-script";
+  public static final String DATABASES = "databases";
 
   private PostgreSQLContainer<?> postgres;
   private String initScript;
+  private List<String> databases;
   private DevServicesContext context;
 
   @Override
   public void init(Map<String, String> initArgs) {
     initScript = initArgs.get(INIT_SCRIPT);
+    String databases = initArgs.get(DATABASES);
+    this.databases = databases == null ? new ArrayList<>() : Arrays.asList(databases.split(","));
   }
 
   @Override
@@ -43,7 +50,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
   public Map<String, String> start() {
     postgres =
         new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"))
-            .withDatabaseName("polaris_db")
+            .withDatabaseName("realm1")
             .withUsername("polaris")
             .withPassword("polaris");
 
@@ -53,19 +60,46 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
-    return Map.of(
-        "polaris.persistence.type",
-        "relational-jdbc",
-        "quarkus.datasource.db-kind",
-        "pgsql",
-        "quarkus.datasource.jdbc.url",
-        postgres.getJdbcUrl(),
-        "quarkus.datasource.username",
-        postgres.getUsername(),
-        "quarkus.datasource.password",
-        postgres.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
-        "10");
+
+    if (databases.isEmpty()) {
+      Map<String, String> props = generateDataSourceProps(List.of("realm1"));
+      // make realm1_ds as the default ds
+      props.put("polaris.relational.jdbc.datasource.default-datasource", "realm1_ds");
+      return props;
+    } else {
+      Map<String, String> allProps = new HashMap<>();
+      allProps.putAll(generateDataSourceMappingProps(databases));
+      allProps.putAll(generateDataSourceProps(databases));
+      return allProps;
+    }
+  }
+
+  private Map<String, String> generateDataSourceProps(List<String> dataSources) {
+    Map<String, String> props = new HashMap<>();
+    props.put("polaris.persistence.type", "relational-jdbc");
+    for (String database : dataSources) {
+      props.put(String.format("quarkus.datasource.%s.db-kind", database + "_ds"), "pgsql");
+      props.put(String.format("quarkus.datasource.%s.active", database + "_ds"), "true");
+      props.put(
+              String.format("quarkus.datasource.%s.jdbc.url", database + "_ds"),
+              postgres.getJdbcUrl().replace("realm1", database));
+      props.put(
+              String.format("quarkus.datasource.%s.username", database + "_ds"),
+              postgres.getUsername());
+      props.put(
+              String.format("quarkus.datasource.%s.password", database + "_ds"),
+              postgres.getPassword());
+    }
+    return props;
+  }
+
+  private Map<String, String> generateDataSourceMappingProps(List<String> realms) {
+    Map<String, String> props = new HashMap<>();
+    // polaris.relation.jdbc.datasource.realm=realm_ds
+    for (String database : realms) {
+      props.put(String.format("polaris.relational.jdbc.datasource.%s", database), database + "_ds");
+    }
+    return props;
   }
 
   @Override

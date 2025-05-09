@@ -16,13 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it.relational.jdbc;
+package org.apache.polaris.common;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
-import org.apache.polaris.test.common.RelationalJdbcProfile;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithParentName;
 
-@TestProfile(RelationalJdbcProfile.class)
-@QuarkusIntegrationTest
-public class JdbcQuarkusApplicationIT extends PolarisApplicationIntegrationTest {}
+import java.util.Map;
+import java.util.Optional;
+
+@ConfigMapping(prefix = "polaris.relational.jdbc.datasource")
+public interface RelationalJdbcConfiguration {
+  /** realmId to configured Datasource name mapping. */
+  @WithParentName
+  Map<String, String> realms();
+
+  /**
+   * Default datasource name to be used for a realmId when there is no mapping of realmId to
+   * Datasource name present.
+   */
+  Optional<String> defaultDatasource();
+}
