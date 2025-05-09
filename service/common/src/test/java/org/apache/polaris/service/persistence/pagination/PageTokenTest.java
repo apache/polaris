@@ -81,4 +81,18 @@ public class PageTokenTest {
     Assertions.assertThat(PageToken.fromString(page.pageToken.toTokenString()))
         .isEqualTo(page.pageToken);
   }
+
+  @Test
+  void testInvalidPageTokens() {
+    Assertions
+        .assertThatCode(() -> PageToken.fromString("not-real"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unrecognized page token");
+
+    PageToken goodToken = PageToken.fromLimit(100);
+    Assertions
+        .assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid token format");
+  }
 }
