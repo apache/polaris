@@ -214,7 +214,7 @@ public class ProductionReadinessChecks {
   @Produces
   public ProductionReadinessCheck checkInsecureStorageSettings(
       FeaturesConfiguration featureConfiguration) {
-    var insecure = FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS;
+    var insecure = FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 
     var errors = new ArrayList<Error>();
     if (Boolean.parseBoolean(featureConfiguration.defaults().get(insecure.key))) {

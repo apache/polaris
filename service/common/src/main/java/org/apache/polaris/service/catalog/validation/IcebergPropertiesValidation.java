@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.catalog.validation;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_SPECIFYING_FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
 
@@ -77,9 +77,7 @@ public class IcebergPropertiesValidation {
             ioImpl, storageType);
       }
 
-      if (!storageType.safe()
-          && !configStore.getConfiguration(
-              ctx, ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS)) {
+      if (!storageType.safe() && !configStore.getConfiguration(ctx, ALLOW_INSECURE_STORAGE_TYPES)) {
         throw new ValidationException(
             "File IO implementation '%s' (storage type '%s') is considered insecure and must not be used",
             ioImpl, storageType);

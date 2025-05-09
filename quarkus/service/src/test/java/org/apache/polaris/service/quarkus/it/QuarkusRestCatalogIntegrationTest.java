@@ -37,7 +37,7 @@ public class QuarkusRestCatalogIntegrationTest extends PolarisRestCatalogIntegra
           "true",
           "polaris.features.defaults.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"",
           "false",
-          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",

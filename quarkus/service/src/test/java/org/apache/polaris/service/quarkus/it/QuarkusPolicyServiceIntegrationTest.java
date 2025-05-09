@@ -34,7 +34,7 @@ public class QuarkusPolicyServiceIntegrationTest extends PolarisPolicyServiceInt
       return Map.of(
           "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES_ACCEPTING_SECURITY_RISKS\"",
+          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",
