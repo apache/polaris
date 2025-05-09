@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 public class EntityIdPageToken extends PageToken implements HasPageSize {
@@ -60,21 +61,23 @@ public class EntityIdPageToken extends PageToken implements HasPageSize {
 
   /**
    * Builds a new page token to reflect new data that's been read. This implementation assumes that
-   * the input list is sorted, and checks that it's a list of `PolarisBaseEntity`
+   * the input list is sorted, and checks that it's a list of `PolarisBaseEntity` or
+   * `EntityNameLookupRecord`
    */
   @Override
   public PageToken updated(List<?> newData) {
     if (newData == null || newData.size() < this.pageSize) {
       return new DonePageToken();
     } else {
-      var head = newData.get(0);
-      if (head instanceof PolarisBaseEntity) {
-        // Assumed to be sorted with the greatest entity ID last
-        return new EntityIdPageToken(
-            ((PolarisBaseEntity) newData.get(newData.size() - 1)).getId(), this.pageSize);
+      // Assumed to be sorted with the greatest entity ID last
+      var tail = newData.get(newData.size() - 1);
+      if (tail instanceof PolarisBaseEntity) {
+        return new EntityIdPageToken(((PolarisBaseEntity) tail).getId(), this.pageSize);
+      } else if (tail instanceof EntityNameLookupRecord) {
+        return new EntityIdPageToken(((EntityNameLookupRecord) tail).getId(), this.pageSize);
       } else {
         throw new IllegalArgumentException(
-            "Cannot build a page token from: " + newData.get(0).getClass().getSimpleName());
+            "Cannot build a page token from: " + tail.getClass().getSimpleName());
       }
     }
   }

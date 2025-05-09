@@ -36,7 +36,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelEntity;
@@ -294,8 +293,9 @@ public class PolarisEclipseLinkStore {
     checkInitialized();
 
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
-    String hql = "SELECT m from ModelEntity m where" +
-        " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
+    String hql =
+        "SELECT m from ModelEntity m where"
+            + " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
 
     long tokenId = EntityIdPageToken.BASE_ID;
     if (pageToken instanceof EntityIdPageToken entityIdPageToken) {

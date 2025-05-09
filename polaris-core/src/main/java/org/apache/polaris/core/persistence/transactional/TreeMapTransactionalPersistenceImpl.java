@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -366,7 +365,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                         callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
 
     if (pageToken instanceof EntityIdPageToken) {
-      data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId));
+      data =
+          data.sorted(Comparator.comparingLong(PolarisEntityCore::getId))
+              .filter(e -> e.getId() > ((EntityIdPageToken) pageToken).getId());
     }
 
     data = data.filter(entityFilter);
