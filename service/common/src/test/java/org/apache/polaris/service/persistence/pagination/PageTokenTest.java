@@ -84,19 +84,16 @@ public class PageTokenTest {
 
   @Test
   void testInvalidPageTokens() {
-    Assertions
-        .assertThatCode(() -> PageToken.fromString("not-real"))
+    Assertions.assertThatCode(() -> PageToken.fromString("not-real"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unrecognized page token");
 
     PageToken goodToken = PageToken.fromLimit(100);
-    Assertions
-        .assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
+    Assertions.assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid token format");
 
-    Assertions
-        .assertThatCode(() -> PageToken.fromString(EntityIdPageToken.PREFIX + "/1"))
+    Assertions.assertThatCode(() -> PageToken.fromString(EntityIdPageToken.PREFIX + "/1"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid token format");
   }
