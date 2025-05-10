@@ -121,9 +121,12 @@ public class FileIOFactoryTest {
 
     testServices =
         TestServices.builder()
-            .config(Map.of(
-                "ALLOW_SPECIFYING_FILE_IO_IMPL", true,
-                "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE", "S3")))
+            .config(
+                Map.of(
+                    "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3")))
             .realmContext(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)

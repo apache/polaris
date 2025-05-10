@@ -61,10 +61,10 @@ public class FileIOExceptionsTest {
 
   @BeforeAll
   public static void beforeAll() {
-    services = TestServices
-        .builder()
-        .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE", "S3")))
-        .build();
+    services =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE", "S3")))
+            .build();
     ioFactory = (MeasuredFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
