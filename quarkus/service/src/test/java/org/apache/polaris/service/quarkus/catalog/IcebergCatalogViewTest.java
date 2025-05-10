@@ -162,6 +162,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
@@ -172,15 +173,14 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             configurationStore,
             Clock.systemDefaultZone());
 
-    CallContext callContext = CallContext.of(realmContext, polarisContext);
-    QuarkusMock.installMockForType(callContext, CallContext.class);
-    CallContext.setCurrentContext(callContext);
-
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
+
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
