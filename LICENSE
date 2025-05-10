@@ -261,11 +261,8 @@ License: https://www.apache.org/licenses/LICENSE-2.0
 This product includes code from Project Nessie.
 
 * build-logic/src/main/kotlin/LicenseFileValidation.kt
-* build-logic/src/main/kotlin/publishing/MemoizedGitInfo.kt
-* build-logic/src/main/kotlin/publishing/PublishingHelperExtension.kt
 * build-logic/src/main/kotlin/publishing/PublishingHelperPlugin.kt
-* build-logic/src/main/kotlin/publishing/shadowPub.kt
-* build-logic/src/main/kotlin/publishing/util.kt
+* build-logic/src/main/kotlin/polaris-shadow-jar.gradle.kts
 * tools/config-docs/annotations/src/main/java/org/apache/polaris/docs/ConfigDocs.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/DocGenDoclet.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownFormatter.java
@@ -277,7 +274,6 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertyInfo.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigMappingInfo.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigPropertyInfo.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigSectionPage.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigs.java
 * tools/config-docs/generator/src/test/java/org/apache/polaris/docs/generator/TestDocGenTool.java
 * tools/config-docs/generator/src/test/java/tests/properties/ConfigProps.java
