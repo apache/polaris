@@ -18,25 +18,15 @@
  */
 
 plugins {
-  alias(libs.plugins.jandex)
-  id("java-test-fixtures")
-}
-
-configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
+    alias(libs.plugins.jandex)
 }
 
 java {
-  sourceCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
-  targetCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
+    sourceCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
+    targetCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
 }
 
 dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
+    compileOnly(libs.smallrye.config.core)
+    implementation(project(":polaris-relational-jdbc"))
 }

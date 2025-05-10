@@ -54,6 +54,7 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
+  implementation(project(":polaris-quarkus-common"))
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
   testImplementation(project(":polaris-quarkus-test-commons"))

@@ -74,6 +74,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
+  @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -108,7 +109,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations = new DatasourceOperations(dataSource.get());
+    DatasourceOperations databaseOperations =
+        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
         DatabaseType databaseType;

@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.relational.jdbc;
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 import java.sql.SQLException;
 import java.time.ZoneId;
+import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -30,9 +31,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatabaseType;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
-import org.apache.polaris.extension.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.mockito.Mockito;
 
@@ -46,7 +44,8 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    DatasourceOperations datasourceOperations = new DatasourceOperations(createH2DataSource());
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
     try {
       datasourceOperations.executeScript(
           String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));
@@ -66,5 +65,23 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())));
+  }
+
+  private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {
+
+    @Override
+    public Optional<Integer> maxRetries() {
+      return Optional.of(2);
+    }
+
+    @Override
+    public Optional<Long> maxDurationInMs() {
+      return Optional.of(100L);
+    }
+
+    @Override
+    public Optional<Long> initialDelayInMs() {
+      return Optional.of(100L);
+    }
   }
 }

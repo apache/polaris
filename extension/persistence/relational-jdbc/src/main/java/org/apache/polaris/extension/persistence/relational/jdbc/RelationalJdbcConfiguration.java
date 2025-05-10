@@ -16,27 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-plugins {
-  alias(libs.plugins.jandex)
-  id("java-test-fixtures")
-}
+import java.util.Optional;
 
-configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
-}
+public interface RelationalJdbcConfiguration {
+  // max retries before giving up
+  Optional<Integer> maxRetries();
 
-java {
-  sourceCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
-  targetCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
-}
+  // max retry duration
+  Optional<Long> maxDurationInMs();
 
-dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
+  // initial delay
+  Optional<Long> initialDelayInMs();
 }

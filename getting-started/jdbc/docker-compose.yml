@@ -32,6 +32,9 @@ services:
       JAVA_DEBUG: "true"
       JAVA_DEBUG_PORT: "*:5005"
       polaris.persistence.type: relational-jdbc
+      polaris.persistence.relational.jdbc.max-retries: 5
+      polaris.persistence.relational.jdbc.initial-delay-in-ms: 10
+      polaris.persistence.relational.jdbc.max-delay-in-ms: 500
       quarkus.datasource.db-kind: pgsql
       quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/POLARIS
       quarkus.datasource.username: postgres
