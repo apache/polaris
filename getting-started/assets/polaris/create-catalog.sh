@@ -22,7 +22,7 @@ set -e
 apk add --no-cache jq
 
 token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
-  --user root:s3cr3t \
+  --user ${CLIENT_ID}:${CLIENT_SECRET} \
   -d grant_type=client_credentials \
   -d scope=PRINCIPAL_ROLE:ALL | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 
