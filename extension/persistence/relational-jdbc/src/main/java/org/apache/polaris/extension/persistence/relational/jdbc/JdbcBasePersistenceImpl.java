@@ -417,7 +417,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
 
     if (pageToken instanceof EntityIdPageToken entityIdPageToken) {
-      query += String.format("AND id > %d ORDER BY id ASC", entityIdPageToken.getId());
+      query += String.format(" AND id > %d ORDER BY id ASC", entityIdPageToken.getId());
     }
 
     try {
