@@ -20,20 +20,17 @@ package org.apache.polaris.core.config;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An ABC for Polaris configurations that alter the service's behavior
- * TODO: deprecate unsafe catalog configs and remove related code
+ * An ABC for Polaris configurations that alter the service's behavior TODO: deprecate unsafe
+ * catalog configs and remove related code
  *
  * @param <T> The type of the configuration
  */
@@ -63,21 +60,20 @@ public abstract class PolarisConfiguration<T> {
         throw new IllegalArgumentException(
             String.format("Config '%s' is already in use", configuration.key));
       } else {
-        var configs = Stream.of(
-            configuration.catalogConfigImpl,
-            configuration.catalogConfigUnsafeImpl,
-            existingConfiguration.catalogConfigImpl,
-            existingConfiguration.catalogConfigUnsafeImpl
-        )
-            .flatMap(Optional::stream)
-            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        for (var entry: configs.entrySet()) {
+        var configs =
+            Stream.of(
+                    configuration.catalogConfigImpl,
+                    configuration.catalogConfigUnsafeImpl,
+                    existingConfiguration.catalogConfigImpl,
+                    existingConfiguration.catalogConfigUnsafeImpl)
+                .flatMap(Optional::stream)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        for (var entry : configs.entrySet()) {
           if (entry.getValue() > 1) {
             throw new IllegalArgumentException(
                 String.format("Catalog config %s is already in use", entry.getKey()));
           }
         }
-
       }
     }
     allConfigurations.add(configuration);
@@ -168,6 +164,10 @@ public abstract class PolarisConfiguration<T> {
     @Deprecated
     public Builder<T> catalogConfigUnsafe(String catalogConfig) {
       LOGGER.info("catalogConfigUnsafe is deprecated! Use catalogConfig() instead.");
+      if (catalogConfig.startsWith(SAFE_CATALOG_CONFIG_PREFIX)) {
+        throw new IllegalArgumentException(
+            "Unsafe catalog configs are not expected to start with " + SAFE_CATALOG_CONFIG_PREFIX);
+      }
       this.catalogConfigUnsafe = Optional.of(catalogConfig);
       return this;
     }
@@ -177,7 +177,8 @@ public abstract class PolarisConfiguration<T> {
         throw new IllegalArgumentException("key, description, and defaultValue are required");
       }
       FeatureConfiguration<T> config =
-          new FeatureConfiguration<>(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+          new FeatureConfiguration<>(
+              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
@@ -191,7 +192,8 @@ public abstract class PolarisConfiguration<T> {
             "catalog configs are not valid for behavior change configs");
       }
       BehaviorChangeConfiguration<T> config =
-          new BehaviorChangeConfiguration<>(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+          new BehaviorChangeConfiguration<>(
+              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
