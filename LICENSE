@@ -311,6 +311,13 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
 * quarkus/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* helm/polaris/tests/logging_storage_test.yaml
+* helm/polaris/tests/quantity_test.yaml
+* helm/polaris/tests/service_monitor_test.yaml
+* helm/polaris/templates/_helpers.tpl
+* helm/polaris/templates/serviceaccount.yaml
+* helm/polaris/templates/servicemonitor.yaml
+* helm/polaris/templates/storage.yaml
 
 Copyright: Copyright 2015-2025 Dremio Corporation
 Home page: https://projectnessie.org/
