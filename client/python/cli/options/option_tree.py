@@ -93,7 +93,6 @@ class OptionTree:
                     Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
                     Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
                     Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
-                    Argument(Arguments.REMOTE_URL, str, Hints.Catalogs.Create.REMOTE_URL),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.CATALOG),
                 Option(Subcommands.DELETE, input_name=Arguments.CATALOG),

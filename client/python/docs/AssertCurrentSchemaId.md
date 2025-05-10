@@ -26,7 +26,7 @@ The table's current schema id must match the requirement's `current-schema-id`
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **current_schema_id** | **int** |  | 
 
 ## Example

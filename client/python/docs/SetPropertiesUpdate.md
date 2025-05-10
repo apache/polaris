@@ -20,11 +20,12 @@
 -->
 # SetPropertiesUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **updates** | **Dict[str, str]** |  | 
 
 ## Example

@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -34,7 +35,7 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import Field, StrictBool, StrictStr
+from pydantic import Field, StrictBool, field_validator
 from typing import Optional
 from typing_extensions import Annotated
 from polaris.management.models.add_grant_request import AddGrantRequest
@@ -81,8 +82,8 @@ class PolarisDefaultApi:
     @validate_call
     def add_grant_to_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         add_grant_request: Optional[AddGrantRequest] = None,
         _request_timeout: Union[
             None,
@@ -158,8 +159,8 @@ class PolarisDefaultApi:
     @validate_call
     def add_grant_to_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         add_grant_request: Optional[AddGrantRequest] = None,
         _request_timeout: Union[
             None,
@@ -235,8 +236,8 @@ class PolarisDefaultApi:
     @validate_call
     def add_grant_to_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         add_grant_request: Optional[AddGrantRequest] = None,
         _request_timeout: Union[
             None,
@@ -382,8 +383,8 @@ class PolarisDefaultApi:
     @validate_call
     def assign_catalog_role_to_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         grant_catalog_role_request: Annotated[GrantCatalogRoleRequest, Field(description="The principal to create")],
         _request_timeout: Union[
             None,
@@ -458,8 +459,8 @@ class PolarisDefaultApi:
     @validate_call
     def assign_catalog_role_to_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         grant_catalog_role_request: Annotated[GrantCatalogRoleRequest, Field(description="The principal to create")],
         _request_timeout: Union[
             None,
@@ -534,8 +535,8 @@ class PolarisDefaultApi:
     @validate_call
     def assign_catalog_role_to_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         grant_catalog_role_request: Annotated[GrantCatalogRoleRequest, Field(description="The principal to create")],
         _request_timeout: Union[
             None,
@@ -680,7 +681,7 @@ class PolarisDefaultApi:
     @validate_call
     def assign_principal_role(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         grant_principal_role_request: Annotated[GrantPrincipalRoleRequest, Field(description="The principal role to assign")],
         _request_timeout: Union[
             None,
@@ -753,7 +754,7 @@ class PolarisDefaultApi:
     @validate_call
     def assign_principal_role_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         grant_principal_role_request: Annotated[GrantPrincipalRoleRequest, Field(description="The principal role to assign")],
         _request_timeout: Union[
             None,
@@ -826,7 +827,7 @@ class PolarisDefaultApi:
     @validate_call
     def assign_principal_role_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         grant_principal_role_request: Annotated[GrantPrincipalRoleRequest, Field(description="The principal role to assign")],
         _request_timeout: Union[
             None,
@@ -1240,7 +1241,7 @@ class PolarisDefaultApi:
     @validate_call
     def create_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         create_catalog_role_request: Optional[CreateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -1313,7 +1314,7 @@ class PolarisDefaultApi:
     @validate_call
     def create_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         create_catalog_role_request: Optional[CreateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -1386,7 +1387,7 @@ class PolarisDefaultApi:
     @validate_call
     def create_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         create_catalog_role_request: Optional[CreateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -2069,7 +2070,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2085,7 +2086,7 @@ class PolarisDefaultApi:
     ) -> None:
         """delete_catalog
 
-        Delete an existing catalog. This is a cascading operation that deletes all metadata, including principals, roles and grants. If the catalog is an internal catalog, all tables and namespaces are dropped without purge.
+        Delete an existing catalog. The catalog must be empty.
 
         :param catalog_name: The name of the catalog (required)
         :type catalog_name: str
@@ -2138,7 +2139,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2154,7 +2155,7 @@ class PolarisDefaultApi:
     ) -> ApiResponse[None]:
         """delete_catalog
 
-        Delete an existing catalog. This is a cascading operation that deletes all metadata, including principals, roles and grants. If the catalog is an internal catalog, all tables and namespaces are dropped without purge.
+        Delete an existing catalog. The catalog must be empty.
 
         :param catalog_name: The name of the catalog (required)
         :type catalog_name: str
@@ -2207,7 +2208,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2223,7 +2224,7 @@ class PolarisDefaultApi:
     ) -> RESTResponseType:
         """delete_catalog
 
-        Delete an existing catalog. This is a cascading operation that deletes all metadata, including principals, roles and grants. If the catalog is an internal catalog, all tables and namespaces are dropped without purge.
+        Delete an existing catalog. The catalog must be empty.
 
         :param catalog_name: The name of the catalog (required)
         :type catalog_name: str
@@ -2327,8 +2328,8 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2400,8 +2401,8 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2473,8 +2474,8 @@ class PolarisDefaultApi:
     @validate_call
     def delete_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2600,7 +2601,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2669,7 +2670,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2738,7 +2739,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2858,7 +2859,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2927,7 +2928,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2996,7 +2997,7 @@ class PolarisDefaultApi:
     @validate_call
     def delete_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3116,7 +3117,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3185,7 +3186,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3254,7 +3255,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3381,8 +3382,8 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3454,8 +3455,8 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3527,8 +3528,8 @@ class PolarisDefaultApi:
     @validate_call
     def get_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3661,7 +3662,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3730,7 +3731,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3799,7 +3800,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3926,7 +3927,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3995,7 +3996,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4064,7 +4065,7 @@ class PolarisDefaultApi:
     @validate_call
     def get_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4191,8 +4192,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principal_roles_for_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalog role resides")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalog role resides")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4208,7 +4209,7 @@ class PolarisDefaultApi:
     ) -> PrincipalRoles:
         """list_assignee_principal_roles_for_catalog_role
 
-        List the PrincipalRoles to whome the tagetcatalog role has been assigned
+        List the PrincipalRoles to which the target catalog role has been assigned
 
         :param catalog_name: The name of the catalog where the catalog role resides (required)
         :type catalog_name: str
@@ -4264,8 +4265,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principal_roles_for_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalog role resides")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalog role resides")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4281,7 +4282,7 @@ class PolarisDefaultApi:
     ) -> ApiResponse[PrincipalRoles]:
         """list_assignee_principal_roles_for_catalog_role
 
-        List the PrincipalRoles to whome the tagetcatalog role has been assigned
+        List the PrincipalRoles to which the target catalog role has been assigned
 
         :param catalog_name: The name of the catalog where the catalog role resides (required)
         :type catalog_name: str
@@ -4337,8 +4338,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principal_roles_for_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalog role resides")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalog role resides")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4354,7 +4355,7 @@ class PolarisDefaultApi:
     ) -> RESTResponseType:
         """list_assignee_principal_roles_for_catalog_role
 
-        List the PrincipalRoles to whome the tagetcatalog role has been assigned
+        List the PrincipalRoles to which the target catalog role has been assigned
 
         :param catalog_name: The name of the catalog where the catalog role resides (required)
         :type catalog_name: str
@@ -4471,7 +4472,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principals_for_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4540,7 +4541,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principals_for_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4609,7 +4610,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_assignee_principals_for_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4736,7 +4737,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4803,7 +4804,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4870,7 +4871,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are reading/updating roles")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are reading/updating roles")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -4995,8 +4996,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles_for_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5068,8 +5069,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles_for_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5141,8 +5142,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_catalog_roles_for_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the catalogRoles reside")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the catalogRoles reside")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5522,8 +5523,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_grants_for_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5593,8 +5594,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_grants_for_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -5664,8 +5665,8 @@ class PolarisDefaultApi:
     @validate_call
     def list_grants_for_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6046,7 +6047,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_principal_roles_assigned(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6115,7 +6116,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_principal_roles_assigned_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6184,7 +6185,7 @@ class PolarisDefaultApi:
     @validate_call
     def list_principal_roles_assigned_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6561,9 +6562,9 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_catalog_role_from_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog that contains the role to revoke")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role that should be revoked")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog that contains the role to revoke")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role that should be revoked")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6638,9 +6639,9 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_catalog_role_from_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog that contains the role to revoke")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role that should be revoked")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog that contains the role to revoke")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role that should be revoked")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6715,9 +6716,9 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_catalog_role_from_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog that contains the role to revoke")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the catalog role that should be revoked")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog that contains the role to revoke")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog role that should be revoked")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -6849,8 +6850,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_grant_from_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         cascade: Annotated[Optional[StrictBool], Field(description="If true, the grant revocation cascades to all subresources.")] = None,
         revoke_grant_request: Optional[RevokeGrantRequest] = None,
         _request_timeout: Union[
@@ -6930,8 +6931,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_grant_from_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         cascade: Annotated[Optional[StrictBool], Field(description="If true, the grant revocation cascades to all subresources.")] = None,
         revoke_grant_request: Optional[RevokeGrantRequest] = None,
         _request_timeout: Union[
@@ -7011,8 +7012,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_grant_from_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog where the role will receive the grant")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role receiving the grant (must exist)")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog where the role will receive the grant")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role receiving the grant (must exist)")],
         cascade: Annotated[Optional[StrictBool], Field(description="If true, the grant revocation cascades to all subresources.")] = None,
         revoke_grant_request: Optional[RevokeGrantRequest] = None,
         _request_timeout: Union[
@@ -7167,8 +7168,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_principal_role(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
-        principal_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7240,8 +7241,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_principal_role_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
-        principal_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7313,8 +7314,8 @@ class PolarisDefaultApi:
     @validate_call
     def revoke_principal_role_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The name of the target principal")],
-        principal_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the target principal")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7440,7 +7441,7 @@ class PolarisDefaultApi:
     @validate_call
     def rotate_credentials(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The user name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The user name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7509,7 +7510,7 @@ class PolarisDefaultApi:
     @validate_call
     def rotate_credentials_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The user name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The user name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7578,7 +7579,7 @@ class PolarisDefaultApi:
     @validate_call
     def rotate_credentials_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The user name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The user name")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -7705,7 +7706,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         update_catalog_request: Annotated[UpdateCatalogRequest, Field(description="The catalog details to use in the update")],
         _request_timeout: Union[
             None,
@@ -7779,7 +7780,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         update_catalog_request: Annotated[UpdateCatalogRequest, Field(description="The catalog details to use in the update")],
         _request_timeout: Union[
             None,
@@ -7853,7 +7854,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The name of the catalog")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the catalog")],
         update_catalog_request: Annotated[UpdateCatalogRequest, Field(description="The catalog details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8001,8 +8002,8 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog_role(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         update_catalog_role_request: Optional[UpdateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -8079,8 +8080,8 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog_role_with_http_info(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         update_catalog_role_request: Optional[UpdateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -8157,8 +8158,8 @@ class PolarisDefaultApi:
     @validate_call
     def update_catalog_role_without_preload_content(
         self,
-        catalog_name: Annotated[StrictStr, Field(description="The catalog for which we are retrieving roles")],
-        catalog_role_name: Annotated[StrictStr, Field(description="The name of the role")],
+        catalog_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The catalog for which we are retrieving roles")],
+        catalog_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The name of the role")],
         update_catalog_role_request: Optional[UpdateCatalogRoleRequest] = None,
         _request_timeout: Union[
             None,
@@ -8312,7 +8313,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         update_principal_request: Annotated[UpdatePrincipalRequest, Field(description="The principal details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8386,7 +8387,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal_with_http_info(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         update_principal_request: Annotated[UpdatePrincipalRequest, Field(description="The principal details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8460,7 +8461,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal_without_preload_content(
         self,
-        principal_name: Annotated[StrictStr, Field(description="The principal name")],
+        principal_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal name")],
         update_principal_request: Annotated[UpdatePrincipalRequest, Field(description="The principal details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8608,7 +8609,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal_role(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         update_principal_role_request: Annotated[UpdatePrincipalRoleRequest, Field(description="The principalRole details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8682,7 +8683,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal_role_with_http_info(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         update_principal_role_request: Annotated[UpdatePrincipalRoleRequest, Field(description="The principalRole details to use in the update")],
         _request_timeout: Union[
             None,
@@ -8756,7 +8757,7 @@ class PolarisDefaultApi:
     @validate_call
     def update_principal_role_without_preload_content(
         self,
-        principal_role_name: Annotated[StrictStr, Field(description="The principal role name")],
+        principal_role_name: Annotated[str, Field(min_length=1, strict=True, max_length=256, description="The principal role name")],
         update_principal_role_request: Annotated[UpdatePrincipalRoleRequest, Field(description="The principalRole details to use in the update")],
         _request_timeout: Union[
             None,

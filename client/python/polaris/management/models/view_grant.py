@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -37,6 +38,7 @@ import json
 
 from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
+from typing_extensions import Annotated
 from polaris.management.models.grant_resource import GrantResource
 from polaris.management.models.view_privilege import ViewPrivilege
 from typing import Optional, Set
@@ -47,7 +49,7 @@ class ViewGrant(GrantResource):
     ViewGrant
     """ # noqa: E501
     namespace: List[StrictStr]
-    view_name: StrictStr = Field(alias="viewName")
+    view_name: Annotated[str, Field(min_length=1, strict=True, max_length=256)] = Field(alias="viewName")
     privilege: ViewPrivilege
     __properties: ClassVar[List[str]] = ["type", "namespace", "viewName", "privilege"]
 

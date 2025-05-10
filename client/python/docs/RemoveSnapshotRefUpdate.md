@@ -20,11 +20,12 @@
 -->
 # RemoveSnapshotRefUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **ref_name** | **str** |  | 
 
 ## Example

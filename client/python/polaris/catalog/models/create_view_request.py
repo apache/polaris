@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -49,7 +50,7 @@ class CreateViewRequest(BaseModel):
     name: StrictStr
     location: Optional[StrictStr] = None
     var_schema: ModelSchema = Field(alias="schema")
-    view_version: ViewVersion = Field(alias="view-version")
+    view_version: ViewVersion = Field(description="The view version to create, will replace the schema-id sent within the view-version with the id assigned to the provided schema", alias="view-version")
     properties: Dict[str, StrictStr]
     __properties: ClassVar[List[str]] = ["name", "location", "schema", "view-version", "properties"]
 

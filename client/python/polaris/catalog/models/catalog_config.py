@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -36,7 +37,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -46,7 +47,8 @@ class CatalogConfig(BaseModel):
     """ # noqa: E501
     overrides: Dict[str, StrictStr] = Field(description="Properties that should be used to override client configuration; applied after defaults and client configuration.")
     defaults: Dict[str, StrictStr] = Field(description="Properties that should be used as default configuration; applied before client configuration.")
-    __properties: ClassVar[List[str]] = ["overrides", "defaults"]
+    endpoints: Optional[List[StrictStr]] = Field(default=None, description="A list of endpoints that the server supports. The format of each endpoint must be \"<HTTP verb> <resource path from OpenAPI REST spec>\". The HTTP verb and the resource path must be separated by a space character.")
+    __properties: ClassVar[List[str]] = ["overrides", "defaults", "endpoints"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -100,7 +102,8 @@ class CatalogConfig(BaseModel):
 
         _obj = cls.model_validate({
             "overrides": obj.get("overrides"),
-            "defaults": obj.get("defaults")
+            "defaults": obj.get("defaults"),
+            "endpoints": obj.get("endpoints")
         })
         return _obj
 

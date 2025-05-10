@@ -20,11 +20,12 @@
 -->
 # SetDefaultSortOrderUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **sort_order_id** | **int** | Sort order ID to set as the default, or -1 to set last added sort order | 
 
 ## Example

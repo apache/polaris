@@ -20,11 +20,12 @@
 -->
 # CommitViewRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**identifier** | [**TableIdentifier**](TableIdentifier.md) |  | [optional] 
+**identifier** | [**TableIdentifier**](TableIdentifier.md) | View identifier to update | [optional] 
 **requirements** | [**List[ViewRequirement]**](ViewRequirement.md) |  | [optional] 
 **updates** | [**List[ViewUpdate]**](ViewUpdate.md) |  | 
 

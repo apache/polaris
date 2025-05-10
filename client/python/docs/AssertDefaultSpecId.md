@@ -26,7 +26,7 @@ The table's default spec id must match the requirement's `default-spec-id`
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **default_spec_id** | **int** |  | 
 
 ## Example

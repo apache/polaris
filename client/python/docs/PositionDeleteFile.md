@@ -20,11 +20,14 @@
 -->
 # PositionDeleteFile
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **content** | **str** |  | 
+**content_offset** | **int** | Offset within the delete file of delete content | [optional] 
+**content_size_in_bytes** | **int** | Length, in bytes, of the delete content; required if content-offset is present | [optional] 
 
 ## Example
 

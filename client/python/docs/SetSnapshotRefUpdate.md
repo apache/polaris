@@ -20,11 +20,12 @@
 -->
 # SetSnapshotRefUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **ref_name** | **str** |  | 
 **type** | **str** |  | 
 **snapshot_id** | **int** |  | 

@@ -20,6 +20,7 @@
 -->
 # CreateNamespaceRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes

@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestDataFile(unittest.TestCase):
 
     def make_instance(self, include_optional) -> DataFile:
         """Test DataFile
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `DataFile`
@@ -53,17 +54,17 @@ class TestDataFile(unittest.TestCase):
         model = DataFile()
         if include_optional:
             return DataFile(
-                content = 'data',
-                column_sizes = {"keys":[1,2],"values":[100,200]},
-                value_counts = {"keys":[1,2],"values":[100,200]},
-                null_value_counts = {"keys":[1,2],"values":[100,200]},
-                nan_value_counts = {"keys":[1,2],"values":[100,200]},
-                lower_bounds = {"keys":[1,2],"values":[100,"test"]},
-                upper_bounds = {"keys":[1,2],"values":[100,"test"]}
+                content = '',
+                column_sizes = {keys=[1, 2], values=[100, 200]},
+                value_counts = {keys=[1, 2], values=[100, 200]},
+                null_value_counts = {keys=[1, 2], values=[100, 200]},
+                nan_value_counts = {keys=[1, 2], values=[100, 200]},
+                lower_bounds = {keys=[1, 2], values=[100, test]},
+                upper_bounds = {keys=[1, 2], values=[100, test]}
             )
         else:
             return DataFile(
-                content = 'data',
+                content = '',
         )
         """
 

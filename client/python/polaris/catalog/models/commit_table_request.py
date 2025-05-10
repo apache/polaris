@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.table_identifier import TableIdentifier
 from polaris.catalog.models.table_requirement import TableRequirement
@@ -47,7 +48,7 @@ class CommitTableRequest(BaseModel):
     """
     CommitTableRequest
     """ # noqa: E501
-    identifier: Optional[TableIdentifier] = None
+    identifier: Optional[TableIdentifier] = Field(default=None, description="Table identifier to update; must be present for CommitTransactionRequest")
     requirements: List[TableRequirement]
     updates: List[TableUpdate]
     __properties: ClassVar[List[str]] = ["identifier", "requirements", "updates"]
