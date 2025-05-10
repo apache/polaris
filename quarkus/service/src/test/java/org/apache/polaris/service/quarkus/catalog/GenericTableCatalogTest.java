@@ -162,6 +162,7 @@ public class GenericTableCatalogTest {
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
@@ -170,13 +171,13 @@ public class GenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-    callContext = CallContext.of(realmContext, polarisContext);
-    QuarkusMock.installMockForType(callContext, CallContext.class);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
+
+    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
