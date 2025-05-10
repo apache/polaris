@@ -37,9 +37,8 @@ gcloud sql instances create $DB_INSTANCE_NAME \
 gcloud sql databases create POLARIS --instance=$DB_INSTANCE_NAME
 
 POSTGRES_ADDR=$(gcloud sql instances describe $DB_INSTANCE_NAME --format="get(ipAddresses[0].ipAddress)")
-
-FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
-sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
+export PG_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
+echo ($PG_JDBC_URL)
 
 GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"
 echo "GCS Bucket Name: $GCS_BUCKET_NAME"
