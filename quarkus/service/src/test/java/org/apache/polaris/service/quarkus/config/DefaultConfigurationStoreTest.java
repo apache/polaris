@@ -54,23 +54,19 @@ public class DefaultConfigurationStoreTest {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      try {
-        return Map.of(
-            "polaris.realm-context.realms",
-            "realm1,realm2",
-            String.format("polaris.features.defaults.\"%s\"", keyOne),
-            "true",
-            String.format("polaris.features.defaults.\"%s\"", keyTwo),
-            "false",
-            String.format("polaris.features.defaults.\"%s\"", keyThree),
-            "true",
-            String.format("polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, keyOne),
-            "false",
-            String.format("polaris.features.realm-overrides.\"%s\".\"%s\"", realmTwo, keyTwo),
-            "true");
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      return Map.of(
+          "polaris.realm-context.realms",
+          "realm1,realm2",
+          String.format("polaris.features.defaults.\"%s\"", keyOne),
+          "true",
+          String.format("polaris.features.defaults.\"%s\"", keyTwo),
+          "false",
+          String.format("polaris.features.defaults.\"%s\"", keyThree),
+          "true",
+          String.format("polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, keyOne),
+          "false",
+          String.format("polaris.features.realm-overrides.\"%s\".\"%s\"", realmTwo, keyTwo),
+          "true");
     }
   }
 
