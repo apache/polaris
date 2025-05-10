@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.MetadataUpdate;
 import org.slf4j.Logger;
@@ -43,6 +44,11 @@ public interface ReservedProperties {
         public List<String> prefixes() {
           return List.of();
         }
+
+        @Override
+        public Set<String> allowlist() {
+          return Set.of();
+        }
       };
 
   /**
@@ -50,6 +56,12 @@ public interface ReservedProperties {
    * prefixes is a reserved property.
    */
   List<String> prefixes();
+
+  /**
+   * A list of properties that are *not* considered reserved, even if they start with a reserved
+   * prefix
+   */
+  Set<String> allowlist();
 
   /** If true, attempts to modify a reserved property should throw an exception. */
   default boolean shouldThrow() {
@@ -94,15 +106,17 @@ public interface ReservedProperties {
     List<String> prefixes = prefixes();
     for (var entry : properties.entrySet()) {
       boolean isReserved = false;
-      for (String prefix : prefixes) {
-        if (entry.getKey().startsWith(prefix)) {
-          isReserved = true;
-          String message =
-              String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
-          if (shouldThrow()) {
-            throw new IllegalArgumentException(message);
-          } else {
-            LOGGER.debug(message);
+      if (!allowlist().contains(entry.getKey())) {
+        for (String prefix : prefixes) {
+          if (entry.getKey().startsWith(prefix)) {
+            isReserved = true;
+            String message =
+                String.format("Property '%s' matches reserved prefix '%s'", entry.getKey(), prefix);
+            if (shouldThrow()) {
+              throw new IllegalArgumentException(message);
+            } else {
+              LOGGER.debug(message);
+            }
           }
         }
       }
