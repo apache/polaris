@@ -19,7 +19,21 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisPolicyServiceIntegrationTest;
 
+import java.util.Map;
+
 @QuarkusTest
-public class QuarkusPolicyServiceIntegrationTest extends PolarisPolicyServiceIntegrationTest {}
+@TestProfile(QuarkusPolicyServiceIntegrationTest.Profile.class)
+public class QuarkusPolicyServiceIntegrationTest extends PolarisPolicyServiceIntegrationTest {
+    public static class Profile implements QuarkusTestProfile {
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            return Map.of(
+                "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+                "[\"FILE\",\"S3\"]");
+        }
+    }
+}

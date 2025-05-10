@@ -54,7 +54,8 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
           "quarkus.http.limits.max-body-size", "1000000",
           "polaris.realm-context.realms", "POLARIS,OTHER",
           "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
-          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true");
+          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true",
+          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]");
     }
   }
 
