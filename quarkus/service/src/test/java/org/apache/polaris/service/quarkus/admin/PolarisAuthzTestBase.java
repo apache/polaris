@@ -227,6 +227,7 @@ public abstract class PolarisAuthzTestBase {
   @BeforeEach
   public void before(TestInfo testInfo) {
     RealmContext realmContext = testInfo::getDisplayName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
@@ -258,7 +259,6 @@ public abstract class PolarisAuthzTestBase {
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
     callContext = CallContext.of(realmContext, polarisContext);
-    QuarkusMock.installMockForType(callContext, CallContext.class);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
