@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 
-public class ModelPolicyMappingRecord implements Converter<ModelPolicyMappingRecord> {
+public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingRecord> {
   // id of the catalog where target entity resides
   private long targetCatalogId;
 
@@ -140,15 +140,18 @@ public class ModelPolicyMappingRecord implements Converter<ModelPolicyMappingRec
   }
 
   @Override
-  public ModelPolicyMappingRecord fromResultSet(ResultSet rs) throws SQLException {
-    return ModelPolicyMappingRecord.builder()
-        .targetCatalogId(rs.getObject("target_catalog_id", Long.class))
-        .targetId(rs.getObject("target_id", Long.class))
-        .policyTypeCode(rs.getObject("policy_type_code", Integer.class))
-        .policyCatalogId(rs.getObject("policy_catalog_id", Long.class))
-        .policyId(rs.getObject("policy_id", Long.class))
-        .parameters(rs.getString("parameters"))
-        .build();
+  public PolarisPolicyMappingRecord fromResultSet(ResultSet rs) throws SQLException {
+    var modelRecord =
+        ModelPolicyMappingRecord.builder()
+            .targetCatalogId(rs.getObject("target_catalog_id", Long.class))
+            .targetId(rs.getObject("target_id", Long.class))
+            .policyTypeCode(rs.getObject("policy_type_code", Integer.class))
+            .policyCatalogId(rs.getObject("policy_catalog_id", Long.class))
+            .policyId(rs.getObject("policy_id", Long.class))
+            .parameters(rs.getString("parameters"))
+            .build();
+
+    return toPolicyMappingRecord(modelRecord);
   }
 
   @Override

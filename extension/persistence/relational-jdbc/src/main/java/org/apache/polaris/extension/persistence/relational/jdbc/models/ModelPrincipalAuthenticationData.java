@@ -24,8 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
-public class ModelPrincipalAuthenticationData
-    implements Converter<ModelPrincipalAuthenticationData> {
+public class ModelPrincipalAuthenticationData implements Converter<PolarisPrincipalSecrets> {
   // the id of the principal
   private long principalId;
 
@@ -65,14 +64,17 @@ public class ModelPrincipalAuthenticationData
   }
 
   @Override
-  public ModelPrincipalAuthenticationData fromResultSet(ResultSet rs) throws SQLException {
-    return ModelPrincipalAuthenticationData.builder()
-        .principalId(rs.getObject("principal_id", Long.class))
-        .principalClientId(rs.getObject("principal_client_id", String.class))
-        .mainSecretHash(rs.getObject("main_secret_hash", String.class))
-        .secondarySecretHash(rs.getObject("secondary_secret_hash", String.class))
-        .secretSalt(rs.getObject("secret_salt", String.class))
-        .build();
+  public PolarisPrincipalSecrets fromResultSet(ResultSet rs) throws SQLException {
+    var modelRecord =
+        ModelPrincipalAuthenticationData.builder()
+            .principalId(rs.getObject("principal_id", Long.class))
+            .principalClientId(rs.getObject("principal_client_id", String.class))
+            .mainSecretHash(rs.getObject("main_secret_hash", String.class))
+            .secondarySecretHash(rs.getObject("secondary_secret_hash", String.class))
+            .secretSalt(rs.getObject("secret_salt", String.class))
+            .build();
+
+    return toPrincipalAuthenticationData(modelRecord);
   }
 
   @Override

@@ -27,7 +27,7 @@ public interface Converter<T> {
    * Converts a ResultSet to model.
    *
    * @param rs : ResultSet from JDBC.
-   * @return Model of Entity
+   * @return the corresponding business entity
    * @throws SQLException : Exception while fetching from ResultSet.
    */
   T fromResultSet(ResultSet rs) throws SQLException;

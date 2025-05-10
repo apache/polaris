@@ -24,7 +24,6 @@ import static org.mockito.Mockito.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.function.Function;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
@@ -76,8 +75,7 @@ public class DatasourceOperationsTest {
     when(mockStatement.executeQuery(query)).thenThrow(new SQLException());
 
     assertThrows(
-        SQLException.class,
-        () -> datasourceOperations.executeSelect(query, new ModelEntity(), Function.identity()));
+        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
   }
 
   @Test

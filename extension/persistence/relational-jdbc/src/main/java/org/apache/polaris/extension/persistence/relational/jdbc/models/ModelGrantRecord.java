@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 
-public class ModelGrantRecord implements Converter<ModelGrantRecord> {
+public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   // id of the catalog where the securable entity resides, use 0, if this entity is a
   // top-level account entity.
   private long securableCatalogId;
@@ -67,14 +67,17 @@ public class ModelGrantRecord implements Converter<ModelGrantRecord> {
   }
 
   @Override
-  public ModelGrantRecord fromResultSet(ResultSet rs) throws SQLException {
-    return ModelGrantRecord.builder()
-        .securableCatalogId(rs.getObject("securable_catalog_id", Long.class))
-        .securableId(rs.getObject("securable_id", Long.class))
-        .granteeCatalogId(rs.getObject("grantee_catalog_id", Long.class))
-        .granteeId(rs.getObject("grantee_id", Long.class))
-        .privilegeCode(rs.getObject("privilege_code", Integer.class))
-        .build();
+  public PolarisGrantRecord fromResultSet(ResultSet rs) throws SQLException {
+    var modelGrantRecord =
+        ModelGrantRecord.builder()
+            .securableCatalogId(rs.getObject("securable_catalog_id", Long.class))
+            .securableId(rs.getObject("securable_id", Long.class))
+            .granteeCatalogId(rs.getObject("grantee_catalog_id", Long.class))
+            .granteeId(rs.getObject("grantee_id", Long.class))
+            .privilegeCode(rs.getObject("privilege_code", Integer.class))
+            .build();
+
+    return toGrantRecord(modelGrantRecord);
   }
 
   @Override
