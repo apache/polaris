@@ -29,7 +29,6 @@ dependencies {
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
 
-    api(project(":polaris-container-spec-helper"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))
