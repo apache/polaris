@@ -209,13 +209,3 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d "scope=PRINCIPAL_ROLE:ALL"
 ```
 
-## Other Configurations
-
-When deploying Polaris in production, consider adjusting the following configurations:
-
-#### `polaris.features.defaults."SUPPORTED_CATALOG_STORAGE_TYPES"`
-
-- By default, Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage
-  type. This should be disabled for production systems.
-- Use this configuration to additionally disable any other storage types that will not be in use.
-
