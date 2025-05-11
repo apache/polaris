@@ -28,6 +28,7 @@ services:
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
+      polaris.features.defaults."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
