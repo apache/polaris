@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
-}
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}

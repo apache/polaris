@@ -18,15 +18,12 @@
  */
 
 plugins {
-    alias(libs.plugins.jandex)
-}
-
-java {
-    sourceCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
-    targetCompatibility = JavaVersion.toVersion(findProperty("javaVersion") as String? ?: JavaVersion.VERSION_21)
+  alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
+  id("polaris-quarkus")
 }
 
 dependencies {
-    compileOnly(libs.smallrye.config.core)
-    implementation(project(":polaris-relational-jdbc"))
+  compileOnly(libs.smallrye.config.core)
+  implementation(project(":polaris-relational-jdbc"))
 }

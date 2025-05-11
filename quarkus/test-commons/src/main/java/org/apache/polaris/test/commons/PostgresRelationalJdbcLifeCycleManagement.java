@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.test.commons;
 
 import io.quarkus.test.common.DevServicesContext;
