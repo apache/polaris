@@ -173,33 +173,36 @@ public class DefaultConfigurationStoreTest {
   private void setCurrentRealm(String realmName) {
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    CallContext.setCurrentContext(new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
+    CallContext.setCurrentContext(
+        new CallContext() {
+          @Override
+          public RealmContext getRealmContext() {
+            return realmContext;
+          }
 
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return CallContext.getCurrentContext().getPolarisCallContext();
-      }
+          @Override
+          public PolarisCallContext getPolarisCallContext() {
+            return CallContext.getCurrentContext().getPolarisCallContext();
+          }
 
-      @Override
-      public Map<String, Object> contextVariables() {
-        return CallContext.getCurrentContext().contextVariables();
-      }
-    });
+          @Override
+          public Map<String, Object> contextVariables() {
+            return CallContext.getCurrentContext().contextVariables();
+          }
+        });
   }
 
   @Test
   public void testInjectedConfigurationStore() {
     // Feature override makes this `false`
-    boolean featureOverrideValue = configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
+    boolean featureOverrideValue =
+        configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
     assertThat(featureOverrideValue).isFalse();
 
     // Feature override value makes this `true`
     setCurrentRealm("not-" + realmOne);
-    boolean realmOverrideValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
+    boolean realmOverrideValue =
+        configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
     assertThat(realmOverrideValue).isTrue();
 
     // Now, realm override value makes this `false`
