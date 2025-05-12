@@ -36,7 +36,6 @@ public interface FeaturesConfiguration {
 
   Map<String, String> defaults();
 
-  @WithParentName
   Map<String, ? extends RealmOverrides> realmOverrides();
 
   default Map<String, Object> parseDefaults(ObjectMapper objectMapper) {
