@@ -19,16 +19,13 @@
 
 services:
   polaris-bootstrap:
-    # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
     image: apache/polaris-admin-tool:postgres-latest
     environment:
-      - JAVA_DEBUG=true
-      - JAVA_DEBUG_PORT='*:5005'
       - POLARIS_PERSISTENCE_TYPE=relational-jdbc
       - QUARKUS_DATASOURCE_DB_KIND=pgsql
-      - QUARKUS_DATASOURCE_JDBC_URL=${PG_JDBC_URL}
-      - QUARKUS_DATASOURCE_USERNAME=postgres
-      - QUARKUS_DATASOURCE_PASSWORD=postgres
+      - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
+      - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
+      - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
     command:
       - "bootstrap"
       - "--realm=POLARIS"

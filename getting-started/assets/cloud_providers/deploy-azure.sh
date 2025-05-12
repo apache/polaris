@@ -29,8 +29,10 @@ CREATE_DB_RESPONSE=$(az postgres flexible-server create -l $CURRENT_REGION -g $C
 az postgres flexible-server db create -g $CURRENT_RESOURCE_GROUP -s $INSTANCE_NAME -d POLARIS
 
 POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
-export PG_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
-echo ($PG_JDBC_URL)
+export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
+export QUARKUS_DATASOURCE_USERNAME=postgres
+export QUARKUS_DATASOURCE_PASSWORD=postgres
+echo ($QUARKUS_DATASOURCE_JDBC_URL)
 
 STORAGE_ACCOUNT_NAME="polaristest$RANDOM_SUFFIX"
 STORAGE_CONTAINER_NAME="polaris-test-container-$RANDOM_SUFFIX"

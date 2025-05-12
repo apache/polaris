@@ -36,9 +36,10 @@ gcloud sql instances create $DB_INSTANCE_NAME \
 
 gcloud sql databases create POLARIS --instance=$DB_INSTANCE_NAME
 
-POSTGRES_ADDR=$(gcloud sql instances describe $DB_INSTANCE_NAME --format="get(ipAddresses[0].ipAddress)")
-export PG_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
-echo ($PG_JDBC_URL)
+export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
+export QUARKUS_DATASOURCE_USERNAME=postgres
+export QUARKUS_DATASOURCE_PASSWORD=postgres
+echo ($QUARKUS_DATASOURCE_JDBC_URL)
 
 GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"
 echo "GCS Bucket Name: $GCS_BUCKET_NAME"
