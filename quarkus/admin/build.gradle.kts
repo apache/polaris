@@ -97,6 +97,7 @@ distributions {
       from("distribution/NOTICE")
       from("distribution/LICENSE")
       from("distribution/README.md")
+      from("../../DISCLAIMER")
     }
   }
 }
