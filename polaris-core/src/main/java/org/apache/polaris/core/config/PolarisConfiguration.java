@@ -97,17 +97,22 @@ public abstract class PolarisConfiguration<T> {
       return this;
     }
 
-    public FeatureConfiguration<T> buildFeatureConfiguration() {
+    private void validateOrThrow() {
       if (key == null || description == null || defaultValue == null) {
         throw new IllegalArgumentException("key, description, and defaultValue are required");
       }
+      if (key.contains(".")) {
+        throw new IllegalArgumentException("key cannot contain `.`");
+      }
+    }
+
+    public FeatureConfiguration<T> buildFeatureConfiguration() {
+      validateOrThrow();
       return new FeatureConfiguration<>(key, description, defaultValue, catalogConfig);
     }
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
-      if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue are required");
-      }
+      validateOrThrow();
       if (catalogConfig.isPresent()) {
         throw new IllegalArgumentException(
             "catalogConfig is not valid for behavior change configs");
