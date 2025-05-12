@@ -29,15 +29,15 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     environment:
-      JAVA_DEBUG: "true"
-      JAVA_DEBUG_PORT: "*:5005"
-      polaris.persistence.type: relational-jdbc
-      quarkus.datasource.db-kind: pgsql
-      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/POLARIS
-      quarkus.datasource.username: postgres
-      quarkus.datasource.password: postgres
-      polaris.realm-context.realms: POLARIS
-      quarkus.otel.sdk.disabled: "true"
+      - JAVA_DEBUG=true
+      - JAVA_DEBUG_PORT=*:5005
+      - POLARIS_PERSISTENCE_TYPE=relational-jdbc
+      - QUARKUS_DATASOURCE_DB_KIND=pgsql
+      - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
+      - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
+      - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
+      - POLARIS_REALM_CONTEXT_REALMS=POLARIS
+      - QUARKUS_OTEL_SDK_DISABLED=true
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
