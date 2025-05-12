@@ -20,19 +20,17 @@ package org.apache.polaris.service.quarkus.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Clock;
-import java.util.Map;
-
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import java.time.Clock;
+import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
@@ -80,8 +78,11 @@ public class DefaultConfigurationStoreTest {
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    String realmName = "realm_%s_%s".formatted(
-        testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"), System.nanoTime());
+    String realmName =
+        "realm_%s_%s"
+            .formatted(
+                testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
+                System.nanoTime());
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext =
