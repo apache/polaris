@@ -29,7 +29,6 @@ public interface QuarkusFeaturesConfiguration extends FeaturesConfiguration {
   @Override
   Map<String, String> defaults();
 
-  @WithParentName
   @Override
   Map<String, QuarkusRealmOverrides> realmOverrides();
 

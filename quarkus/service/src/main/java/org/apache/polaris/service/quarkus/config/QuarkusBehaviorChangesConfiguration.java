@@ -36,7 +36,6 @@ public interface QuarkusBehaviorChangesConfiguration {
 
   Map<String, String> defaults();
 
-  @WithParentName
   Map<String, ? extends QuarkusRealmOverrides> realmOverrides();
 
   interface QuarkusRealmOverrides extends FeaturesConfiguration.RealmOverrides {
