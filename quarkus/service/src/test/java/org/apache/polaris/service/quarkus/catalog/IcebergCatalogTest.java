@@ -75,6 +75,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -97,6 +98,7 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -115,6 +117,7 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTableCommitedEvent;
@@ -123,6 +126,7 @@ import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -171,6 +175,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
+          "polaris.features.defaults.\"LIST_PAGINATION_ENABLED\"",
+          "true",
           "polaris.event-listener.type",
           "test");
     }
@@ -215,6 +221,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
+  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -267,6 +274,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
+
+    reservedProperties = new QuarkusReservedProperties() {};
+
     adminService =
         new PolarisAdminService(
             callContext,
@@ -274,7 +284,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo storageConfigModel =
@@ -1536,7 +1547,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .as("Table should not exist after drop")
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
-        metaStoreManager.loadTasks(polarisContext, "testExecutor", 1).getEntities();
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     EnumMap<StorageAccessProperty, String> credentials =
@@ -1745,7 +1758,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
-                .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+                .loadTasks(
+                    callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
@@ -1888,6 +1902,47 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  @Test
+  public void createCatalogWithReservedProperty() {
+    Assertions.assertThatCode(
+            () -> {
+              adminService.createCatalog(
+                  new CreateCatalogRequest(
+                      new CatalogEntity.Builder()
+                          .setDefaultBaseLocation("file://")
+                          .setName("createCatalogWithReservedProperty")
+                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                          .build()
+                          .asCatalog()));
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+  }
+
+  @Test
+  public void updateCatalogWithReservedProperty() {
+    adminService.createCatalog(
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("file://")
+                .setName("updateCatalogWithReservedProperty")
+                .setProperties(ImmutableMap.of("a", "b"))
+                .build()
+                .asCatalog()));
+    Assertions.assertThatCode(
+            () -> {
+              adminService.updateCatalog(
+                  "updateCatalogWithReservedProperty",
+                  UpdateCatalogRequest.builder()
+                      .setCurrentEntityVersion(1)
+                      .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                      .build());
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    adminService.deleteCatalog("updateCatalogWithReservedProperty");
   }
 
   @ParameterizedTest

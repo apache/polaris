@@ -16,19 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection;
+package org.apache.polaris.core.persistence.pagination;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+import java.util.List;
 
 /**
- * Configuration wrappers which ultimately translate their contents into Iceberg properties and
- * which may hold other nested configuration wrapper objects implement this interface to allow
- * delegating type-specific configuration translation logic to subclasses instead of needing to
- * expose the internals of deeply nested configuration objects to a visitor class.
+ * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
+ * represent a `limit`. When updated, it returns {@link DonePageToken}. As such it should never be
+ * user-facing and doesn't truly paginate.
  */
-public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
-  Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager);
+public class LimitPageToken extends PageToken implements HasPageSize {
+
+  public static final String PREFIX = "limit";
+
+  private final int pageSize;
+
+  public LimitPageToken(int pageSize) {
+    this.pageSize = pageSize;
+  }
+
+  @Override
+  public int getPageSize() {
+    return pageSize;
+  }
+
+  @Override
+  public String toTokenString() {
+    return String.format("%s/%d", PREFIX, pageSize);
+  }
+
+  @Override
+  protected PageToken updated(List<?> newData) {
+    return new DonePageToken();
+  }
 }

@@ -47,6 +47,7 @@ import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
@@ -202,7 +203,13 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
       TableIdentifier identifier, String format, String doc, Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest(identifier.name(), format, doc, props);
+        new CreateGenericTableRESTRequest(
+            CreateGenericTableRequest.builder()
+                .setName(identifier.name())
+                .setFormat(format)
+                .setDoc(doc)
+                .setProperties(props)
+                .build());
 
     LoadGenericTableRESTResponse response =
         restClient

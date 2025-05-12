@@ -16,18 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.core.persistence.pagination;
 
-import jakarta.ws.rs.core.SecurityContext;
-import org.apache.iceberg.catalog.Catalog;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import java.util.List;
 
-public interface CallContextCatalogFactory {
-  Catalog createCallContextCatalog(
-      CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      SecurityContext securityContext,
-      PolarisResolutionManifest resolvedManifest);
+/**
+ * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
+ * continue the listing operation that generated the `items`.
+ */
+public class Page<T> {
+  public final PageToken pageToken;
+  public final List<T> items;
+
+  public Page(PageToken pageToken, List<T> items) {
+    this.pageToken = pageToken;
+    this.items = items;
+  }
+
+  /**
+   * Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages
+   */
+  public static <T> Page<T> fromItems(List<T> items) {
+    return new Page<>(new DonePageToken(), items);
+  }
 }

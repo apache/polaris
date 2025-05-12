@@ -862,6 +862,7 @@ components:
           type: string
           enum:
             - ICEBERG_REST
+            - HADOOP
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -874,6 +875,7 @@ components:
         propertyName: connectionType
         mapping:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
+          HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -886,6 +888,16 @@ components:
           description: The name of a remote catalog instance within the remote catalog service; in some older systems
             this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
             uri, and often translates into a 'prefix' added to all REST resource paths
+
+    HadoopConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to a Hadoop Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        warehouse:
+          type: string
+          description: The file path to where this catalog should store tables
 
     AuthenticationParameters:
       type: object

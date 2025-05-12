@@ -21,6 +21,7 @@ package org.apache.polaris.core.config;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
@@ -202,6 +203,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
+  public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("LIST_PAGINATION_ENABLED")
+          .description("If set to true, pagination for APIs like listTables is enabled.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
@@ -233,5 +241,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ENABLE_POLICY_STORE")
           .description("If true, the policy-store endpoints are enabled")
           .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
+          .description("The list of supported catalog connection types for federation")
+          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
           .buildFeatureConfiguration();
 }
