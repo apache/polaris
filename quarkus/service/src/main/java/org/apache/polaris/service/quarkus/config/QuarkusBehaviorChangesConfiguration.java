@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.smallrye.config.WithParentName;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
 @ConfigMapping(prefix = "polaris.behavior-changes")
@@ -35,7 +37,14 @@ public interface QuarkusBehaviorChangesConfiguration {
 
   Map<String, String> defaults();
 
-  Map<String, ? extends FeaturesConfiguration.RealmOverrides> realmOverrides();
+  @WithParentName
+  Map<String, ? extends QuarkusRealmOverrides> realmOverrides();
+
+  interface QuarkusRealmOverrides extends FeaturesConfiguration.RealmOverrides {
+    @WithParentName
+    @Override
+    Map<String, String> overrides();
+  }
 
   default Map<String, Object> parseDefaults(ObjectMapper objectMapper) {
     return convertMap(objectMapper, defaults());
