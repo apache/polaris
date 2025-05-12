@@ -22,12 +22,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithParentName;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import io.smallrye.config.WithParentName;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
 @ConfigMapping(prefix = "polaris.behavior-changes")
