@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
@@ -96,20 +95,14 @@ public class DatasourceOperations {
    * @param query : Query to executed
    * @param converterInstance : An instance of the type being selected, used to convert to a
    *     business entity like PolarisBaseEntity
-   * @param transformer Transformation of entity class to Result class
    * @return The list of results yielded by the query
-   * @param <T> : Persistence entity class
-   * @param <R> : Business entity class
+   * @param <T> : Business entity class
    * @throws SQLException : Exception during the query execution.
    */
-  public <T, R> List<R> executeSelect(
-      @Nonnull String query,
-      @Nonnull Converter<T> converterInstance,
-      @Nonnull Function<T, R> transformer)
+  public <T> List<T> executeSelect(@Nonnull String query, @Nonnull Converter<T> converterInstance)
       throws SQLException {
-    ArrayList<R> results = new ArrayList<>();
-    executeSelectOverStream(
-        query, converterInstance, stream -> stream.map(transformer).forEach(results::add));
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
     return results;
   }
 
