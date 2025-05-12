@@ -59,6 +59,7 @@ dependencies {
   implementation(libs.jakarta.ws.rs.api)
 
   implementation(libs.smallrye.common.annotation)
+  implementation(libs.smallrye.config.core)
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")

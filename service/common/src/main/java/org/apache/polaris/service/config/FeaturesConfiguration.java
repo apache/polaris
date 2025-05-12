@@ -21,6 +21,8 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.smallrye.config.WithParentName;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +37,7 @@ public interface FeaturesConfiguration {
 
   Map<String, String> defaults();
 
+  @WithParentName
   Map<String, ? extends RealmOverrides> realmOverrides();
 
   default Map<String, Object> parseDefaults(ObjectMapper objectMapper) {
