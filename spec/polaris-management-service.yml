@@ -1101,10 +1101,6 @@ components:
         clientId:
           type: string
           description: The output-only OAuth clientId associated with this principal if applicable
-        federated:
-          type: boolean
-          description: Whether the principal is a federated identity (that is, managed by an external identity provider)
-          default: false
         properties:
           type: object
           additionalProperties:

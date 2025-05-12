@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
@@ -872,21 +871,6 @@ public class PolarisManagementServiceIntegrationTest {
 
     // TODO: Test the validity of the old secret for getting tokens, here and then after a second
     // rotation that makes the old secret fall off retention.
-  }
-
-  @Test
-  public void testCreateFederatedPrincipalFails() {
-    // Create a federated Principal
-    Principal federatedPrincipal =
-        new Principal(client.newEntityName("federatedPrincipal"), "abc", true, Map.of(), 0L, 0L, 1);
-
-    // Attempt to create the federated Principal using the managementApi
-    try (Response createPResponse =
-        managementApi
-            .request("v1/principals")
-            .post(Entity.json(new CreatePrincipalRequest(federatedPrincipal, false)))) {
-      assertThat(createPResponse).returns(BAD_REQUEST.getStatusCode(), Response::getStatus);
-    }
   }
 
   @Test

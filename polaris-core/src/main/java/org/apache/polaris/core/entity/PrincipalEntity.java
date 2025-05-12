@@ -37,7 +37,6 @@ public class PrincipalEntity extends PolarisEntity {
   public static PrincipalEntity fromPrincipal(Principal principal) {
     return new Builder()
         .setName(principal.getName())
-        .setFederated(principal.getFederated())
         .setProperties(principal.getProperties())
         .setClientId(principal.getClientId())
         .build();
@@ -47,7 +46,6 @@ public class PrincipalEntity extends PolarisEntity {
     return new Principal(
         getName(),
         getClientId(),
-        FederatedEntities.isFederated(this),
         getPropertiesAsMap(),
         getCreateTimestamp(),
         getLastUpdateTimestamp(),
