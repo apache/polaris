@@ -34,9 +34,9 @@ public class QuarkusManagementServiceIntegrationTest
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
           "true",
-          "polaris.features.defaults.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+          "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
           "true",
           "polaris.storage.gcp.token",
           "token",

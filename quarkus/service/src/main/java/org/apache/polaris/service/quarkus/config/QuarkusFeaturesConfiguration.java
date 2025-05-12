@@ -26,6 +26,7 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 @ConfigMapping(prefix = "polaris.features")
 public interface QuarkusFeaturesConfiguration extends FeaturesConfiguration {
 
+  @WithParentName
   @Override
   Map<String, String> defaults();
 

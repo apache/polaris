@@ -34,6 +34,7 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 // QuarkusFeaturesConfiguration
 public interface QuarkusBehaviorChangesConfiguration {
 
+  @WithParentName
   Map<String, String> defaults();
 
   Map<String, ? extends QuarkusRealmOverrides> realmOverrides();
