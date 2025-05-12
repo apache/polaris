@@ -39,7 +39,7 @@ swagger = "1.6.15"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.35" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.40" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.34" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.80" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
