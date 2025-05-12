@@ -138,7 +138,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
   private static final String ROLLBACK_REPLACE_ENABLED_PROPERTY =
-      "rollback.compaction.on-conflicts.enabled";
+      "polaris.rollback.compaction.on-conflicts.enabled";
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;

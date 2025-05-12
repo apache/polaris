@@ -599,7 +599,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         catalog
             .buildTable(TABLE, SCHEMA)
             .withPartitionSpec(SPEC)
-            .withProperties(Map.of("rollback.compaction.on-conflicts.enabled", "true"))
+            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
             .create();
     this.assertNoFiles(table);
 
@@ -702,7 +702,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         catalog
             .buildTable(TABLE, SCHEMA)
             .withPartitionSpec(SPEC)
-            .withProperties(Map.of("rollback.compaction.on-conflicts.enabled", "true"))
+            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
             .create();
     this.assertNoFiles(table);
 
@@ -770,7 +770,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         catalog
             .buildTable(TABLE, SCHEMA)
             .withPartitionSpec(SPEC)
-            .withProperties(Map.of("rollback.compaction.on-conflicts.enabled", "true"))
+            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
             .create();
     this.assertNoFiles(table);
 
