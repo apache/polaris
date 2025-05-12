@@ -89,9 +89,8 @@ tests:
   - it: should configure features
     set:
       features:
-        defaults:
-          feature1: true
-          feature2: 42
+        feature1: true
+        feature2: 42
         realmOverrides:
           realm1:
             feature1: false
