@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -92,6 +91,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -2574,4 +2574,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return PageToken.build(tokenString, pageSize);
     }
   }
+
+  static final FeatureConfiguration<Boolean> INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST")
+          .defaultValue(false)
+          .description("")
+          .buildFeatureConfiguration();
 }

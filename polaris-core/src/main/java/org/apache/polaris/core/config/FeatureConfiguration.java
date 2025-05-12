@@ -287,17 +287,4 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "This should only be set to 'true' for tests!")
           .defaultValue(false)
           .buildFeatureConfiguration();
-
-  public static final FeatureConfiguration<Boolean> INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
-      PolarisConfiguration.<Boolean>builder()
-          .key("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST")
-          .description(
-              "Config key for initializing a default \"catalogFileIO\" that is available either via "
-                  + "getIo() or for any TableOperations/ViewOperations instantiated, via ops.io() "
-                  + "before entity-specific FileIO initialization is triggered for any such operations. "
-                  + "Typically this should only be used in test scenarios where a PolarisIcebergCatalog "
-                  + "instance is used for both the \"client-side\" and \"server-side\" logic instead of "
-                  + "being access through a REST layer.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
 }
