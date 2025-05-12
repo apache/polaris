@@ -220,7 +220,7 @@ kubectl delete namespace polaris
 | extraVolumeMounts | list | `[]` | Extra volume mounts to add to the polaris container. See https://kubernetes.io/docs/concepts/storage/volumes/. |
 | extraVolumes | list | `[]` | Extra volumes to add to the polaris pod. See https://kubernetes.io/docs/concepts/storage/volumes/. |
 | features | object | `{"defaults":{},"realmOverrides":{}}` | Polaris features configuration. |
-| features.defaults | object | `{}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. |
+| features | object | `{}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. |
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |
