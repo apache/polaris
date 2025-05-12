@@ -59,7 +59,8 @@ public class DefaultConfigurationStoreTest {
           "true",
           String.format("polaris.features.\"%s\"", trueByDefaultKey1),
           "false",
-          String.format("polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, falseByDefaultKey),
+          String.format(
+              "polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, falseByDefaultKey),
           "false");
     }
   }
