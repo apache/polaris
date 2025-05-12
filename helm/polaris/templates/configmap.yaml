@@ -41,7 +41,7 @@ data:
     {{- end -}}
     {{- range $realm, $overrides := .Values.features.realmOverrides -}}
     {{- range $k, $v := $overrides -}}
-    {{- $_ = set $map (printf "polaris.config.realm-overrides.\"%s\".\"%s\"" $realm $k) (toJson $v) -}}
+    {{- $_ = set $map (printf "polaris.features.realm-overrides.\"%s\".\"%s\"" $realm $k) (toJson $v) -}}
     {{- end -}}
     {{- end -}}
 
