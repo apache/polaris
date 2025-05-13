@@ -54,6 +54,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -79,7 +80,8 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.IcebergRestConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -96,7 +98,8 @@ import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -124,6 +127,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
+  private final ReservedProperties reservedProperties;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -142,11 +146,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
-      PolarisAuthorizer authorizer) {
+      PolarisAuthorizer authorizer,
+      ReservedProperties reservedProperties) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
+    this.reservedProperties = reservedProperties;
   }
 
   /**
@@ -208,6 +214,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Catalog federatedCatalog;
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+
       switch (connectionType) {
         case ICEBERG_REST:
           SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
@@ -220,6 +227,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           .build());
           federatedCatalog.initialize(
               ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          break;
+        case HADOOP:
+          federatedCatalog = new HadoopCatalog();
+          federatedCatalog.initialize(
+              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse(),
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         default:
@@ -265,14 +278,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // For CreateNamespace, we consider this a special case in that the creator is able to
       // retrieve the latest namespace metadata for the duration of the CreateNamespace
       // operation, even if the entityVersion and/or grantsVersion update in the interim.
-      namespaceCatalog.createNamespace(namespace, request.properties());
-      return CreateNamespaceResponse.builder()
-          .withNamespace(namespace)
-          .setProperties(
+      namespaceCatalog.createNamespace(
+          namespace, reservedProperties.removeReservedProperties(request.properties()));
+      Map<String, String> filteredProperties =
+          reservedProperties.removeReservedProperties(
               resolutionManifest
                   .getPassthroughResolvedPath(namespace)
                   .getRawLeafEntity()
-                  .getPropertiesAsMap())
+                  .getPropertiesAsMap());
+      return CreateNamespaceResponse.builder()
+          .withNamespace(namespace)
+          .setProperties(filteredProperties)
           .build();
     } else {
       return CatalogHandlers.createNamespace(namespaceCatalog, request);
@@ -366,7 +382,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    return CatalogHandlers.createTable(baseCatalog, namespace, request);
+    CreateTableRequest requestWithoutReservedProperties =
+        CreateTableRequest.builder()
+            .withName(request.name())
+            .withLocation(request.location())
+            .withPartitionSpec(request.spec())
+            .withSchema(request.schema())
+            .withWriteOrder(request.writeOrder())
+            .setProperties(reservedProperties.removeReservedProperties(request.properties()))
+            .build();
+    return CatalogHandlers.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
   }
 
   /**
@@ -401,7 +426,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     Table table =
         baseCatalog
@@ -441,7 +466,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     String location;
     if (request.location() != null) {

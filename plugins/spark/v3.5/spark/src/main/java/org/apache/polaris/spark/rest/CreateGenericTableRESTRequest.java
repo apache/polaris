@@ -41,6 +41,10 @@ public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
     super(name, format, doc, properties);
   }
 
+  public CreateGenericTableRESTRequest(CreateGenericTableRequest request) {
+    this(request.getName(), request.getFormat(), request.getDoc(), request.getProperties());
+  }
+
   @Override
   public void validate() {}
 }

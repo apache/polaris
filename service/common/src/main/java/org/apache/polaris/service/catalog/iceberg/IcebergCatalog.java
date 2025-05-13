@@ -357,7 +357,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             Set.of(locationDir),
             resolvedParent,
             new HashMap<>(tableDefaultProperties),
-            Set.of(PolarisStorageActions.READ));
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFile);
@@ -1383,7 +1383,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(latestLocationDir),
                       resolvedEntities,
                       new HashMap<>(tableDefaultProperties),
-                      Set.of(PolarisStorageActions.READ));
+                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
         polarisEventListener.onAfterTableRefreshed(new AfterTableRefreshedEvent(tableIdentifier));
@@ -1422,7 +1422,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
               new HashMap<>(metadata.properties()),
-              Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST));
 
       List<PolarisEntity> resolvedNamespace =
           resolvedTableEntities == null
@@ -1757,7 +1760,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(latestLocationDir),
                       resolvedEntities,
                       new HashMap<>(tableDefaultProperties),
-                      Set.of(PolarisStorageActions.READ));
+                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
@@ -2447,7 +2450,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               Set.of(locationDir),
               resolvedParent,
               new HashMap<>(tableDefaultProperties),
-              Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST));
       TableMetadata tableMetadata = TableMetadataParser.read(fileIO, newLocation);
 
       // then validate that it points to a valid location for this table

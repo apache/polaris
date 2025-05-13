@@ -16,19 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection;
+package org.apache.polaris.quarkus.common.config.jdbc;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+import io.smallrye.config.ConfigMapping;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
-/**
- * Configuration wrappers which ultimately translate their contents into Iceberg properties and
- * which may hold other nested configuration wrapper objects implement this interface to allow
- * delegating type-specific configuration translation logic to subclasses instead of needing to
- * expose the internals of deeply nested configuration objects to a visitor class.
- */
-public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
-  Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager);
-}
+@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}

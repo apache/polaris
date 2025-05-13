@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.secrets.UserSecretReference;
 
 /**

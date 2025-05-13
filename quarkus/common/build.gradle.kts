@@ -16,18 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
 
-import jakarta.ws.rs.core.SecurityContext;
-import org.apache.iceberg.catalog.Catalog;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+plugins {
+  alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
+  id("polaris-quarkus")
+}
 
-public interface CallContextCatalogFactory {
-  Catalog createCallContextCatalog(
-      CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      SecurityContext securityContext,
-      PolarisResolutionManifest resolvedManifest);
+dependencies {
+  compileOnly(libs.smallrye.config.core)
+  implementation(project(":polaris-relational-jdbc"))
 }

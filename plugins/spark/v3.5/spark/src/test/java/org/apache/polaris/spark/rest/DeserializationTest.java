@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,7 +91,13 @@ public class DeserializationTest {
   public void testCreateGenericTableRESTRequest(String doc, Map<String, String> properties)
       throws JsonProcessingException {
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest("test-table", "delta", doc, properties);
+        new CreateGenericTableRESTRequest(
+            CreateGenericTableRequest.builder()
+                .setName("test-table")
+                .setFormat("delta")
+                .setDoc(doc)
+                .setProperties(properties)
+                .build());
     String json = mapper.writeValueAsString(request);
     CreateGenericTableRESTRequest deserializedRequest =
         mapper.readValue(json, CreateGenericTableRESTRequest.class);

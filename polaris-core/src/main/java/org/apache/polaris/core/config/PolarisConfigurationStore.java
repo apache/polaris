@@ -23,14 +23,19 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
  * request.
  */
 public interface PolarisConfigurationStore {
+  Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
+
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
    *
@@ -111,11 +116,22 @@ public interface PolarisConfigurationStore {
       PolarisCallContext ctx,
       @Nonnull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
-    if (config.hasCatalogConfig()
-        && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
-      return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
-    } else {
-      return getConfiguration(ctx, config);
+    if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
+      Map<String, String> propertiesMap = catalogEntity.getPropertiesAsMap();
+      String propertyValue = propertiesMap.get(config.catalogConfig());
+      if (propertyValue == null) {
+        propertyValue = propertiesMap.get(config.catalogConfigUnsafe());
+        if (propertyValue != null) {
+          LOGGER.warn(
+              String.format(
+                  "Deprecated config %s is in use and will be removed in a future version",
+                  config.catalogConfigUnsafe()));
+        }
+      }
+      if (propertyValue != null) {
+        return tryCast(config, propertyValue);
+      }
     }
+    return getConfiguration(ctx, config);
   }
 }

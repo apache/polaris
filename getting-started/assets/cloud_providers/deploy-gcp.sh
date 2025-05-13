@@ -36,10 +36,10 @@ gcloud sql instances create $DB_INSTANCE_NAME \
 
 gcloud sql databases create POLARIS --instance=$DB_INSTANCE_NAME
 
-POSTGRES_ADDR=$(gcloud sql instances describe $DB_INSTANCE_NAME --format="get(ipAddresses[0].ipAddress)")
-
-FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR:5432/{realm}" | sed 's/[&/\]/\\&/g')
-sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
+export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
+export QUARKUS_DATASOURCE_USERNAME=postgres
+export QUARKUS_DATASOURCE_PASSWORD=postgres
+echo ($QUARKUS_DATASOURCE_JDBC_URL)
 
 GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"
 echo "GCS Bucket Name: $GCS_BUCKET_NAME"
@@ -52,4 +52,4 @@ export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up -d
+docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d

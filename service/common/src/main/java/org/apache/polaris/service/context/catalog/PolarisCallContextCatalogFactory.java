@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.context.catalog;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,9 +47,6 @@ import org.slf4j.LoggerFactory;
 public class PolarisCallContextCatalogFactory implements CallContextCatalogFactory {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
-
-  private static final String WAREHOUSE_LOCATION_BASEDIR =
-      "/tmp/iceberg_rest_server_warehouse_data/";
 
   private final RealmEntityManagerFactory entityManagerFactory;
   private final TaskExecutor taskExecutor;

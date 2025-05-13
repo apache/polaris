@@ -94,6 +94,7 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -170,6 +171,7 @@ public class PolicyCatalogTest {
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
+  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -219,6 +221,9 @@ public class PolicyCatalogTest {
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
+
+    reservedProperties = ReservedProperties.NONE;
+
     adminService =
         new PolarisAdminService(
             callContext,
@@ -226,7 +231,8 @@ public class PolicyCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
