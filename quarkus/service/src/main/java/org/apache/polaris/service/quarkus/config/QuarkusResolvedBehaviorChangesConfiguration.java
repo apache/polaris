@@ -24,9 +24,6 @@ import jakarta.enterprise.inject.Alternative;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.polaris.core.config.BehaviorChangeConfiguration;
-import org.apache.polaris.service.config.FeaturesConfiguration;
-
 /**
  * Wraps around {@link QuarkusBehaviorChangesConfiguration} but removes properties from `defaults`
  * that shouldn't be there
@@ -34,10 +31,12 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 @ApplicationScoped
 @Alternative
 @Priority(1)
-public class QuarkusResolvedBehaviorChangesConfiguration implements QuarkusBehaviorChangesConfiguration {
+public class QuarkusResolvedBehaviorChangesConfiguration
+    implements QuarkusBehaviorChangesConfiguration {
 
   private final Map<String, String> cleanedDefaults;
-  private final Map<String, ? extends QuarkusBehaviorChangesConfiguration.QuarkusRealmOverrides> realmOverrides;
+  private final Map<String, ? extends QuarkusBehaviorChangesConfiguration.QuarkusRealmOverrides>
+      realmOverrides;
 
   public QuarkusResolvedBehaviorChangesConfiguration(QuarkusBehaviorChangesConfiguration raw) {
     this.realmOverrides = raw.realmOverrides();
@@ -55,7 +54,8 @@ public class QuarkusResolvedBehaviorChangesConfiguration implements QuarkusBehav
   }
 
   @Override
-  public Map<String, ? extends QuarkusBehaviorChangesConfiguration.QuarkusRealmOverrides> realmOverrides() {
+  public Map<String, ? extends QuarkusBehaviorChangesConfiguration.QuarkusRealmOverrides>
+      realmOverrides() {
     return realmOverrides;
   }
 }
