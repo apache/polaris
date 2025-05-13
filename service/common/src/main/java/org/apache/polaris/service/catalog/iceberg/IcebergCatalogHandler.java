@@ -55,7 +55,6 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
-import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
@@ -394,7 +393,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withWriteOrder(request.writeOrder())
             .setProperties(reservedProperties.removeReservedProperties(request.properties()))
             .build();
-    return catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
+    return catalogHandlerUtils.createTable(
+        baseCatalog, namespace, requestWithoutReservedProperties);
   }
 
   /**
@@ -827,7 +827,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    return catalogHandlerUtils.updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+    return catalogHandlerUtils.updateTable(
+        baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
   public LoadTableResponse updateTableForStagedCreate(
@@ -844,7 +845,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    return catalogHandlerUtils.updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+    return catalogHandlerUtils.updateTable(
+        baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
   public void dropTableWithoutPurge(TableIdentifier tableIdentifier) {
@@ -1015,7 +1017,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
-      return catalogHandlerUtils.listViews(viewCatalog, namespace, pageToken, String.valueOf(pageSize));
+      return catalogHandlerUtils.listViews(
+          viewCatalog, namespace, pageToken, String.valueOf(pageSize));
     } else {
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
