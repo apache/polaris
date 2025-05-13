@@ -191,7 +191,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else {
-      return CatalogHandlers.listNamespaces(
+      return catalogHandlerUtils.listNamespaces(
           namespaceCatalog, parent, pageToken, String.valueOf(pageSize));
     }
   }

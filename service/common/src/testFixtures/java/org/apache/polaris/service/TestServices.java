@@ -192,7 +192,8 @@ public record TestServices(
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
-      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(configurationStore);
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(
+          callContext.getPolarisCallContext(), configurationStore);
 
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(

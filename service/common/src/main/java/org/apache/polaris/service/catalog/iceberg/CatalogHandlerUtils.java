@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.iceberg.TableProperties.COMMIT_MAX_RETRY_WAIT_MS_DEFAULT;
 import static org.apache.iceberg.TableProperties.COMMIT_MIN_RETRY_WAIT_MS_DEFAULT;
-import static org.apache.iceberg.TableProperties.COMMIT_NUM_RETRIES_DEFAULT;
 import static org.apache.iceberg.TableProperties.COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT;
 
 import com.google.common.base.Preconditions;
@@ -83,6 +82,9 @@ import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewRepresentation;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 
 /**
@@ -94,10 +96,14 @@ public class CatalogHandlerUtils {
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
 
+  private final PolarisCallContext polarisCallContext;
   private final PolarisConfigurationStore configurationStore;
 
   @Inject
-  public CatalogHandlerUtils(PolarisConfigurationStore configurationStore) {
+  public CatalogHandlerUtils(
+      PolarisCallContext polarisCallContext,
+      PolarisConfigurationStore configurationStore) {
+    this.polarisCallContext = polarisCallContext;
     this.configurationStore = configurationStore;
   }
 
@@ -123,7 +129,7 @@ public class CatalogHandlerUtils {
     }
   }
 
-  private static <T> Pair<List<T>, String> paginate(List<T> list, String pageToken, int pageSize) {
+  private <T> Pair<List<T>, String> paginate(List<T> list, String pageToken, int pageSize) {
     int pageStart = INITIAL_PAGE_TOKEN.equals(pageToken) ? 0 : Integer.parseInt(pageToken);
     if (pageStart >= list.size()) {
       return Pair.of(Collections.emptyList(), null);
@@ -136,7 +142,7 @@ public class CatalogHandlerUtils {
     return Pair.of(subList, nextPageToken);
   }
 
-  public static ListNamespacesResponse listNamespaces(
+  public ListNamespacesResponse listNamespaces(
       SupportsNamespaces catalog, Namespace parent) {
     List<Namespace> results;
     if (parent.isEmpty()) {
@@ -148,7 +154,7 @@ public class CatalogHandlerUtils {
     return ListNamespacesResponse.builder().addAll(results).build();
   }
 
-  public static ListNamespacesResponse listNamespaces(
+  public ListNamespacesResponse listNamespaces(
       SupportsNamespaces catalog, Namespace parent, String pageToken, String pageSize) {
     List<Namespace> results;
 
@@ -166,7 +172,7 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static CreateNamespaceResponse createNamespace(
+  public CreateNamespaceResponse createNamespace(
       SupportsNamespaces catalog, CreateNamespaceRequest request) {
     Namespace namespace = request.namespace();
     catalog.createNamespace(namespace, request.properties());
@@ -176,13 +182,13 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static void namespaceExists(SupportsNamespaces catalog, Namespace namespace) {
+  public void namespaceExists(SupportsNamespaces catalog, Namespace namespace) {
     if (!catalog.namespaceExists(namespace)) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
   }
 
-  public static GetNamespaceResponse loadNamespace(
+  public GetNamespaceResponse loadNamespace(
       SupportsNamespaces catalog, Namespace namespace) {
     Map<String, String> properties = catalog.loadNamespaceMetadata(namespace);
     return GetNamespaceResponse.builder()
@@ -191,14 +197,14 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static void dropNamespace(SupportsNamespaces catalog, Namespace namespace) {
+  public void dropNamespace(SupportsNamespaces catalog, Namespace namespace) {
     boolean dropped = catalog.dropNamespace(namespace);
     if (!dropped) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
   }
 
-  public static UpdateNamespacePropertiesResponse updateNamespaceProperties(
+  public UpdateNamespacePropertiesResponse updateNamespaceProperties(
       SupportsNamespaces catalog, Namespace namespace, UpdateNamespacePropertiesRequest request) {
     request.validate();
 
@@ -224,12 +230,12 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static ListTablesResponse listTables(Catalog catalog, Namespace namespace) {
+  public ListTablesResponse listTables(Catalog catalog, Namespace namespace) {
     List<TableIdentifier> idents = catalog.listTables(namespace);
     return ListTablesResponse.builder().addAll(idents).build();
   }
 
-  public static ListTablesResponse listTables(
+  public ListTablesResponse listTables(
       Catalog catalog, Namespace namespace, String pageToken, String pageSize) {
     List<TableIdentifier> results = catalog.listTables(namespace);
 
@@ -239,7 +245,7 @@ public class CatalogHandlerUtils {
     return ListTablesResponse.builder().addAll(page.first()).nextPageToken(page.second()).build();
   }
 
-  public static LoadTableResponse stageTableCreate(
+  public LoadTableResponse stageTableCreate(
       Catalog catalog, Namespace namespace, CreateTableRequest request) {
     request.validate();
 
@@ -278,7 +284,7 @@ public class CatalogHandlerUtils {
     return LoadTableResponse.builder().withTableMetadata(metadata).build();
   }
 
-  public static LoadTableResponse createTable(
+  public LoadTableResponse createTable(
       Catalog catalog, Namespace namespace, CreateTableRequest request) {
     request.validate();
 
@@ -301,7 +307,7 @@ public class CatalogHandlerUtils {
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
-  public static LoadTableResponse registerTable(
+  public LoadTableResponse registerTable(
       Catalog catalog, Namespace namespace, RegisterTableRequest request) {
     request.validate();
 
@@ -316,28 +322,28 @@ public class CatalogHandlerUtils {
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
-  public static void dropTable(Catalog catalog, TableIdentifier ident) {
+  public void dropTable(Catalog catalog, TableIdentifier ident) {
     boolean dropped = catalog.dropTable(ident, false);
     if (!dropped) {
       throw new NoSuchTableException("Table does not exist: %s", ident);
     }
   }
 
-  public static void purgeTable(Catalog catalog, TableIdentifier ident) {
+  public void purgeTable(Catalog catalog, TableIdentifier ident) {
     boolean dropped = catalog.dropTable(ident, true);
     if (!dropped) {
       throw new NoSuchTableException("Table does not exist: %s", ident);
     }
   }
 
-  public static void tableExists(Catalog catalog, TableIdentifier ident) {
+  public void tableExists(Catalog catalog, TableIdentifier ident) {
     boolean exists = catalog.tableExists(ident);
     if (!exists) {
       throw new NoSuchTableException("Table does not exist: %s", ident);
     }
   }
 
-  public static LoadTableResponse loadTable(Catalog catalog, TableIdentifier ident) {
+  public LoadTableResponse loadTable(Catalog catalog, TableIdentifier ident) {
     Table table = catalog.loadTable(ident);
 
     if (table instanceof BaseTable) {
@@ -352,7 +358,7 @@ public class CatalogHandlerUtils {
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
-  public static LoadTableResponse updateTable(
+  public LoadTableResponse updateTable(
       Catalog catalog, TableIdentifier ident, UpdateTableRequest request) {
     TableMetadata finalMetadata;
     if (isCreate(request)) {
@@ -380,11 +386,11 @@ public class CatalogHandlerUtils {
     return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
   }
 
-  public static void renameTable(Catalog catalog, RenameTableRequest request) {
+  public void renameTable(Catalog catalog, RenameTableRequest request) {
     catalog.renameTable(request.source(), request.destination());
   }
 
-  private static boolean isCreate(UpdateTableRequest request) {
+  private boolean isCreate(UpdateTableRequest request) {
     boolean isCreate =
         request.requirements().stream()
             .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
@@ -401,7 +407,7 @@ public class CatalogHandlerUtils {
     return isCreate;
   }
 
-  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
+  private TableMetadata create(TableOperations ops, UpdateTableRequest request) {
     // the only valid requirement is that the table will be created
     request.requirements().forEach(requirement -> requirement.validate(ops.current()));
     Optional<Integer> formatVersion =
@@ -419,11 +425,11 @@ public class CatalogHandlerUtils {
     return ops.current();
   }
 
-  static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
+  protected TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
     try {
       Tasks.foreach(ops)
-          .retry(COMMIT_NUM_RETRIES_DEFAULT)
+          .retry(maxCommitRetries())
           .exponentialBackoff(
               COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
@@ -464,17 +470,17 @@ public class CatalogHandlerUtils {
     return ops.current();
   }
 
-  private static BaseView asBaseView(View view) {
+  private BaseView asBaseView(View view) {
     Preconditions.checkState(
         view instanceof BaseView, "Cannot wrap catalog that does not produce BaseView");
     return (BaseView) view;
   }
 
-  public static ListTablesResponse listViews(ViewCatalog catalog, Namespace namespace) {
+  public ListTablesResponse listViews(ViewCatalog catalog, Namespace namespace) {
     return ListTablesResponse.builder().addAll(catalog.listViews(namespace)).build();
   }
 
-  public static ListTablesResponse listViews(
+  public ListTablesResponse listViews(
       ViewCatalog catalog, Namespace namespace, String pageToken, String pageSize) {
     List<TableIdentifier> results = catalog.listViews(namespace);
 
@@ -484,7 +490,7 @@ public class CatalogHandlerUtils {
     return ListTablesResponse.builder().addAll(page.first()).nextPageToken(page.second()).build();
   }
 
-  public static LoadViewResponse createView(
+  public LoadViewResponse createView(
       ViewCatalog catalog, Namespace namespace, CreateViewRequest request) {
     request.validate();
 
@@ -518,7 +524,7 @@ public class CatalogHandlerUtils {
     return viewResponse(view);
   }
 
-  private static LoadViewResponse viewResponse(View view) {
+  private LoadViewResponse viewResponse(View view) {
     ViewMetadata metadata = asBaseView(view).operations().current();
     return ImmutableLoadViewResponse.builder()
         .metadata(metadata)
@@ -526,18 +532,18 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static void viewExists(ViewCatalog catalog, TableIdentifier viewIdentifier) {
+  public void viewExists(ViewCatalog catalog, TableIdentifier viewIdentifier) {
     if (!catalog.viewExists(viewIdentifier)) {
       throw new NoSuchViewException("View does not exist: %s", viewIdentifier);
     }
   }
 
-  public static LoadViewResponse loadView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
+  public LoadViewResponse loadView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
     View view = catalog.loadView(viewIdentifier);
     return viewResponse(view);
   }
 
-  public static LoadViewResponse updateView(
+  public LoadViewResponse updateView(
       ViewCatalog catalog, TableIdentifier ident, UpdateTableRequest request) {
     View view = catalog.loadView(ident);
     ViewMetadata metadata = commit(asBaseView(view).operations(), request);
@@ -548,22 +554,22 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public static void renameView(ViewCatalog catalog, RenameTableRequest request) {
+  public void renameView(ViewCatalog catalog, RenameTableRequest request) {
     catalog.renameView(request.source(), request.destination());
   }
 
-  public static void dropView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
+  public void dropView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
     boolean dropped = catalog.dropView(viewIdentifier);
     if (!dropped) {
       throw new NoSuchViewException("View does not exist: %s", viewIdentifier);
     }
   }
 
-  static ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {
+  protected ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
     try {
       Tasks.foreach(ops)
-          .retry(COMMIT_NUM_RETRIES_DEFAULT)
+          .retry(maxCommitRetries())
           .exponentialBackoff(
               COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
@@ -603,5 +609,11 @@ public class CatalogHandlerUtils {
     }
 
     return ops.current();
+  }
+
+  private int maxCommitRetries() {
+    return configurationStore.getConfiguration(
+        polarisCallContext,
+        FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
   }
 }
