@@ -48,7 +48,11 @@ public interface ProductionReadinessCheck {
   interface Error {
 
     static Error of(String message, String offendingProperty) {
-      return ImmutableError.of(message, offendingProperty);
+      return ImmutableError.of(message, offendingProperty, false);
+    }
+
+    static Error ofSevere(String message, String offendingProperty) {
+      return ImmutableError.of(message, offendingProperty, true);
     }
 
     @Value.Parameter(order = 1)
@@ -56,5 +60,8 @@ public interface ProductionReadinessCheck {
 
     @Value.Parameter(order = 2)
     String offendingProperty();
+
+    @Value.Parameter(order = 3)
+    boolean severe();
   }
 }

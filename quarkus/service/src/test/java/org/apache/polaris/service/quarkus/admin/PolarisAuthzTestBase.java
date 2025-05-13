@@ -115,7 +115,13 @@ public abstract class PolarisAuthzTestBase {
       return Map.of(
           "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
+          "polaris.features.defaults.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
           "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "true",
+          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.readiness.ignore-severe-issues",
           "true");
     }
   }
@@ -224,9 +230,16 @@ public abstract class PolarisAuthzTestBase {
 
     Map<String, Object> configMap =
         Map.of(
-            "ALLOW_SPECIFYING_FILE_IO_IMPL", true,
-            "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true,
-            "ENABLE_GENERIC_TABLES", true);
+            "ALLOW_SPECIFYING_FILE_IO_IMPL",
+            true,
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            true,
+            "ALLOW_EXTERNAL_METADATA_FILE_LOCATION",
+            true,
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"),
+            "ENABLE_GENERIC_TABLES",
+            true);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
