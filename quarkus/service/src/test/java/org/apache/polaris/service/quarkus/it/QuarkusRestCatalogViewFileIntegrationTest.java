@@ -19,11 +19,8 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
-import java.util.Map;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
