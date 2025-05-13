@@ -311,7 +311,6 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
    * @param parentId id of the parent, can be the special 0 value representing the root entity
    * @param entityType type of entities to list
-   * @param limit the max number of items to return
    * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
    *     returns true are returned in the list
    * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
