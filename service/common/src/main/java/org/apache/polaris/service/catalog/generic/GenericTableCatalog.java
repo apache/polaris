@@ -24,13 +24,21 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 
+/**
+ * A catalog for managing `GenericTableEntity`s
+ */
 public interface GenericTableCatalog {
+
+  /** Create a generic table with the specified identifier */
   GenericTableEntity createGenericTable(
       TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties);
 
+  /** Retrieve a generic table entity with a given identifier */
   GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier);
 
+  /** Drop a generic table entity with a given identifier */
   boolean dropGenericTable(TableIdentifier tableIdentifier);
 
+  /** List all generic tables under a specific namespace */
   List<TableIdentifier> listGenericTables(Namespace namespace);
 }
