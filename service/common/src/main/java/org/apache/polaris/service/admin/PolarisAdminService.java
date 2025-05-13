@@ -111,8 +111,8 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
-import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
