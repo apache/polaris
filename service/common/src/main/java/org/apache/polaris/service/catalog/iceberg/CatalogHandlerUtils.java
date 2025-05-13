@@ -83,7 +83,6 @@ import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 
@@ -101,8 +100,7 @@ public class CatalogHandlerUtils {
 
   @Inject
   public CatalogHandlerUtils(
-      PolarisCallContext polarisCallContext,
-      PolarisConfigurationStore configurationStore) {
+      PolarisCallContext polarisCallContext, PolarisConfigurationStore configurationStore) {
     this.polarisCallContext = polarisCallContext;
     this.configurationStore = configurationStore;
   }
@@ -142,8 +140,7 @@ public class CatalogHandlerUtils {
     return Pair.of(subList, nextPageToken);
   }
 
-  public ListNamespacesResponse listNamespaces(
-      SupportsNamespaces catalog, Namespace parent) {
+  public ListNamespacesResponse listNamespaces(SupportsNamespaces catalog, Namespace parent) {
     List<Namespace> results;
     if (parent.isEmpty()) {
       results = catalog.listNamespaces();
@@ -188,8 +185,7 @@ public class CatalogHandlerUtils {
     }
   }
 
-  public GetNamespaceResponse loadNamespace(
-      SupportsNamespaces catalog, Namespace namespace) {
+  public GetNamespaceResponse loadNamespace(SupportsNamespaces catalog, Namespace namespace) {
     Map<String, String> properties = catalog.loadNamespaceMetadata(namespace);
     return GetNamespaceResponse.builder()
         .withNamespace(namespace)
@@ -613,7 +609,6 @@ public class CatalogHandlerUtils {
 
   private int maxCommitRetries() {
     return configurationStore.getConfiguration(
-        polarisCallContext,
-        FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
+        polarisCallContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
   }
 }
