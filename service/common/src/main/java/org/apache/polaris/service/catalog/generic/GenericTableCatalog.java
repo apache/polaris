@@ -24,9 +24,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 
-/**
- * A catalog for managing `GenericTableEntity`s
- */
+/** A catalog for managing `GenericTableEntity`s */
 public interface GenericTableCatalog {
 
   /** Create a generic table with the specified identifier */
