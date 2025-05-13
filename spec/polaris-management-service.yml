@@ -1065,40 +1065,26 @@ components:
         identityType:
           type: string
           enum:
-            - AWS_IAM_USER
-            - AWS_IAM_ROLE
+            - AWS_IAM
           description: The type of identity used to access external resources
       required:
         - identityType
       discriminator:
         propertyName: identityType
         mapping:
-          AWS_IAM_USER: "#/components/schemas/AwsIamUserServiceIdentityInfo"
-          AWS_IAM_ROLE: "#/components/schemas/AwsIamRoleServiceIdentityInfo"
+          AWS_IAM: "#/components/schemas/AwsIamServiceIdentityInfo"
 
-    AwsIamUserServiceIdentityInfo:
+    AwsIamServiceIdentityInfo:
       type: object
       allOf:
         - $ref: '#/components/schemas/ServiceIdentityInfo'
       properties:
-        userArn:
+        iamArn:
           type: string
-          description: The ARN of the IAM user Polaris uses to assume roles and then access external resources.
+          description: The ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
           example: "arn:aws:iam::111122223333:user/polaris-service-user"
       required:
-        - userArn
-
-    AwsIamRoleServiceIdentityInfo:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/ServiceIdentityInfo'
-      properties:
-        roleArn:
-          type: string
-          description: The ARN of the IAM role Polaris uses to access external resources.
-          example: "arn:aws:iam::111122223333:role/polaris-service-role"
-      required:
-        - roleArn
+        - iamArn
 
     UpdateCatalogRequest:
       description: Updates to apply to a Catalog. Any fields which are required in the Catalog
