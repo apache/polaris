@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus.config;
 
 import jakarta.annotation.Priority;
@@ -27,34 +26,34 @@ import java.util.stream.Collectors;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
 /**
- * Wraps around {@link QuarkusBehaviorChangesConfiguration} but removes properties from `defaults` that
- * shouldn't be there
+ * Wraps around {@link QuarkusBehaviorChangesConfiguration} but removes properties from `defaults`
+ * that shouldn't be there
  */
 @ApplicationScoped
 @Alternative
 @Priority(1)
 public class QuarkusResolvedBehaviorChangesConfiguration implements FeaturesConfiguration {
 
-    private final Map<String, String> cleanedDefaults;
-    private final Map<String, ? extends RealmOverrides> realmOverrides;
+  private final Map<String, String> cleanedDefaults;
+  private final Map<String, ? extends RealmOverrides> realmOverrides;
 
-    public QuarkusResolvedBehaviorChangesConfiguration(QuarkusBehaviorChangesConfiguration raw) {
-        this.realmOverrides = raw.realmOverrides();
+  public QuarkusResolvedBehaviorChangesConfiguration(QuarkusBehaviorChangesConfiguration raw) {
+    this.realmOverrides = raw.realmOverrides();
 
-        // Filter out any keys that look like realm overrides
-        this.cleanedDefaults =
-            raw.defaults().entrySet().stream()
-                .filter(e -> e.getKey().split("\\.").length == 1)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
+    // Filter out any keys that look like realm overrides
+    this.cleanedDefaults =
+        raw.defaults().entrySet().stream()
+            .filter(e -> e.getKey().split("\\.").length == 1)
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
 
-    @Override
-    public Map<String, String> defaults() {
-        return cleanedDefaults;
-    }
+  @Override
+  public Map<String, String> defaults() {
+    return cleanedDefaults;
+  }
 
-    @Override
-    public Map<String, ? extends RealmOverrides> realmOverrides() {
-        return realmOverrides;
-    }
+  @Override
+  public Map<String, ? extends RealmOverrides> realmOverrides() {
+    return realmOverrides;
+  }
 }
