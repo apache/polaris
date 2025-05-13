@@ -38,7 +38,7 @@ public abstract class PolarisConfiguration<T> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
 
-  public static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
+  private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
 
   public final String key;
   public final String description;
@@ -77,6 +77,11 @@ public abstract class PolarisConfiguration<T> {
       }
     }
     allConfigurations.add(configuration);
+  }
+
+  /** Returns a list of all PolarisConfigurations that have been registered */
+  public static List<PolarisConfiguration<?>> getAllConfigurations() {
+    return List.copyOf(allConfigurations);
   }
 
   @SuppressWarnings("unchecked")

@@ -42,15 +42,16 @@ public interface QuarkusReservedProperties extends ReservedProperties {
 
     private static Set<String> computeAllowlist() {
       Set<String> allowlist = new HashSet<>();
-      PolarisConfiguration.allConfigurations.forEach(
-          c -> {
-            if (c.hasCatalogConfig()) {
-              allowlist.add(c.catalogConfig());
-            }
-            if (c.hasCatalogConfigUnsafe()) {
-              allowlist.add(c.catalogConfigUnsafe());
-            }
-          });
+      PolarisConfiguration.getAllConfigurations()
+          .forEach(
+              c -> {
+                if (c.hasCatalogConfig()) {
+                  allowlist.add(c.catalogConfig());
+                }
+                if (c.hasCatalogConfigUnsafe()) {
+                  allowlist.add(c.catalogConfigUnsafe());
+                }
+              });
       return allowlist;
     }
   }
