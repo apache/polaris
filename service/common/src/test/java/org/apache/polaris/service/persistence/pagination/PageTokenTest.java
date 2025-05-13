@@ -60,9 +60,10 @@ public class PageTokenTest {
     Assertions.assertThat(token).isInstanceOf(EntityIdPageToken.class);
     Assertions.assertThat(token.getId()).isEqualTo(-1L);
 
+    // EntityIdPageToken can only build a new page from certain types that have an Entity ID
     List<String> badData = List.of("some", "data");
     Assertions.assertThatThrownBy(() -> token.buildNextPage(badData))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalStateException.class);
 
     List<PolarisBaseEntity> data =
         List.of(

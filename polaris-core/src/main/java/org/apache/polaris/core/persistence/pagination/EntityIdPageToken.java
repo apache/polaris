@@ -76,7 +76,7 @@ public class EntityIdPageToken extends PageToken implements HasPageSize {
       } else if (tail instanceof EntityNameLookupRecord) {
         return new EntityIdPageToken(((EntityNameLookupRecord) tail).getId(), this.pageSize);
       } else {
-        throw new IllegalArgumentException(
+        throw new IllegalStateException(
             "Cannot build a page token from: " + tail.getClass().getSimpleName());
       }
     }

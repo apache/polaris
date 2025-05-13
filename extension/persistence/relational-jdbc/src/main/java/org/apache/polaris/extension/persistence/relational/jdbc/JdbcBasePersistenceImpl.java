@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -53,6 +54,7 @@ import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -73,16 +75,19 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final PolarisDiagnostics polarisDiagnostics;
 
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId) {
+      String realmId,
+      PolarisDiagnostics polarisDiagnostics) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.polarisDiagnostics = polarisDiagnostics;
   }
 
   @Override
@@ -400,6 +405,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
+    polarisDiagnostics.check(
+        (pageToken instanceof EntityIdPageToken || pageToken instanceof ReadEverythingPageToken),
+        "unrecognized_page_token");
+
     Map<String, Object> params =
         Map.of(
             "catalog_id",
