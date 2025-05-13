@@ -67,9 +67,10 @@ do
 done
 
 POSTGRES_ADDR=$(echo $DESCRIBE_DB | jq -r '.["DBInstances"][0]["Endpoint"]' | jq -r '"\(.Address):\(.Port)"')
-
-FULL_POSTGRES_ADDR=$(printf '%s\n' "jdbc:postgresql://$POSTGRES_ADDR/{realm}" | sed 's/[&/\]/\\&/g')
-sed -i "/jakarta.persistence.jdbc.url/ s|value=\"[^\"]*\"|value=\"$FULL_POSTGRES_ADDR\"|" "getting-started/assets/eclipselink/persistence.xml"
+export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
+export QUARKUS_DATASOURCE_USERNAME=postgres
+export QUARKUS_DATASOURCE_PASSWORD=postgres
+echo ($QUARKUS_DATASOURCE_JDBC_URL)
 
 S3_BUCKET_NAME="polaris-quickstart-s3-$RANDOM_SUFFIX"
 echo "S3 Bucket Name: $S3_BUCKET_NAME"
@@ -83,4 +84,4 @@ export STORAGE_LOCATION="s3://$S3_BUCKET_NAME/quickstart_catalog/"
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up -d
+docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d

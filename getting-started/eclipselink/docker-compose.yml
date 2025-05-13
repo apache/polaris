@@ -36,6 +36,7 @@ services:
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${CLIENT_ID},${CLIENT_SECRET}
     volumes:
       - ../assets/eclipselink/:/deployments/config/eclipselink
     healthcheck:
@@ -54,6 +55,8 @@ services:
       - STORAGE_LOCATION=${STORAGE_LOCATION}
       - AWS_ROLE_ARN=${AWS_ROLE_ARN}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
@@ -79,7 +82,7 @@ services:
       --conf, "spark.sql.catalog.quickstart_catalog.type=rest",
       --conf, "spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog",
       --conf, "spark.sql.catalog.quickstart_catalog.uri=http://polaris:8181/api/catalog",
-      --conf, "spark.sql.catalog.quickstart_catalog.credential=root:s3cr3t",
+      --conf, "spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET}",
       --conf, "spark.sql.catalog.quickstart_catalog.scope=PRINCIPAL_ROLE:ALL",
       --conf, "spark.sql.defaultCatalog=quickstart_catalog",
       --conf, "spark.sql.catalogImplementation=in-memory",
@@ -91,6 +94,9 @@ services:
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
+    environment:
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     stdin_open: true
     tty: true
     ports:

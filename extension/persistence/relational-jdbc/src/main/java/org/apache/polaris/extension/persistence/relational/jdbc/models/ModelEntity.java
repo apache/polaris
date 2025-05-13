@@ -26,7 +26,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-public class ModelEntity implements Converter<ModelEntity> {
+public class ModelEntity implements Converter<PolarisBaseEntity> {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
   private long catalogId;
@@ -138,27 +138,29 @@ public class ModelEntity implements Converter<ModelEntity> {
   }
 
   @Override
-  public ModelEntity fromResultSet(ResultSet r) throws SQLException {
-    return ModelEntity.builder()
-        .catalogId(r.getObject("catalog_id", Long.class))
-        .id(r.getObject("id", Long.class))
-        .parentId(r.getObject("parent_id", Long.class))
-        .typeCode(r.getObject("type_code", Integer.class))
-        .name(r.getObject("name", String.class))
-        .entityVersion(r.getObject("entity_version", Integer.class))
-        .subTypeCode(r.getObject("sub_type_code", Integer.class))
-        .createTimestamp(r.getObject("create_timestamp", Long.class))
-        .dropTimestamp(r.getObject("drop_timestamp", Long.class))
-        .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
-        .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
-        .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
-        .properties(
-            r.getString("properties")) // required for extracting when the underlying type is JSONB
-        .internalProperties(
-            r.getString(
-                "internal_properties")) // required for extracting when the underlying type is JSONB
-        .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-        .build();
+  public PolarisBaseEntity fromResultSet(ResultSet r) throws SQLException {
+    var modelEntity =
+        ModelEntity.builder()
+            .catalogId(r.getObject("catalog_id", Long.class))
+            .id(r.getObject("id", Long.class))
+            .parentId(r.getObject("parent_id", Long.class))
+            .typeCode(r.getObject("type_code", Integer.class))
+            .name(r.getObject("name", String.class))
+            .entityVersion(r.getObject("entity_version", Integer.class))
+            .subTypeCode(r.getObject("sub_type_code", Integer.class))
+            .createTimestamp(r.getObject("create_timestamp", Long.class))
+            .dropTimestamp(r.getObject("drop_timestamp", Long.class))
+            .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
+            .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
+            .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
+            // JSONB: use getString(), not getObject().
+            .properties(r.getString("properties"))
+            // JSONB: use getString(), not getObject().
+            .internalProperties(r.getString("internal_properties"))
+            .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+            .build();
+
+    return toEntity(modelEntity);
   }
 
   @Override
