@@ -16,23 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.quarkus.common.config.jdbc;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import io.smallrye.config.ConfigMapping;
+import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
-configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
-}
-
-dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
-}
+@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}

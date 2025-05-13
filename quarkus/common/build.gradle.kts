@@ -23,16 +23,7 @@ plugins {
   id("polaris-quarkus")
 }
 
-configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
-}
-
 dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
+  compileOnly(libs.smallrye.config.core)
+  implementation(project(":polaris-relational-jdbc"))
 }
