@@ -128,6 +128,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
+  private final CatalogHandlerUtils catalogHandlerUtils;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -147,12 +148,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      CatalogHandlerUtils catalogHandlerUtils) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
+    this.catalogHandlerUtils = catalogHandlerUtils;
   }
 
   /**
