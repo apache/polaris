@@ -35,6 +35,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,7 @@ public class DefaultConfigurationStoreTest {
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
+  @Inject FeaturesConfiguration featuresConfiguration;
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -211,5 +213,21 @@ public class DefaultConfigurationStoreTest {
     assertThat(realmOverrideValue).isFalse();
 
     assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
+  }
+
+  @Test
+  public void testInjectedFeaturesConfiguration() {
+    assertThat(featuresConfiguration).isInstanceOf(QuarkusResolvedFeaturesConfiguration.class);
+
+    assertThat(featuresConfiguration.defaults())
+        .containsKeys(falseByDefaultKey, trueByDefaultKey)
+        .allSatisfy((key, value) -> assertThat(value).doesNotContain(realmOne));
+
+    assertThat(featuresConfiguration.realmOverrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides()).containsKey(realmOne);
+
+    assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides())
+        .containsKey(falseByDefaultKey);
   }
 }
