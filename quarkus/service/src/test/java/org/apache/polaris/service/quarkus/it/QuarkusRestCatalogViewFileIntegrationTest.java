@@ -30,17 +30,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
-@TestProfile(QuarkusRestCatalogViewFileIntegrationTest.Profile.class)
 public class QuarkusRestCatalogViewFileIntegrationTest
     extends PolarisRestCatalogViewFileIntegrationTest {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
-    }
-  }
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {
