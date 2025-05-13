@@ -31,7 +31,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-public class GenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private GenericTableCatalogHandler newWrapper() {
     return newWrapper(Set.of());
