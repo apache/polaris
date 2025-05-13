@@ -64,26 +64,33 @@ public class GcpCredentialsStorageIntegration
     this(sourceCredentials, transportFactory, null);
   }
 
-    public GcpCredentialsStorageIntegration(
-            GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory, String serviceAccount) {
-        super(GcpCredentialsStorageIntegration.class.getName());
-        // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
-        // account key json
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      String serviceAccount) {
+    super(GcpCredentialsStorageIntegration.class.getName());
+    // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
+    // account key json
 
-        if(serviceAccount == null) {
-            this.sourceCredentials =
-                    sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-        } else {
-            GoogleCredentials scopedSourceCredentials  =
-                    sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam");
-            GoogleCredentials targetCredentials = ImpersonatedCredentials.create(scopedSourceCredentials,
-                    serviceAccount , null,
-                    List.of("https://www.googleapis.com/auth/cloud-platform"), 3600);
-            this.sourceCredentials = targetCredentials;
-        }
-        this.transportFactory = transportFactory;
+    if (serviceAccount == null) {
+      this.sourceCredentials =
+          sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+    } else {
+      GoogleCredentials scopedSourceCredentials =
+          sourceCredentials.createScoped(
+              "https://www.googleapis.com/auth/cloud-platform",
+              "https://www.googleapis.com/auth/iam");
+      GoogleCredentials targetCredentials =
+          ImpersonatedCredentials.create(
+              scopedSourceCredentials,
+              serviceAccount,
+              null,
+              List.of("https://www.googleapis.com/auth/cloud-platform"),
+              3600);
+      this.sourceCredentials = targetCredentials;
     }
-
+    this.transportFactory = transportFactory;
+  }
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
