@@ -16,23 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.generic;
 
+import java.util.List;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 
-import java.util.List;
-import java.util.Map;
-
 public interface GenericTableCatalog {
-    GenericTableEntity createGenericTable(
-        TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties);
+  GenericTableEntity createGenericTable(
+      TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties);
 
-    GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier);
+  GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier);
 
-    boolean dropGenericTable(TableIdentifier tableIdentifier);
+  boolean dropGenericTable(TableIdentifier tableIdentifier);
 
-    List<TableIdentifier> listGenericTables(Namespace namespace);
+  List<TableIdentifier> listGenericTables(Namespace namespace);
 }

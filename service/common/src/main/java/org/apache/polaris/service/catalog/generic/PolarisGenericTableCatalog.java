@@ -63,6 +63,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     this.metaStoreManager = metaStoreManager;
   }
 
+  @Override
   public GenericTableEntity createGenericTable(
       TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties) {
     PolarisResolvedPathWrapper resolvedParent =
@@ -125,6 +126,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     return resultEntity;
   }
 
+  @Override
   public GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
@@ -139,6 +141,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     }
   }
 
+  @Override
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
@@ -162,6 +165,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     return dropEntityResult.isSuccess();
   }
 
+  @Override
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
