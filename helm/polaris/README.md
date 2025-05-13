@@ -285,7 +285,7 @@ kubectl delete namespace polaris
 | persistence.eclipseLink.secret | object | `{"key":"persistence.xml","name":null}` | The secret name to pull persistence.xml from. |
 | persistence.eclipseLink.secret.key | string | `"persistence.xml"` | The key in the secret to pull persistence.xml from. |
 | persistence.eclipseLink.secret.name | string | `nil` | The name of the secret to pull persistence.xml from. If not provided, the default built-in persistence.xml will be used. This is probably not what you want. |
-| persistence.type | string | `"eclipse-link"` | The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link. |
+| persistence.type | string | `"relational-jdbc"` | Three built-in types are available: "relational-jdbc", "in-memory", "eclipse-link". The in-memory type is not recommended for production use. The eclipse-link type is deprecated and will be unsupported in a future release. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |

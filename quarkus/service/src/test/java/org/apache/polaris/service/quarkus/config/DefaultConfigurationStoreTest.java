@@ -209,5 +209,7 @@ public class DefaultConfigurationStoreTest {
     setCurrentRealm(realmOne);
     realmOverrideValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
     assertThat(realmOverrideValue).isFalse();
+
+    assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
   }
 }
