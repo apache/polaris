@@ -16,23 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.extension.persistence.relational.jdbc;
 
-plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
+import java.util.Optional;
 
-configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
-}
+public interface RelationalJdbcConfiguration {
+  // max retries before giving up
+  Optional<Integer> maxRetries();
 
-dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
+  // max retry duration
+  Optional<Long> maxDurationInMs();
+
+  // initial delay
+  Optional<Long> initialDelayInMs();
 }
