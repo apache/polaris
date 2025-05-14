@@ -19,8 +19,9 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import java.net.URI;
+import org.apache.hadoop.yarn.logaggregation.LogCLIHelpers;
 import org.apache.polaris.core.storage.azure.AzureLocation;
+import org.apache.hadoop.fs.Path;
 
 /** An abstraction over a storage location */
 public class StorageLocation {
@@ -40,12 +41,16 @@ public class StorageLocation {
   protected StorageLocation(@Nonnull String location) {
     if (location == null) {
       this.location = null;
-    } else if (location.startsWith("file:/") && !location.startsWith(LOCAL_PATH_PREFIX)) {
-      this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
-    } else if (location.startsWith("/")) {
-      this.location = URI.create(location.replaceFirst("/+", LOCAL_PATH_PREFIX)).toString();
+    } else if (location.startsWith("file:/") || location.startsWith("/")) {
+      if (!location.startsWith(LOCAL_PATH_PREFIX)) {
+        String[] parts = location.split("/", -1);
+        // Converting "file:////abcd" through Hadoop Path and Java URI will still yield "file:///abcd"
+        parts[0] = LOCAL_PATH_PREFIX;
+        location = String.join("/", parts);
+      }
+      this.location = new Path(location).toUri().toString();
     } else {
-      this.location = URI.create(location).toString();
+      this.location = new Path(location).toString();
     }
   }
 

@@ -95,6 +95,7 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-gcp")
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
+  implementation(libs.hadoop.client.api)
 
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
