@@ -165,7 +165,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   private static final String[] DEFAULT_CATALOG_PROPERTIES = {
     "allow.unstructured.table.location", "true",
-    "allow.external.table.location", "true"
+    "allow.external.table.location", "true",
+    "polaris.config.list-pagination-enabled", "true"
   };
 
   @Retention(RetentionPolicy.RUNTIME)
