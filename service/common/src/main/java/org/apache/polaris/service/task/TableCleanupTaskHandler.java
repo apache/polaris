@@ -196,6 +196,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   // copy the internal properties, which will have storage info
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+                  .setProperties(cleanupTask.getPropertiesAsMap())
                   .build();
             });
   }
@@ -236,6 +237,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                           tableEntity.getTableIdentifier(), metadataBatch))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+                  .setProperties(cleanupTask.getPropertiesAsMap())
                   .build();
             });
   }

@@ -324,6 +324,19 @@ public class BatchFileCleanupTaskHandlerTest {
       future.join();
 
       // Check if the file was successfully deleted after retries
+      assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isTrue();
+
+      CompletableFuture<Void> future1 =
+          CompletableFuture.runAsync(
+              () -> {
+                CallContext.setCurrentContext(callCtx);
+                addTaskLocation(task);
+                assertThatPredicate(handler::canHandleTask).accepts(task);
+                handler.handleTask(task, callCtx); // this will schedule the batch deletion
+              });
+      future1.join();
+
+      // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
 
       // Ensure that retries happened as expected

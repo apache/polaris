@@ -23,6 +23,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
+import io.quarkus.scheduler.Scheduled;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
