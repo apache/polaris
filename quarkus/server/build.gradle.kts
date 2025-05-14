@@ -33,8 +33,6 @@ plugins {
 val quarkusRunner by
   configurations.creating { description = "Used to reference the generated runner-jar" }
 
-val runScript by configurations.creating { description = "Used to reference the run.sh script" }
-
 val distributionZip by
   configurations.creating { description = "Used to reference the distribution zip" }
 
@@ -56,8 +54,6 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  runScript(project(":polaris-quarkus-run-script", "runScript"))
 }
 
 quarkus {
@@ -87,7 +83,6 @@ tasks.named<QuarkusRun>("quarkusRun") {
 distributions {
   main {
     contents {
-      from(runScript)
       from(project.layout.buildDirectory.dir("quarkus-app"))
       from("distribution/NOTICE")
       from("distribution/LICENSE")
@@ -102,15 +97,10 @@ val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 val distTar =
   tasks.named<Tar>("distTar") {
     dependsOn(quarkusBuild)
-    inputs.files(runScript)
     compression = Compression.GZIP
   }
 
-val distZip =
-  tasks.named<Zip>("distZip") {
-    dependsOn(quarkusBuild)
-    inputs.files(runScript)
-  }
+val distZip = tasks.named<Zip>("distZip") { dependsOn(quarkusBuild) }
 
 val digestDistTar =
   tasks.register<GenerateDigest>("digestDistTar") {
