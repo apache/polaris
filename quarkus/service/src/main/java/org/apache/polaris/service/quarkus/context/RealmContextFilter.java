@@ -16,36 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.quarkus.context;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
+import io.smallrye.mutiny.Uni;
+import io.vertx.mutiny.core.Vertx;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.PreMatching;
-import jakarta.ws.rs.ext.Provider;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisFilterPriorities;
+import org.apache.polaris.service.context.RealmContextResolver;
+import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 
-@PreMatching
-@ApplicationScoped
-@Priority(PolarisFilterPriorities.REALM_CONTEXT_FILTER)
-@Provider
-public class RealmContextFilter implements ContainerRequestFilter {
+public class RealmContextFilter {
 
   public static final String REALM_CONTEXT_KEY = "realmContext";
 
   @Inject RealmContextResolver realmContextResolver;
+  @Inject Vertx vertx;
 
-  @Override
-  public void filter(ContainerRequestContext rc) {
-    RealmContext realmContext =
-        realmContextResolver.resolveRealmContext(
-            rc.getUriInfo().getRequestUri().toString(),
-            rc.getMethod(),
-            rc.getUriInfo().getPath(),
-            rc.getHeaders()::getFirst);
-    rc.setProperty(REALM_CONTEXT_KEY, realmContext);
+  @ServerRequestFilter(preMatching = true, priority = PolarisFilterPriorities.REALM_CONTEXT_FILTER)
+  public Uni<Void> resolveRealmContext(ContainerRequestContext rc) {
+    // Note: the default implementation of RealmContextResolver does not block,
+    // but since other implementations may, we need to use executeBlocking().
+    return vertx
+        .executeBlocking(
+            () ->
+                realmContextResolver.resolveRealmContext(
+                    rc.getUriInfo().getRequestUri().toString(),
+                    rc.getMethod(),
+                    rc.getUriInfo().getPath(),
+                    rc.getHeaders()::getFirst))
+        .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
+        .replaceWithVoid();
   }
 }

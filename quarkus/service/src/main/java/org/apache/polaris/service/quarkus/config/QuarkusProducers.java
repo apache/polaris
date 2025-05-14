@@ -60,7 +60,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
-import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
@@ -68,6 +67,7 @@ import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfigu
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
+import org.apache.polaris.service.quarkus.context.RealmContextFilter;
 import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
