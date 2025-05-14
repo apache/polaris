@@ -30,13 +30,16 @@ import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -229,5 +232,52 @@ public class DefaultConfigurationStoreTest {
     assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides()).hasSize(1);
     assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides())
         .containsKey(falseByDefaultKey);
+  }
+
+  @Test
+  public void testRegisterAndUseFeatureConfigurations() {
+    String prefix = "testRegisterAndUseFeatureConfigurations";
+
+    FeatureConfiguration<Boolean> safeConfig = FeatureConfiguration.<Boolean>builder()
+        .key(String.format("%s_safe", prefix))
+        .catalogConfig(String.format("polaris.config.%s.safe", prefix))
+        .defaultValue(true)
+        .description(prefix)
+        .buildFeatureConfiguration();
+
+    FeatureConfiguration<Boolean> unsafeConfig =FeatureConfiguration.<Boolean>builder()
+        .key(String.format("%s_unsafe", prefix))
+        .catalogConfigUnsafe(String.format("%s.unsafe", prefix))
+        .defaultValue(true)
+        .description(prefix)
+        .buildFeatureConfiguration();
+
+    FeatureConfiguration<Boolean> bothConfig = FeatureConfiguration.<Boolean>builder()
+        .key(String.format("%s_both", prefix))
+        .catalogConfig(String.format("polaris.config.%s.both", prefix))
+        .catalogConfigUnsafe(String.format("%s.both", prefix))
+        .defaultValue(true)
+        .description(prefix)
+        .buildFeatureConfiguration();
+
+    CatalogEntity catalog = new CatalogEntity.Builder().build();
+
+    Assertions.assertThat(configurationStore
+        .getConfiguration(
+            polarisContext,
+            catalog,
+            safeConfig)).isTrue();
+
+    Assertions.assertThat(configurationStore
+        .getConfiguration(
+            polarisContext,
+            catalog,
+            unsafeConfig)).isTrue();
+
+    Assertions.assertThat(configurationStore
+        .getConfiguration(
+            polarisContext,
+            catalog,
+            bothConfig)).isTrue();
   }
 }
