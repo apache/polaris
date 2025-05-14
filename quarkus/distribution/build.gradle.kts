@@ -13,7 +13,7 @@ val serverProject = project(":polaris-quarkus-server")
 
 distributions {
     main {
-        distributionBaseName.set("polaris-quarkus-distribution")
+        distributionBaseName.set("polaris")
         contents {
             // Copy admin distribution contents
             into("admin") {
