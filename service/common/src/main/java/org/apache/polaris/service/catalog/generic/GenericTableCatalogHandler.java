@@ -55,7 +55,8 @@ public class GenericTableCatalogHandler extends CatalogHandler {
   @Override
   protected void initializeCatalog() {
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.genericTableCatalog.initialize(catalogName, Map.of());
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
