@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -96,9 +97,9 @@ class ViewVersion(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in representations (list)
         _items = []
         if self.representations:
-            for _item in self.representations:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_representations in self.representations:
+                if _item_representations:
+                    _items.append(_item_representations.to_dict())
             _dict['representations'] = _items
         return _dict
 

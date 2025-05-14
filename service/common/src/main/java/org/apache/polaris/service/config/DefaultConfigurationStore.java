@@ -24,12 +24,15 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
+import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
+  Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationStore.class);
 
   private final Map<String, Object> defaults;
   private final Map<String, Map<String, Object>> realmOverrides;
@@ -39,30 +42,25 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   @Inject
   public DefaultConfigurationStore(
       ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this(
-        configurations.parseDefaults(objectMapper),
-        configurations.parseRealmOverrides(objectMapper));
-  }
-
-  public DefaultConfigurationStore(Map<String, Object> defaults) {
-    this(defaults, Map.of());
-  }
-
-  public DefaultConfigurationStore(
-      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides) {
-    this.defaults = Map.copyOf(defaults);
-    this.realmOverrides = Map.copyOf(realmOverrides);
+    this.defaults = Map.copyOf(configurations.parseDefaults(objectMapper));
+    this.realmOverrides = Map.copyOf(configurations.parseRealmOverrides(objectMapper));
   }
 
   @Override
-  public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
-    String realm = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
+  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+    String realm = realmContext.getRealmIdentifier();
+    LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
     @SuppressWarnings("unchecked")
     T confgValue =
         (T)
-            realmOverrides
-                .getOrDefault(realm, Map.of())
-                .getOrDefault(configName, defaults.get(configName));
+            Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
+                .orElseGet(() -> getDefaultConfiguration(configName));
+    return confgValue;
+  }
+
+  private <T> @Nullable T getDefaultConfiguration(String configName) {
+    @SuppressWarnings("unchecked")
+    T confgValue = (T) defaults.get(configName);
     return confgValue;
   }
 }

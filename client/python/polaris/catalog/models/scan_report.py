@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -101,9 +102,9 @@ class ScanReport(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each value in metrics (dict)
         _field_dict = {}
         if self.metrics:
-            for _key in self.metrics:
-                if self.metrics[_key]:
-                    _field_dict[_key] = self.metrics[_key].to_dict()
+            for _key_metrics in self.metrics:
+                if self.metrics[_key_metrics]:
+                    _field_dict[_key_metrics] = self.metrics[_key_metrics].to_dict()
             _dict['metrics'] = _field_dict
         return _dict
 

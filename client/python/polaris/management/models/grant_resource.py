@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,6 +46,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from polaris.management.models.catalog_grant import CatalogGrant
     from polaris.management.models.namespace_grant import NamespaceGrant
+    from polaris.management.models.policy_grant import PolicyGrant
     from polaris.management.models.table_grant import TableGrant
     from polaris.management.models.view_grant import ViewGrant
 
@@ -58,8 +60,8 @@ class GrantResource(BaseModel):
     @field_validator('type')
     def type_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['catalog', 'namespace', 'table', 'view']):
-            raise ValueError("must be one of enum values ('catalog', 'namespace', 'table', 'view')")
+        if value not in set(['catalog', 'namespace', 'table', 'view', 'policy']):
+            raise ValueError("must be one of enum values ('catalog', 'namespace', 'table', 'view', 'policy')")
         return value
 
     model_config = ConfigDict(
@@ -74,7 +76,7 @@ class GrantResource(BaseModel):
 
     # discriminator mappings
     __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'catalog': 'CatalogGrant','namespace': 'NamespaceGrant','table': 'TableGrant','view': 'ViewGrant'
+        'catalog': 'CatalogGrant','namespace': 'NamespaceGrant','policy': 'PolicyGrant','table': 'TableGrant','view': 'ViewGrant'
     }
 
     @classmethod
@@ -96,7 +98,7 @@ class GrantResource(BaseModel):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[CatalogGrant, NamespaceGrant, TableGrant, ViewGrant]]:
+    def from_json(cls, json_str: str) -> Optional[Union[CatalogGrant, NamespaceGrant, PolicyGrant, TableGrant, ViewGrant]]:
         """Create an instance of GrantResource from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
@@ -121,7 +123,7 @@ class GrantResource(BaseModel):
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[CatalogGrant, NamespaceGrant, TableGrant, ViewGrant]]:
+    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[CatalogGrant, NamespaceGrant, PolicyGrant, TableGrant, ViewGrant]]:
         """Create an instance of GrantResource from a dict"""
         # look up the object type based on discriminator mapping
         object_type = cls.get_discriminator_value(obj)
@@ -129,6 +131,8 @@ class GrantResource(BaseModel):
             return import_module("polaris.management.models.catalog_grant").CatalogGrant.from_dict(obj)
         if object_type ==  'NamespaceGrant':
             return import_module("polaris.management.models.namespace_grant").NamespaceGrant.from_dict(obj)
+        if object_type ==  'PolicyGrant':
+            return import_module("polaris.management.models.policy_grant").PolicyGrant.from_dict(obj)
         if object_type ==  'TableGrant':
             return import_module("polaris.management.models.table_grant").TableGrant.from_dict(obj)
         if object_type ==  'ViewGrant':

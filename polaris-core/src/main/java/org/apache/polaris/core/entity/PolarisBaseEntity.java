@@ -92,6 +92,18 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     return properties != null ? properties : EMPTY_MAP_STRING;
   }
 
+  /**
+   * Creates a new instance of PolarisBaseEntity with the specified grant records version.
+   * This method is used to update the grantRecordsVersion field while maintaining immutability
+   * of the PolarisBaseEntity class.
+   *
+   * @param grantRecordsVersion The new grant records version to be set.
+   * @return A new PolarisBaseEntity instance with the updated grant records version.
+   */
+  public PolarisBaseEntity withGrantRecordsVersion(int grantRecordsVersion) {
+    return new Builder(this).grantRecordsVersion(grantRecordsVersion).build();
+  }
+
   @JsonIgnore
   public Map<String, String> getPropertiesAsMap() {
     if (properties == null) {

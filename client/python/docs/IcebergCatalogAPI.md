@@ -24,6 +24,7 @@ All URIs are relative to *https://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**cancel_planning**](IcebergCatalogAPI.md#cancel_planning) | **DELETE** /v1/{prefix}/namespaces/{namespace}/tables/{table}/plan/{plan-id} | Cancels scan planning for a plan-id
 [**commit_transaction**](IcebergCatalogAPI.md#commit_transaction) | **POST** /v1/{prefix}/transactions/commit | Commit updates to multiple tables in an atomic operation
 [**create_namespace**](IcebergCatalogAPI.md#create_namespace) | **POST** /v1/{prefix}/namespaces | Create a namespace
 [**create_table**](IcebergCatalogAPI.md#create_table) | **POST** /v1/{prefix}/namespaces/{namespace}/tables | Create a table in the given namespace
@@ -31,24 +32,126 @@ Method | HTTP request | Description
 [**drop_namespace**](IcebergCatalogAPI.md#drop_namespace) | **DELETE** /v1/{prefix}/namespaces/{namespace} | Drop a namespace from the catalog. Namespace must be empty.
 [**drop_table**](IcebergCatalogAPI.md#drop_table) | **DELETE** /v1/{prefix}/namespaces/{namespace}/tables/{table} | Drop a table from the catalog
 [**drop_view**](IcebergCatalogAPI.md#drop_view) | **DELETE** /v1/{prefix}/namespaces/{namespace}/views/{view} | Drop a view from the catalog
+[**fetch_planning_result**](IcebergCatalogAPI.md#fetch_planning_result) | **GET** /v1/{prefix}/namespaces/{namespace}/tables/{table}/plan/{plan-id} | Fetches the result of scan planning for a plan-id
+[**fetch_scan_tasks**](IcebergCatalogAPI.md#fetch_scan_tasks) | **POST** /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks | Fetches result tasks for a plan task
 [**list_namespaces**](IcebergCatalogAPI.md#list_namespaces) | **GET** /v1/{prefix}/namespaces | List namespaces, optionally providing a parent namespace to list underneath
 [**list_tables**](IcebergCatalogAPI.md#list_tables) | **GET** /v1/{prefix}/namespaces/{namespace}/tables | List all table identifiers underneath a given namespace
 [**list_views**](IcebergCatalogAPI.md#list_views) | **GET** /v1/{prefix}/namespaces/{namespace}/views | List all view identifiers underneath a given namespace
+[**load_credentials**](IcebergCatalogAPI.md#load_credentials) | **GET** /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials | Load vended credentials for a table from the catalog
 [**load_namespace_metadata**](IcebergCatalogAPI.md#load_namespace_metadata) | **GET** /v1/{prefix}/namespaces/{namespace} | Load the metadata properties for a namespace
 [**load_table**](IcebergCatalogAPI.md#load_table) | **GET** /v1/{prefix}/namespaces/{namespace}/tables/{table} | Load a table from the catalog
 [**load_view**](IcebergCatalogAPI.md#load_view) | **GET** /v1/{prefix}/namespaces/{namespace}/views/{view} | Load a view from the catalog
 [**namespace_exists**](IcebergCatalogAPI.md#namespace_exists) | **HEAD** /v1/{prefix}/namespaces/{namespace} | Check if a namespace exists
+[**plan_table_scan**](IcebergCatalogAPI.md#plan_table_scan) | **POST** /v1/{prefix}/namespaces/{namespace}/tables/{table}/plan | Submit a scan for planning
 [**register_table**](IcebergCatalogAPI.md#register_table) | **POST** /v1/{prefix}/namespaces/{namespace}/register | Register a table in the given namespace using given metadata file location
 [**rename_table**](IcebergCatalogAPI.md#rename_table) | **POST** /v1/{prefix}/tables/rename | Rename a table from its current name to a new name
 [**rename_view**](IcebergCatalogAPI.md#rename_view) | **POST** /v1/{prefix}/views/rename | Rename a view from its current name to a new name
 [**replace_view**](IcebergCatalogAPI.md#replace_view) | **POST** /v1/{prefix}/namespaces/{namespace}/views/{view} | Replace a view
 [**report_metrics**](IcebergCatalogAPI.md#report_metrics) | **POST** /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics | Send a metrics report to this endpoint to be processed by the backend
-[**send_notification**](IcebergCatalogAPI.md#send_notification) | **POST** /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications | Sends a notification to the table
 [**table_exists**](IcebergCatalogAPI.md#table_exists) | **HEAD** /v1/{prefix}/namespaces/{namespace}/tables/{table} | Check if a table exists
 [**update_properties**](IcebergCatalogAPI.md#update_properties) | **POST** /v1/{prefix}/namespaces/{namespace}/properties | Set or remove properties on a namespace
 [**update_table**](IcebergCatalogAPI.md#update_table) | **POST** /v1/{prefix}/namespaces/{namespace}/tables/{table} | Commit updates to a table
 [**view_exists**](IcebergCatalogAPI.md#view_exists) | **HEAD** /v1/{prefix}/namespaces/{namespace}/views/{view} | Check if a view exists
 
+
+# **cancel_planning**
+> cancel_planning(prefix, namespace, table, plan_id)
+
+Cancels scan planning for a plan-id
+
+Cancels scan planning for a plan-id.
+
+This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a "submitted" status or while there are remaining plan tasks that have not been fetched.
+
+Cancellation is not necessary when
+- Scan tasks for each plan task have been fetched using fetchScanTasks
+- A plan-id has produced a "failed" or "cancelled" status from
+  planTableScan or fetchPlanningResult
+
+
+### Example
+
+* OAuth Authentication (OAuth2):
+* Bearer Authentication (BearerAuth):
+
+```python
+import polaris.catalog
+from polaris.catalog.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = polaris.catalog.Configuration(
+    host = "https://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+configuration.access_token = os.environ["ACCESS_TOKEN"]
+
+# Configure Bearer authorization: BearerAuth
+configuration = polaris.catalog.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with polaris.catalog.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+    table = 'sales' # str | A table name
+    plan_id = 'plan_id_example' # str | ID used to track a planning request
+
+    try:
+        # Cancels scan planning for a plan-id
+        api_instance.cancel_planning(prefix, namespace, table, plan_id)
+    except Exception as e:
+        print("Exception when calling IcebergCatalogAPI->cancel_planning: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
+ **table** | **str**| A table name | 
+ **plan_id** | **str**| ID used to track a planning request | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** | Success, no content |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**404** | Not Found - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **commit_transaction**
 > commit_transaction(prefix, commit_transaction_request)
@@ -89,7 +192,7 @@ with polaris.catalog.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
     prefix = 'prefix_example' # str | An optional prefix in the path
-    commit_transaction_request = polaris.catalog.CommitTransactionRequest() # CommitTransactionRequest | Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.
+    commit_transaction_request = polaris.catalog.CommitTransactionRequest() # CommitTransactionRequest | Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.
 
     try:
         # Commit updates to multiple tables in an atomic operation
@@ -106,7 +209,7 @@ with polaris.catalog.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **prefix** | **str**| An optional prefix in the path | 
- **commit_transaction_request** | [**CommitTransactionRequest**](CommitTransactionRequest.md)| Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, &#x60;assert-ref-snapshot-id&#x60; will check that a named ref&#39;s snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. | 
+ **commit_transaction_request** | [**CommitTransactionRequest**](CommitTransactionRequest.md)| Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, &#x60;assert-ref-snapshot-id&#x60; will check that a named ref&#39;s snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. | 
 
 ### Return type
 
@@ -237,7 +340,11 @@ Name | Type | Description  | Notes
 
 Create a table in the given namespace
 
-Create a table or start a create transaction, like atomic CTAS.  If `stage-create` is false, the table is created immediately.  If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
+Create a table or start a create transaction, like atomic CTAS.
+
+If `stage-create` is false, the table is created immediately.
+
+If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
 
 ### Example
 
@@ -316,7 +423,7 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | Table metadata result after creating a table |  -  |
+**200** | Table metadata result after creating a table |  * etag -  <br>  |
 **400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
 **401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
 **403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
@@ -687,12 +794,214 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **fetch_planning_result**
+> FetchPlanningResult fetch_planning_result(prefix, namespace, table, plan_id)
+
+Fetches the result of scan planning for a plan-id
+
+Fetches the result of scan planning for a plan-id.
+
+Responses must include a valid status
+- When "completed" the planning operation has produced plan-tasks and
+  file-scan-tasks that must be returned in the response
+
+- When "submitted" the planning operation has not completed; the client
+  should wait to call this endpoint again to fetch a completed response
+
+- When "failed" the response must be a valid error response
+- When "cancelled" the plan-id is invalid and should be discarded
+
+The response for a "completed" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.
+
+
+### Example
+
+* OAuth Authentication (OAuth2):
+* Bearer Authentication (BearerAuth):
+
+```python
+import polaris.catalog
+from polaris.catalog.models.fetch_planning_result import FetchPlanningResult
+from polaris.catalog.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = polaris.catalog.Configuration(
+    host = "https://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+configuration.access_token = os.environ["ACCESS_TOKEN"]
+
+# Configure Bearer authorization: BearerAuth
+configuration = polaris.catalog.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with polaris.catalog.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+    table = 'sales' # str | A table name
+    plan_id = 'plan_id_example' # str | ID used to track a planning request
+
+    try:
+        # Fetches the result of scan planning for a plan-id
+        api_response = api_instance.fetch_planning_result(prefix, namespace, table, plan_id)
+        print("The response of IcebergCatalogAPI->fetch_planning_result:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling IcebergCatalogAPI->fetch_planning_result: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
+ **table** | **str**| A table name | 
+ **plan_id** | **str**| ID used to track a planning request | 
+
+### Return type
+
+[**FetchPlanningResult**](FetchPlanningResult.md)
+
+### Authorization
+
+[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Result of fetching a submitted scan planning operation |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**404** | Not Found - NoSuchPlanIdException, the plan-id does not exist - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **fetch_scan_tasks**
+> FetchScanTasksResult fetch_scan_tasks(prefix, namespace, table, fetch_scan_tasks_request=fetch_scan_tasks_request)
+
+Fetches result tasks for a plan task
+
+Fetches result tasks for a plan task.
+
+### Example
+
+* OAuth Authentication (OAuth2):
+* Bearer Authentication (BearerAuth):
+
+```python
+import polaris.catalog
+from polaris.catalog.models.fetch_scan_tasks_request import FetchScanTasksRequest
+from polaris.catalog.models.fetch_scan_tasks_result import FetchScanTasksResult
+from polaris.catalog.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = polaris.catalog.Configuration(
+    host = "https://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+configuration.access_token = os.environ["ACCESS_TOKEN"]
+
+# Configure Bearer authorization: BearerAuth
+configuration = polaris.catalog.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with polaris.catalog.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+    table = 'sales' # str | A table name
+    fetch_scan_tasks_request = polaris.catalog.FetchScanTasksRequest() # FetchScanTasksRequest |  (optional)
+
+    try:
+        # Fetches result tasks for a plan task
+        api_response = api_instance.fetch_scan_tasks(prefix, namespace, table, fetch_scan_tasks_request=fetch_scan_tasks_request)
+        print("The response of IcebergCatalogAPI->fetch_scan_tasks:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling IcebergCatalogAPI->fetch_scan_tasks: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
+ **table** | **str**| A table name | 
+ **fetch_scan_tasks_request** | [**FetchScanTasksRequest**](FetchScanTasksRequest.md)|  | [optional] 
+
+### Return type
+
+[**FetchScanTasksResult**](FetchScanTasksResult.md)
+
+### Authorization
+
+[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Result of retrieving additional plan tasks and file scan tasks. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**404** | Not Found - NoSuchPlanTaskException, the plan-task does not exist - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **list_namespaces**
 > ListNamespacesResponse list_namespaces(prefix, page_token=page_token, page_size=page_size, parent=parent)
 
 List namespaces, optionally providing a parent namespace to list underneath
 
-List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, [\"accounting\", \"tax\"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, [\"accounting\", \"tax\", \"paid\"]. If `parent` is not provided, all top-level namespaces should be listed.
+List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, ["accounting", "tax"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, ["accounting", "tax", "paid"]. If `parent` is not provided, all top-level namespaces should be listed.
 
 ### Example
 
@@ -969,6 +1278,98 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **load_credentials**
+> LoadCredentialsResponse load_credentials(prefix, namespace, table)
+
+Load vended credentials for a table from the catalog
+
+Load vended credentials for a table from the catalog.
+
+### Example
+
+* OAuth Authentication (OAuth2):
+* Bearer Authentication (BearerAuth):
+
+```python
+import polaris.catalog
+from polaris.catalog.models.load_credentials_response import LoadCredentialsResponse
+from polaris.catalog.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = polaris.catalog.Configuration(
+    host = "https://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+configuration.access_token = os.environ["ACCESS_TOKEN"]
+
+# Configure Bearer authorization: BearerAuth
+configuration = polaris.catalog.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with polaris.catalog.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+    table = 'sales' # str | A table name
+
+    try:
+        # Load vended credentials for a table from the catalog
+        api_response = api_instance.load_credentials(prefix, namespace, table)
+        print("The response of IcebergCatalogAPI->load_credentials:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling IcebergCatalogAPI->load_credentials: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
+ **table** | **str**| A table name | 
+
+### Return type
+
+[**LoadCredentialsResponse**](LoadCredentialsResponse.md)
+
+### Authorization
+
+[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Table credentials result when loading credentials for a table |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**404** | Not Found - NoSuchTableException, table to load credentials for does not exist |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **load_namespace_metadata**
 > GetNamespaceResponse load_namespace_metadata(prefix, namespace)
 
@@ -1060,11 +1461,17 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **load_table**
-> LoadTableResult load_table(prefix, namespace, table, x_iceberg_access_delegation=x_iceberg_access_delegation, snapshots=snapshots)
+> LoadTableResult load_table(prefix, namespace, table, x_iceberg_access_delegation=x_iceberg_access_delegation, if_none_match=if_none_match, snapshots=snapshots)
 
 Load a table from the catalog
 
-Load a table from the catalog.  The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.  The response also contains the table's full metadata, matching the table metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key \"token\" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
+Load a table from the catalog.
+
+The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.
+
+The response also contains the table's full metadata, matching the table metadata JSON file.
+
+The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key "token" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
 
 ### Example
 
@@ -1103,11 +1510,12 @@ with polaris.catalog.ApiClient(configuration) as api_client:
     namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
     table = 'sales' # str | A table name
     x_iceberg_access_delegation = 'vended-credentials,remote-signing' # str | Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module.  (optional)
+    if_none_match = 'if_none_match_example' # str | An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse. (optional)
     snapshots = 'snapshots_example' # str | The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`. (optional)
 
     try:
         # Load a table from the catalog
-        api_response = api_instance.load_table(prefix, namespace, table, x_iceberg_access_delegation=x_iceberg_access_delegation, snapshots=snapshots)
+        api_response = api_instance.load_table(prefix, namespace, table, x_iceberg_access_delegation=x_iceberg_access_delegation, if_none_match=if_none_match, snapshots=snapshots)
         print("The response of IcebergCatalogAPI->load_table:\n")
         pprint(api_response)
     except Exception as e:
@@ -1125,6 +1533,7 @@ Name | Type | Description  | Notes
  **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
  **table** | **str**| A table name | 
  **x_iceberg_access_delegation** | **str**| Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for &#x60;vended-credentials&#x60; is documented in the &#x60;LoadTableResult&#x60; schema section of this spec document.  The protocol and specification for &#x60;remote-signing&#x60; is documented in  the &#x60;s3-signer-open-api.yaml&#x60; OpenApi spec in the &#x60;aws&#x60; module.  | [optional] 
+ **if_none_match** | **str**| An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse. | [optional] 
  **snapshots** | **str**| The snapshots to return in the body of the metadata. Setting the value to &#x60;all&#x60; would return the full set of snapshots currently valid for the table. Setting the value to &#x60;refs&#x60; would load all snapshots referenced by branches or tags. Default if no param is provided is &#x60;all&#x60;. | [optional] 
 
 ### Return type
@@ -1144,7 +1553,8 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | Table metadata result when loading a table |  -  |
+**200** | Table metadata result when loading a table |  * etag -  <br>  |
+**304** | Not Modified - Based on the content of the &#39;If-None-Match&#39; header the table metadata has not changed since. |  -  |
 **400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
 **401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
 **403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
@@ -1160,7 +1570,13 @@ Name | Type | Description  | Notes
 
 Load a view from the catalog
 
-Load a view from the catalog.  The response contains both configuration and view metadata. The configuration, if non-empty is used as additional configuration for the view that overrides catalog configuration.  The response also contains the view's full metadata, matching the view metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the view. The configuration key \"token\" is used to pass an access token to be used as a bearer token for view requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
+Load a view from the catalog.
+
+The response contains both configuration and view metadata. The configuration, if non-empty is used as additional configuration for the view that overrides catalog configuration.
+
+The response also contains the view's full metadata, matching the view metadata JSON file.
+
+The catalog configuration may contain credentials that should be used for subsequent requests for the view. The configuration key "token" is used to pass an access token to be used as a bearer token for view requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
 
 ### Example
 
@@ -1334,6 +1750,125 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **plan_table_scan**
+> PlanTableScanResult plan_table_scan(prefix, namespace, table, plan_table_scan_request=plan_table_scan_request)
+
+Submit a scan for planning
+
+Submits a scan for server-side planning.
+
+Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.
+
+Responses must include a valid status listed below. A "cancelled" status is considered invalid for this endpoint.  
+- When "completed" the planning operation has produced plan tasks and
+  file scan tasks that must be returned in the response (not fetched
+  later by calling fetchPlanningResult)
+
+- When "submitted" the response must include a plan-id used to poll
+  fetchPlanningResult to fetch the planning result when it is ready
+
+- When "failed" the response must be a valid error response
+The response for a "completed" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.
+
+Responses that include a plan-id indicate that the service is holding state or performing work for the client.
+
+- Clients should use the plan-id to fetch results from
+  fetchPlanningResult when the response status is "submitted"
+
+- Clients should inform the service if planning results are no longer
+  needed by calling cancelPlanning. Cancellation is not necessary after
+  fetchScanTasks has been used to fetch scan tasks for each plan task.
+
+
+### Example
+
+* OAuth Authentication (OAuth2):
+* Bearer Authentication (BearerAuth):
+
+```python
+import polaris.catalog
+from polaris.catalog.models.plan_table_scan_request import PlanTableScanRequest
+from polaris.catalog.models.plan_table_scan_result import PlanTableScanResult
+from polaris.catalog.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to https://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = polaris.catalog.Configuration(
+    host = "https://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+configuration.access_token = os.environ["ACCESS_TOKEN"]
+
+# Configure Bearer authorization: BearerAuth
+configuration = polaris.catalog.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with polaris.catalog.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+    table = 'sales' # str | A table name
+    plan_table_scan_request = polaris.catalog.PlanTableScanRequest() # PlanTableScanRequest |  (optional)
+
+    try:
+        # Submit a scan for planning
+        api_response = api_instance.plan_table_scan(prefix, namespace, table, plan_table_scan_request=plan_table_scan_request)
+        print("The response of IcebergCatalogAPI->plan_table_scan:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling IcebergCatalogAPI->plan_table_scan: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
+ **table** | **str**| A table name | 
+ **plan_table_scan_request** | [**PlanTableScanRequest**](PlanTableScanRequest.md)|  | [optional] 
+
+### Return type
+
+[**PlanTableScanResult**](PlanTableScanResult.md)
+
+### Authorization
+
+[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Result of submitting a table scan to plan |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**404** | Not Found - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **register_table**
 > LoadTableResult register_table(prefix, namespace, register_table_request)
 
@@ -1416,7 +1951,7 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | Table metadata result when loading a table |  -  |
+**200** | Table metadata result when loading a table |  * etag -  <br>  |
 **400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
 **401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
 **403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
@@ -1797,96 +2332,6 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **send_notification**
-> send_notification(prefix, namespace, table, notification_request)
-
-Sends a notification to the table
-
-### Example
-
-* OAuth Authentication (OAuth2):
-* Bearer Authentication (BearerAuth):
-
-```python
-import polaris.catalog
-from polaris.catalog.models.notification_request import NotificationRequest
-from polaris.catalog.rest import ApiException
-from pprint import pprint
-
-# Defining the host is optional and defaults to https://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = polaris.catalog.Configuration(
-    host = "https://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-configuration.access_token = os.environ["ACCESS_TOKEN"]
-
-# Configure Bearer authorization: BearerAuth
-configuration = polaris.catalog.Configuration(
-    access_token = os.environ["BEARER_TOKEN"]
-)
-
-# Enter a context with an instance of the API client
-with polaris.catalog.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
-    prefix = 'prefix_example' # str | An optional prefix in the path
-    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
-    table = 'sales' # str | A table name
-    notification_request = polaris.catalog.NotificationRequest() # NotificationRequest | The request containing the notification to be sent
-
-    try:
-        # Sends a notification to the table
-        api_instance.send_notification(prefix, namespace, table, notification_request)
-    except Exception as e:
-        print("Exception when calling IcebergCatalogAPI->send_notification: %s\n" % e)
-```
-
-
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **prefix** | **str**| An optional prefix in the path | 
- **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
- **table** | **str**| A table name | 
- **notification_request** | [**NotificationRequest**](NotificationRequest.md)| The request containing the notification to be sent | 
-
-### Return type
-
-void (empty response body)
-
-### Authorization
-
-[OAuth2](../README.md#OAuth2), [BearerAuth](../README.md#BearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**204** | Success, no content |  -  |
-**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
-**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
-**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
-**404** | Not Found - NoSuchTableException, table to load does not exist |  -  |
-**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
-**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
-**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
 # **table_exists**
 > table_exists(prefix, namespace, table)
 
@@ -1981,7 +2426,9 @@ void (empty response body)
 
 Set or remove properties on a namespace
 
-Set and/or remove properties on a namespace. The request body specifies a list of properties to remove and a map of key value pairs to update. Properties that are not in the request are not modified or removed by this call. Server implementations are not required to support namespace properties.
+Set and/or remove properties on a namespace. The request body specifies a list of properties to remove and a map of key value pairs to update.
+Properties that are not in the request are not modified or removed by this call.
+Server implementations are not required to support namespace properties.
 
 ### Example
 
@@ -2076,7 +2523,13 @@ Name | Type | Description  | Notes
 
 Commit updates to a table
 
-Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
+Commit updates to a table.
+
+Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.
+
+Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.
+
+Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
 
 ### Example
 

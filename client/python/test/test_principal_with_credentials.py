@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestPrincipalWithCredentials(unittest.TestCase):
 
     def make_instance(self, include_optional) -> PrincipalWithCredentials:
         """Test PrincipalWithCredentials
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `PrincipalWithCredentials`
@@ -54,8 +55,7 @@ class TestPrincipalWithCredentials(unittest.TestCase):
         if include_optional:
             return PrincipalWithCredentials(
                 principal = polaris.management.models.principal.Principal(
-                    type = 'SERVICE', 
-                    name = '', 
+                    name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
                     client_id = '', 
                     properties = {
                         'key' : ''
@@ -70,8 +70,7 @@ class TestPrincipalWithCredentials(unittest.TestCase):
         else:
             return PrincipalWithCredentials(
                 principal = polaris.management.models.principal.Principal(
-                    type = 'SERVICE', 
-                    name = '', 
+                    name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
                     client_id = '', 
                     properties = {
                         'key' : ''

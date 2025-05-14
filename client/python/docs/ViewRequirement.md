@@ -20,11 +20,13 @@
 -->
 # ViewRequirement
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **type** | **str** |  | 
+**uuid** | **str** |  | 
 
 ## Example
 

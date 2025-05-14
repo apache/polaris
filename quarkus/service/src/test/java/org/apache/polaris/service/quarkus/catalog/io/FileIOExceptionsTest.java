@@ -26,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
@@ -43,6 +45,7 @@ import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -53,15 +56,27 @@ public class FileIOExceptionsTest {
       new Schema(required(3, "id", Types.IntegerType.get(), "unique ID"));
 
   private static final String catalog = "test-catalog";
-  private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
 
   private static TestServices services;
   private static MeasuredFileIOFactory ioFactory;
 
   @BeforeAll
-  public static void beforeAll() {
-    services = TestServices.builder().build();
+  public static void beforeAll(@TempDir Path tempDir) {
+    services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3")))
+            .build();
     ioFactory = (MeasuredFileIOFactory) services.fileIOFactory();
+
+    String catalogBaseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (catalogBaseLocation.endsWith("/")) {
+      catalogBaseLocation = catalogBaseLocation.substring(0, catalogBaseLocation.length() - 1);
+    }
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()

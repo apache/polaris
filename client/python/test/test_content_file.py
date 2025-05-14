@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestContentFile(unittest.TestCase):
 
     def make_instance(self, include_optional) -> ContentFile:
         """Test ContentFile
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `ContentFile`
@@ -57,7 +58,7 @@ class TestContentFile(unittest.TestCase):
                 file_path = '',
                 file_format = 'avro',
                 spec_id = 56,
-                partition = [1,"bar"],
+                partition = [1, bar],
                 file_size_in_bytes = 56,
                 record_count = 56,
                 key_metadata = '78797A',
@@ -72,6 +73,7 @@ class TestContentFile(unittest.TestCase):
                 file_path = '',
                 file_format = 'avro',
                 spec_id = 56,
+                partition = [1, bar],
                 file_size_in_bytes = 56,
                 record_count = 56,
         )

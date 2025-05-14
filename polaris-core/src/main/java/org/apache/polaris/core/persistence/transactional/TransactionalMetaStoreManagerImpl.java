@@ -192,10 +192,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntitiesInCurrentTxn(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity originalEntity : entities) {
-      PolarisBaseEntity entityGrantChanged =
-          new PolarisBaseEntity.Builder(originalEntity)
-              .grantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1)
-              .build();
+      PolarisBaseEntity entityGrantChanged = originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion()+1);
       ms.writeEntityInCurrentTxn(callCtx, entityGrantChanged, false, originalEntity);
     }
 
@@ -207,7 +204,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         final List<PolarisPolicyMappingRecord> mappingOnPolicy =
             (entity.getType() == PolarisEntityType.POLICY)
                 ? ms.loadAllTargetsOnPolicyInCurrentTxn(
-                    callCtx, entity.getCatalogId(), entity.getId())
+                    callCtx,
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolicyEntity.of(entity).getPolicyTypeCode())
                 : List.of();
         final List<PolarisPolicyMappingRecord> mappingOnTarget =
             (entity.getType() == PolarisEntityType.POLICY)
@@ -289,10 +289,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         .getDiagServices()
         .checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedGranteeEntity =
-        new PolarisBaseEntity.Builder(granteeEntity)
-            .grantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedGranteeEntity = granteeEntity.withGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
     ms.writeEntityInCurrentTxn(callCtx, updatedGranteeEntity, false, granteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
@@ -373,10 +370,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         .checkNotNull(
             refreshGrantee, "missing_grantee", "grantRecord={} grantee={}", grantRecord, grantee);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedRefreshGrantee =
-        new PolarisBaseEntity.Builder(refreshGrantee)
-            .grantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedRefreshGrantee = refreshGrantee.withGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
     ms.writeEntityInCurrentTxn(callCtx, updatedRefreshGrantee, false, refreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
@@ -393,10 +387,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             grantRecord,
             securable);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedRefreshSecurable =
-        new PolarisBaseEntity.Builder(refreshSecurable)
-            .grantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedRefreshSecurable = refreshSecurable.withGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() +1);
     ms.writeEntityInCurrentTxn(callCtx, updatedRefreshSecurable, false, refreshSecurable);
 
     // TODO: Update this to be an atomic bulk-update of the grantee/securable, ideally along
@@ -1407,7 +1398,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       try {
         List<PolarisPolicyMappingRecord> records =
             ms.loadAllTargetsOnPolicyInCurrentTxn(
-                callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                PolicyEntity.of(refreshEntityToDrop).getPolicyTypeCode());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
         }
@@ -1959,7 +1953,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   callCtx
                       .getConfigurationStore()
                       .getConfiguration(
-                          callCtx,
+                          callCtx.getRealmContext(),
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
@@ -2455,7 +2449,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /** See {@link #loadPoliciesOnEntityByType(PolarisCallContext, PolarisEntityCore, PolicyType)} */
-  public LoadPolicyMappingsResult doLoadPoliciesOnEntityByType(
+  private LoadPolicyMappingsResult doLoadPoliciesOnEntityByType(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore target,

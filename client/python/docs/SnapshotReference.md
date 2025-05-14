@@ -20,6 +20,7 @@
 -->
 # SnapshotReference
 
+
 ## Properties
 
 Name | Type | Description | Notes

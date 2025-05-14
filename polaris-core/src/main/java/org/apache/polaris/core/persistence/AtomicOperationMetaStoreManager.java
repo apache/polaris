@@ -203,7 +203,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       try {
         final List<PolarisPolicyMappingRecord> mappingOnPolicy =
             (entity.getType() == PolarisEntityType.POLICY)
-                ? ms.loadAllTargetsOnPolicy(callCtx, entity.getCatalogId(), entity.getId())
+                ? ms.loadAllTargetsOnPolicy(
+                    callCtx,
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolicyEntity.of(entity).getPolicyTypeCode())
                 : List.of();
         final List<PolarisPolicyMappingRecord> mappingOnTarget =
             (entity.getType() == PolarisEntityType.POLICY)
@@ -232,10 +236,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity originalEntity : entities) {
-      PolarisBaseEntity entityGrantChanged =
-          new PolarisBaseEntity.Builder(originalEntity)
-              .grantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1)
-              .build();
+      PolarisBaseEntity entityGrantChanged = originalEntity.withGrantRecordsVersion(originalEntity.getEntityVersion() + 1);
       ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
     }
 
@@ -301,10 +302,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         .getDiagServices()
         .checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedGranteeEntity =
-        new PolarisBaseEntity.Builder(granteeEntity)
-            .grantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedGranteeEntity =  granteeEntity.withGrantRecordsVersion(granteeEntity.getEntityVersion() + 1);
     ms.writeEntity(callCtx, updatedGranteeEntity, false, granteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
@@ -316,10 +314,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         .getDiagServices()
         .checkNotNull(securableEntity, "securable_not_found", "securable={}", securable);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedSecurableEntity =
-        new PolarisBaseEntity.Builder(securableEntity)
-            .grantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedSecurableEntity = securableEntity.withGrantRecordsVersion(securable.getEntityVersion() + 1);
     ms.writeEntity(callCtx, updatedSecurableEntity, false, securableEntity);
 
     // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
@@ -388,10 +383,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         .checkNotNull(
             refreshGrantee, "missing_grantee", "grantRecord={} grantee={}", grantRecord, grantee);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedRefreshGrantee =
-        new PolarisBaseEntity.Builder(refreshGrantee)
-            .grantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedRefreshGrantee = refreshGrantee.withGrantRecordsVersion(refreshGrantee.getEntityVersion() + 1);
     ms.writeEntity(callCtx, updatedRefreshGrantee, false, refreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
@@ -408,10 +400,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             grantRecord,
             securable);
     // grants have changed, we need to bump-up the grants version
-    PolarisBaseEntity updatedRefreshSecurable =
-        new PolarisBaseEntity.Builder(refreshSecurable)
-            .grantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1)
-            .build();
+    PolarisBaseEntity updatedRefreshSecurable = refreshSecurable.withGrantRecordsVersion(refreshSecurable.getEntityVersion() + 1);
     ms.writeEntity(callCtx, updatedRefreshSecurable, false, refreshSecurable);
 
     // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
@@ -1211,7 +1200,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         //  need to check if the policy is attached to any entity
         List<PolarisPolicyMappingRecord> records =
             ms.loadAllTargetsOnPolicy(
-                callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                PolicyEntity.of(refreshEntityToDrop).getPolicyTypeCode());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
         }
@@ -1511,7 +1503,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   callCtx
                       .getConfigurationStore()
                       .getConfiguration(
-                          callCtx,
+                          callCtx.getRealmContext(),
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null

@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,31 +36,37 @@ import json
 import pprint
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, field_validator
 from typing import Any, List, Optional
+from polaris.catalog.models.false_expression import FalseExpression
 from polaris.catalog.models.literal_expression import LiteralExpression
 from polaris.catalog.models.set_expression import SetExpression
+from polaris.catalog.models.true_expression import TrueExpression
 from polaris.catalog.models.unary_expression import UnaryExpression
 from pydantic import StrictStr, Field
 from typing import Union, List, Set, Optional, Dict
 from typing_extensions import Literal, Self
 
-EXPRESSION_ONE_OF_SCHEMAS = ["AndOrExpression", "LiteralExpression", "NotExpression", "SetExpression", "UnaryExpression"]
+EXPRESSION_ONE_OF_SCHEMAS = ["AndOrExpression", "FalseExpression", "LiteralExpression", "NotExpression", "SetExpression", "TrueExpression", "UnaryExpression"]
 
 class Expression(BaseModel):
     """
     Expression
     """
+    # data type: TrueExpression
+    oneof_schema_1_validator: Optional[TrueExpression] = None
+    # data type: FalseExpression
+    oneof_schema_2_validator: Optional[FalseExpression] = None
     # data type: AndOrExpression
-    oneof_schema_1_validator: Optional[AndOrExpression] = None
+    oneof_schema_3_validator: Optional[AndOrExpression] = None
     # data type: NotExpression
-    oneof_schema_2_validator: Optional[NotExpression] = None
+    oneof_schema_4_validator: Optional[NotExpression] = None
     # data type: SetExpression
-    oneof_schema_3_validator: Optional[SetExpression] = None
+    oneof_schema_5_validator: Optional[SetExpression] = None
     # data type: LiteralExpression
-    oneof_schema_4_validator: Optional[LiteralExpression] = None
+    oneof_schema_6_validator: Optional[LiteralExpression] = None
     # data type: UnaryExpression
-    oneof_schema_5_validator: Optional[UnaryExpression] = None
-    actual_instance: Optional[Union[AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression]] = None
-    one_of_schemas: Set[str] = { "AndOrExpression", "LiteralExpression", "NotExpression", "SetExpression", "UnaryExpression" }
+    oneof_schema_7_validator: Optional[UnaryExpression] = None
+    actual_instance: Optional[Union[AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression]] = None
+    one_of_schemas: Set[str] = { "AndOrExpression", "FalseExpression", "LiteralExpression", "NotExpression", "SetExpression", "TrueExpression", "UnaryExpression" }
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -82,6 +89,16 @@ class Expression(BaseModel):
         instance = Expression.model_construct()
         error_messages = []
         match = 0
+        # validate data type: TrueExpression
+        if not isinstance(v, TrueExpression):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `TrueExpression`")
+        else:
+            match += 1
+        # validate data type: FalseExpression
+        if not isinstance(v, FalseExpression):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `FalseExpression`")
+        else:
+            match += 1
         # validate data type: AndOrExpression
         if not isinstance(v, AndOrExpression):
             error_messages.append(f"Error! Input type `{type(v)}` is not `AndOrExpression`")
@@ -109,10 +126,10 @@ class Expression(BaseModel):
             match += 1
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when setting `actual_instance` in Expression with oneOf schemas: AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when setting `actual_instance` in Expression with oneOf schemas: AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when setting `actual_instance` in Expression with oneOf schemas: AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when setting `actual_instance` in Expression with oneOf schemas: AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression. Details: " + ", ".join(error_messages))
         else:
             return v
 
@@ -127,6 +144,18 @@ class Expression(BaseModel):
         error_messages = []
         match = 0
 
+        # deserialize data into TrueExpression
+        try:
+            instance.actual_instance = TrueExpression.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into FalseExpression
+        try:
+            instance.actual_instance = FalseExpression.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
         # deserialize data into AndOrExpression
         try:
             instance.actual_instance = AndOrExpression.from_json(json_str)
@@ -160,10 +189,10 @@ class Expression(BaseModel):
 
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when deserializing the JSON string into Expression with oneOf schemas: AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when deserializing the JSON string into Expression with oneOf schemas: AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when deserializing the JSON string into Expression with oneOf schemas: AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when deserializing the JSON string into Expression with oneOf schemas: AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression. Details: " + ", ".join(error_messages))
         else:
             return instance
 
@@ -177,7 +206,7 @@ class Expression(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Optional[Union[Dict[str, Any], AndOrExpression, LiteralExpression, NotExpression, SetExpression, UnaryExpression]]:
+    def to_dict(self) -> Optional[Union[Dict[str, Any], AndOrExpression, FalseExpression, LiteralExpression, NotExpression, SetExpression, TrueExpression, UnaryExpression]]:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None

@@ -60,7 +60,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
-import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
@@ -68,6 +67,7 @@ import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfigu
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
+import org.apache.polaris.service.quarkus.context.RealmContextFilter;
 import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
@@ -121,7 +121,7 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public PolarisCallContext polarisCallContext(
+  public CallContext polarisCallContext(
       RealmContext realmContext,
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
@@ -129,17 +129,8 @@ public class QuarkusProducers {
       Clock clock) {
     BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    return new PolarisCallContext(metaStoreSession, diagServices, configurationStore, clock);
-  }
-
-  @Produces
-  @RequestScoped
-  public CallContext callContext(RealmContext realmContext, PolarisCallContext polarisCallContext) {
-    return CallContext.of(realmContext, polarisCallContext);
-  }
-
-  public void closeCallContext(@Disposes CallContext callContext) {
-    callContext.close();
+    return new PolarisCallContext(
+        realmContext, metaStoreSession, diagServices, configurationStore, clock);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

@@ -106,12 +106,14 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
           "true",
           "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
+          "[\"FILE\",\"S3\"]",
           "polaris.event-listener.type",
-          "test");
+          "test",
+          "polaris.readiness.ignore-severe-issues",
+          "true");
     }
   }
 
@@ -162,11 +164,13 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
@@ -178,8 +182,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
 
-    CallContext callContext = CallContext.of(realmContext, polarisContext);
-    CallContext.setCurrentContext(callContext);
+    CallContext.setCurrentContext(polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -203,7 +206,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     PolarisAdminService adminService =
         new PolarisAdminService(
-            callContext,
+            polarisContext,
             entityManager,
             metaStoreManager,
             userSecretsManager,
@@ -218,6 +221,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                 .setDefaultBaseLocation("file://tmp")
                 .setStorageConfigurationInfo(
                     new FileStorageConfigInfo(
@@ -228,7 +232,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
+            polarisContext, entityManager, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
             new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
@@ -238,7 +242,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
         new IcebergCatalog(
             entityManager,
             metaStoreManager,
-            callContext,
+            polarisContext,
             passthroughView,
             securityContext,
             Mockito.mock(),

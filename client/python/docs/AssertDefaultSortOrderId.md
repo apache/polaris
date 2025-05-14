@@ -26,7 +26,7 @@ The table's default sort order id must match the requirement's `default-sort-ord
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **default_sort_order_id** | **int** |  | 
 
 ## Example

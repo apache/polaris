@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -73,9 +74,9 @@ class TableMetadata(BaseModel):
     last_sequence_number: Optional[StrictInt] = Field(default=None, alias="last-sequence-number")
     snapshot_log: Optional[List[SnapshotLogInner]] = Field(default=None, alias="snapshot-log")
     metadata_log: Optional[List[MetadataLogInner]] = Field(default=None, alias="metadata-log")
-    statistics_files: Optional[List[StatisticsFile]] = Field(default=None, alias="statistics-files")
-    partition_statistics_files: Optional[List[PartitionStatisticsFile]] = Field(default=None, alias="partition-statistics-files")
-    __properties: ClassVar[List[str]] = ["format-version", "table-uuid", "location", "last-updated-ms", "properties", "schemas", "current-schema-id", "last-column-id", "partition-specs", "default-spec-id", "last-partition-id", "sort-orders", "default-sort-order-id", "snapshots", "refs", "current-snapshot-id", "last-sequence-number", "snapshot-log", "metadata-log", "statistics-files", "partition-statistics-files"]
+    statistics: Optional[List[StatisticsFile]] = None
+    partition_statistics: Optional[List[PartitionStatisticsFile]] = Field(default=None, alias="partition-statistics")
+    __properties: ClassVar[List[str]] = ["format-version", "table-uuid", "location", "last-updated-ms", "properties", "schemas", "current-schema-id", "last-column-id", "partition-specs", "default-spec-id", "last-partition-id", "sort-orders", "default-sort-order-id", "snapshots", "refs", "current-snapshot-id", "last-sequence-number", "snapshot-log", "metadata-log", "statistics", "partition-statistics"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -119,66 +120,66 @@ class TableMetadata(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in schemas (list)
         _items = []
         if self.schemas:
-            for _item in self.schemas:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_schemas in self.schemas:
+                if _item_schemas:
+                    _items.append(_item_schemas.to_dict())
             _dict['schemas'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in partition_specs (list)
         _items = []
         if self.partition_specs:
-            for _item in self.partition_specs:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_partition_specs in self.partition_specs:
+                if _item_partition_specs:
+                    _items.append(_item_partition_specs.to_dict())
             _dict['partition-specs'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in sort_orders (list)
         _items = []
         if self.sort_orders:
-            for _item in self.sort_orders:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_sort_orders in self.sort_orders:
+                if _item_sort_orders:
+                    _items.append(_item_sort_orders.to_dict())
             _dict['sort-orders'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in snapshots (list)
         _items = []
         if self.snapshots:
-            for _item in self.snapshots:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_snapshots in self.snapshots:
+                if _item_snapshots:
+                    _items.append(_item_snapshots.to_dict())
             _dict['snapshots'] = _items
         # override the default output from pydantic by calling `to_dict()` of each value in refs (dict)
         _field_dict = {}
         if self.refs:
-            for _key in self.refs:
-                if self.refs[_key]:
-                    _field_dict[_key] = self.refs[_key].to_dict()
+            for _key_refs in self.refs:
+                if self.refs[_key_refs]:
+                    _field_dict[_key_refs] = self.refs[_key_refs].to_dict()
             _dict['refs'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each item in snapshot_log (list)
         _items = []
         if self.snapshot_log:
-            for _item in self.snapshot_log:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_snapshot_log in self.snapshot_log:
+                if _item_snapshot_log:
+                    _items.append(_item_snapshot_log.to_dict())
             _dict['snapshot-log'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in metadata_log (list)
         _items = []
         if self.metadata_log:
-            for _item in self.metadata_log:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_metadata_log in self.metadata_log:
+                if _item_metadata_log:
+                    _items.append(_item_metadata_log.to_dict())
             _dict['metadata-log'] = _items
-        # override the default output from pydantic by calling `to_dict()` of each item in statistics_files (list)
+        # override the default output from pydantic by calling `to_dict()` of each item in statistics (list)
         _items = []
-        if self.statistics_files:
-            for _item in self.statistics_files:
-                if _item:
-                    _items.append(_item.to_dict())
-            _dict['statistics-files'] = _items
-        # override the default output from pydantic by calling `to_dict()` of each item in partition_statistics_files (list)
+        if self.statistics:
+            for _item_statistics in self.statistics:
+                if _item_statistics:
+                    _items.append(_item_statistics.to_dict())
+            _dict['statistics'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in partition_statistics (list)
         _items = []
-        if self.partition_statistics_files:
-            for _item in self.partition_statistics_files:
-                if _item:
-                    _items.append(_item.to_dict())
-            _dict['partition-statistics-files'] = _items
+        if self.partition_statistics:
+            for _item_partition_statistics in self.partition_statistics:
+                if _item_partition_statistics:
+                    _items.append(_item_partition_statistics.to_dict())
+            _dict['partition-statistics'] = _items
         return _dict
 
     @classmethod
@@ -215,8 +216,8 @@ class TableMetadata(BaseModel):
             "last-sequence-number": obj.get("last-sequence-number"),
             "snapshot-log": [SnapshotLogInner.from_dict(_item) for _item in obj["snapshot-log"]] if obj.get("snapshot-log") is not None else None,
             "metadata-log": [MetadataLogInner.from_dict(_item) for _item in obj["metadata-log"]] if obj.get("metadata-log") is not None else None,
-            "statistics-files": [StatisticsFile.from_dict(_item) for _item in obj["statistics-files"]] if obj.get("statistics-files") is not None else None,
-            "partition-statistics-files": [PartitionStatisticsFile.from_dict(_item) for _item in obj["partition-statistics-files"]] if obj.get("partition-statistics-files") is not None else None
+            "statistics": [StatisticsFile.from_dict(_item) for _item in obj["statistics"]] if obj.get("statistics") is not None else None,
+            "partition-statistics": [PartitionStatisticsFile.from_dict(_item) for _item in obj["partition-statistics"]] if obj.get("partition-statistics") is not None else None
         })
         return _obj
 

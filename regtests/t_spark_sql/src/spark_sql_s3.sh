@@ -28,7 +28,7 @@ SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 set -x
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d "{\"name\": \"spark_sql_s3_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"${AWS_TEST_BASE}/polaris_test/spark_sql_s3_catalog\"}, \"storageConfigInfo\": {\"storageType\": \"S3\", \"allowedLocations\": [\"${AWS_TEST_BASE}/polaris_test/\"], \"roleArn\": \"${AWS_ROLE_ARN}\"}}" > /dev/stderr
+  -d "{\"name\": \"spark_sql_s3_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"${AWS_TEST_BASE}/polaris_test/spark_sql_s3_catalog\", \"drop-with-purge.enabled\": \"true\"}, \"storageConfigInfo\": {\"storageType\": \"S3\", \"allowedLocations\": [\"${AWS_TEST_BASE}/polaris_test/\"], \"roleArn\": \"${AWS_ROLE_ARN}\"}}" > /dev/stderr
 set +x
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \

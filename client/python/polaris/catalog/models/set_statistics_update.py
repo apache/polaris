@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.base_update import BaseUpdate
 from polaris.catalog.models.statistics_file import StatisticsFile
 from typing import Optional, Set
@@ -46,17 +47,10 @@ class SetStatisticsUpdate(BaseUpdate):
     """
     SetStatisticsUpdate
     """ # noqa: E501
-    action: StrictStr
-    snapshot_id: StrictInt = Field(alias="snapshot-id")
+    action: Optional[StrictStr] = None
+    snapshot_id: Optional[StrictInt] = Field(default=None, description="This optional field is **DEPRECATED for REMOVAL** since it contains redundant information. Clients should use the `statistics.snapshot-id` field instead.", alias="snapshot-id")
     statistics: StatisticsFile
     __properties: ClassVar[List[str]] = ["action"]
-
-    @field_validator('action')
-    def action_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['set-statistics']):
-            raise ValueError("must be one of enum values ('set-statistics')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

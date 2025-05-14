@@ -19,7 +19,7 @@
 package org.apache.polaris.core.secrets;
 
 import jakarta.annotation.Nonnull;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
@@ -54,12 +54,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.
     // A production implementation will typically use a standard crypto library if applicable.
-    byte[] secretBytes;
-    try {
-      secretBytes = secret.getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
+    byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
     byte[] oneTimeKey = new byte[secretBytes.length];
     byte[] cipherTextBytes = new byte[secretBytes.length];
 
@@ -143,11 +138,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
       secretBytes[i] = (byte) (cipherTextBytes[i] ^ oneTimeKey[i]);
     }
 
-    try {
-      return new String(secretBytes, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
+    return new String(secretBytes, StandardCharsets.UTF_8);
   }
 
   /** {@inheritDoc} */

@@ -20,11 +20,12 @@
 -->
 # AddPartitionSpecUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **spec** | [**PartitionSpec**](PartitionSpec.md) |  | 
 
 ## Example

@@ -30,7 +30,7 @@
 
   // Added for posterity how to let Renovate manage version-branches, assuming that release branches
   // have the `release/` prefix.
-  baseBranches: ["main", "/^release\\/.*/"],
+  baseBranches: ["main"],
   additionalBranchPrefix: "{{baseBranch}}/",
   commitMessagePrefix: "{{baseBranch}}: ",
 

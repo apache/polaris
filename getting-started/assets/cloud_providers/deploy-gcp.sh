@@ -39,7 +39,7 @@ gcloud sql databases create POLARIS --instance=$DB_INSTANCE_NAME
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
 export QUARKUS_DATASOURCE_PASSWORD=postgres
-echo ($QUARKUS_DATASOURCE_JDBC_URL)
+echo $QUARKUS_DATASOURCE_JDBC_URL
 
 GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"
 echo "GCS Bucket Name: $GCS_BUCKET_NAME"
@@ -52,4 +52,4 @@ export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
+docker compose -p polaris -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d

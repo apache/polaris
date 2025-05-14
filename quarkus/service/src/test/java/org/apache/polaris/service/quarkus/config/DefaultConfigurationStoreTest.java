@@ -20,23 +20,18 @@ package org.apache.polaris.service.quarkus.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.time.Clock;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.FeaturesConfiguration;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -44,9 +39,14 @@ import org.junit.jupiter.api.TestInfo;
 @QuarkusTest
 @TestProfile(DefaultConfigurationStoreTest.Profile.class)
 public class DefaultConfigurationStoreTest {
+  // the key whose value is set to `false` for all realms
   private static final String falseByDefaultKey = "ALLOW_SPECIFYING_FILE_IO_IMPL";
+  // the key whose value is set to `true` for all realms
   private static final String trueByDefaultKey = "ENABLE_GENERIC_TABLES";
   private static final String realmOne = "realm1";
+  private static final String realmTwo = "realm2";
+  private static final RealmContext realmOneContext = () -> realmOne;
+  private static final RealmContext realmTwoContext = () -> realmTwo;
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -55,21 +55,22 @@ public class DefaultConfigurationStoreTest {
       return Map.of(
           "polaris.realm-context.realms",
           "realm1,realm2",
-          String.format("polaris.features.\"%s\"", falseByDefaultKey),
-          "true",
           String.format("polaris.features.\"%s\"", trueByDefaultKey),
+          "true",
+          String.format("polaris.features.\"%s\"", falseByDefaultKey),
           "false",
           String.format(
               "polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, falseByDefaultKey),
+          "true",
+          String.format(
+              "polaris.features.realm-overrides.\"%s\".\"%s\"", realmTwo, trueByDefaultKey),
           "false");
     }
   }
 
-  private PolarisCallContext polarisContext;
+  private RealmContext realmContext;
 
-  @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagServices;
   @Inject FeaturesConfiguration featuresConfiguration;
 
   @BeforeEach
@@ -79,138 +80,79 @@ public class DefaultConfigurationStoreTest {
             .formatted(
                 testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
                 System.nanoTime());
-    RealmContext realmContext = () -> realmName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    polarisContext =
-        new PolarisCallContext(
-            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+    realmContext = () -> realmName;
   }
 
   @Test
   public void testGetConfiguration() {
-    DefaultConfigurationStore defaultConfigurationStore =
-        new DefaultConfigurationStore(Map.of("key1", 1, "key2", "value"));
-    InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    PolarisCallContext callCtx =
-        new PolarisCallContext(
-            metastoreFactory.getOrCreateSessionSupplier(() -> "realm1").get(),
-            new PolarisDefaultDiagServiceImpl());
-    Object value = defaultConfigurationStore.getConfiguration(callCtx, "missingKeyWithoutDefault");
+    Object value = configurationStore.getConfiguration(realmContext, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
-        defaultConfigurationStore.getConfiguration(
-            callCtx, "missingKeyWithDefault", "defaultValue");
+        configurationStore.getConfiguration(realmContext, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
-    Integer keyOne = defaultConfigurationStore.getConfiguration(callCtx, "key1");
-    assertThat(keyOne).isEqualTo(1);
-    String keyTwo = defaultConfigurationStore.getConfiguration(callCtx, "key2");
-    assertThat(keyTwo).isEqualTo("value");
+
+    // the falseByDefaultKey is set to false for all realms in Profile.getConfigOverrides
+    assertThat((Boolean) configurationStore.getConfiguration(realmContext, falseByDefaultKey))
+        .isFalse();
+    // the trueByDefaultKey is set to true for all realms in Profile.getConfigOverrides
+    assertThat((Boolean) configurationStore.getConfiguration(realmContext, trueByDefaultKey))
+        .isTrue();
   }
 
   @Test
   public void testGetRealmConfiguration() {
-    int defaultKeyOneValue = 1;
-    String defaultKeyTwoValue = "value";
+    // check the realmOne configuration
+    // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
+    // realmOne.
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, falseByDefaultKey))
+        .isTrue();
+    // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, trueByDefaultKey))
+        .isTrue();
 
-    int realm1KeyOneValue = 2;
-    int realm2KeyOneValue = 3;
-    String realm2KeyTwoValue = "value3";
-    DefaultConfigurationStore defaultConfigurationStore =
-        new DefaultConfigurationStore(
-            Map.of("key1", defaultKeyOneValue, "key2", defaultKeyTwoValue),
-            Map.of(
-                "realm1",
-                Map.of("key1", realm1KeyOneValue),
-                "realm2",
-                Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)));
-    InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-
-    // check realm1 values
-    PolarisCallContext realm1Ctx =
-        new PolarisCallContext(
-            metastoreFactory.getOrCreateSessionSupplier(() -> "realm1").get(),
-            new PolarisDefaultDiagServiceImpl());
-    Object value =
-        defaultConfigurationStore.getConfiguration(realm1Ctx, "missingKeyWithoutDefault");
-    assertThat(value).isNull();
-    Object defaultValue =
-        defaultConfigurationStore.getConfiguration(
-            realm1Ctx, "missingKeyWithDefault", "defaultValue");
-    assertThat(defaultValue).isEqualTo("defaultValue");
-    CallContext.setCurrentContext(CallContext.of(() -> "realm1", realm1Ctx));
-    Integer keyOneRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key1");
-    assertThat(keyOneRealm1).isEqualTo(realm1KeyOneValue);
-    String keyTwoRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key2");
-    assertThat(keyTwoRealm1).isEqualTo(defaultKeyTwoValue);
-
-    // check realm2 values
-    PolarisCallContext realm2Ctx =
-        new PolarisCallContext(
-            metastoreFactory.getOrCreateSessionSupplier(() -> "realm2").get(),
-            new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(CallContext.of(() -> "realm2", realm2Ctx));
-    Integer keyOneRealm2 = defaultConfigurationStore.getConfiguration(realm2Ctx, "key1");
-    assertThat(keyOneRealm2).isEqualTo(realm2KeyOneValue);
-    String keyTwoRealm2 = defaultConfigurationStore.getConfiguration(realm2Ctx, "key2");
-    assertThat(keyTwoRealm2).isEqualTo(realm2KeyTwoValue);
-
-    // realm3 has no realm-overrides, so just returns default values
-    PolarisCallContext realm3Ctx =
-        new PolarisCallContext(
-            metastoreFactory.getOrCreateSessionSupplier(() -> "realm3").get(),
-            new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(CallContext.of(() -> "realm3", realm3Ctx));
-    Integer keyOneRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key1");
-    assertThat(keyOneRealm3).isEqualTo(defaultKeyOneValue);
-    String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key2");
-    assertThat(keyTwoRealm3).isEqualTo(defaultKeyTwoValue);
+    // check the realmTwo configuration
+    // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey))
+        .isFalse();
+    // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
+    // realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, trueByDefaultKey))
+        .isFalse();
   }
 
-  // TODO simplify once DefaultConfigrationStore doesn't rely on CallContext.getCurrentContext
-  private void setCurrentRealm(String realmName) {
-    RealmContext realmContext = () -> realmName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    CallContext.setCurrentContext(
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return realmContext;
-          }
+  @Test
+  void testGetConfigurationWithRealm() {
+    // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
+    // realmOne.
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, falseByDefaultKey))
+        .isTrue();
+    // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, trueByDefaultKey))
+        .isTrue();
 
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return CallContext.getCurrentContext().getPolarisCallContext();
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return CallContext.getCurrentContext().contextVariables();
-          }
-        });
+    // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey))
+        .isFalse();
+    // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
+    // realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, trueByDefaultKey))
+        .isFalse();
   }
 
   @Test
   public void testInjectedConfigurationStore() {
-    // Feature override makes this `false`
-    boolean featureOverrideValue =
-        configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
-    assertThat(featureOverrideValue).isFalse();
+    // the default value for trueByDefaultKey is `true`
+    Boolean featureDefaultValue =
+        configurationStore.getConfiguration(realmContext, trueByDefaultKey);
+    assertThat(featureDefaultValue).isTrue();
 
-    // Feature override value makes this `true`
-    setCurrentRealm("not-" + realmOne);
-    boolean realmOverrideValue =
-        configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
-    assertThat(realmOverrideValue).isTrue();
+    // the value for falseByDefaultKey is `false`, and no realm override for realmTwo
+    Boolean realmTwoValue = configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey);
+    assertThat(realmTwoValue).isFalse();
 
-    // Now, realm override value makes this `false`
-    setCurrentRealm(realmOne);
-    realmOverrideValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
-    assertThat(realmOverrideValue).isFalse();
+    // Now, realmOne override falseByDefaultKey to `True`
+    Boolean realmOneValue = configurationStore.getConfiguration(realmOneContext, falseByDefaultKey);
+    assertThat(realmOneValue).isTrue();
 
     assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
   }
@@ -223,11 +165,56 @@ public class DefaultConfigurationStoreTest {
         .containsKeys(falseByDefaultKey, trueByDefaultKey)
         .allSatisfy((key, value) -> assertThat(value).doesNotContain(realmOne));
 
-    assertThat(featuresConfiguration.realmOverrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides()).hasSize(2);
     assertThat(featuresConfiguration.realmOverrides()).containsKey(realmOne);
 
     assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides()).hasSize(1);
     assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides())
         .containsKey(falseByDefaultKey);
+
+    assertThat(featuresConfiguration.realmOverrides().get(realmTwo).overrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides().get(realmTwo).overrides())
+        .containsKey(trueByDefaultKey);
+  }
+
+  @Test
+  public void testRegisterAndUseFeatureConfigurations() {
+    String prefix = "testRegisterAndUseFeatureConfigurations";
+
+    FeatureConfiguration<Boolean> safeConfig =
+        FeatureConfiguration.<Boolean>builder()
+            .key(String.format("%s_safe", prefix))
+            .catalogConfig(String.format("polaris.config.%s.safe", prefix))
+            .defaultValue(true)
+            .description(prefix)
+            .buildFeatureConfiguration();
+
+    FeatureConfiguration<Boolean> unsafeConfig =
+        FeatureConfiguration.<Boolean>builder()
+            .key(String.format("%s_unsafe", prefix))
+            .catalogConfigUnsafe(String.format("%s.unsafe", prefix))
+            .defaultValue(true)
+            .description(prefix)
+            .buildFeatureConfiguration();
+
+    FeatureConfiguration<Boolean> bothConfig =
+        FeatureConfiguration.<Boolean>builder()
+            .key(String.format("%s_both", prefix))
+            .catalogConfig(String.format("polaris.config.%s.both", prefix))
+            .catalogConfigUnsafe(String.format("%s.both", prefix))
+            .defaultValue(true)
+            .description(prefix)
+            .buildFeatureConfiguration();
+
+    CatalogEntity catalog = new CatalogEntity.Builder().build();
+
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, safeConfig))
+        .isTrue();
+
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, unsafeConfig))
+        .isTrue();
+
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, bothConfig))
+        .isTrue();
   }
 }

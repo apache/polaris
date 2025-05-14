@@ -103,7 +103,6 @@ class Arguments:
     """
 
     TYPE = 'type'
-    REMOTE_URL = 'remote_url'
     DEFAULT_BASE_LOCATION = 'default_base_location'
     STORAGE_TYPE = 'storage_type'
     ALLOWED_LOCATION = 'allowed_location'
@@ -162,7 +161,6 @@ class Hints:
 
         class Create:
             TYPE = 'The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default.'
-            REMOTE_URL = '(For external catalogs) The remote URL to use'
             DEFAULT_BASE_LOCATION = '(Required) Default base location of the catalog'
             STORAGE_TYPE = '(Required) The type of storage to use for the catalog'
             ALLOWED_LOCATION = ('An allowed location for files tracked by the catalog. '

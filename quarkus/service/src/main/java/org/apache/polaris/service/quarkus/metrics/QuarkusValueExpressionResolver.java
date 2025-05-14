@@ -22,17 +22,23 @@ import io.micrometer.common.annotation.ValueExpressionResolver;
 import io.micrometer.common.lang.Nullable;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
 
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
+
   @Override
   public String resolve(@Nonnull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
-    if (parameter instanceof RealmContext realmContext && expression.equals("realmIdentifier")) {
+    if (metricsConfiguration.realmIdTag().enableInApiMetrics()
+        && parameter instanceof RealmContext realmContext
+        && expression.equals("realmIdentifier")) {
       return realmContext.getRealmIdentifier();
     }
-    return null;
+    // FIXME cannot return null here, see https://github.com/quarkusio/quarkus/issues/47891
+    return "";
   }
 }

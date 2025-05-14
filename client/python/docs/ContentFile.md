@@ -20,6 +20,7 @@
 -->
 # ContentFile
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -28,7 +29,7 @@ Name | Type | Description | Notes
 **file_path** | **str** |  | 
 **file_format** | [**FileFormat**](FileFormat.md) |  | 
 **spec_id** | **int** |  | 
-**partition** | [**List[PrimitiveTypeValue]**](PrimitiveTypeValue.md) | A list of partition field values ordered based on the fields of the partition spec specified by the &#x60;spec-id&#x60; | [optional] 
+**partition** | [**List[PrimitiveTypeValue]**](PrimitiveTypeValue.md) | A list of partition field values ordered based on the fields of the partition spec specified by the &#x60;spec-id&#x60; | 
 **file_size_in_bytes** | **int** | Total file size in bytes | 
 **record_count** | **int** | Number of records in the file | 
 **key_metadata** | **str** | Encryption key metadata blob | [optional] 

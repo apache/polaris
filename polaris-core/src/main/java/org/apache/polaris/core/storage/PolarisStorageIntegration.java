@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 
@@ -129,7 +128,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
 
     @Override
     public int hashCode() {
-      return Objects.hashCode(success);
+      return Boolean.hashCode(success);
     }
 
     @Override

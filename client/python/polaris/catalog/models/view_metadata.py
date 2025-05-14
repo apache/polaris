@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -100,23 +101,23 @@ class ViewMetadata(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in versions (list)
         _items = []
         if self.versions:
-            for _item in self.versions:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_versions in self.versions:
+                if _item_versions:
+                    _items.append(_item_versions.to_dict())
             _dict['versions'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in version_log (list)
         _items = []
         if self.version_log:
-            for _item in self.version_log:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_version_log in self.version_log:
+                if _item_version_log:
+                    _items.append(_item_version_log.to_dict())
             _dict['version-log'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in schemas (list)
         _items = []
         if self.schemas:
-            for _item in self.schemas:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_schemas in self.schemas:
+                if _item_schemas:
+                    _items.append(_item_schemas.to_dict())
             _dict['schemas'] = _items
         return _dict
 

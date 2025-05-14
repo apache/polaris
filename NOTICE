@@ -7,3 +7,10 @@ The Apache Software Foundation (http://www.apache.org/).
 The initial code for the Polaris project was donated
 to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
 
+--------------------------------------------------------------------------------
+
+This project includes code from Project Nessie, developed at Dremio,
+with the following copyright notice:
+
+| Nessie
+| Copyright 2015-2025 Dremio Corporation

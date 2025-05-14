@@ -96,7 +96,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     // the task is still running.
     // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
     // FIXME replace with context propagation?
-    CallContext clone = CallContext.copyOf(callContext);
+    CallContext clone = callContext.copy();
     tryHandleTask(taskEntityId, clone, null, 1);
   }
 

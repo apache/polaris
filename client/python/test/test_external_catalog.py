@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestExternalCatalog(unittest.TestCase):
 
     def make_instance(self, include_optional) -> ExternalCatalog:
         """Test ExternalCatalog
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `ExternalCatalog`
@@ -53,11 +54,16 @@ class TestExternalCatalog(unittest.TestCase):
         model = ExternalCatalog()
         if include_optional:
             return ExternalCatalog(
-                remote_url = ''
+                connection_config_info = polaris.management.models.connection_config_info.ConnectionConfigInfo(
+                    connection_type = 'ICEBERG_REST', 
+                    uri = '', 
+                    authentication_parameters = polaris.management.models.authentication_parameters.AuthenticationParameters(
+                        authentication_type = 'OAUTH', ), 
+                    service_identity = polaris.management.models.service_identity_info.ServiceIdentityInfo(
+                        identity_type = 'AWS_IAM', ), )
             )
         else:
             return ExternalCatalog(
-                remote_url = '',
         )
         """
 

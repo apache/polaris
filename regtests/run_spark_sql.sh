@@ -61,14 +61,14 @@ if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-l
   -d "client_id=root" \
   -d "client_secret=secret" \
   -d "scope=PRINCIPAL_ROLE:ALL"); then
-  logred "Error: Failed to retrieve bearer token"
+  echo "Error: Failed to retrieve bearer token"
   exit 1
 fi
 
 SPARK_BEARER_TOKEN=$(echo "$output" | awk -F\" '{print $4}')
 
 if [ "SPARK_BEARER_TOKEN" == "unauthorized_client" ]; then
-  logred "Error: Failed to retrieve bearer token"
+  echo "Error: Failed to retrieve bearer token"
   exit 1
 fi
 

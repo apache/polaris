@@ -31,23 +31,38 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   public static final String TAG_REALM = "realm_id";
 
+  private static final Tags UNFINISHED_RESOLUTION_TAGS = Tags.of(TAG_REALM, "???");
+
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
   @Inject RealmContextResolver realmContextResolver;
 
   @Override
   public Tags contribute(Context context) {
-    // FIXME request scope does not work here, so we have to resolve the realm context manually
+    // FIXME retrieve the realm context from context.requestContextLocalData()
+    // after upgrading to Quarkus 3.24
+    if (!metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+      return Tags.empty();
+    }
     HttpServerRequest request = context.request();
     try {
-      RealmContext realmContext = resolveRealmContext(request);
-      return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
-    } catch (Exception ignored) {
-      // ignore, the RealmContextFilter will handle the error
+      return realmContextResolver
+          .resolveRealmContext(
+              request.absoluteURI(),
+              request.method().name(),
+              request.path(),
+              request.headers()::get)
+          .thenApply(this::successfulResolutionTags)
+          .toCompletableFuture()
+          // get the result of the CompletableFuture if it's already completed,
+          // otherwise return UNFINISHED_RESOLUTION_TAGS as this code is executed on
+          // an event loop thread, and we don't want to block it.
+          .getNow(UNFINISHED_RESOLUTION_TAGS);
+    } catch (Exception e) {
       return Tags.empty();
     }
   }
 
-  private RealmContext resolveRealmContext(HttpServerRequest request) {
-    return realmContextResolver.resolveRealmContext(
-        request.absoluteURI(), request.method().name(), request.path(), request.headers()::get);
+  private Tags successfulResolutionTags(RealmContext realmContext) {
+    return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
   }
 }

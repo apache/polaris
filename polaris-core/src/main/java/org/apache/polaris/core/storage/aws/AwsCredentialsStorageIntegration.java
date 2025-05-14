@@ -33,6 +33,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -46,10 +47,17 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClient stsClient;
+  private final Optional<AwsCredentialsProvider> credentialsProvider;
 
   public AwsCredentialsStorageIntegration(StsClient stsClient) {
+    this(stsClient, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      StsClient stsClient, Optional<AwsCredentialsProvider> credentialsProvider) {
     super(AwsCredentialsStorageIntegration.class.getName());
     this.stsClient = stsClient;
+    this.credentialsProvider = credentialsProvider;
   }
 
   /** {@inheritDoc} */
@@ -60,21 +68,22 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    AssumeRoleResponse response =
-        stsClient.assumeRole(
-            AssumeRoleRequest.builder()
-                .externalId(storageConfig.getExternalId())
-                .roleArn(storageConfig.getRoleARN())
-                .roleSessionName("PolarisAwsCredentialsStorageIntegration")
-                .policy(
-                    policyString(
-                            storageConfig.getRoleARN(),
-                            allowListOperation,
-                            allowedReadLocations,
-                            allowedWriteLocations)
-                        .toJson())
-                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
-                .build());
+    AssumeRoleRequest.Builder request =
+        AssumeRoleRequest.builder()
+            .externalId(storageConfig.getExternalId())
+            .roleArn(storageConfig.getRoleARN())
+            .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+            .policy(
+                policyString(
+                        storageConfig.getRoleARN(),
+                        allowListOperation,
+                        allowedReadLocations,
+                        allowedWriteLocations)
+                    .toJson())
+            .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
+    credentialsProvider.ifPresent(
+        cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+    AssumeRoleResponse response = stsClient.assumeRole(request.build());
     EnumMap<StorageAccessProperty, String> credentialMap =
         new EnumMap<>(StorageAccessProperty.class);
     credentialMap.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());

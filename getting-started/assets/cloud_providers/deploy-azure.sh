@@ -32,7 +32,7 @@ POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
 export QUARKUS_DATASOURCE_PASSWORD=postgres
-echo ($QUARKUS_DATASOURCE_JDBC_URL)
+echo $QUARKUS_DATASOURCE_JDBC_URL
 
 STORAGE_ACCOUNT_NAME="polaristest$RANDOM_SUFFIX"
 STORAGE_CONTAINER_NAME="polaris-test-container-$RANDOM_SUFFIX"
@@ -71,4 +71,4 @@ EOF
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
+docker compose -p polaris -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d

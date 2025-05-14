@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -35,7 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -85,9 +86,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
- * org.apache.iceberg.rest.CatalogHandlers} after finding the appropriate {@link Catalog} for the
- * current {@link RealmContext}.
+ * An adapter between generated service types like `IcebergRestCatalogApiService` and
+ * `IcebergCatalogHandler`.
  */
 @RequestScoped
 public class IcebergCatalogAdapter
@@ -140,6 +140,7 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
+  private final CatalogHandlerUtils catalogHandlerUtils;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -151,7 +152,8 @@ public class IcebergCatalogAdapter
       UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      CatalogHandlerUtils catalogHandlerUtils) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
@@ -161,6 +163,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
+    this.catalogHandlerUtils = catalogHandlerUtils;
 
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
@@ -199,7 +202,8 @@ public class IcebergCatalogAdapter
         catalogFactory,
         catalogName,
         polarisAuthorizer,
-        reservedProperties);
+        reservedProperties,
+        catalogHandlerUtils);
   }
 
   @Override
@@ -208,6 +212,7 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createNamespaceRequest.properties());
     return withCatalog(
         securityContext,
         prefix,
@@ -299,6 +304,7 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, updateNamespacePropertiesRequest.updates());
     Namespace ns = decodeNamespace(namespace);
     UpdateNamespacePropertiesRequest revisedRequest =
         UpdateNamespacePropertiesRequest.builder()
@@ -333,6 +339,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
@@ -504,6 +511,11 @@ public class IcebergCatalogAdapter
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    commitTableRequest.updates().stream()
+        .filter(MetadataUpdate.SetProperties.class::isInstance)
+        .map(MetadataUpdate.SetProperties.class::cast)
+        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+
     UpdateTableRequest revisedRequest =
         UpdateTableRequest.create(
             commitTableRequest.identifier(),
@@ -533,6 +545,8 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createViewRequest.properties());
+
     CreateViewRequest revisedRequest =
         ImmutableCreateViewRequest.copyOf(createViewRequest)
             .withProperties(
@@ -675,6 +689,12 @@ public class IcebergCatalogAdapter
       CommitTransactionRequest commitTransactionRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    commitTransactionRequest.tableChanges().stream()
+        .flatMap(updateTableRequest -> updateTableRequest.updates().stream())
+        .filter(MetadataUpdate.SetProperties.class::isInstance)
+        .map(MetadataUpdate.SetProperties.class::cast)
+        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
             commitTransactionRequest.tableChanges().stream()

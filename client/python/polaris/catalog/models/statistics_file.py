@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -94,9 +95,9 @@ class StatisticsFile(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in blob_metadata (list)
         _items = []
         if self.blob_metadata:
-            for _item in self.blob_metadata:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_blob_metadata in self.blob_metadata:
+                if _item_blob_metadata:
+                    _items.append(_item_blob_metadata.to_dict())
             _dict['blob-metadata'] = _items
         return _dict
 

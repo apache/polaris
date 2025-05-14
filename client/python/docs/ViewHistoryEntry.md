@@ -20,6 +20,7 @@
 -->
 # ViewHistoryEntry
 
+
 ## Properties
 
 Name | Type | Description | Notes

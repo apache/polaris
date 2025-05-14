@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.table_identifier import TableIdentifier
 from polaris.catalog.models.view_requirement import ViewRequirement
@@ -47,7 +48,7 @@ class CommitViewRequest(BaseModel):
     """
     CommitViewRequest
     """ # noqa: E501
-    identifier: Optional[TableIdentifier] = None
+    identifier: Optional[TableIdentifier] = Field(default=None, description="View identifier to update")
     requirements: Optional[List[ViewRequirement]] = None
     updates: List[ViewUpdate]
     __properties: ClassVar[List[str]] = ["identifier", "requirements", "updates"]
@@ -97,16 +98,16 @@ class CommitViewRequest(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in requirements (list)
         _items = []
         if self.requirements:
-            for _item in self.requirements:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_requirements in self.requirements:
+                if _item_requirements:
+                    _items.append(_item_requirements.to_dict())
             _dict['requirements'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in updates (list)
         _items = []
         if self.updates:
-            for _item in self.updates:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_updates in self.updates:
+                if _item_updates:
+                    _items.append(_item_updates.to_dict())
             _dict['updates'] = _items
         return _dict
 

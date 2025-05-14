@@ -31,7 +31,7 @@ if (!project.extra.has("duplicated-project-sources")) {
     java {
       target("src/*/java/**/*.java")
       googleJavaFormat()
-      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+      // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
       endWithNewline()
       custom(
         "disallowWildcardImports",
@@ -49,7 +49,7 @@ if (!project.extra.has("duplicated-project-sources")) {
     }
     kotlinGradle {
       ktfmt().googleStyle()
-      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+      // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
       target("*.gradle.kts")
     }
     format("xml") {

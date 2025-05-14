@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.content_file import ContentFile
 from polaris.catalog.models.file_format import FileFormat
@@ -50,13 +51,6 @@ class EqualityDeleteFile(ContentFile):
     content: StrictStr
     equality_ids: Optional[List[StrictInt]] = Field(default=None, description="List of equality field IDs", alias="equality-ids")
     __properties: ClassVar[List[str]] = ["content", "file-path", "file-format", "spec-id", "partition", "file-size-in-bytes", "record-count", "key-metadata", "split-offsets", "sort-order-id"]
-
-    @field_validator('content')
-    def content_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['equality-deletes']):
-            raise ValueError("must be one of enum values ('equality-deletes')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -100,9 +94,9 @@ class EqualityDeleteFile(ContentFile):
         # override the default output from pydantic by calling `to_dict()` of each item in partition (list)
         _items = []
         if self.partition:
-            for _item in self.partition:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_partition in self.partition:
+                if _item_partition:
+                    _items.append(_item_partition.to_dict())
             _dict['partition'] = _items
         return _dict
 

@@ -20,6 +20,7 @@
 -->
 # StructType
 
+
 ## Properties
 
 Name | Type | Description | Notes

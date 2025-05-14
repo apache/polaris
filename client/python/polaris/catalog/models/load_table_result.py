@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -37,18 +38,20 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from polaris.catalog.models.storage_credential import StorageCredential
 from polaris.catalog.models.table_metadata import TableMetadata
 from typing import Optional, Set
 from typing_extensions import Self
 
 class LoadTableResult(BaseModel):
     """
-    Result used when a table is successfully loaded.   The table metadata JSON is returned in the `metadata` field. The corresponding file location of table metadata should be returned in the `metadata-location` field, unless the metadata is not yet committed. For example, a create transaction may return metadata that is staged but not committed. Clients can check whether metadata has changed by comparing metadata locations after the table has been created.   The `config` map returns table-specific configuration for the table's resources, including its HTTP client and FileIO. For example, config may contain a specific FileIO implementation class for the table depending on its underlying storage.   The following configurations should be respected by clients:  ## General Configurations  - `token`: Authorization bearer token to use for table requests if OAuth2 security is enabled   ## AWS Configurations  The following configurations should be respected when working with tables stored in AWS S3  - `client.region`: region to configure client for making requests to AWS  - `s3.access-key-id`: id for for credentials that provide access to the data in S3  - `s3.secret-access-key`: secret for credentials that provide access to data in S3   - `s3.session-token`: if present, this value should be used for as the session token   - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `s3-signer-open-api.yaml` specification 
+    Result used when a table is successfully loaded.   The table metadata JSON is returned in the `metadata` field. The corresponding file location of table metadata should be returned in the `metadata-location` field, unless the metadata is not yet committed. For example, a create transaction may return metadata that is staged but not committed. Clients can check whether metadata has changed by comparing metadata locations after the table has been created.   The `config` map returns table-specific configuration for the table's resources, including its HTTP client and FileIO. For example, config may contain a specific FileIO implementation class for the table depending on its underlying storage.   The following configurations should be respected by clients:  ## General Configurations  - `token`: Authorization bearer token to use for table requests if OAuth2 security is enabled   ## AWS Configurations  The following configurations should be respected when working with tables stored in AWS S3  - `client.region`: region to configure client for making requests to AWS  - `s3.access-key-id`: id for credentials that provide access to the data in S3  - `s3.secret-access-key`: secret for credentials that provide access to data in S3   - `s3.session-token`: if present, this value should be used for as the session token   - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `s3-signer-open-api.yaml` specification  - `s3.cross-region-access-enabled`: if `true`, S3 Cross-Region bucket access is enabled  ## Storage Credentials  Credentials for ADLS / GCS / S3 / ... are provided through the `storage-credentials` field. Clients must first check whether the respective credentials exist in the `storage-credentials` field before checking the `config` for credentials. 
     """ # noqa: E501
     metadata_location: Optional[StrictStr] = Field(default=None, description="May be null if the table is staged as part of a transaction", alias="metadata-location")
     metadata: TableMetadata
     config: Optional[Dict[str, StrictStr]] = None
-    __properties: ClassVar[List[str]] = ["metadata-location", "metadata", "config"]
+    storage_credentials: Optional[List[StorageCredential]] = Field(default=None, alias="storage-credentials")
+    __properties: ClassVar[List[str]] = ["metadata-location", "metadata", "config", "storage-credentials"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -92,6 +95,13 @@ class LoadTableResult(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of metadata
         if self.metadata:
             _dict['metadata'] = self.metadata.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in storage_credentials (list)
+        _items = []
+        if self.storage_credentials:
+            for _item_storage_credentials in self.storage_credentials:
+                if _item_storage_credentials:
+                    _items.append(_item_storage_credentials.to_dict())
+            _dict['storage-credentials'] = _items
         return _dict
 
     @classmethod
@@ -106,7 +116,8 @@ class LoadTableResult(BaseModel):
         _obj = cls.model_validate({
             "metadata-location": obj.get("metadata-location"),
             "metadata": TableMetadata.from_dict(obj["metadata"]) if obj.get("metadata") is not None else None,
-            "config": obj.get("config")
+            "config": obj.get("config"),
+            "storage-credentials": [StorageCredential.from_dict(_item) for _item in obj["storage-credentials"]] if obj.get("storage-credentials") is not None else None
         })
         return _obj
 

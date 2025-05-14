@@ -20,11 +20,13 @@
 -->
 # PrincipalRole
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **str** | The name of the role | 
+**federated** | **bool** | Whether the principal role is a federated role (that is, managed by an external identity provider) | [optional] [default to False]
 **properties** | **Dict[str, str]** |  | [optional] 
 **create_timestamp** | **int** |  | [optional] 
 **last_update_timestamp** | **int** |  | [optional] 

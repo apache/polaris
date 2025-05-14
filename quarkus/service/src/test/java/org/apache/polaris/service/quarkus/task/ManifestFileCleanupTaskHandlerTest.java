@@ -19,7 +19,8 @@
 package org.apache.polaris.service.quarkus.task;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
@@ -45,6 +46,8 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -78,183 +81,174 @@ class ManifestFileCleanupTaskHandlerTest {
         });
   }
 
+  private void addTaskLocation(TaskEntity task) {
+    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
+    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
+  }
+
   @Test
   public void testCleanupFileNotExists() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
-      CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = new InMemoryFileIO();
-      TableIdentifier tableIdentifier =
-          TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    FileIO fileIO = new InMemoryFileIO();
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
-      ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler(
-              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
-      ManifestFile manifestFile =
-          TaskTestUtils.manifestFile(
-              fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
-      fileIO.deleteFile(manifestFile.path());
-      TaskEntity task =
-          new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
-              .withData(
-                  new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                      tableIdentifier,
-                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
-              .setName(UUID.randomUUID().toString())
-              .build();
-      task = TaskTestUtils.addTaskLocation(task);
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isTrue();
-    }
+    ManifestFileCleanupTaskHandler handler =
+        new ManifestFileCleanupTaskHandler(
+            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(
+            fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
+    fileIO.deleteFile(manifestFile.path());
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .withData(
+                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(task);
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
-      CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = new InMemoryFileIO();
-      TableIdentifier tableIdentifier =
-          TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-      ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler(
-              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
-      ManifestFile manifestFile =
-          TaskTestUtils.manifestFile(
-              fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
-      TaskEntity task =
-          new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
-              .withData(
-                  new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                      tableIdentifier,
-                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
-              .setName(UUID.randomUUID().toString())
-              .build();
-      task = TaskTestUtils.addTaskLocation(task);
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isTrue();
-    }
+    CallContext.setCurrentContext(polarisCallContext);
+    FileIO fileIO = new InMemoryFileIO();
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    ManifestFileCleanupTaskHandler handler =
+        new ManifestFileCleanupTaskHandler(
+            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(
+            fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .withData(
+                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(task);
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
 
   @Test
   public void testCleanupFiles() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
-      CallContext.setCurrentContext(callCtx);
-      FileIO fileIO =
-          new InMemoryFileIO() {
-            @Override
-            public void close() {
-              // no-op
-            }
-          };
-      TableIdentifier tableIdentifier =
-          TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-      ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler(
-              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
-      String dataFile1Path = "dataFile1.parquet";
-      OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
-      PositionOutputStream out1 = dataFile1.createOrOverwrite();
-      out1.write("the data".getBytes(UTF_8));
-      out1.close();
-      String dataFile2Path = "dataFile2.parquet";
-      OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
-      PositionOutputStream out2 = dataFile2.createOrOverwrite();
-      out2.write("the data".getBytes(UTF_8));
-      out2.close();
-      ManifestFile manifestFile =
-          TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
-      TaskEntity task =
-          new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
-              .withData(
-                  new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                      tableIdentifier,
-                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
-              .setName(UUID.randomUUID().toString())
-              .build();
-      task = TaskTestUtils.addTaskLocation(task);
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isTrue();
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
-    }
+    CallContext.setCurrentContext(polarisCallContext);
+    FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
+        };
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    ManifestFileCleanupTaskHandler handler =
+        new ManifestFileCleanupTaskHandler(
+            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    String dataFile1Path = "dataFile1.parquet";
+    OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
+    PositionOutputStream out1 = dataFile1.createOrOverwrite();
+    out1.write("the data".getBytes(UTF_8));
+    out1.close();
+    String dataFile2Path = "dataFile2.parquet";
+    OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
+    PositionOutputStream out2 = dataFile2.createOrOverwrite();
+    out2.write("the data".getBytes(UTF_8));
+    out2.close();
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .withData(
+                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(task);
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }
 
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
-      CallContext.setCurrentContext(callCtx);
-      Map<String, AtomicInteger> retryCounter = new HashMap<>();
-      FileIO fileIO =
-          new InMemoryFileIO() {
-            @Override
-            public void close() {
-              // no-op
-            }
+    CallContext.setCurrentContext(polarisCallContext);
+    Map<String, AtomicInteger> retryCounter = new HashMap<>();
+    FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
 
-            @Override
-            public void deleteFile(String location) {
-              int attempts =
-                  retryCounter
-                      .computeIfAbsent(location, k -> new AtomicInteger(0))
-                      .incrementAndGet();
-              if (attempts < 3) {
-                throw new RuntimeException("I'm failing to test retries");
-              } else {
-                // succeed on the third attempt
-                super.deleteFile(location);
-              }
+          @Override
+          public void deleteFile(String location) {
+            int attempts =
+                retryCounter.computeIfAbsent(location, k -> new AtomicInteger(0)).incrementAndGet();
+            if (attempts < 3) {
+              throw new RuntimeException("I'm failing to test retries");
+            } else {
+              // succeed on the third attempt
+              super.deleteFile(location);
             }
-          };
+          }
+        };
 
-      TableIdentifier tableIdentifier =
-          TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-      ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler(
-              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
-      String dataFile1Path = "dataFile1.parquet";
-      OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
-      PositionOutputStream out1 = dataFile1.createOrOverwrite();
-      out1.write("the data".getBytes(UTF_8));
-      out1.close();
-      String dataFile2Path = "dataFile2.parquet";
-      OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
-      PositionOutputStream out2 = dataFile2.createOrOverwrite();
-      out2.write("the data".getBytes(UTF_8));
-      out2.close();
-      ManifestFile manifestFile =
-          TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
-      TaskEntity task =
-          new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
-              .withData(
-                  new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                      tableIdentifier,
-                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
-              .setName(UUID.randomUUID().toString())
-              .build();
-      task = TaskTestUtils.addTaskLocation(task);
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isTrue();
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
-    }
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    ManifestFileCleanupTaskHandler handler =
+        new ManifestFileCleanupTaskHandler(
+            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    String dataFile1Path = "dataFile1.parquet";
+    OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
+    PositionOutputStream out1 = dataFile1.createOrOverwrite();
+    out1.write("the data".getBytes(UTF_8));
+    out1.close();
+    String dataFile2Path = "dataFile2.parquet";
+    OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
+    PositionOutputStream out2 = dataFile2.createOrOverwrite();
+    out2.write("the data".getBytes(UTF_8));
+    out2.close();
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .withData(
+                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(task);
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }
 }

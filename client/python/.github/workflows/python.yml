@@ -22,7 +22,7 @@
 #
 # ref: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: polaris.management Python package
+name: polaris.catalog Python package
 
 on: [push, pull_request]
 

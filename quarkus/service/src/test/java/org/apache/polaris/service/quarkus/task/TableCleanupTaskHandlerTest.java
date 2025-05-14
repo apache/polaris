@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
@@ -96,14 +97,15 @@ class TableCleanupTaskHandlerTest {
 
   @BeforeEach
   void setup() {
-    PolarisCallContext polarisCallContext =
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+
+    callContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-
-    callContext = CallContext.of(realmContext, polarisCallContext);
   }
 
   @Test

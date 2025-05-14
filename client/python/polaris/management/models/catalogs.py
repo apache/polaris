@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -90,9 +91,9 @@ class Catalogs(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in catalogs (list)
         _items = []
         if self.catalogs:
-            for _item in self.catalogs:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_catalogs in self.catalogs:
+                if _item_catalogs:
+                    _items.append(_item_catalogs.to_dict())
             _dict['catalogs'] = _items
         return _dict
 

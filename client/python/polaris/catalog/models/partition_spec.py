@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -93,9 +94,9 @@ class PartitionSpec(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in fields (list)
         _items = []
         if self.fields:
-            for _item in self.fields:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_fields in self.fields:
+                if _item_fields:
+                    _items.append(_item_fields.to_dict())
             _dict['fields'] = _items
         return _dict
 

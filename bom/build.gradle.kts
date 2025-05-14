@@ -43,7 +43,6 @@ dependencies {
 
     api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
-    api(project(":polaris-jpa-model"))
 
     api(project(":polaris-quarkus-admin"))
     api(project(":polaris-quarkus-common"))

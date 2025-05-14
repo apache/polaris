@@ -20,6 +20,7 @@
 -->
 # ViewUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -27,7 +28,7 @@ Name | Type | Description | Notes
 **action** | **str** |  | 
 **format_version** | **int** |  | 
 **var_schema** | [**ModelSchema**](ModelSchema.md) |  | 
-**last_column_id** | **int** | The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side. | [optional] 
+**last_column_id** | **int** | This optional field is **DEPRECATED for REMOVAL** since it more safe to handle this internally, and shouldn&#39;t be exposed to the clients. The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side. | [optional] 
 **location** | **str** |  | 
 **updates** | **Dict[str, str]** |  | 
 **removals** | **List[str]** |  | 

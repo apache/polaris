@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -90,9 +91,9 @@ class GrantResources(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in grants (list)
         _items = []
         if self.grants:
-            for _item in self.grants:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_grants in self.grants:
+                if _item_grants:
+                    _items.append(_item_grants.to_dict())
             _dict['grants'] = _items
         return _dict
 

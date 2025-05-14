@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.ratelimiter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
+import com.google.common.collect.ImmutableMap;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -68,25 +69,21 @@ public class RateLimiterFilterTest {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.rate-limiter.filter.type",
-          "default",
-          "polaris.rate-limiter.token-bucket.type",
-          "default",
-          "polaris.rate-limiter.token-bucket.requests-per-second",
-          String.valueOf(REQUESTS_PER_SECOND),
-          "polaris.rate-limiter.token-bucket.window",
-          WINDOW.toString(),
-          "polaris.metrics.tags.environment",
-          "prod",
-          "polaris.realm-context.type",
-          "test",
-          "polaris.authentication.token-broker.type",
-          "symmetric-key",
-          "polaris.authentication.token-broker.symmetric-key.secret",
-          "secret",
-          "polaris.event-listener.type",
-          "test");
+      return ImmutableMap.<String, String>builder()
+          .put("polaris.rate-limiter.filter.type", "default")
+          .put("polaris.rate-limiter.token-bucket.type", "default")
+          .put(
+              "polaris.rate-limiter.token-bucket.requests-per-second",
+              String.valueOf(REQUESTS_PER_SECOND))
+          .put("polaris.rate-limiter.token-bucket.window", WINDOW.toString())
+          .put("polaris.metrics.tags.environment", "prod")
+          .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
+          .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
+          .put("polaris.realm-context.type", "test")
+          .put("polaris.authentication.token-broker.type", "symmetric-key")
+          .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
+          .put("polaris.event-listener.type", "test")
+          .build();
     }
   }
 

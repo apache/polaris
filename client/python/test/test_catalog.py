@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestCatalog(unittest.TestCase):
 
     def make_instance(self, include_optional) -> Catalog:
         """Test Catalog
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `Catalog`
@@ -54,8 +55,7 @@ class TestCatalog(unittest.TestCase):
         if include_optional:
             return Catalog(
                 type = 'INTERNAL',
-                name = '',
-                read_only = True,
+                name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0',
                 properties = {
                     'key' : ''
                     },
@@ -69,7 +69,13 @@ class TestCatalog(unittest.TestCase):
         else:
             return Catalog(
                 type = 'INTERNAL',
-                name = '',
+                name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0',
+                properties = {
+                    'key' : ''
+                    },
+                storage_config_info = polaris.management.models.storage_config_info.StorageConfigInfo(
+                    storage_type = 'S3', 
+                    allowed_locations = For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/], ),
         )
         """
 

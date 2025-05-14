@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -67,6 +68,14 @@ class NamespacePrivilege(str, Enum):
     NAMESPACE_FULL_METADATA = 'NAMESPACE_FULL_METADATA'
     TABLE_FULL_METADATA = 'TABLE_FULL_METADATA'
     VIEW_FULL_METADATA = 'VIEW_FULL_METADATA'
+    POLICY_CREATE = 'POLICY_CREATE'
+    POLICY_WRITE = 'POLICY_WRITE'
+    POLICY_READ = 'POLICY_READ'
+    POLICY_DROP = 'POLICY_DROP'
+    POLICY_LIST = 'POLICY_LIST'
+    POLICY_FULL_METADATA = 'POLICY_FULL_METADATA'
+    NAMESPACE_ATTACH_POLICY = 'NAMESPACE_ATTACH_POLICY'
+    NAMESPACE_DETACH_POLICY = 'NAMESPACE_DETACH_POLICY'
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:

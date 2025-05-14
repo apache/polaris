@@ -72,7 +72,7 @@ public class ResolvedPolarisEntity {
       // patch grant records version
       this.entity =
           PolarisEntity.of(
-              new PolarisBaseEntity.Builder(entity).grantRecordsVersion(grantsVersion).build());
+              entity.withGrantRecordsVersion(grantsVersion));
     } else {
       // we copy all attributes of the entity to avoid any contamination
       this.entity = PolarisEntity.of(entity);

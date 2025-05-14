@@ -166,7 +166,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getPolarisCallContext()
                       .getConfigurationStore()
                       .getConfiguration(
-                          CallContext.getCurrentContext().getPolarisCallContext(),
+                          CallContext.getCurrentContext().getRealmContext(),
                           catalog,
                           FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
@@ -181,6 +181,7 @@ public abstract class PolarisStorageConfigurationInfo {
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
 
+                // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
                 List<String> locs =
                     userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
                 return new StorageConfigurationOverride(

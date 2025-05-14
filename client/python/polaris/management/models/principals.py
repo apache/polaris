@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -90,9 +91,9 @@ class Principals(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in principals (list)
         _items = []
         if self.principals:
-            for _item in self.principals:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_principals in self.principals:
+                if _item_principals:
+                    _items.append(_item_principals.to_dict())
             _dict['principals'] = _items
         return _dict
 

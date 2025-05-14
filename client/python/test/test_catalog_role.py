@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestCatalogRole(unittest.TestCase):
 
     def make_instance(self, include_optional) -> CatalogRole:
         """Test CatalogRole
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `CatalogRole`
@@ -53,7 +54,7 @@ class TestCatalogRole(unittest.TestCase):
         model = CatalogRole()
         if include_optional:
             return CatalogRole(
-                name = '',
+                name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0',
                 properties = {
                     'key' : ''
                     },
@@ -63,7 +64,7 @@ class TestCatalogRole(unittest.TestCase):
             )
         else:
             return CatalogRole(
-                name = '',
+                name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0',
         )
         """
 

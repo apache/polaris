@@ -39,12 +39,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -55,18 +55,9 @@ jobs:
           version: 'v3.16.0'
 
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.6.1
-
-      - name: Run chart-testing (list-changed)
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }} --chart-dirs helm)
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
+        uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b # v2.7.0
 
       - name: Run 'helm template' validation
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           cd helm/polaris
           for f in values.yaml ci/*.yaml; do
@@ -76,27 +67,22 @@ jobs:
           done
 
       - name: Run Helm unit tests
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
           helm unittest helm/polaris
 
       - name: Run chart-testing (lint)
-        if: steps.list-changed.outputs.changed == 'true'
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
 
       - name: Set up Minikube
-        if: steps.list-changed.outputs.changed == 'true'
-        uses: medyagh/setup-minikube@v0.0.18
+        uses: medyagh/setup-minikube@cea33675329b799adccc9526aa5daccc26cd5052 # v0.0.19
 
       - name: Print Docker info
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           docker -v
           minikube docker-env
 
       - name: Image build
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           eval $(minikube -p minikube docker-env)
           ./gradlew \
@@ -108,13 +94,11 @@ jobs:
           minikube image ls
 
       - name: Install fixtures
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           kubectl create namespace polaris-ns
           kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures 
 
       - name: Run chart-testing (install)
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           ct install --target-branch ${{ github.event.repository.default_branch }} \
             --namespace polaris-ns \

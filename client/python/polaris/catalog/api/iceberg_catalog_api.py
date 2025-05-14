@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,12 +46,17 @@ from polaris.catalog.models.create_namespace_request import CreateNamespaceReque
 from polaris.catalog.models.create_namespace_response import CreateNamespaceResponse
 from polaris.catalog.models.create_table_request import CreateTableRequest
 from polaris.catalog.models.create_view_request import CreateViewRequest
+from polaris.catalog.models.fetch_planning_result import FetchPlanningResult
+from polaris.catalog.models.fetch_scan_tasks_request import FetchScanTasksRequest
+from polaris.catalog.models.fetch_scan_tasks_result import FetchScanTasksResult
 from polaris.catalog.models.get_namespace_response import GetNamespaceResponse
 from polaris.catalog.models.list_namespaces_response import ListNamespacesResponse
 from polaris.catalog.models.list_tables_response import ListTablesResponse
+from polaris.catalog.models.load_credentials_response import LoadCredentialsResponse
 from polaris.catalog.models.load_table_result import LoadTableResult
 from polaris.catalog.models.load_view_result import LoadViewResult
-from polaris.catalog.models.notification_request import NotificationRequest
+from polaris.catalog.models.plan_table_scan_request import PlanTableScanRequest
+from polaris.catalog.models.plan_table_scan_result import PlanTableScanResult
 from polaris.catalog.models.register_table_request import RegisterTableRequest
 from polaris.catalog.models.rename_table_request import RenameTableRequest
 from polaris.catalog.models.report_metrics_request import ReportMetricsRequest
@@ -76,10 +82,338 @@ class IcebergCatalogAPI:
 
 
     @validate_call
+    def cancel_planning(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> None:
+        """Cancels scan planning for a plan-id
+
+        Cancels scan planning for a plan-id.  This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a \"submitted\" status or while there are remaining plan tasks that have not been fetched.  Cancellation is not necessary when - Scan tasks for each plan task have been fetched using fetchScanTasks - A plan-id has produced a \"failed\" or \"cancelled\" status from   planTableScan or fetchPlanningResult 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._cancel_planning_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def cancel_planning_with_http_info(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[None]:
+        """Cancels scan planning for a plan-id
+
+        Cancels scan planning for a plan-id.  This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a \"submitted\" status or while there are remaining plan tasks that have not been fetched.  Cancellation is not necessary when - Scan tasks for each plan task have been fetched using fetchScanTasks - A plan-id has produced a \"failed\" or \"cancelled\" status from   planTableScan or fetchPlanningResult 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._cancel_planning_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def cancel_planning_without_preload_content(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Cancels scan planning for a plan-id
+
+        Cancels scan planning for a plan-id.  This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a \"submitted\" status or while there are remaining plan tasks that have not been fetched.  Cancellation is not necessary when - Scan tasks for each plan task have been fetched using fetchScanTasks - A plan-id has produced a \"failed\" or \"cancelled\" status from   planTableScan or fetchPlanningResult 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._cancel_planning_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _cancel_planning_serialize(
+        self,
+        prefix,
+        namespace,
+        table,
+        plan_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
+        if plan_id is not None:
+            _path_params['plan-id'] = plan_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'OAuth2', 
+            'BearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='DELETE',
+            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/plan/{plan-id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
     def commit_transaction(
         self,
         prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
+        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -98,7 +432,7 @@ class IcebergCatalogAPI:
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
-        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
+        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
         :type commit_transaction_request: CommitTransactionRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -160,7 +494,7 @@ class IcebergCatalogAPI:
     def commit_transaction_with_http_info(
         self,
         prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
+        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -179,7 +513,7 @@ class IcebergCatalogAPI:
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
-        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
+        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
         :type commit_transaction_request: CommitTransactionRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -241,7 +575,7 @@ class IcebergCatalogAPI:
     def commit_transaction_without_preload_content(
         self,
         prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
+        commit_transaction_request: Annotated[CommitTransactionRequest, Field(description="Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -260,7 +594,7 @@ class IcebergCatalogAPI:
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
-        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
+        :param commit_transaction_request: Commit updates to multiple tables in an atomic operation  A commit for a single table consists of a table identifier with requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received. Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id. (required)
         :type commit_transaction_request: CommitTransactionRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -333,7 +667,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -645,7 +981,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -983,7 +1321,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -1312,7 +1652,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -1620,7 +1962,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -1942,7 +2286,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -2257,7 +2603,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -2291,6 +2639,675 @@ class IcebergCatalogAPI:
         return self.api_client.param_serialize(
             method='DELETE',
             resource_path='/v1/{prefix}/namespaces/{namespace}/views/{view}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def fetch_planning_result(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> FetchPlanningResult:
+        """Fetches the result of scan planning for a plan-id
+
+        Fetches the result of scan planning for a plan-id.  Responses must include a valid status - When \"completed\" the planning operation has produced plan-tasks and   file-scan-tasks that must be returned in the response  - When \"submitted\" the planning operation has not completed; the client   should wait to call this endpoint again to fetch a completed response  - When \"failed\" the response must be a valid error response - When \"cancelled\" the plan-id is invalid and should be discarded  The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_planning_result_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchPlanningResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def fetch_planning_result_with_http_info(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[FetchPlanningResult]:
+        """Fetches the result of scan planning for a plan-id
+
+        Fetches the result of scan planning for a plan-id.  Responses must include a valid status - When \"completed\" the planning operation has produced plan-tasks and   file-scan-tasks that must be returned in the response  - When \"submitted\" the planning operation has not completed; the client   should wait to call this endpoint again to fetch a completed response  - When \"failed\" the response must be a valid error response - When \"cancelled\" the plan-id is invalid and should be discarded  The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_planning_result_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchPlanningResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def fetch_planning_result_without_preload_content(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_id: Annotated[StrictStr, Field(description="ID used to track a planning request")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Fetches the result of scan planning for a plan-id
+
+        Fetches the result of scan planning for a plan-id.  Responses must include a valid status - When \"completed\" the planning operation has produced plan-tasks and   file-scan-tasks that must be returned in the response  - When \"submitted\" the planning operation has not completed; the client   should wait to call this endpoint again to fetch a completed response  - When \"failed\" the response must be a valid error response - When \"cancelled\" the plan-id is invalid and should be discarded  The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_id: ID used to track a planning request (required)
+        :type plan_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_planning_result_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_id=plan_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchPlanningResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _fetch_planning_result_serialize(
+        self,
+        prefix,
+        namespace,
+        table,
+        plan_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
+        if plan_id is not None:
+            _path_params['plan-id'] = plan_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'OAuth2', 
+            'BearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/plan/{plan-id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def fetch_scan_tasks(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        fetch_scan_tasks_request: Optional[FetchScanTasksRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> FetchScanTasksResult:
+        """Fetches result tasks for a plan task
+
+        Fetches result tasks for a plan task.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param fetch_scan_tasks_request:
+        :type fetch_scan_tasks_request: FetchScanTasksRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_scan_tasks_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            fetch_scan_tasks_request=fetch_scan_tasks_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchScanTasksResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def fetch_scan_tasks_with_http_info(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        fetch_scan_tasks_request: Optional[FetchScanTasksRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[FetchScanTasksResult]:
+        """Fetches result tasks for a plan task
+
+        Fetches result tasks for a plan task.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param fetch_scan_tasks_request:
+        :type fetch_scan_tasks_request: FetchScanTasksRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_scan_tasks_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            fetch_scan_tasks_request=fetch_scan_tasks_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchScanTasksResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def fetch_scan_tasks_without_preload_content(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        fetch_scan_tasks_request: Optional[FetchScanTasksRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Fetches result tasks for a plan task
+
+        Fetches result tasks for a plan task.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param fetch_scan_tasks_request:
+        :type fetch_scan_tasks_request: FetchScanTasksRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._fetch_scan_tasks_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            fetch_scan_tasks_request=fetch_scan_tasks_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "FetchScanTasksResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _fetch_scan_tasks_serialize(
+        self,
+        prefix,
+        namespace,
+        table,
+        fetch_scan_tasks_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if fetch_scan_tasks_request is not None:
+            _body_params = fetch_scan_tasks_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'OAuth2', 
+            'BearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -2581,7 +3598,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -2913,7 +3932,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -3243,7 +4264,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -3283,6 +4306,319 @@ class IcebergCatalogAPI:
         return self.api_client.param_serialize(
             method='GET',
             resource_path='/v1/{prefix}/namespaces/{namespace}/views',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def load_credentials(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> LoadCredentialsResponse:
+        """Load vended credentials for a table from the catalog
+
+        Load vended credentials for a table from the catalog.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._load_credentials_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "LoadCredentialsResponse",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def load_credentials_with_http_info(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[LoadCredentialsResponse]:
+        """Load vended credentials for a table from the catalog
+
+        Load vended credentials for a table from the catalog.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._load_credentials_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "LoadCredentialsResponse",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def load_credentials_without_preload_content(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Load vended credentials for a table from the catalog
+
+        Load vended credentials for a table from the catalog.
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._load_credentials_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "LoadCredentialsResponse",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _load_credentials_serialize(
+        self,
+        prefix,
+        namespace,
+        table,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'OAuth2', 
+            'BearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -3547,7 +4883,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -3601,6 +4939,7 @@ class IcebergCatalogAPI:
         namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
+        if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
         _request_timeout: Union[
             None,
@@ -3627,6 +4966,8 @@ class IcebergCatalogAPI:
         :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
+        :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
+        :type if_none_match: str
         :param snapshots: The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.
         :type snapshots: str
         :param _request_timeout: timeout setting for this request. If one
@@ -3656,6 +4997,7 @@ class IcebergCatalogAPI:
             namespace=namespace,
             table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
+            if_none_match=if_none_match,
             snapshots=snapshots,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3665,6 +5007,7 @@ class IcebergCatalogAPI:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "LoadTableResult",
+            '304': None,
             '400': "IcebergErrorResponse",
             '401': "IcebergErrorResponse",
             '403': "IcebergErrorResponse",
@@ -3691,6 +5034,7 @@ class IcebergCatalogAPI:
         namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
+        if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
         _request_timeout: Union[
             None,
@@ -3717,6 +5061,8 @@ class IcebergCatalogAPI:
         :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
+        :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
+        :type if_none_match: str
         :param snapshots: The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.
         :type snapshots: str
         :param _request_timeout: timeout setting for this request. If one
@@ -3746,6 +5092,7 @@ class IcebergCatalogAPI:
             namespace=namespace,
             table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
+            if_none_match=if_none_match,
             snapshots=snapshots,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3755,6 +5102,7 @@ class IcebergCatalogAPI:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "LoadTableResult",
+            '304': None,
             '400': "IcebergErrorResponse",
             '401': "IcebergErrorResponse",
             '403': "IcebergErrorResponse",
@@ -3781,6 +5129,7 @@ class IcebergCatalogAPI:
         namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
+        if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
         _request_timeout: Union[
             None,
@@ -3807,6 +5156,8 @@ class IcebergCatalogAPI:
         :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
+        :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
+        :type if_none_match: str
         :param snapshots: The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.
         :type snapshots: str
         :param _request_timeout: timeout setting for this request. If one
@@ -3836,6 +5187,7 @@ class IcebergCatalogAPI:
             namespace=namespace,
             table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
+            if_none_match=if_none_match,
             snapshots=snapshots,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -3845,6 +5197,7 @@ class IcebergCatalogAPI:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "LoadTableResult",
+            '304': None,
             '400': "IcebergErrorResponse",
             '401': "IcebergErrorResponse",
             '403': "IcebergErrorResponse",
@@ -3866,6 +5219,7 @@ class IcebergCatalogAPI:
         namespace,
         table,
         x_iceberg_access_delegation,
+        if_none_match,
         snapshots,
         _request_auth,
         _content_type,
@@ -3882,7 +5236,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -3900,6 +5256,8 @@ class IcebergCatalogAPI:
         # process the header parameters
         if x_iceberg_access_delegation is not None:
             _header_params['X-Iceberg-Access-Delegation'] = x_iceberg_access_delegation
+        if if_none_match is not None:
+            _header_params['If-None-Match'] = if_none_match
         # process the form parameters
         # process the body parameter
 
@@ -4199,7 +5557,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -4497,7 +5857,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -4529,6 +5891,350 @@ class IcebergCatalogAPI:
         return self.api_client.param_serialize(
             method='HEAD',
             resource_path='/v1/{prefix}/namespaces/{namespace}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def plan_table_scan(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_table_scan_request: Optional[PlanTableScanRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> PlanTableScanResult:
+        """Submit a scan for planning
+
+        Submits a scan for server-side planning.  Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.  Responses must include a valid status listed below. A \"cancelled\" status is considered invalid for this endpoint.   - When \"completed\" the planning operation has produced plan tasks and   file scan tasks that must be returned in the response (not fetched   later by calling fetchPlanningResult)  - When \"submitted\" the response must include a plan-id used to poll   fetchPlanningResult to fetch the planning result when it is ready  - When \"failed\" the response must be a valid error response The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.  Responses that include a plan-id indicate that the service is holding state or performing work for the client.  - Clients should use the plan-id to fetch results from   fetchPlanningResult when the response status is \"submitted\"  - Clients should inform the service if planning results are no longer   needed by calling cancelPlanning. Cancellation is not necessary after   fetchScanTasks has been used to fetch scan tasks for each plan task. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_table_scan_request:
+        :type plan_table_scan_request: PlanTableScanRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._plan_table_scan_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_table_scan_request=plan_table_scan_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "PlanTableScanResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '406': "ErrorModel",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def plan_table_scan_with_http_info(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_table_scan_request: Optional[PlanTableScanRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[PlanTableScanResult]:
+        """Submit a scan for planning
+
+        Submits a scan for server-side planning.  Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.  Responses must include a valid status listed below. A \"cancelled\" status is considered invalid for this endpoint.   - When \"completed\" the planning operation has produced plan tasks and   file scan tasks that must be returned in the response (not fetched   later by calling fetchPlanningResult)  - When \"submitted\" the response must include a plan-id used to poll   fetchPlanningResult to fetch the planning result when it is ready  - When \"failed\" the response must be a valid error response The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.  Responses that include a plan-id indicate that the service is holding state or performing work for the client.  - Clients should use the plan-id to fetch results from   fetchPlanningResult when the response status is \"submitted\"  - Clients should inform the service if planning results are no longer   needed by calling cancelPlanning. Cancellation is not necessary after   fetchScanTasks has been used to fetch scan tasks for each plan task. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_table_scan_request:
+        :type plan_table_scan_request: PlanTableScanRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._plan_table_scan_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_table_scan_request=plan_table_scan_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "PlanTableScanResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '406': "ErrorModel",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def plan_table_scan_without_preload_content(
+        self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
+        plan_table_scan_request: Optional[PlanTableScanRequest] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Submit a scan for planning
+
+        Submits a scan for server-side planning.  Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.  Responses must include a valid status listed below. A \"cancelled\" status is considered invalid for this endpoint.   - When \"completed\" the planning operation has produced plan tasks and   file scan tasks that must be returned in the response (not fetched   later by calling fetchPlanningResult)  - When \"submitted\" the response must include a plan-id used to poll   fetchPlanningResult to fetch the planning result when it is ready  - When \"failed\" the response must be a valid error response The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.  Responses that include a plan-id indicate that the service is holding state or performing work for the client.  - Clients should use the plan-id to fetch results from   fetchPlanningResult when the response status is \"submitted\"  - Clients should inform the service if planning results are no longer   needed by calling cancelPlanning. Cancellation is not necessary after   fetchScanTasks has been used to fetch scan tasks for each plan task. 
+
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
+        :param plan_table_scan_request:
+        :type plan_table_scan_request: PlanTableScanRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._plan_table_scan_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
+            plan_table_scan_request=plan_table_scan_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "PlanTableScanResult",
+            '400': "IcebergErrorResponse",
+            '401': "IcebergErrorResponse",
+            '403': "IcebergErrorResponse",
+            '404': "IcebergErrorResponse",
+            '406': "ErrorModel",
+            '419': "IcebergErrorResponse",
+            '503': "IcebergErrorResponse",
+            '5XX': "IcebergErrorResponse",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _plan_table_scan_serialize(
+        self,
+        prefix,
+        namespace,
+        table,
+        plan_table_scan_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if plan_table_scan_request is not None:
+            _body_params = plan_table_scan_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'OAuth2', 
+            'BearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/plan',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -4809,7 +6515,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -5126,7 +6834,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -5441,7 +7151,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -5788,7 +7500,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -6124,7 +7838,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -6173,342 +7889,6 @@ class IcebergCatalogAPI:
         return self.api_client.param_serialize(
             method='POST',
             resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics',
-            path_params=_path_params,
-            query_params=_query_params,
-            header_params=_header_params,
-            body=_body_params,
-            post_params=_form_params,
-            files=_files,
-            auth_settings=_auth_settings,
-            collection_formats=_collection_formats,
-            _host=_host,
-            _request_auth=_request_auth
-        )
-
-
-
-
-    @validate_call
-    def send_notification(
-        self,
-        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
-        table: Annotated[StrictStr, Field(description="A table name")],
-        notification_request: Annotated[NotificationRequest, Field(description="The request containing the notification to be sent")],
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> None:
-        """Sends a notification to the table
-
-
-        :param prefix: An optional prefix in the path (required)
-        :type prefix: str
-        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
-        :type namespace: str
-        :param table: A table name (required)
-        :type table: str
-        :param notification_request: The request containing the notification to be sent (required)
-        :type notification_request: NotificationRequest
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._send_notification_serialize(
-            prefix=prefix,
-            namespace=namespace,
-            table=table,
-            notification_request=notification_request,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '204': None,
-            '400': "IcebergErrorResponse",
-            '401': "IcebergErrorResponse",
-            '403': "IcebergErrorResponse",
-            '404': "IcebergErrorResponse",
-            '419': "IcebergErrorResponse",
-            '503': "IcebergErrorResponse",
-            '5XX': "IcebergErrorResponse",
-        }
-        response_data = self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        response_data.read()
-        return self.api_client.response_deserialize(
-            response_data=response_data,
-            response_types_map=_response_types_map,
-        ).data
-
-
-    @validate_call
-    def send_notification_with_http_info(
-        self,
-        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
-        table: Annotated[StrictStr, Field(description="A table name")],
-        notification_request: Annotated[NotificationRequest, Field(description="The request containing the notification to be sent")],
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[None]:
-        """Sends a notification to the table
-
-
-        :param prefix: An optional prefix in the path (required)
-        :type prefix: str
-        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
-        :type namespace: str
-        :param table: A table name (required)
-        :type table: str
-        :param notification_request: The request containing the notification to be sent (required)
-        :type notification_request: NotificationRequest
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._send_notification_serialize(
-            prefix=prefix,
-            namespace=namespace,
-            table=table,
-            notification_request=notification_request,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '204': None,
-            '400': "IcebergErrorResponse",
-            '401': "IcebergErrorResponse",
-            '403': "IcebergErrorResponse",
-            '404': "IcebergErrorResponse",
-            '419': "IcebergErrorResponse",
-            '503': "IcebergErrorResponse",
-            '5XX': "IcebergErrorResponse",
-        }
-        response_data = self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        response_data.read()
-        return self.api_client.response_deserialize(
-            response_data=response_data,
-            response_types_map=_response_types_map,
-        )
-
-
-    @validate_call
-    def send_notification_without_preload_content(
-        self,
-        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
-        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
-        table: Annotated[StrictStr, Field(description="A table name")],
-        notification_request: Annotated[NotificationRequest, Field(description="The request containing the notification to be sent")],
-        _request_timeout: Union[
-            None,
-            Annotated[StrictFloat, Field(gt=0)],
-            Tuple[
-                Annotated[StrictFloat, Field(gt=0)],
-                Annotated[StrictFloat, Field(gt=0)]
-            ]
-        ] = None,
-        _request_auth: Optional[Dict[StrictStr, Any]] = None,
-        _content_type: Optional[StrictStr] = None,
-        _headers: Optional[Dict[StrictStr, Any]] = None,
-        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> RESTResponseType:
-        """Sends a notification to the table
-
-
-        :param prefix: An optional prefix in the path (required)
-        :type prefix: str
-        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
-        :type namespace: str
-        :param table: A table name (required)
-        :type table: str
-        :param notification_request: The request containing the notification to be sent (required)
-        :type notification_request: NotificationRequest
-        :param _request_timeout: timeout setting for this request. If one
-                                 number provided, it will be total request
-                                 timeout. It can also be a pair (tuple) of
-                                 (connection, read) timeouts.
-        :type _request_timeout: int, tuple(int, int), optional
-        :param _request_auth: set to override the auth_settings for an a single
-                              request; this effectively ignores the
-                              authentication in the spec for a single request.
-        :type _request_auth: dict, optional
-        :param _content_type: force content-type for the request.
-        :type _content_type: str, Optional
-        :param _headers: set to override the headers for a single
-                         request; this effectively ignores the headers
-                         in the spec for a single request.
-        :type _headers: dict, optional
-        :param _host_index: set to override the host_index for a single
-                            request; this effectively ignores the host_index
-                            in the spec for a single request.
-        :type _host_index: int, optional
-        :return: Returns the result object.
-        """ # noqa: E501
-
-        _param = self._send_notification_serialize(
-            prefix=prefix,
-            namespace=namespace,
-            table=table,
-            notification_request=notification_request,
-            _request_auth=_request_auth,
-            _content_type=_content_type,
-            _headers=_headers,
-            _host_index=_host_index
-        )
-
-        _response_types_map: Dict[str, Optional[str]] = {
-            '204': None,
-            '400': "IcebergErrorResponse",
-            '401': "IcebergErrorResponse",
-            '403': "IcebergErrorResponse",
-            '404': "IcebergErrorResponse",
-            '419': "IcebergErrorResponse",
-            '503': "IcebergErrorResponse",
-            '5XX': "IcebergErrorResponse",
-        }
-        response_data = self.api_client.call_api(
-            *_param,
-            _request_timeout=_request_timeout
-        )
-        return response_data.response
-
-
-    def _send_notification_serialize(
-        self,
-        prefix,
-        namespace,
-        table,
-        notification_request,
-        _request_auth,
-        _content_type,
-        _headers,
-        _host_index,
-    ) -> RequestSerialized:
-
-        _host = None
-
-        _collection_formats: Dict[str, str] = {
-        }
-
-        _path_params: Dict[str, str] = {}
-        _query_params: List[Tuple[str, str]] = []
-        _header_params: Dict[str, Optional[str]] = _headers or {}
-        _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
-        _body_params: Optional[bytes] = None
-
-        # process the path parameters
-        if prefix is not None:
-            _path_params['prefix'] = prefix
-        if namespace is not None:
-            _path_params['namespace'] = namespace
-        if table is not None:
-            _path_params['table'] = table
-        # process the query parameters
-        # process the header parameters
-        # process the form parameters
-        # process the body parameter
-        if notification_request is not None:
-            _body_params = notification_request
-
-
-        # set the HTTP header `Accept`
-        if 'Accept' not in _header_params:
-            _header_params['Accept'] = self.api_client.select_header_accept(
-                [
-                    'application/json'
-                ]
-            )
-
-        # set the HTTP header `Content-Type`
-        if _content_type:
-            _header_params['Content-Type'] = _content_type
-        else:
-            _default_content_type = (
-                self.api_client.select_header_content_type(
-                    [
-                        'application/json'
-                    ]
-                )
-            )
-            if _default_content_type is not None:
-                _header_params['Content-Type'] = _default_content_type
-
-        # authentication setting
-        _auth_settings: List[str] = [
-            'OAuth2', 
-            'BearerAuth'
-        ]
-
-        return self.api_client.param_serialize(
-            method='POST',
-            resource_path='/v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -6786,7 +8166,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -7103,7 +8485,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -7187,7 +8571,7 @@ class IcebergCatalogAPI:
     ) -> CommitTableResponse:
         """Commit updates to a table
 
-        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
+        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
@@ -7277,7 +8661,7 @@ class IcebergCatalogAPI:
     ) -> ApiResponse[CommitTableResponse]:
         """Commit updates to a table
 
-        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
+        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
@@ -7367,7 +8751,7 @@ class IcebergCatalogAPI:
     ) -> RESTResponseType:
         """Commit updates to a table
 
-        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
+        Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
 
         :param prefix: An optional prefix in the path (required)
         :type prefix: str
@@ -7452,7 +8836,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters
@@ -7775,7 +9161,9 @@ class IcebergCatalogAPI:
         _query_params: List[Tuple[str, str]] = []
         _header_params: Dict[str, Optional[str]] = _headers or {}
         _form_params: List[Tuple[str, str]] = []
-        _files: Dict[str, Union[str, bytes]] = {}
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
         _body_params: Optional[bytes] = None
 
         # process the path parameters

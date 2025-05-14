@@ -44,6 +44,7 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
@@ -77,6 +78,7 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,7 +157,8 @@ public class PolarisServiceImpl
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                callContext.getRealmContext(),
+                FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
@@ -177,7 +180,7 @@ public class PolarisServiceImpl
                   .getPolarisCallContext()
                   .getConfigurationStore()
                   .getConfiguration(
-                      callContext.getPolarisCallContext(),
+                      callContext.getRealmContext(),
                       FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
                   .stream()
                   .map(s -> s.toUpperCase(Locale.ROOT))
@@ -621,6 +624,19 @@ public class PolarisServiceImpl
           adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
           break;
         }
+      case PolicyGrant policyGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          String policyName = policyGrant.getPolicyName();
+          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
+          adminService.grantPrivilegeOnPolicyToRole(
+              catalogName,
+              catalogRoleName,
+              new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
+              privilege);
+          break;
+        }
       default:
         LOGGER
             .atWarn()
@@ -695,6 +711,19 @@ public class PolarisServiceImpl
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           adminService.revokePrivilegeOnCatalogFromRole(catalogName, catalogRoleName, privilege);
+          break;
+        }
+      case PolicyGrant policyGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          String policyName = policyGrant.getPolicyName();
+          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
+          adminService.revokePrivilegeOnPolicyFromRole(
+              catalogName,
+              catalogRoleName,
+              new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
+              privilege);
           break;
         }
       default:

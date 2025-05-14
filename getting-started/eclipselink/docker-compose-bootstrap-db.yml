@@ -25,11 +25,11 @@ services:
       polaris.persistence.type: eclipse-link
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
     volumes:
-      - ../assets/eclipselink/:/deployments/config/eclipselink
+      - ${ASSETS_PATH}/eclipselink/:/deployments/config/eclipselink
     command:
       - "bootstrap"
       - "--realm=POLARIS"
-      - "--credential=POLARIS,root,s3cr3t"
+      - "--credential=POLARIS,${CLIENT_ID},${CLIENT_SECRET}"
   polaris:
     depends_on:
       polaris-bootstrap:

@@ -69,6 +69,18 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("LICENSE")
   excludes.add("NOTICE")
 
+  // Files copied from Docsy (ASLv2 licensed) don't have header
+  excludes.add("site/layouts/docs/baseof.html")
+  excludes.add("site/layouts/shortcodes/redoc-polaris.html")
+  excludes.add("site/layouts/community/list.html")
+  excludes.add("site/layouts/partials/navbar.html")
+  excludes.add("site/layouts/partials/head.html")
+  excludes.add("site/layouts/partials/community_links.html")
+  excludes.add("layouts/partials/head.html")
+
+  // Files copied from OpenAPI Generator (ASLv2 licensed) don't have header
+  excludes.add("server-templates/*.mustache")
+
   // Manifest files do not allow comments
   excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
 
@@ -86,7 +98,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("spec/docs.yaml")
   excludes.add("spec/index.yml")
 
-  excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
+  excludes.add("gradle/wrapper/gradle-wrapper*")
 
   excludes.add("logs/**")
   excludes.add("service/common/src/**/banner.txt")
@@ -127,6 +139,18 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/build-logic/.kotlin/**")
 
   excludes.add("plugins/**/*.ref")
+}
+
+tasks.register<Exec>("regeneratePythonClient") {
+  description = "Regenerates the python client"
+
+  workingDir = project.projectDir
+  commandLine("bash", "client/templates/regenerate.sh")
+
+  dependsOn(":polaris-api-iceberg-service:processResources")
+  dependsOn(":polaris-api-management-service:processResources")
+  dependsOn(":polaris-api-catalog-service:processResources")
+  dependsOn(":polaris-api-management-model:processResources")
 }
 
 // Pass environment variables:

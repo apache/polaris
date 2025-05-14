@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -45,14 +44,14 @@ public class DefaultAuthenticatorTest {
   public void setUp() {
     RealmContext realmContext = () -> "test";
     polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    CallContext callContext = CallContext.of(realmContext, polarisCallContext);
+    when(polarisCallContext.getRealmContext()).thenReturn(realmContext);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
     when(metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext))
         .thenReturn(metaStoreManager);
     authenticator = new DefaultAuthenticator();
     authenticator.metaStoreManagerFactory = metaStoreManagerFactory;
-    authenticator.callContext = callContext;
+    authenticator.callContext = polarisCallContext;
   }
 
   @Test
@@ -61,7 +60,10 @@ public class DefaultAuthenticatorTest {
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
     when(metaStoreManager.loadEntity(
-            polarisCallContext, 0L, principalId, PolarisEntityType.PRINCIPAL))
+            authenticator.callContext.getPolarisCallContext(),
+            0L,
+            principalId,
+            PolarisEntityType.PRINCIPAL))
         .thenThrow(new RuntimeException("Metastore exception"));
 
     Assertions.assertThatThrownBy(() -> authenticator.authenticate(token))
@@ -76,7 +78,10 @@ public class DefaultAuthenticatorTest {
     when(token.getPrincipalId()).thenReturn(principalId);
     when(token.getClientId()).thenReturn("abc");
     when(metaStoreManager.loadEntity(
-            polarisCallContext, 0L, principalId, PolarisEntityType.PRINCIPAL))
+            authenticator.callContext.getPolarisCallContext(),
+            0L,
+            principalId,
+            PolarisEntityType.PRINCIPAL))
         .thenReturn(new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, ""));
 
     Assertions.assertThatThrownBy(() -> authenticator.authenticate(token))

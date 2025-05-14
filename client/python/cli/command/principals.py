@@ -24,7 +24,7 @@ from pydantic import StrictStr
 
 from cli.command import Command
 from cli.constants import Subcommands
-from polaris.management import PolarisDefaultApi, CreatePrincipalRequest, Principal, UpdatePrincipalRequest
+from polaris.management import PolarisDefaultApi, CreatePrincipalRequest, Principal, PrincipalWithCredentials, UpdatePrincipalRequest
 
 
 @dataclass
@@ -66,6 +66,10 @@ class PrincipalsCommand(Command):
         for grant in api.list_grants_for_catalog_role(catalog_name, catalog_role_name).grants:
             yield grant.to_dict()
 
+    def build_credential_json(self, principal_with_credentials: PrincipalWithCredentials):
+        credentials = principal_with_credentials.credentials
+        return json.dumps({"clientId": credentials.client_id, "clientSecret": credentials.client_secret.get_secret_value()})
+
     def validate(self):
         pass
 
@@ -79,7 +83,7 @@ class PrincipalsCommand(Command):
                     properties=self.properties
                 )
             )
-            print(api.create_principal(request).credentials.to_json())
+            print(self.build_credential_json(api.create_principal(request)))
         elif self.principals_subcommand == Subcommands.DELETE:
             api.delete_principal(self.principal_name)
         elif self.principals_subcommand == Subcommands.GET:
@@ -92,7 +96,7 @@ class PrincipalsCommand(Command):
                 for principal in api.list_principals().principals:
                     print(principal.to_json())
         elif self.principals_subcommand == Subcommands.ROTATE_CREDENTIALS:
-            print(api.rotate_credentials(self.principal_name).to_json())
+            print(self.build_credential_json(api.rotate_credentials(self.principal_name)))
         elif self.principals_subcommand == Subcommands.UPDATE:
             principal = api.get_principal(self.principal_name)
             new_properties = principal.properties or {}

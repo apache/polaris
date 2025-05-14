@@ -20,6 +20,7 @@
 -->
 # ListNamespacesResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes

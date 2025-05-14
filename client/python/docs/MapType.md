@@ -20,6 +20,7 @@
 -->
 # MapType
 
+
 ## Properties
 
 Name | Type | Description | Notes

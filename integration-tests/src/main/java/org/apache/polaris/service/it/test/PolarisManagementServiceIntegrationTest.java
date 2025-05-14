@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.it.test;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest.PRINCIPAL_ROLE_ALL;
@@ -873,6 +874,27 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCreateFederatedPrincipalRoleSucceeds() {
+    // Create a federated Principal Role
+    PrincipalRole federatedPrincipalRole =
+        new PrincipalRole(
+            client.newEntityName("federatedRole"),
+            true,
+            Map.of(),
+            Instant.now().toEpochMilli(),
+            Instant.now().toEpochMilli(),
+            1);
+
+    // Attempt to create the federated Principal using the managementApi
+    try (Response createResponse =
+        managementApi
+            .request("v1/principal-roles")
+            .post(Entity.json(new CreatePrincipalRoleRequest(federatedPrincipalRole)))) {
+      assertThat(createResponse).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
   public void testCreateListUpdateAndDeletePrincipal() {
     Principal principal =
         Principal.builder()
@@ -1023,7 +1045,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreateListUpdateAndDeletePrincipalRole() {
     PrincipalRole principalRole =
         new PrincipalRole(
-            client.newEntityName("myprincipalrole"), Map.of("custom-tag", "foo"), 0L, 0L, 1);
+            client.newEntityName("myprincipalrole"), false, Map.of("custom-tag", "foo"), 0L, 0L, 1);
     managementApi.createPrincipalRole(principalRole);
 
     // Second attempt to create the same entity should fail with CONFLICT.
@@ -1115,7 +1137,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreatePrincipalRoleInvalidName() {
     String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
     PrincipalRole principalRole =
-        new PrincipalRole(goodName, Map.of("custom-tag", "good_principal_role"), 0L, 0L, 1);
+        new PrincipalRole(goodName, false, Map.of("custom-tag", "good_principal_role"), 0L, 0L, 1);
     managementApi.createPrincipalRole(principalRole);
 
     String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
@@ -1131,7 +1153,12 @@ public class PolarisManagementServiceIntegrationTest {
     for (String invalidPrincipalRoleName : invalidPrincipalRoleNames) {
       principalRole =
           new PrincipalRole(
-              invalidPrincipalRoleName, Map.of("custom-tag", "bad_principal_role"), 0L, 0L, 1);
+              invalidPrincipalRoleName,
+              false,
+              Map.of("custom-tag", "bad_principal_role"),
+              0L,
+              0L,
+              1);
 
       try (Response response =
           managementApi
@@ -2154,7 +2181,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     PrincipalRole badPrincipalRole =
         new PrincipalRole(
-            client.newEntityName("myprincipalrole"), Map.of("polaris.reserved", "foo"), 0L, 0L, 1);
+            client.newEntityName("myprincipalrole"),
+            false,
+            Map.of("polaris.reserved", "foo"),
+            0L,
+            0L,
+            1);
     try (Response response =
         managementApi
             .request("v1/principal-roles")
@@ -2165,7 +2197,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     PrincipalRole goodPrincipalRole =
         new PrincipalRole(
-            client.newEntityName("myprincipalrole"), Map.of("not.reserved", "foo"), 0L, 0L, 1);
+            client.newEntityName("myprincipalrole"),
+            false,
+            Map.of("not.reserved", "foo"),
+            0L,
+            0L,
+            1);
     try (Response response =
         managementApi
             .request("v1/principal-roles")

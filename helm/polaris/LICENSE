@@ -199,3 +199,19 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+--------------------------------------------------------------------------------
+
+This product includes code from Project Nessie.
+
+* helm/polaris/tests/logging_storage_test.yaml
+* helm/polaris/tests/quantity_test.yaml
+* helm/polaris/tests/service_monitor_test.yaml
+* helm/polaris/templates/_helpers.tpl
+* helm/polaris/templates/serviceaccount.yaml
+* helm/polaris/templates/servicemonitor.yaml
+* helm/polaris/templates/storage.yaml
+
+Copyright: Copyright 2015-2025 Dremio Corporation
+Home page: https://projectnessie.org/
+License: https://www.apache.org/licenses/LICENSE-2.0

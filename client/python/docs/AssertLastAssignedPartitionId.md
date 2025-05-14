@@ -26,7 +26,7 @@ The table's last assigned partition id must match the requirement's `last-assign
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **last_assigned_partition_id** | **int** |  | 
 
 ## Example

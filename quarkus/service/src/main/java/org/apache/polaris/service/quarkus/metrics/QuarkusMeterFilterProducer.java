@@ -20,6 +20,8 @@ package org.apache.polaris.service.quarkus.metrics;
 
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.internal.OnlyOnceLoggingDenyMeterFilter;
+import io.quarkus.micrometer.runtime.binder.HttpBinderConfiguration;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -27,14 +29,33 @@ import java.util.stream.Collectors;
 
 public class QuarkusMeterFilterProducer {
 
-  @Inject QuarkusMetricsConfiguration configuration;
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
+  @Inject HttpBinderConfiguration binderConfiguration;
 
   @Produces
   @Singleton
-  public MeterFilter produceGlobalMeterFilter() {
+  public MeterFilter commonTagsFilter() {
     return MeterFilter.commonTags(
-        this.configuration.tags().entrySet().stream()
+        this.metricsConfiguration.tags().entrySet().stream()
             .map(e -> Tag.of(e.getKey(), e.getValue()))
             .collect(Collectors.toSet()));
+  }
+
+  @Produces
+  @Singleton
+  public MeterFilter maxRealmIdTagsInHttpMetricsFilter() {
+    MeterFilter denyFilter =
+        new OnlyOnceLoggingDenyMeterFilter(
+            () ->
+                String.format(
+                    "Reached the maximum number (%s) of '%s' tags for '%s'",
+                    metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
+                    RealmIdTagContributor.TAG_REALM,
+                    binderConfiguration.getHttpServerRequestsName()));
+    return MeterFilter.maximumAllowableTags(
+        binderConfiguration.getHttpServerRequestsName(),
+        RealmIdTagContributor.TAG_REALM,
+        metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
+        denyFilter);
   }
 }

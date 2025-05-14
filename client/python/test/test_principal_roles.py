@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestPrincipalRoles(unittest.TestCase):
 
     def make_instance(self, include_optional) -> PrincipalRoles:
         """Test PrincipalRoles
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `PrincipalRoles`
@@ -55,7 +56,8 @@ class TestPrincipalRoles(unittest.TestCase):
             return PrincipalRoles(
                 roles = [
                     polaris.management.models.principal_role.PrincipalRole(
-                        name = '', 
+                        name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
+                        federated = True, 
                         properties = {
                             'key' : ''
                             }, 
@@ -68,7 +70,8 @@ class TestPrincipalRoles(unittest.TestCase):
             return PrincipalRoles(
                 roles = [
                     polaris.management.models.principal_role.PrincipalRole(
-                        name = '', 
+                        name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
+                        federated = True, 
                         properties = {
                             'key' : ''
                             }, 

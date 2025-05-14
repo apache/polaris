@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -121,36 +120,28 @@ public class FileIOFactoryTest {
 
     testServices =
         TestServices.builder()
-            .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
+            .config(
+                Map.of(
+                    "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                    true,
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3"),
+                    "DROP_WITH_PURGE_ENABLED",
+                    true))
             .realmContext(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
     callContext =
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return testServices.realmContext();
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return new PolarisCallContext(
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                testServices.polarisDiagnostics(),
-                testServices.configurationStore(),
-                Mockito.mock(Clock.class));
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return new HashMap<>();
-          }
-        };
+        new PolarisCallContext(
+            realmContext,
+            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.polarisDiagnostics(),
+            testServices.configurationStore(),
+            Clock.systemUTC());
   }
 
   @AfterEach
