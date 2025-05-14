@@ -19,9 +19,11 @@
 package org.apache.polaris.service.quarkus.context;
 
 import io.smallrye.mutiny.Uni;
-import io.vertx.mutiny.core.Vertx;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.PolarisFilterPriorities;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
@@ -31,21 +33,33 @@ public class RealmContextFilter {
   public static final String REALM_CONTEXT_KEY = "realmContext";
 
   @Inject RealmContextResolver realmContextResolver;
-  @Inject Vertx vertx;
 
   @ServerRequestFilter(preMatching = true, priority = PolarisFilterPriorities.REALM_CONTEXT_FILTER)
-  public Uni<Void> resolveRealmContext(ContainerRequestContext rc) {
-    // Note: the default implementation of RealmContextResolver does not block,
-    // but since other implementations may, we need to use executeBlocking().
-    return vertx
-        .executeBlocking(
+  public Uni<Response> resolveRealmContext(ContainerRequestContext rc) {
+    return Uni.createFrom()
+        .completionStage(
             () ->
                 realmContextResolver.resolveRealmContext(
                     rc.getUriInfo().getRequestUri().toString(),
                     rc.getMethod(),
                     rc.getUriInfo().getPath(),
                     rc.getHeaders()::getFirst))
+        .onItem()
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
-        .replaceWithVoid();
+        .onItemOrFailure()
+        .transform((realmContext, error) -> error == null ? null : errorResponse(error));
+  }
+
+  private static Response errorResponse(Throwable error) {
+    return Response.status(Response.Status.NOT_FOUND)
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(
+            ErrorResponse.builder()
+                .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                .withMessage(
+                    error.getMessage() != null ? error.getMessage() : "Missing or invalid realm")
+                .withType("MissingOrInvalidRealm")
+                .build())
+        .build();
   }
 }

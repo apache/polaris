@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.metrics;
 import io.micrometer.core.instrument.Tags;
 import io.quarkus.micrometer.runtime.HttpServerMetricsTagsContributor;
 import io.vertx.core.http.HttpServerRequest;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmContext;
@@ -39,15 +40,25 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
     HttpServerRequest request = context.request();
     try {
       RealmContext realmContext = resolveRealmContext(request);
-      return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
+      return realmContext == null
+          ? Tags.empty()
+          : Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
     } catch (Exception ignored) {
       // ignore, the RealmContextFilter will handle the error
       return Tags.empty();
     }
   }
 
+  @Nullable
   private RealmContext resolveRealmContext(HttpServerRequest request) {
-    return realmContextResolver.resolveRealmContext(
-        request.absoluteURI(), request.method().name(), request.path(), request.headers()::get);
+    return realmContextResolver
+        .resolveRealmContext(
+            request.absoluteURI(), request.method().name(), request.path(), request.headers()::get)
+        .exceptionally(error -> null)
+        .toCompletableFuture()
+        // get the result of the CompletableFuture if it's already completed,
+        // otherwise return null as this code is executed on an event loop thread,
+        // and we don't want to block it.
+        .getNow(null);
   }
 }

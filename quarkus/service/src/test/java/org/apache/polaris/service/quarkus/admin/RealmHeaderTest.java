@@ -90,7 +90,7 @@ public class RealmHeaderTest {
           .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
           .containsExactly(
               Response.Status.NOT_FOUND.getStatusCode(),
-              "UnresolvableRealmContextException",
+              "MissingOrInvalidRealm",
               "Unknown realm: INVALID");
     }
   }

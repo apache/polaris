@@ -19,22 +19,45 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.polaris.core.context.RealmContext;
 
+/**
+ * An interface for resolving the realm context for a given request.
+ *
+ * <p>General implementation guidance:
+ *
+ * <p>Methods in this class should not block the calling thread. If the realm resolution process is
+ * blocking, it should be done in a separate thread.
+ *
+ * <p>In the case of an error during realm resolution, the {@link CompletionStage} should complete
+ * exceptionally; methods should not throw exceptions directly.
+ *
+ * <p>The realm resolution takes place in the very early stages of the request processing pipeline,
+ * and before any authentication or authorization checks are performed. Implementations should be
+ * careful with the use of any blocking operations, as they may lead to performance issues or
+ * deadlocks, especially in public environments.
+ */
 public interface RealmContextResolver {
 
   /**
-   * Resolves the realm context for the given request.
+   * Resolves the realm context for the given request, and returns a {@link CompletionStage} that
+   * completes with the resolved realm context.
    *
-   * @return the resolved realm context
-   * @throws UnresolvableRealmContextException if the realm context cannot be resolved
+   * @return a {@link CompletionStage} that completes with the resolved realm context
    */
-  RealmContext resolveRealmContext(
+  CompletionStage<RealmContext> resolveRealmContext(
       String requestURL, String method, String path, Function<String, String> headers);
 
-  default RealmContext resolveRealmContext(
+  /**
+   * Resolves the realm context for the given request, and returns a {@link CompletionStage} that
+   * completes with the resolved realm context.
+   *
+   * @return a {@link CompletionStage} that completes with the resolved realm context
+   */
+  default CompletionStage<RealmContext> resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
     CaseInsensitiveMap caseInsensitiveMap = new CaseInsensitiveMap(headers);
     return resolveRealmContext(
