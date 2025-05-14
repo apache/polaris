@@ -261,6 +261,9 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
 
+      // Since manifestFileCleanupTaskHandler performs two rounds of deletion — first for data files, then for manifest files —
+      // and this test mocks a failure on the first deletion attempt, it takes 3 attempts to successfully delete all files.
+
       // First attempt, fail on data file deletion
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isFalse();

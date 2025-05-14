@@ -323,7 +323,7 @@ public class BatchFileCleanupTaskHandlerTest {
       // Wait for all async tasks to finish
       future.join();
 
-      // Check if the file was successfully deleted after retries
+      // Check if the file not deleted after attempt
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isTrue();
 
       CompletableFuture<Void> future1 =
