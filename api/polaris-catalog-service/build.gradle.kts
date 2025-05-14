@@ -90,7 +90,7 @@ openApiGenerate {
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
-  configOptions.put("useBeanValidation", "false")
+  configOptions.put("useBeanValidation", "true")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
