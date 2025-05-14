@@ -52,8 +52,7 @@ public class PageTokenTest {
 
     Assertions.assertThat(PageToken.readEverything()).isEqualTo(PageToken.readEverything());
 
-    Assertions
-        .assertThat(PageToken.readEverything().buildNextPage(List.of()).pageToken)
+    Assertions.assertThat(PageToken.readEverything().buildNextPage(List.of()).pageToken)
         .isInstanceOf(DonePageToken.class);
   }
 
