@@ -20,15 +20,74 @@ package org.apache.polaris.service.quarkus.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
+@QuarkusTest
+@TestProfile(DefaultConfigurationStoreTest.Profile.class)
 public class DefaultConfigurationStoreTest {
+  private static final String falseByDefaultKey = "ALLOW_SPECIFYING_FILE_IO_IMPL";
+  private static final String trueByDefaultKey = "ENABLE_GENERIC_TABLES";
+  private static final String realmOne = "realm1";
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.realm-context.realms",
+          "realm1,realm2",
+          String.format("polaris.features.\"%s\"", falseByDefaultKey),
+          "true",
+          String.format("polaris.features.\"%s\"", trueByDefaultKey),
+          "false",
+          String.format(
+              "polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, falseByDefaultKey),
+          "false");
+    }
+  }
+
+  private PolarisCallContext polarisContext;
+
+  @Inject MetaStoreManagerFactory managerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisDiagnostics diagServices;
+  @Inject FeaturesConfiguration featuresConfiguration;
+
+  @BeforeEach
+  public void before(TestInfo testInfo) {
+    String realmName =
+        "realm_%s_%s"
+            .formatted(
+                testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
+                System.nanoTime());
+    RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    polarisContext =
+        new PolarisCallContext(
+            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            diagServices,
+            configurationStore,
+            Clock.systemDefaultZone());
+  }
 
   @Test
   public void testGetConfiguration() {
@@ -110,5 +169,65 @@ public class DefaultConfigurationStoreTest {
     assertThat(keyOneRealm3).isEqualTo(defaultKeyOneValue);
     String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key2");
     assertThat(keyTwoRealm3).isEqualTo(defaultKeyTwoValue);
+  }
+
+  // TODO simplify once DefaultConfigrationStore doesn't rely on CallContext.getCurrentContext
+  private void setCurrentRealm(String realmName) {
+    RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    CallContext.setCurrentContext(
+        new CallContext() {
+          @Override
+          public RealmContext getRealmContext() {
+            return realmContext;
+          }
+
+          @Override
+          public PolarisCallContext getPolarisCallContext() {
+            return CallContext.getCurrentContext().getPolarisCallContext();
+          }
+
+          @Override
+          public Map<String, Object> contextVariables() {
+            return CallContext.getCurrentContext().contextVariables();
+          }
+        });
+  }
+
+  @Test
+  public void testInjectedConfigurationStore() {
+    // Feature override makes this `false`
+    boolean featureOverrideValue =
+        configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
+    assertThat(featureOverrideValue).isFalse();
+
+    // Feature override value makes this `true`
+    setCurrentRealm("not-" + realmOne);
+    boolean realmOverrideValue =
+        configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
+    assertThat(realmOverrideValue).isTrue();
+
+    // Now, realm override value makes this `false`
+    setCurrentRealm(realmOne);
+    realmOverrideValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
+    assertThat(realmOverrideValue).isFalse();
+
+    assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
+  }
+
+  @Test
+  public void testInjectedFeaturesConfiguration() {
+    assertThat(featuresConfiguration).isInstanceOf(QuarkusResolvedFeaturesConfiguration.class);
+
+    assertThat(featuresConfiguration.defaults())
+        .containsKeys(falseByDefaultKey, trueByDefaultKey)
+        .allSatisfy((key, value) -> assertThat(value).doesNotContain(realmOne));
+
+    assertThat(featuresConfiguration.realmOverrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides()).containsKey(realmOne);
+
+    assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides()).hasSize(1);
+    assertThat(featuresConfiguration.realmOverrides().get(realmOne).overrides())
+        .containsKey(falseByDefaultKey);
   }
 }
