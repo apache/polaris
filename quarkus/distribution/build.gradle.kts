@@ -13,7 +13,7 @@ val serverProject = project(":polaris-quarkus-server")
 
 distributions {
     main {
-        distributionBaseName.set("polaris-quarkus-combined")
+        distributionBaseName.set("polaris-quarkus-distribution")
         contents {
             // Copy admin distribution contents
             into("admin") {
@@ -27,6 +27,7 @@ distributions {
 
             from("scripts/run.sh")
             from("distribution/README.md")
+            from("../../DISCLAIMER")
 
             // TODO: combine the LICENSE and NOTICE in a follow-up PR
             from("${adminProject.projectDir}/distribution/NOTICE")
