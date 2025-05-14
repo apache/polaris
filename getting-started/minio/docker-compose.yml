@@ -1,0 +1,209 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2024-05-03T15-18-24Z # Using a specific recent version
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # Credentials for Minio users (to be created by mc)
+      POLARIS_S3_USER: ${POLARIS_S3_USER:-polaris_s3_user}
+      POLARIS_S3_PASSWORD: ${POLARIS_S3_PASSWORD:-polaris_s3_password_val} # Changed default
+      SPARK_MINIO_S3_USER: ${SPARK_MINIO_S3_USER:-spark_minio_s3_user}
+      SPARK_MINIO_S3_PASSWORD: ${SPARK_MINIO_S3_PASSWORD:-spark_minio_s3_password_val} # Changed default
+      TRINO_MINIO_S3_USER: ${TRINO_MINIO_S3_USER:-trino_minio_s3_user}
+      TRINO_MINIO_S3_PASSWORD: ${TRINO_MINIO_S3_PASSWORD:-trino_minio_s3_password_val} # Changed default
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mc:
+    image: minio/mc:RELEASE.2024-05-02T06-20-15Z # Using a specific recent version
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./minio-config:/config
+    entrypoint: /bin/sh
+    command: /config/setup-minio.sh
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      POLARIS_S3_USER: ${POLARIS_S3_USER:-polaris_s3_user}
+      POLARIS_S3_PASSWORD: ${POLARIS_S3_PASSWORD:-polaris_s3_password_val}
+      SPARK_MINIO_S3_USER: ${SPARK_MINIO_S3_USER:-spark_minio_s3_user}
+      SPARK_MINIO_S3_PASSWORD: ${SPARK_MINIO_S3_PASSWORD:-spark_minio_s3_password_val}
+      TRINO_MINIO_S3_USER: ${TRINO_MINIO_S3_USER:-trino_minio_s3_user}
+      TRINO_MINIO_S3_PASSWORD: ${TRINO_MINIO_S3_PASSWORD:-trino_minio_s3_password_val}
+
+  postgres-minio:
+    image: postgres:17.4 # Using a specific recent version for stability
+    ports:
+      - "${POSTGRES_MINIO_PORT:-5433}:5432"
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: POLARIS_MINIO
+      POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
+    volumes:
+      - ../assets/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - postgres_minio_data:/var/lib/postgresql/data
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    healthcheck:
+      test: "pg_isready -U postgres -d POLARIS_MINIO"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+
+  polaris-bootstrap-minio:
+    image: apache/polaris-admin-tool:postgres-latest # Assumes image built from Polaris source
+    depends_on:
+      postgres-minio:
+        condition: service_healthy
+    environment:
+      polaris.persistence.type: relational-jdbc
+      quarkus.datasource.db-kind: pgsql
+      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres-minio:5432/POLARIS_MINIO
+      quarkus.datasource.username: postgres
+      quarkus.datasource.password: postgres
+      # Polaris client credentials (to be created by bootstrap)
+      SPARK_POLARIS_CLIENT_ID: ${SPARK_POLARIS_CLIENT_ID:-spark_app_client}
+      SPARK_POLARIS_CLIENT_SECRET: ${SPARK_POLARIS_CLIENT_SECRET:-spark_client_secret_val}
+      TRINO_POLARIS_CLIENT_ID: ${TRINO_POLARIS_CLIENT_ID:-trino_app_client}
+      TRINO_POLARIS_CLIENT_SECRET: ${TRINO_POLARIS_CLIENT_SECRET:-trino_client_secret_val}
+    command: > # Using > for multi-line command
+      bootstrap
+      --realm=POLARIS_MINIO_REALM
+      --credential=POLARIS_MINIO_REALM,root,s3cr3t
+      --credential=POLARIS_MINIO_REALM,${SPARK_POLARIS_CLIENT_ID:-spark_app_client},${SPARK_POLARIS_CLIENT_SECRET:-spark_client_secret_val}
+      --credential=POLARIS_MINIO_REALM,${TRINO_POLARIS_CLIENT_ID:-trino_app_client},${TRINO_POLARIS_CLIENT_SECRET:-trino_client_secret_val}
+
+  polaris:
+    image: apache/polaris:postgres-latest # Assumes image built from Polaris source
+    depends_on:
+      polaris-bootstrap-minio:
+        condition: service_completed_successfully
+      postgres-minio:
+        condition: service_healthy
+      mc:
+        condition: service_completed_successfully
+    ports:
+      - "${POLARIS_MINIO_API_PORT:-8183}:8181"
+      - "${POLARIS_MINIO_MGMT_PORT:-8184}:8182"
+    environment:
+      polaris.persistence.type: relational-jdbc
+      quarkus.datasource.db-kind: pgsql
+      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres-minio:5432/POLARIS_MINIO
+      quarkus.datasource.username: postgres
+      quarkus.datasource.password: postgres
+      polaris.realm-context.realms: POLARIS_MINIO_REALM
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8182/q/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup-catalog-minio:
+    image: alpine/curl:3.19 # Specific version
+    depends_on:
+      polaris: condition: service_healthy
+    volumes:
+      - ./polaris-config:/polaris-config
+    entrypoint: /bin/sh
+    command: '-c "apk add --no-cache jq && chmod +x /polaris-config/create-catalog-minio.sh && /polaris-config/create-catalog-minio.sh"'
+    environment:
+      POLARIS_S3_USER: ${POLARIS_S3_USER:-polaris_s3_user}
+      POLARIS_S3_PASSWORD: ${POLARIS_S3_PASSWORD:-polaris_s3_password_val}
+
+  polaris-setup-governance:
+    image: alpine/curl:3.19 # Specific version
+    depends_on:
+      polaris-setup-catalog-minio:
+        condition: service_completed_successfully
+    volumes:
+      - ./polaris-config:/polaris-config
+    entrypoint: /bin/sh
+    command: '-c "apk add --no-cache jq && chmod +x /polaris-config/setup-polaris-governance.sh && /polaris-config/setup-polaris-governance.sh"'
+    environment:
+      SPARK_POLARIS_CLIENT_ID: ${SPARK_POLARIS_CLIENT_ID:-spark_app_client}
+      TRINO_POLARIS_CLIENT_ID: ${TRINO_POLARIS_CLIENT_ID:-trino_app_client}
+
+  spark-sql-minio:
+    image: apache/spark:3.5.1 # Using a specific Spark 3.5.x version
+    container_name: spark-sql-minio-gov
+    depends_on:
+      polaris-setup-governance:
+        condition: service_completed_successfully
+      minio: condition: service_healthy
+    stdin_open: true
+    tty: true
+    ports:
+      - "${SPARK_UI_MINIO_START_PORT:-4050}-${SPARK_UI_MINIO_END_PORT:-4055}:4040-4045"
+    environment:
+      # Minio S3 credentials for Spark data plane (R/W)
+      AWS_ACCESS_KEY_ID: ${SPARK_MINIO_S3_USER:-spark_minio_s3_user}
+      AWS_SECRET_ACCESS_KEY: ${SPARK_MINIO_S3_PASSWORD:-spark_minio_s3_password_val}
+      # Polaris client credentials for Spark control plane
+      SPARK_POLARIS_CLIENT_ID_ENV: ${SPARK_POLARIS_CLIENT_ID:-spark_app_client}
+      SPARK_POLARIS_CLIENT_SECRET_ENV: ${SPARK_POLARIS_CLIENT_SECRET:-spark_client_secret_val}
+    command: [
+      "/opt/spark/bin/spark-sql",
+      "--packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,software.amazon.awssdk:bundle:2.25.31,software.amazon.awssdk:url-connection-client:2.25.31,org.apache.hadoop:hadoop-aws:3.3.6", # Updated Iceberg, AWS SDK versions
+      "--conf", "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+      "--conf", "spark.sql.catalog.polaris_minio_gov=org.apache.iceberg.spark.SparkCatalog",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.catalog-impl=org.apache.iceberg.rest.RESTCatalog",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.uri=http://polaris:8181/api/catalog",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.type=oauth2",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.oauth2.grant-type=client_credentials",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.oauth2.client-id=${SPARK_POLARIS_CLIENT_ID_ENV}",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.oauth2.client-secret=${SPARK_POLARIS_CLIENT_SECRET_ENV}",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.oauth2.token-endpoint=http://polaris:8181/api/catalog/v1/oauth/tokens",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.auth.oauth2.additional-parameters=realmName=POLARIS_MINIO_REALM",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.warehouse=minio_catalog",
+      "--conf", "spark.sql.catalog.polaris_minio_gov.io-impl=org.apache.iceberg.aws.s3.S3FileIO",
+      "--conf", "spark.hadoop.fs.s3a.endpoint=http://minio:9000",
+      "--conf", "spark.hadoop.fs.s3a.path.style.access=true",
+      "--conf", "spark.hadoop.fs.s3a.connection.ssl.enabled=false",
+      "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem",
+      "--conf", "spark.sql.defaultCatalog=polaris_minio_gov",
+      "--conf", "spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp"
+    ]
+
+  trino-minio:
+    image: trinodb/trino:449 # Using a specific Trino version
+    container_name: minio-trino-gov
+    depends_on:
+      polaris-setup-governance:
+        condition: service_completed_successfully
+      minio: condition: service_healthy
+    ports:
+      - "${TRINO_MINIO_PORT:-8083}:8080"
+    volumes:
+      - ./trino-catalog:/etc/trino/catalog
+    environment:
+      # Polaris client credentials for Trino control plane (R/O role in Polaris)
+      TRINO_POLARIS_CLIENT_ID: ${TRINO_POLARIS_CLIENT_ID:-trino_app_client}
+      TRINO_POLARIS_CLIENT_SECRET: ${TRINO_POLARIS_CLIENT_SECRET:-trino_client_secret_val}
+      # Minio S3 credentials for Trino data plane (R/O Minio user)
+      TRINO_MINIO_S3_USER: ${TRINO_MINIO_S3_USER:-trino_minio_s3_user}
+      TRINO_MINIO_S3_PASSWORD: ${TRINO_MINIO_S3_PASSWORD:-trino_minio_s3_password_val}
+
+volumes:
+  minio_data:
+  postgres_minio_data:
+
+networks:
+  default:
+    name: polaris_minio_gov_network
