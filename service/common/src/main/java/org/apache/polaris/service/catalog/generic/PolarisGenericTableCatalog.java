@@ -45,6 +45,8 @@ import org.slf4j.LoggerFactory;
 public class PolarisGenericTableCatalog implements GenericTableCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalog.class);
 
+  private String name;
+
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -61,6 +63,14 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
+  }
+
+  @Override
+  public void initialize(String name, Map<String, String> properties) {
+    this.name = name;
+    if (!properties.isEmpty()) {
+      throw new IllegalStateException("PolarisGenericTableCatalog does not support properties");
+    }
   }
 
   @Override

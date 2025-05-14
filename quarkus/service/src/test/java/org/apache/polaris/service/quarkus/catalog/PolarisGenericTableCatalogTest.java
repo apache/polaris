@@ -263,6 +263,7 @@ public class PolarisGenericTableCatalogTest {
 
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,

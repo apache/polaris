@@ -56,6 +56,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
   protected void initializeCatalog() {
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.genericTableCatalog.initialize(catalogName, Map.of());
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
