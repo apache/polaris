@@ -208,4 +208,3 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d "client_secret=my-client-secret" \
   -d "scope=PRINCIPAL_ROLE:ALL"
 ```
-

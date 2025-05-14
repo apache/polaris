@@ -113,9 +113,9 @@ public abstract class PolarisAuthzTestBase {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
           "true");
     }
   }
