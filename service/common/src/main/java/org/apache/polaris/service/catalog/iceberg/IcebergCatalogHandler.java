@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.iceberg.TableProperties.*;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -905,8 +907,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     try {
       Tasks.foreach(new TableOperations[] {ops})
-          .retry(4)
-          .exponentialBackoff(100L, 60000L, 1800000L, (double) 2.0F)
+          .retry(COMMIT_NUM_RETRIES_DEFAULT)
+          .exponentialBackoff(
+              COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
+              COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
+              COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
+              (double) 2.0F)
           .onlyRetryOn(CommitFailedException.class)
           .run(
               (taskOps) -> {
