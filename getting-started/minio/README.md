@@ -6,7 +6,19 @@ Polaris uses Postgres for its metadata. Spark SQL is configured for read/write a
 **Prerequisites:**
 * Docker and Docker Compose.
 * `jq` installed on your host machine.
-* Apache Polaris images (`apache/polaris-admin-tool:postgres-latest`, `apache/polaris:postgres-latest`) built from source with JDBC support, tagged as `postgres-latest`. Run `./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-server:quarkusAppPartsBuild --rerun :polaris-quarkus-admin:assemble :polaris-quarkus-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.tag=postgres-latest -Dquarkus.container-image.build=true` from the Polaris repository root.
+* Apache Polaris images (`apache/polaris-admin-tool:postgres-latest`, `apache/polaris:postgres-latest`) built from source with JDBC support, tagged as `postgres-latest`. 
+
+Run 
+
+```shell
+    ./gradlew \
+       :polaris-quarkus-server:assemble \
+       :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+       :polaris-quarkus-admin:assemble \
+       :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+       -Dquarkus.container-image.tag=postgres-latest \
+       -Dquarkus.container-image.build=true
+```
 
 **Security Overview:**
 * **Minio (S3 Storage):**
