@@ -100,15 +100,15 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_WILDCARD_LOCATION\"",
+          "polaris.features.\"ALLOW_WILDCARD_LOCATION\"",
           "true",
-          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
+          "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
-          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
           "polaris.event-listener.type",
           "test");
