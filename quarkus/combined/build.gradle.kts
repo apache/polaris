@@ -1,7 +1,9 @@
 import org.apache.tools.ant.filters.ReplaceTokens
+import publishing.GenerateDigest
 
 plugins {
-    id("polaris-distribution")
+    base
+    id("distribution")
 }
 
 description = "Apache Polaris Combined Distribution"
@@ -9,21 +11,10 @@ description = "Apache Polaris Combined Distribution"
 val adminProject = project(":polaris-quarkus-admin")
 val serverProject = project(":polaris-quarkus-server")
 
-// Create a run script that can launch either admin or server
-val runScript = tasks.register<Copy>("createRunScript") {
-    from("src/main/scripts/run.sh")
-    into(layout.buildDirectory.dir("scripts"))
-    filter<ReplaceTokens>("tokens" to mapOf("version" to version))
-    fileMode = 0b111101101 // 755 in octal
-}
-
 distributions {
     main {
         distributionBaseName.set("polaris-quarkus-combined")
         contents {
-            // Add run script
-            from(runScript)
-
             // Copy admin distribution contents
             into("admin") {
                 from(adminProject.layout.buildDirectory.dir("quarkus-app"))
@@ -34,15 +25,50 @@ distributions {
                 from(serverProject.layout.buildDirectory.dir("quarkus-app"))
             }
 
-            // Add shared files from admin distribution (they're the same in both)
+            from("scripts/run.sh")
+            from("distribution/README.md")
+
+            // TODO: combine the LICENSE and NOTICE in a follow-up PR
             from("${adminProject.projectDir}/distribution/NOTICE")
             from("${adminProject.projectDir}/distribution/LICENSE")
-            from("${adminProject.projectDir}/distribution/README.md")
         }
     }
 }
 
-// Make sure the admin and server distributions are built before this one
-tasks.named("assembleDist") {
-    dependsOn(":polaris-quarkus-admin:build", ":polaris-quarkus-server:build")
-} 
+val distTar = tasks.named<Tar>("distTar") {
+    dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
+    inputs.files(adminProject.layout.buildDirectory.dir("quarkus-app"))
+    inputs.files(serverProject.layout.buildDirectory.dir("quarkus-app"))
+    compression = Compression.GZIP
+}
+
+val distZip = tasks.named<Zip>("distZip") {
+    dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
+    inputs.files(adminProject.layout.buildDirectory.dir("quarkus-app"))
+    inputs.files(serverProject.layout.buildDirectory.dir("quarkus-app"))
+}
+
+val digestDistTar =
+    tasks.register<GenerateDigest>("digestDistTar") {
+        description = "Generate the distribution tar digest"
+        mustRunAfter(distTar)
+        file.set { distTar.get().archiveFile.get().asFile }
+    }
+
+val digestDistZip =
+    tasks.register<GenerateDigest>("digestDistZip") {
+        description = "Generate the distribution zip digest"
+        mustRunAfter(distZip)
+        file.set { distZip.get().archiveFile.get().asFile }
+    }
+
+distTar.configure { finalizedBy(digestDistTar) }
+
+distZip.configure { finalizedBy(digestDistZip) }
+
+//if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
+//    signing {
+//        sign(distTar.get())
+//        sign(distZip.get())
+//    }
+//}
