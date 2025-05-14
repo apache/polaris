@@ -54,8 +54,6 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 public class ManagementServiceTest {
@@ -225,12 +223,8 @@ public class ManagementServiceTest {
   }
 
   private PrincipalEntity createPrincipal(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext callContext,
-      String name,
-      boolean isFederated) {
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext, String name) {
     return new PrincipalEntity.Builder()
-        .setFederated(isFederated)
         .setName(name)
         .setCreateTimestamp(Instant.now().toEpochMilli())
         .setId(metaStoreManager.generateNewEntityId(callContext).getId())
@@ -252,32 +246,17 @@ public class ManagementServiceTest {
         .build();
   }
 
-  public static Object[][] federatedIdentityArugments() {
-    return new Object[][] {
-      {true, false},
-      {false, true},
-      {true, true},
-    };
-  }
-
-  @ParameterizedTest
-  @MethodSource("federatedIdentityArugments")
-  public void testCannotAssignFederatedEntities(
-      boolean isFederatedPrincipal, boolean isFederatedRole) {
+  @Test
+  public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
     PolarisCallContext callContext = setupCallContext(metaStoreManager);
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
-    String principalPrefix = isFederatedPrincipal ? "federated_" : "";
-    PrincipalEntity principal =
-        createPrincipal(
-            metaStoreManager, callContext, principalPrefix + "principal_id", isFederatedPrincipal);
+    PrincipalEntity principal = createPrincipal(metaStoreManager, callContext, "principal_id");
     metaStoreManager.createPrincipal(callContext, principal);
 
-    String rolePrefix = isFederatedRole ? "federated_" : "";
-    PrincipalRoleEntity role =
-        createRole(metaStoreManager, callContext, rolePrefix + "role_id", isFederatedRole);
+    PrincipalRoleEntity role = createRole(metaStoreManager, callContext, "federated_role_id", true);
     EntityResult result = metaStoreManager.createEntityIfNotExists(callContext, null, role);
     assertThat(result.isSuccess()).isTrue();
 
