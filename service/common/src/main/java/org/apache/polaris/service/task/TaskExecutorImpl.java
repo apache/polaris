@@ -64,6 +64,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       PolarisEventListener polarisEventListener) {
+    this.executorId = EXECUTOR_ID_PREFIX + UUID.randomUUID();
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;

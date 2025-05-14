@@ -35,7 +35,6 @@ import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
-import io.quarkus.scheduler.Scheduled;
 
 @ApplicationScoped
 public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
