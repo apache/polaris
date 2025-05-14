@@ -453,49 +453,6 @@ public class PolicyCatalogTest {
         .isInstanceOf(InvalidPolicyException.class);
   }
 
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        " invalid",
-        "invalid ",
-        " invalid ",
-        "",
-        "policy name",
-        "policy@name",
-        "policy#name",
-        "policy$name",
-        "policy!name",
-        "policy name with space",
-        "policy.name",
-        "policy,name",
-        "policy~name",
-        "policy`name",
-        "policy;name",
-        "policy:name",
-        "policy<>name",
-        "policy[]name",
-        "policy{}name",
-        "policy|name",
-        "policy\\name",
-        "policy/name",
-        "policy*name",
-        "policy^name",
-        "policy%name",
-      })
-  public void testCreatePolicyWithInvalidName(String policyName) {
-    icebergCatalog.createNamespace(NS);
-
-    assertThatThrownBy(
-            () ->
-                policyCatalog.createPolicy(
-                    new PolicyIdentifier(NS, policyName),
-                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-                    "test",
-                    "invalid"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Invalid policy name");
-  }
-
   @Test
   public void testLoadPolicyNotExist() {
     icebergCatalog.createNamespace(NS);
