@@ -86,7 +86,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("spec/docs.yaml")
   excludes.add("spec/index.yml")
 
-  excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
+  excludes.add("gradle/wrapper/gradle-wrapper*")
 
   excludes.add("logs/**")
   excludes.add("service/common/src/**/banner.txt")
