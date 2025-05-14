@@ -33,6 +33,8 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidators;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class PolicyValidatorsTest {
   Namespace ns = Namespace.of("NS1");
@@ -128,5 +130,69 @@ public class PolicyValidatorsTest {
     var targetEntity = new PrincipalEntity.Builder().build();
     var result = PolicyValidators.canAttach(policyEntity, targetEntity);
     assertThat(result).isFalse().as("Expected canAttach() to return false for null");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "valid_policy_name",
+        "another-valid-policy-name",
+        "policy_name_with_underscores",
+        "policyNameWithMixedCase",
+        "policyNameWith123Numbers",
+        "VALIDNAME",
+        "valid-name-123",
+        "valid_name_123",
+        "valid123",
+        "123valid-name_with-both",
+        "v"
+      })
+  public void testValidPolicyName(String policyName) {
+    var policyEntity =
+        new PolicyEntity.Builder(ns, policyName, DATA_COMPACTION)
+            .setContent("{\"enable\": false}")
+            .setPolicyVersion(0)
+            .build();
+    PolicyValidators.validate(policyEntity);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        " invalid",
+        "invalid ",
+        " invalid ",
+        "",
+        "policy name",
+        "policy@name",
+        "policy#name",
+        "policy$name",
+        "policy!name",
+        "policy name with space",
+        "policy.name",
+        "policy,name",
+        "policy~name",
+        "policy`name",
+        "policy;name",
+        "policy:name",
+        "policy<>name",
+        "policy[]name",
+        "policy{}name",
+        "policy|name",
+        "policy\\name",
+        "policy/name",
+        "policy*name",
+        "policy^name",
+        "policy%name",
+      })
+  public void testInvalidPolicyName(String policyName) {
+    var policyEntity =
+        new PolicyEntity.Builder(ns, policyName, DATA_COMPACTION)
+            .setContent("{\"enable\": false}")
+            .setPolicyVersion(0)
+            .build();
+    assertThatThrownBy(() -> PolicyValidators.validate(policyEntity))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid policy name");
   }
 }

@@ -107,6 +107,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -449,6 +451,49 @@ public class PolicyCatalogTest {
                 policyCatalog.createPolicy(
                     POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "invalid"))
         .isInstanceOf(InvalidPolicyException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        " invalid",
+        "invalid ",
+        " invalid ",
+        "",
+        "policy name",
+        "policy@name",
+        "policy#name",
+        "policy$name",
+        "policy!name",
+        "policy name with space",
+        "policy.name",
+        "policy,name",
+        "policy~name",
+        "policy`name",
+        "policy;name",
+        "policy:name",
+        "policy<>name",
+        "policy[]name",
+        "policy{}name",
+        "policy|name",
+        "policy\\name",
+        "policy/name",
+        "policy*name",
+        "policy^name",
+        "policy%name",
+      })
+  public void testCreatePolicyWithInvalidName(String policyName) {
+    icebergCatalog.createNamespace(NS);
+
+    assertThatThrownBy(
+            () ->
+                policyCatalog.createPolicy(
+                    new PolicyIdentifier(NS, policyName),
+                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+                    "test",
+                    "invalid"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid policy name");
   }
 
   @Test

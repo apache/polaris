@@ -19,6 +19,7 @@
 package org.apache.polaris.core.policy.validator;
 
 import com.google.common.base.Preconditions;
+import java.util.regex.Pattern;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -40,6 +41,10 @@ import org.slf4j.LoggerFactory;
 public class PolicyValidators {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyValidators.class);
 
+  // A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z), digits
+  // (0-9), hyphens (-), underscores (_)
+  private static final Pattern POLICY_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9\\-_]+$");
+
   /**
    * Validates the given policy.
    *
@@ -52,6 +57,12 @@ public class PolicyValidators {
 
     var type = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
     Preconditions.checkArgument(type != null, "Unknown policy type: " + policy.getPolicyTypeCode());
+
+    Preconditions.checkArgument(
+        POLICY_NAME_PATTERN.matcher(policy.getName()).matches(),
+        "Invalid policy name: %s, A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z), digits"
+            + "(0-9), hyphens (-), underscores (_)",
+        policy.getName());
 
     switch (type) {
       case DATA_COMPACTION:
