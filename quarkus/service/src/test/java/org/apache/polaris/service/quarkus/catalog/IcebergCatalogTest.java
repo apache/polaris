@@ -179,7 +179,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.features.defaults.\"LIST_PAGINATION_ENABLED\"",
           "true",
           "polaris.event-listener.type",
-          "test");
+          "test",
+          "LIST_PAGINATION_ENABLED",
+          "true");
     }
   }
 

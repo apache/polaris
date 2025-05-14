@@ -67,6 +67,7 @@ import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -1555,5 +1556,38 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testPaginatedListNamespaces() {
+    String prefix = "testPaginatedListNamespaces";
+    for (int i = 0; i < 100; i++) {
+      Namespace namespace = Namespace.of(prefix + i);
+      restCatalog.createNamespace(namespace);
+    }
+
+    try {
+      Assertions.assertThat(catalogApi.listNamespaces(currentCatalogName, Namespace.empty())).hasSize(100);
+      for (var pageSize: List.of(1, 2, 3, 49, 50, 51, 99, 100, 101, 1000)) {
+        int total = 0;
+        String pageToken = null;
+        do {
+          ListNamespacesResponse response = catalogApi
+              .listNamespaces(currentCatalogName, Namespace.empty(), pageToken, String.valueOf(pageSize));
+          Assertions.assertThat(response.namespaces().size()).isLessThanOrEqualTo(pageSize);
+          total += response.namespaces().size();
+          pageToken = response.nextPageToken();
+        } while (pageToken != null);
+        Assertions
+            .assertThat(total)
+            .as("Total paginated results for pageSize = " + pageSize)
+            .isEqualTo(100);
+      }
+    } finally {
+      for (int i = 0; i < 100; i++) {
+        Namespace namespace = Namespace.of(prefix + i);
+        restCatalog.dropNamespace(namespace);
+      }
+    }
   }
 }

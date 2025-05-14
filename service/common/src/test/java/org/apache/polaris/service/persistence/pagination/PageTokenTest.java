@@ -51,6 +51,10 @@ public class PageTokenTest {
     Assertions.assertThat(token).isNotInstanceOf(HasPageSize.class);
 
     Assertions.assertThat(PageToken.readEverything()).isEqualTo(PageToken.readEverything());
+
+    Assertions
+        .assertThat(PageToken.readEverything().buildNextPage(List.of()).pageToken)
+        .isInstanceOf(DonePageToken.class);
   }
 
   @Test

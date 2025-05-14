@@ -101,6 +101,23 @@ public class CatalogApi extends RestApi {
     }
   }
 
+  public ListNamespacesResponse listNamespaces(String catalog, Namespace parent, String pageToken, String pageSize) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (!parent.isEmpty()) {
+      // TODO change this for Iceberg 1.7.2:
+      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
+    }
+    queryParams.put("page-token", pageToken);
+    queryParams.put("page-size", pageSize);
+    try (Response response =
+             request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {
+      assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+      ListNamespacesResponse res = response.readEntity(ListNamespacesResponse.class);
+      return res;
+    }
+  }
+
   public List<Namespace> listAllNamespacesChildFirst(String catalog) {
     List<Namespace> result = new ArrayList<>();
     for (int idx = -1; idx < result.size(); idx++) {
