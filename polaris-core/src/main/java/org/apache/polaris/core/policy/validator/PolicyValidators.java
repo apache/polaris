@@ -19,7 +19,6 @@
 package org.apache.polaris.core.policy.validator;
 
 import com.google.common.base.Preconditions;
-import java.util.regex.Pattern;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;

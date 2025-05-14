@@ -33,8 +33,6 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidators;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 public class PolicyValidatorsTest {
   Namespace ns = Namespace.of("NS1");
