@@ -1,4 +1,4 @@
-# Apache Polaris Combined Distribution
+# Apache Polaris Distribution
 
 This distribution contains both the Polaris Server and Admin Tool in a single package.
 
@@ -9,13 +9,13 @@ This distribution contains both the Polaris Server and Admin Tool in a single pa
 ## Directory Structure
 
 ```
-polaris-quarkus-combined-@version@/
+polaris-quarkus-distribution-@version@/
 ├── LICENSE
 ├── NOTICE
 ├── README.md
 ├── admin/           # Admin tool files
 ├── server/          # Server files
-└── run.sh          # Combined run script
+└── run.sh
 ```
 
 ## Usage

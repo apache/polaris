@@ -86,7 +86,6 @@ distributions {
       from(project.layout.buildDirectory.dir("quarkus-app"))
       from("distribution/NOTICE")
       from("distribution/LICENSE")
-      from("distribution/README.md")
       from("distribution/DISCLAIMER")
     }
   }
