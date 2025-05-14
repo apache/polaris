@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithParentName;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,9 +34,16 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 // QuarkusFeaturesConfiguration
 public interface QuarkusBehaviorChangesConfiguration {
 
+  @WithParentName
   Map<String, String> defaults();
 
-  Map<String, ? extends FeaturesConfiguration.RealmOverrides> realmOverrides();
+  Map<String, ? extends QuarkusRealmOverrides> realmOverrides();
+
+  interface QuarkusRealmOverrides extends FeaturesConfiguration.RealmOverrides {
+    @WithParentName
+    @Override
+    Map<String, String> overrides();
+  }
 
   default Map<String, Object> parseDefaults(ObjectMapper objectMapper) {
     return convertMap(objectMapper, defaults());

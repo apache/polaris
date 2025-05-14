@@ -53,8 +53,8 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
       return Map.of(
           "quarkus.http.limits.max-body-size", "1000000",
           "polaris.realm-context.realms", "POLARIS,OTHER",
-          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
-          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true");
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
+          "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true");
     }
   }
 
