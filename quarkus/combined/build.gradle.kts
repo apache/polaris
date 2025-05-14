@@ -2,11 +2,11 @@ import org.apache.tools.ant.filters.ReplaceTokens
 import publishing.GenerateDigest
 
 plugins {
-    base
     id("distribution")
+    id("signing")
 }
 
-description = "Apache Polaris Combined Distribution"
+description = "Apache Polaris Binary Distribution"
 
 val adminProject = project(":polaris-quarkus-admin")
 val serverProject = project(":polaris-quarkus-server")
@@ -37,15 +37,11 @@ distributions {
 
 val distTar = tasks.named<Tar>("distTar") {
     dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
-    inputs.files(adminProject.layout.buildDirectory.dir("quarkus-app"))
-    inputs.files(serverProject.layout.buildDirectory.dir("quarkus-app"))
     compression = Compression.GZIP
 }
 
 val distZip = tasks.named<Zip>("distZip") {
     dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
-    inputs.files(adminProject.layout.buildDirectory.dir("quarkus-app"))
-    inputs.files(serverProject.layout.buildDirectory.dir("quarkus-app"))
 }
 
 val digestDistTar =
@@ -66,9 +62,9 @@ distTar.configure { finalizedBy(digestDistTar) }
 
 distZip.configure { finalizedBy(digestDistZip) }
 
-//if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-//    signing {
-//        sign(distTar.get())
-//        sign(distZip.get())
-//    }
-//}
+if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
+    signing {
+        sign(distTar.get())
+        sign(distZip.get())
+    }
+}
