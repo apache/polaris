@@ -80,8 +80,8 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
@@ -114,9 +114,9 @@ public abstract class PolarisAuthzTestBase {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
           "true");
     }
   }
@@ -196,7 +196,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
 
   protected IcebergCatalog baseCatalog;
-  protected GenericTableCatalog genericTableCatalog;
+  protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
@@ -483,7 +483,8 @@ public abstract class PolarisAuthzTestBase {
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }
 

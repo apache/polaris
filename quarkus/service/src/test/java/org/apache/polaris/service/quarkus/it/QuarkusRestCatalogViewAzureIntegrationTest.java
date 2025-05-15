@@ -37,7 +37,7 @@ public class QuarkusRestCatalogViewAzureIntegrationTest
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"AZURE\"]");
+      return Map.of("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"AZURE\"]");
     }
   }
 
