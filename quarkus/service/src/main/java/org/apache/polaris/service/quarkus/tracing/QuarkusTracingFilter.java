@@ -26,8 +26,8 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.quarkus.config.QuarkusFilterPriorities;
+import org.apache.polaris.service.quarkus.context.RealmContextFilter;
 import org.apache.polaris.service.quarkus.logging.QuarkusLoggingMDCFilter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
