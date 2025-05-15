@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.context;
 
+import io.smallrye.common.vertx.ContextLocals;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -46,6 +47,7 @@ public class RealmContextFilter {
                     rc.getHeaders()::getFirst))
         .onItem()
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
+        .invoke(realmContext -> ContextLocals.put(REALM_CONTEXT_KEY, realmContext))
         .onItemOrFailure()
         .transform((realmContext, error) -> error == null ? null : errorResponse(error));
   }
