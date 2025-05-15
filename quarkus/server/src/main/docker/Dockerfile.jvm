@@ -41,6 +41,9 @@ COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
 COPY --chown=polaris:polaris build/quarkus-app/*.jar /deployments/
 COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
 COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=polaris:polaris distribution/LICENSE /deployments/
+COPY --chown=polaris:polaris distribution/NOTICE /deployments/
+COPY --chown=polaris:polaris distribution/DISCLAIMER /deployments/
 
 EXPOSE 8181
 EXPOSE 8182
