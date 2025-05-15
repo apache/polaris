@@ -29,8 +29,6 @@ plugins {
   id("distribution")
 }
 
-val runScript by configurations.creating { description = "Used to reference the run.sh script" }
-
 val distributionZip by
   configurations.creating { description = "Used to reference the distribution zip" }
 
@@ -69,8 +67,6 @@ dependencies {
 
   testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
-
-  runScript(project(":polaris-quarkus-run-script", "runScript"))
 }
 
 quarkus {
@@ -93,11 +89,9 @@ quarkus {
 distributions {
   main {
     contents {
-      from(runScript)
       from(project.layout.buildDirectory.dir("quarkus-app"))
       from("distribution/NOTICE")
       from("distribution/LICENSE")
-      from("distribution/README.md")
       from("../../DISCLAIMER")
     }
   }
@@ -108,17 +102,10 @@ val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 val distTar =
   tasks.named<Tar>("distTar") {
     dependsOn(quarkusBuild)
-    // Trigger resolution (and build) of the run-script artifact
-    inputs.files(runScript)
     compression = Compression.GZIP
   }
 
-val distZip =
-  tasks.named<Zip>("distZip") {
-    dependsOn(quarkusBuild)
-    // Trigger resolution (and build) of the run-script artifact
-    inputs.files(runScript)
-  }
+val distZip = tasks.named<Zip>("distZip") { dependsOn(quarkusBuild) }
 
 val digestDistTar =
   tasks.register<GenerateDigest>("digestDistTar") {

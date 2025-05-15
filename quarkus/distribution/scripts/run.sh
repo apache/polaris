@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,24 +16,25 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 
-# Linux Quarkus fast-jar run script for Apache Polaris
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
-set -e
+# Default to server if no component specified
+COMPONENT=${1:-server}
 
-script_dir="$(dirname "$0")"
+if [ "$COMPONENT" != "server" ] && [ "$COMPONENT" != "admin" ]; then
+    echo "Usage: $0 [server|admin] [additional arguments...]"
+    exit 1
+fi
 
-if [ -z "$JAVA_HOME" ] ; then
-  JAVACMD="`\\unset -f command; \\command -v java`"
+# Shift off the first argument so $@ contains remaining args
+shift
+
+if [ "$COMPONENT" = "server" ]; then
+    cd server
+    java -jar quarkus-run.jar "$@"
 else
-  JAVACMD="$JAVA_HOME/bin/java"
-fi
-
-if [ ! -x "$JAVACMD" ] ; then
-  echo "The JAVA_HOME environment variable is not defined correctly," >&2
-  echo "this environment variable is needed to run this program." >&2
-  exit 1
-fi
-
-exec "${JAVACMD}" -jar "${script_dir}/quarkus-run.jar" $@
+    cd admin
+    java -jar quarkus-run.jar "$@"
+fi 
