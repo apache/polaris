@@ -19,17 +19,41 @@
 package org.apache.polaris.service.storage;
 
 import org.apache.polaris.core.storage.StorageLocation;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class StorageLocationTest {
 
   @Test
-  public void testOfDifferentPrefixes() {
-    StorageLocation StandardLocation = StorageLocation.of("file:///path/to/file");
+  public void testAwsLocations() {
+    StorageLocation baseStorageLocation = StorageLocation.of("s3://path/to/file");
+    StorageLocation testStorageLocation = StorageLocation.of("s3://path/to/////file");
+    Assertions.assertEquals(testStorageLocation, baseStorageLocation);
+    testStorageLocation = StorageLocation.of("s3://////path/////to///file");
+    Assertions.assertEquals(testStorageLocation, baseStorageLocation);
+
+    testStorageLocation = StorageLocation.of("s3://////path'/////*to===///\"file");
+    Assertions.assertEquals("s3://path'/*to===/\"file", testStorageLocation.toString());
+  }
+
+  @Test
+  public void testGcpLocations() {
+    StorageLocation baseStorageLocation = StorageLocation.of("gcs://path/to/file");
+    StorageLocation testStorageLocation = StorageLocation.of("gcs://path/to/////file");
+    Assertions.assertEquals(testStorageLocation, baseStorageLocation);
+    testStorageLocation = StorageLocation.of("gcs://////path/////to///file");
+    Assertions.assertEquals(testStorageLocation, baseStorageLocation);
+
+    testStorageLocation = StorageLocation.of("gcs://////path'/////*to===///\"file");
+    Assertions.assertEquals("gcs://path'/*to===/\"file", testStorageLocation.toString());
+  }
+
+  @Test
+  public void testLocalFileLocations() {
+    StorageLocation storageLocation = StorageLocation.of("file:///path/to/file");
     StorageLocation slashLeadingLocation = StorageLocation.of("/path/to/file");
     StorageLocation fileSingleSlashLocation = StorageLocation.of("file:/path/to/file");
-    Assertions.assertThat(slashLeadingLocation.equals(StandardLocation)).isTrue();
-    Assertions.assertThat(fileSingleSlashLocation.equals(StandardLocation)).isTrue();
+    Assertions.assertEquals(slashLeadingLocation, storageLocation);
+    Assertions.assertEquals(fileSingleSlashLocation, storageLocation);
   }
 }
