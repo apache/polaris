@@ -39,7 +39,8 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   @Override
   public Tags contribute(Context context) {
-    // FIXME request scope does not work here, so we have to resolve the realm context manually
+    // FIXME retrieve the realm context from context.requestContextLocalData() when this PR is in:
+    // https://github.com/quarkusio/quarkus/pull/47887
     HttpServerRequest request = context.request();
     try {
       return realmContextResolver
