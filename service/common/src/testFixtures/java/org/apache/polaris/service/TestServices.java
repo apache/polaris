@@ -49,6 +49,7 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
@@ -191,6 +192,9 @@ public record TestServices(
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
+      CatalogHandlerUtils catalogHandlerUtils =
+          new CatalogHandlerUtils(callContext.getPolarisCallContext(), configurationStore);
+
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(
               realmContext,
@@ -201,7 +205,8 @@ public record TestServices(
               userSecretsManager,
               authorizer,
               new DefaultCatalogPrefixParser(),
-              reservedProperties);
+              reservedProperties,
+              catalogHandlerUtils);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
       IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);

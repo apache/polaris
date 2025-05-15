@@ -261,4 +261,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description("The list of supported catalog connection types for federation")
           .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
+      PolarisConfiguration.<Integer>builder()
+          .key("ICEBERG_COMMIT_MAX_RETRIES")
+          .catalogConfig("polaris.config.iceberg-commit-max-retries")
+          .description("The max number of times to try committing to an Iceberg table")
+          .defaultValue(4)
+          .buildFeatureConfiguration();
 }

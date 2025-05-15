@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -85,9 +84,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
- * org.apache.iceberg.rest.CatalogHandlers} after finding the appropriate {@link Catalog} for the
- * current {@link RealmContext}.
+ * An adapter between generated service types like `IcebergRestCatalogApiService` and
+ * `IcebergCatalogHandler`.
  */
 @RequestScoped
 public class IcebergCatalogAdapter
@@ -140,6 +138,7 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
+  private final CatalogHandlerUtils catalogHandlerUtils;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -151,7 +150,8 @@ public class IcebergCatalogAdapter
       UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      CatalogHandlerUtils catalogHandlerUtils) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
@@ -161,6 +161,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
+    this.catalogHandlerUtils = catalogHandlerUtils;
 
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
@@ -199,7 +200,8 @@ public class IcebergCatalogAdapter
         catalogFactory,
         catalogName,
         polarisAuthorizer,
-        reservedProperties);
+        reservedProperties,
+        catalogHandlerUtils);
   }
 
   @Override
