@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static org.apache.polaris.core.entity.PolarisBaseEntity.convertPropertiesToJson;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -410,17 +412,21 @@ public class PolarisTestMetaStoreManager {
   PolarisBaseEntity createPrincipal(String name) {
     // create new principal identity
     PolarisBaseEntity principalEntity =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            name);
-    principalEntity.setInternalProperties(
-        PolarisObjectMapperUtil.serializeProperties(
-            this.polarisCallContext,
-            Map.of(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true")));
+        new PolarisBaseEntity.Builder()
+            .catalogId(PolarisEntityConstants.getNullId())
+            .id(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(PolarisEntityConstants.getRootEntityId())
+            .name(name)
+            .internalProperties(
+                PolarisObjectMapperUtil.serializeProperties(
+                    this.polarisCallContext,
+                    Map.of(
+                        PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE,
+                        "true")))
+            .build();
+
     CreatePrincipalResult createPrincipalResult =
         polarisMetaStoreManager.createPrincipal(this.polarisCallContext, principalEntity);
     Assertions.assertThat(createPrincipalResult).isNotNull();
@@ -660,8 +666,15 @@ public class PolarisTestMetaStoreManager {
       parentId = PolarisEntityConstants.getRootEntityId();
     }
     PolarisBaseEntity newEntity =
-        new PolarisBaseEntity(catalogId, entityId, entityType, entitySubType, parentId, name);
-    newEntity.setPropertiesAsMap(properties);
+        new PolarisBaseEntity.Builder()
+            .catalogId(catalogId)
+            .id(entityId)
+            .typeCode(entityType.getCode())
+            .subTypeCode(entitySubType.getCode())
+            .parentId(parentId)
+            .name(name)
+            .properties(convertPropertiesToJson(properties))
+            .build();
     PolarisBaseEntity entity =
         polarisMetaStoreManager
             .createEntityIfNotExists(this.polarisCallContext, catalogPath, newEntity)
@@ -1444,34 +1457,43 @@ public class PolarisTestMetaStoreManager {
     long catalogId =
         (catalogPath == null) ? PolarisEntityConstants.getNullId() : catalogPath.get(0).getId();
     Assertions.assertThat(catalogId).isEqualTo(entity.getCatalogId());
-
     // let's make some property updates
-    entity.setProperties(props);
-    entity.setInternalProperties(internalProps);
+    PolarisBaseEntity updatedPropEntity =
+        new PolarisBaseEntity.Builder(entity)
+            .properties(props)
+            .internalProperties(internalProps)
+            .build();
 
     // lookup that entity, ensure it exists
     PolarisBaseEntity beforeUpdateEntity =
         polarisMetaStoreManager
             .loadEntity(
-                this.polarisCallContext, entity.getCatalogId(), entity.getId(), entity.getType())
+                this.polarisCallContext,
+                updatedPropEntity.getCatalogId(),
+                updatedPropEntity.getId(),
+                updatedPropEntity.getType())
             .getEntity();
 
     // update that property
     PolarisBaseEntity updatedEntity =
         polarisMetaStoreManager
-            .updateEntityPropertiesIfNotChanged(this.polarisCallContext, catalogPath, entity)
+            .updateEntityPropertiesIfNotChanged(
+                this.polarisCallContext, catalogPath, updatedPropEntity)
             .getEntity();
 
     // if version mismatch, nothing should be updated
     if (beforeUpdateEntity == null
-        || beforeUpdateEntity.getEntityVersion() != entity.getEntityVersion()) {
+        || beforeUpdateEntity.getEntityVersion() != updatedPropEntity.getEntityVersion()) {
       Assertions.assertThat(updatedEntity).isNull();
 
       // refresh catalog info
       entity =
           polarisMetaStoreManager
               .loadEntity(
-                  this.polarisCallContext, entity.getCatalogId(), entity.getId(), entity.getType())
+                  this.polarisCallContext,
+                  updatedPropEntity.getCatalogId(),
+                  updatedPropEntity.getId(),
+                  updatedPropEntity.getType())
               .getEntity();
 
       // ensure nothing has changed
@@ -1513,20 +1535,21 @@ public class PolarisTestMetaStoreManager {
 
     // update should have been performed
     Assertions.assertThat(jsonNode(updatedEntity.getProperties()))
-        .isEqualTo(jsonNode(entity.getProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
     Assertions.assertThat(jsonNode(afterUpdateEntity.getProperties()))
-        .isEqualTo(jsonNode(entity.getProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
     Assertions.assertThat(jsonNode(updatedEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(entity.getInternalProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
     Assertions.assertThat(jsonNode(afterUpdateEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(entity.getInternalProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
 
     // lookup the tracking slice to verify this has been updated too
     if (supportsChangeTracking) {
       List<PolarisChangeTrackingVersions> versions =
           polarisMetaStoreManager
               .loadEntitiesChangeTracking(
-                  this.polarisCallContext, List.of(new PolarisEntityId(catalogId, entity.getId())))
+                  this.polarisCallContext,
+                  List.of(new PolarisEntityId(catalogId, updatedPropEntity.getId())))
               .getChangeTrackingVersions();
       Assertions.assertThat(versions).hasSize(1);
       Assertions.assertThat(versions.get(0).getEntityVersion())
@@ -2223,11 +2246,11 @@ public class PolarisTestMetaStoreManager {
             PolarisEntityType.TABLE_LIKE,
             PolarisEntitySubType.ICEBERG_TABLE,
             "T5");
-    T5v1.setId(100000L);
+    var newId = new PolarisBaseEntity.Builder(T5v1).id(100000L).build();
     PolarisBaseEntity notExists =
         this.updateEntity(
             List.of(catalog, N5, N5_N6),
-            T5v1,
+            newId,
             "{\"v3pproperty\": \"some value\"}",
             "{\"v3pinternal_property\": \"some other value\"}");
     Assertions.assertThat(notExists).isNull();
@@ -2515,15 +2538,17 @@ public class PolarisTestMetaStoreManager {
     // save old name
     String oldName = entity.getName();
 
-    // the renamed entity
-    PolarisEntity renamedEntityInput = new PolarisEntity(entity);
-    renamedEntityInput.setName(newName);
     var updatedInternalProperties = Map.of("key1", "updatedDataForInternalProperties1234");
     var updatedProperties = Map.of("key1", "updatedDataForProperties9876");
 
-    // this is to test that properties are also updated during the rename operation
-    renamedEntityInput.setInternalPropertiesAsMap(updatedInternalProperties);
-    renamedEntityInput.setPropertiesAsMap(updatedProperties);
+    // the renamed entity
+    var newEntity =
+        new PolarisBaseEntity.Builder(entity)
+            .name(newName)
+            .internalPropertiesAsMap(updatedInternalProperties)
+            .propertiesAsMap(updatedProperties)
+            .build();
+    PolarisEntity renamedEntityInput = new PolarisEntity(newEntity);
 
     // check to see if we would have a name conflict
     EntityResult newNameLookup =

@@ -19,8 +19,7 @@
 package org.apache.polaris.service.quarkus.task;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatPredicate;
+import static org.assertj.core.api.Assertions.*;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
@@ -46,8 +45,6 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -81,12 +78,6 @@ class ManifestFileCleanupTaskHandlerTest {
         });
   }
 
-  private void addTaskLocation(TaskEntity task) {
-    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
-    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
-    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
-  }
-
   @Test
   public void testCleanupFileNotExists() throws IOException {
     PolarisCallContext polarisCallContext =
@@ -115,7 +106,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
@@ -147,7 +138,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
@@ -194,7 +185,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
@@ -259,7 +250,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);

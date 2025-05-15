@@ -133,8 +133,8 @@ public class PolarisEntity extends PolarisBaseEntity {
     this.dropTimestamp = dropTimestamp;
     this.purgeTimestamp = purgeTimestamp;
     this.lastUpdateTimestamp = lastUpdateTimestamp;
-    this.setPropertiesAsMap(properties);
-    this.setInternalPropertiesAsMap(internalProperties);
+    this.properties = convertPropertiesToJson(properties);
+    this.internalProperties = convertPropertiesToJson(internalProperties);
     this.entityVersion = entityVersion;
     this.grantRecordsVersion = grantRecordsVersion;
   }
@@ -154,15 +154,14 @@ public class PolarisEntity extends PolarisBaseEntity {
   }
 
   public static PolarisEntityCore toCore(PolarisBaseEntity entity) {
-    PolarisEntityCore entityCore =
-        new PolarisEntityCore(
-            entity.getCatalogId(),
-            entity.getId(),
-            entity.getParentId(),
-            entity.getTypeCode(),
-            entity.getName(),
-            entity.getEntityVersion());
-    return entityCore;
+    return new PolarisEntityCore.Builder<>()
+        .catalogId(entity.getCatalogId())
+        .id(entity.getId())
+        .parentId(entity.getParentId())
+        .typeCode(entity.getTypeCode())
+        .name(entity.getName())
+        .entityVersion(entity.getEntityVersion())
+        .build();
   }
 
   public static List<PolarisEntityCore> toCoreList(List<PolarisEntity> path) {
