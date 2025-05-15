@@ -19,11 +19,10 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.storage.azure.AzureLocation;
-
 import java.net.URI;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** An abstraction over a storage location */
 public class StorageLocation {
@@ -124,7 +123,8 @@ public class StorageLocation {
   protected String normalizePath(String path) {
     path = SLASHES.matcher(path).replaceAll("/");
     if (path.endsWith("/") || path.startsWith("/")) {
-      path = path.substring(
+      path =
+          path.substring(
               path.startsWith("/") && path.length() > 1 ? 1 : 0,
               path.endsWith("/") ? path.length() - 1 : path.length());
     }
