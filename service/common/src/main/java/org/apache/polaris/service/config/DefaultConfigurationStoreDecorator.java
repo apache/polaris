@@ -21,33 +21,46 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.annotation.Priority;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 
-@ApplicationScoped
-public class DefaultConfigurationStore implements PolarisConfigurationStore {
+@Decorator
+@Priority(1)
+public class DefaultConfigurationStoreDecorator implements PolarisConfigurationStore {
+  @Inject @Delegate PolarisConfigurationStore delegate;
 
   private final Map<String, Object> defaults;
+  private final Map<String, Map<String, Object>> realmOverrides;
+  @Inject private Instance<RealmContext> realmContextInstance;
 
-  // FIXME the whole PolarisConfigurationStore + PolarisConfiguration needs to be refactored
-  // to become a proper Quarkus configuration object
   @Inject
-  public DefaultConfigurationStore(
+  public DefaultConfigurationStoreDecorator(
       ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this(configurations.parseDefaults(objectMapper));
-  }
-
-  public DefaultConfigurationStore(Map<String, Object> defaults) {
-    this.defaults = Map.copyOf(defaults);
+    this.defaults = Map.copyOf(configurations.parseDefaults(objectMapper));
+    this.realmOverrides = Map.copyOf(configurations.parseRealmOverrides(objectMapper));
   }
 
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
-    @SuppressWarnings("unchecked")
-    T confgValue = (T) defaults.get(configName);
-    return confgValue;
+    if (!realmContextInstance.isUnsatisfied()) {
+      RealmContext realmContext = realmContextInstance.get();
+      String realm = realmContext.getRealmIdentifier();
+      @SuppressWarnings("unchecked")
+      T confgValue =
+          (T)
+              realmOverrides
+                  .getOrDefault(realm, Map.of())
+                  .getOrDefault(configName, defaults.get(configName));
+      return confgValue;
+    } else {
+      return delegate.getConfiguration(ctx, configName);
+    }
   }
 }
