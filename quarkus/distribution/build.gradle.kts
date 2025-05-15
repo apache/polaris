@@ -32,7 +32,7 @@ val serverProject = project(":polaris-quarkus-server")
 
 distributions {
     main {
-        distributionBaseName.set("polaris")
+        distributionBaseName.set("polaris-bin")
         contents {
             // Copy admin distribution contents
             into("admin") {
@@ -67,14 +67,14 @@ val distZip = tasks.named<Zip>("distZip") {
 val digestDistTar =
     tasks.register<GenerateDigest>("digestDistTar") {
         description = "Generate the distribution tar digest"
-        mustRunAfter(distTar)
+        dependsOn(distTar)
         file.set { distTar.get().archiveFile.get().asFile }
     }
 
 val digestDistZip =
     tasks.register<GenerateDigest>("digestDistZip") {
         description = "Generate the distribution zip digest"
-        mustRunAfter(distZip)
+        dependsOn(distZip)
         file.set { distZip.get().archiveFile.get().asFile }
     }
 
