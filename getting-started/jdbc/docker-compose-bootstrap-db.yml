@@ -26,11 +26,10 @@ services:
       - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
       - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
       - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
-    command:
-      - "bootstrap"
-      - "--realm=POLARIS"
-      - "--credential=POLARIS,root,s3cr3t"
-
+    command:>
+      bootstrap
+      --realm=POLARIS_MINIO_REALM
+      --credential=POLARIS_MINIO_REALM,root,s3cr3t
   polaris:
     depends_on:
       polaris-bootstrap:

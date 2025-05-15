@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   minio:
-    image: minio/minio:RELEASE.2024-05-03T15-18-24Z # Using a specific recent version
+    image: minio/minio:latest
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -27,7 +25,7 @@ services:
       start_period: 10s
 
   mc:
-    image: minio/mc:RELEASE.2024-05-02T06-20-15Z # Using a specific recent version
+    image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
@@ -45,108 +43,88 @@ services:
       TRINO_MINIO_S3_USER: ${TRINO_MINIO_S3_USER:-trino_minio_s3_user}
       TRINO_MINIO_S3_PASSWORD: ${TRINO_MINIO_S3_PASSWORD:-trino_minio_s3_password_val}
 
-  postgres-minio:
-    image: postgres:17.4 # Using a specific recent version for stability
-    ports:
-      - "${POSTGRES_MINIO_PORT:-5433}:5432"
-    shm_size: 128mb
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: POLARIS_MINIO
-      POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
-    volumes:
-      - ../assets/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-      - postgres_minio_data:/var/lib/postgresql/data
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
-    healthcheck:
-      test: "pg_isready -U postgres -d POLARIS_MINIO"
-      interval: 5s
-      timeout: 2s
-      retries: 15
-
-  polaris-bootstrap-minio:
-    image: apache/polaris-admin-tool:postgres-latest # Assumes image built from Polaris source
-    depends_on:
-      postgres-minio:
-        condition: service_healthy
-    environment:
-      polaris.persistence.type: relational-jdbc
-      quarkus.datasource.db-kind: pgsql
-      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres-minio:5432/POLARIS_MINIO
-      quarkus.datasource.username: postgres
-      quarkus.datasource.password: postgres
-      # Polaris client credentials (to be created by bootstrap)
-      SPARK_POLARIS_CLIENT_ID: ${SPARK_POLARIS_CLIENT_ID:-spark_app_client}
-      SPARK_POLARIS_CLIENT_SECRET: ${SPARK_POLARIS_CLIENT_SECRET:-spark_client_secret_val}
-      TRINO_POLARIS_CLIENT_ID: ${TRINO_POLARIS_CLIENT_ID:-trino_app_client}
-      TRINO_POLARIS_CLIENT_SECRET: ${TRINO_POLARIS_CLIENT_SECRET:-trino_client_secret_val}
-    command: > # Using > for multi-line command
-      bootstrap
-      --realm=POLARIS_MINIO_REALM
-      --credential=POLARIS_MINIO_REALM,root,s3cr3t
-      --credential=POLARIS_MINIO_REALM,${SPARK_POLARIS_CLIENT_ID:-spark_app_client},${SPARK_POLARIS_CLIENT_SECRET:-spark_client_secret_val}
-      --credential=POLARIS_MINIO_REALM,${TRINO_POLARIS_CLIENT_ID:-trino_app_client},${TRINO_POLARIS_CLIENT_SECRET:-trino_client_secret_val}
-
   polaris:
-    image: apache/polaris:postgres-latest # Assumes image built from Polaris source
+    image: apache/polaris:postgres-latest
     depends_on:
-      polaris-bootstrap-minio:
-        condition: service_completed_successfully
-      postgres-minio:
+      minio: # Polaris server depends on PostgreSQL being healthy
         condition: service_healthy
-      mc:
-        condition: service_completed_successfully
+      # polaris-bootstrap-minio is a setup task; polaris server doesn't need to wait for it on every start
+      # after the initial successful bootstrap. Other services that *use* Polaris data
+      # (like polaris-setup-catalog-minio) should depend on polaris: service_healthy.
     ports:
-      - "${POLARIS_MINIO_API_PORT:-8183}:8181"
-      - "${POLARIS_MINIO_MGMT_PORT:-8184}:8182"
+      # The host port is defined by POLARIS_MINIO_API_PORT from .env, container port is 8181
+      - "${POLARIS_MINIO_API_PORT:-8183}:${QUARKUS_HTTP_PORT:-8181}" # Or just - "${POLARIS_MINIO_API_PORT:-8183}:8181"
+      # The host port is defined by POLARIS_MINIO_MGMT_PORT from .env, container port is 8182
+      - "${POLARIS_MINIO_MGMT_PORT:-8184}:${QUARKUS_MANAGEMENT_PORT:-8182}" # Or just - "${POLARIS_MINIO_MGMT_PORT:-8184}:8182"
     environment:
-      polaris.persistence.type: relational-jdbc
-      quarkus.datasource.db-kind: pgsql
-      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres-minio:5432/POLARIS_MINIO
-      quarkus.datasource.username: postgres
-      quarkus.datasource.password: postgres
-      polaris.realm-context.realms: POLARIS_MINIO_REALM
-      quarkus.otel.sdk.disabled: "true"
+      # These variables will be sourced from the .env file (or shell environment).
+      # Docker Compose makes them available to the container if they are defined.
+      - POLARIS_PERSISTENCE_TYPE
+      - POLARIS_REALM_CONTEXT_REALMS
+
+      # Other Quarkus/App settings from .env
+      - QUARKUS_OTEL_SDK_DISABLED
+      - QUARKUS_HTTP_PORT         # Tells Quarkus which port to bind to inside the container
+      - QUARKUS_MANAGEMENT_PORT # Tells Quarkus which management port to bind to inside the container
+
+      # Optional: Debug logging settings (will be sourced from .env if uncommented there)
+      - QUARKUS_LOG_CONSOLE_LEVEL
+      - QUARKUS_LOG_CATEGORY_IO_SMALLRYE_CONFIG_LEVEL
+      - QUARKUS_LOG_CATEGORY_ORG_APACHE_POLARIS_LEVEL
+      - QUARKUS_LOG_CATEGORY_IO_QUARKUS_DATASOURCE_LEVEL
+      - QUARKUS_LOG_CATEGORY_ORG_AGROAL_LEVEL
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8182/q/health/live"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
+      # Uses the management port defined by POLARIS_MINIO_MGMT_PORT (which sets QUARKUS_MANAGEMENT_PORT for inside the container)
+      # The healthcheck runs INSIDE the container network, so it checks localhost:QUARKUS_MANAGEMENT_PORT (e.g. localhost:8182)
+      test: ["CMD-SHELL", "curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health/live || curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health/ready || curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 12s # Generous start period for app init and DB connection
 
   polaris-setup-catalog-minio:
-    image: alpine/curl:3.19 # Specific version
+    image: alpine/curl:latest 
     depends_on:
-      polaris: condition: service_healthy
+      polaris: 
+        condition: service_healthy
     volumes:
       - ./polaris-config:/polaris-config
     entrypoint: /bin/sh
     command: '-c "apk add --no-cache jq && chmod +x /polaris-config/create-catalog-minio.sh && /polaris-config/create-catalog-minio.sh"'
     environment:
-      POLARIS_S3_USER: ${POLARIS_S3_USER:-polaris_s3_user}
-      POLARIS_S3_PASSWORD: ${POLARIS_S3_PASSWORD:-polaris_s3_password_val}
+      - POLARIS_S3_USER
+      - POLARIS_S3_PASSWORD
+      - QUARKUS_HTTP_PORT
+      - POLARIS_REALM_CONTEXT_REALMS
 
   polaris-setup-governance:
-    image: alpine/curl:3.19 # Specific version
+    image: alpine/curl:latest
     depends_on:
-      polaris-setup-catalog-minio:
+      polaris-setup-catalog-minio: # Should depend on polaris-bootstrap-minio being done first for root user
         condition: service_completed_successfully
+      polaris: # Also ensure polaris service itself is healthy for API calls
+        condition: service_healthy
     volumes:
       - ./polaris-config:/polaris-config
     entrypoint: /bin/sh
     command: '-c "apk add --no-cache jq && chmod +x /polaris-config/setup-polaris-governance.sh && /polaris-config/setup-polaris-governance.sh"'
     environment:
-      SPARK_POLARIS_CLIENT_ID: ${SPARK_POLARIS_CLIENT_ID:-spark_app_client}
-      TRINO_POLARIS_CLIENT_ID: ${TRINO_POLARIS_CLIENT_ID:-trino_app_client}
+      - SPARK_POLARIS_CLIENT_ID
+      - SPARK_POLARIS_CLIENT_SECRET
+      - TRINO_POLARIS_CLIENT_ID
+      - TRINO_POLARIS_CLIENT_SECRET
+      - POLARIS_REALM_CONTEXT_REALMS 
+      - QUARKUS_HTTP_PORT # To construct http://polaris:${QUARKUS_HTTP_PORT}
+
 
   spark-sql-minio:
-    image: apache/spark:3.5.1 # Using a specific Spark 3.5.x version
+    image: apache/spark:3.5.5-java17-python3
     container_name: spark-sql-minio-gov
     depends_on:
       polaris-setup-governance:
         condition: service_completed_successfully
-      minio: condition: service_healthy
+      minio: 
+        condition: service_healthy
     stdin_open: true
     tty: true
     ports:
@@ -187,7 +165,8 @@ services:
     depends_on:
       polaris-setup-governance:
         condition: service_completed_successfully
-      minio: condition: service_healthy
+      minio: 
+        condition: service_healthy
     ports:
       - "${TRINO_MINIO_PORT:-8083}:8080"
     volumes:
@@ -202,7 +181,6 @@ services:
 
 volumes:
   minio_data:
-  postgres_minio_data:
 
 networks:
   default:

@@ -1,20 +1,6 @@
 #!/bin/sh
 set -e
 
-echo "Waiting for Minio service to start..."
-attempt_counter=0
-max_attempts=20
-until curl -s -f http://minio:9000/minio/health/live > /dev/null; do
-  if [ ${attempt_counter} -eq ${max_attempts} ]; then
-    echo "Max attempts reached. Failed to connect to Minio."
-    exit 1
-  fi
-  echo "Attempting to connect to Minio (${attempt_counter}/${max_attempts})..."
-  attempt_counter=$((attempt_counter+1))
-  sleep 3
-done
-echo "Minio service is live."
-
 mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
 mc mb myminio/polaris-bucket --ignore-existing
 

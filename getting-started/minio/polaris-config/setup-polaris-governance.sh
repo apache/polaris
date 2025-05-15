@@ -66,6 +66,23 @@ polaris_api_call() {
   fi
   echo ""
 }
+echo "Creating Polaris principal for Spark: ${SPARK_POLARIS_CLIENT_ID}"
+# Assuming an API endpoint like /auth/principals or similar
+# This might be a multi-step process: 1. Create principal, 2. Set password credential
+# Example (highly conceptual, verify actual API):
+polaris_api_call "POST" "/auth/principals" \
+  "{\"name\": \"${SPARK_POLARIS_CLIENT_ID}\", \"realmName\": \"${POLARIS_MINIO_REALM}\"}" 201 409 "${POLARIS_AUTH_API_URL_BASE}" # 409 if exists
+
+polaris_api_call "PUT" "/auth/principals/${SPARK_POLARIS_CLIENT_ID}/credentials" \
+  "[{\"type\": \"PASSWORD\", \"value\": \"${SPARK_POLARIS_CLIENT_SECRET}\"}]" 204 200 "${POLARIS_AUTH_API_URL_BASE}" # Using PUT to set/reset
+
+echo "Creating Polaris principal for Trino: ${TRINO_POLARIS_CLIENT_ID}"
+polaris_api_call "POST" "/auth/principals" \
+  "{\"name\": \"${TRINO_POLARIS_CLIENT_ID}\", \"realmName\": \"${POLARIS_MINIO_REALM}\"}" 201 409 "${POLARIS_AUTH_API_URL_BASE}"
+
+polaris_api_call "PUT" "/auth/principals/${TRINO_POLARIS_CLIENT_ID}/credentials" \
+  "[{\"type\": \"PASSWORD\", \"value\": \"${TRINO_POLARIS_CLIENT_SECRET}\"}]" 204 200 "${POLARIS_AUTH_API_URL_BASE}"
+
 
 # 1. Create Principal Roles
 polaris_api_call "POST" "/principal-roles" "{\"name\": \"${SPARK_ROLE_NAME}\"}" 201
