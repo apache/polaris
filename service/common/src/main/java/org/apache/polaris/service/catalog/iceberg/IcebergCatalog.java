@@ -105,6 +105,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.cache.EntityWeigher;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -1522,7 +1523,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             }
             default -> {
               String rawMetadataJson = TableMetadataParser.toJson(metadata);
-              if (rawMetadataJson.length() * 2 < maxMetadataCacheBytes) {
+              if (rawMetadataJson.length() * EntityWeigher.APPROXIMATE_BYTES_PER_CHAR < maxMetadataCacheBytes) {
                 yield Optional.of(rawMetadataJson);
               } else {
                 yield Optional.empty();
