@@ -87,6 +87,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -910,6 +911,10 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_PRINCIPAL;
     authorizeBasicRootOperationOrThrow(op);
 
+    // the API should prevent this from happening
+    if (FederatedEntities.isFederated(entity)) {
+      throw new ValidationException("Cannot create a federated principal");
+    }
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
     CreatePrincipalResult principalResult =
@@ -972,6 +977,10 @@ public class PolarisAdminService {
         findPrincipalByName(name)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", name));
 
+    if (FederatedEntities.isFederated(currentPrincipalEntity)) {
+      throw new ValidationException(
+          "Cannot update a federated principal: %s", currentPrincipalEntity.getName());
+    }
     if (currentPrincipalEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
       throw new CommitFailedException(
           "Failed to update Principal; currentEntityVersion '%s', expected '%s'",
@@ -1005,6 +1014,10 @@ public class PolarisAdminService {
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
 
+    if (FederatedEntities.isFederated(currentPrincipalEntity)) {
+      throw new ValidationException(
+          "Cannot rotate/reset credentials for a federated principal: %s", principalName);
+    }
     PolarisPrincipalSecrets currentSecrets =
         metaStoreManager
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
@@ -1331,11 +1344,16 @@ public class PolarisAdminService {
     PolarisEntity principalEntity =
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
+    if (FederatedEntities.isFederated(principalEntity)) {
+      throw new ValidationException("Cannot assign a role to a federated principal");
+    }
     PolarisEntity principalRoleEntity =
         findPrincipalRoleByName(principalRoleName)
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
-
+    if (FederatedEntities.isFederated(principalRoleEntity)) {
+      throw new ValidationException("Cannot assign a federated role to a principal");
+    }
     return metaStoreManager
         .grantUsageOnRoleToGrantee(
             getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
@@ -1349,10 +1367,16 @@ public class PolarisAdminService {
     PolarisEntity principalEntity =
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
+    if (FederatedEntities.isFederated(principalEntity)) {
+      throw new ValidationException("Cannot revoke a role from a federated principal");
+    }
     PolarisEntity principalRoleEntity =
         findPrincipalRoleByName(principalRoleName)
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
+    if (FederatedEntities.isFederated(principalRoleEntity)) {
+      throw new ValidationException("Cannot revoke a federated role from a principal");
+    }
     return metaStoreManager
         .revokeUsageOnRoleFromGrantee(
             getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
