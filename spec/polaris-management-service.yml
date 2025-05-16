@@ -1163,6 +1163,10 @@ components:
           maxLength: 256
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
           description: The name of the role
+        federated:
+          type: boolean
+          description: Whether the principal role is a federated role (that is, managed by an external identity provider)
+          default: false
         properties:
           type: object
           additionalProperties:
