@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -49,9 +50,11 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -72,16 +75,19 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final PolarisDiagnostics polarisDiagnostics;
 
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId) {
+      String realmId,
+      PolarisDiagnostics polarisDiagnostics) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.polarisDiagnostics = polarisDiagnostics;
   }
 
   @Override
@@ -399,6 +405,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
+    polarisDiagnostics.check(
+        (pageToken instanceof EntityIdPageToken || pageToken instanceof ReadEverythingPageToken),
+        "unrecognized_page_token");
+
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -413,6 +423,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
     String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
+
+    if (pageToken instanceof EntityIdPageToken entityIdPageToken) {
+      query += String.format(" AND id > %d ORDER BY id ASC", entityIdPageToken.getId());
+    }
+
     try {
       List<PolarisBaseEntity> results = new ArrayList<>();
       datasourceOperations.executeSelectOverStream(
@@ -425,11 +440,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             }
             data.forEach(results::add);
           });
-      List<T> resultsOrEmpty =
-          results == null
-              ? Collections.emptyList()
-              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
-      return Page.fromItems(resultsOrEmpty);
+      List<T> resultsOrEmpty = results.stream().map(transformer).collect(Collectors.toList());
+      return pageToken.buildNextPage(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);

@@ -2575,7 +2575,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   /** Build a {@link PageToken} from a string and page size. */
   private PageToken buildPageToken(@Nullable String tokenString, @Nullable Integer pageSize) {
-
     boolean paginationEnabled =
         callContext
             .getPolarisCallContext()

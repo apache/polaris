@@ -20,6 +20,8 @@ package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a page token that can be used by operations like `listTables`. Clients that specify a
@@ -31,6 +33,7 @@ import java.util.Objects;
  * response, that means there is no more data to read.
  */
 public abstract class PageToken {
+  private static Logger LOGGER = LoggerFactory.getLogger(PageToken.class);
 
   /** Build a new PageToken that reads everything */
   public static PageToken readEverything() {
@@ -51,13 +54,25 @@ public abstract class PageToken {
   public static PageToken build(String token, Integer pageSize) {
     if (token == null || token.isEmpty()) {
       if (pageSize != null) {
-        return new LimitPageToken(pageSize);
+        return new EntityIdPageToken(pageSize);
       } else {
         return new ReadEverythingPageToken();
       }
     } else {
-      // TODO implement, split out by the token's prefix
-      throw new IllegalArgumentException("Unrecognized page token: " + token);
+      try {
+        String[] parts = token.split("/");
+        if (parts.length < 1) {
+          throw new IllegalArgumentException("Invalid token format: " + token);
+        } else if (parts[0].equals(EntityIdPageToken.PREFIX)) {
+          int resolvedPageSize = pageSize == null ? Integer.parseInt(parts[2]) : pageSize;
+          return new EntityIdPageToken(Long.parseLong(parts[1]), resolvedPageSize);
+        } else {
+          throw new IllegalArgumentException("Unrecognized page token: " + token);
+        }
+      } catch (NumberFormatException | IndexOutOfBoundsException e) {
+        LOGGER.debug(e.getMessage());
+        throw new IllegalArgumentException("Invalid token format: " + token);
+      }
     }
   }
 
