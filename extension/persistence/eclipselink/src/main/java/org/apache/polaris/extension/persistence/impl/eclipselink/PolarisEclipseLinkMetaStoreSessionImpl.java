@@ -481,7 +481,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       data = data.limit(hasPageSize.getPageSize());
     }
 
-    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
+    return pageToken.buildNextPage(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */

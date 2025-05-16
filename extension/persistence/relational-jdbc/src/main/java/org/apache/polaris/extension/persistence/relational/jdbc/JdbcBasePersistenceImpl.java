@@ -440,11 +440,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             }
             data.forEach(results::add);
           });
-      List<T> resultsOrEmpty =
-          results == null
-              ? Collections.emptyList()
-              : results.stream().map(transformer).collect(Collectors.toList());
-      return Page.fromItems(resultsOrEmpty);
+      List<T> resultsOrEmpty = results.stream().map(transformer).collect(Collectors.toList());
+      return pageToken.buildNextPage(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
