@@ -1523,7 +1523,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             }
             default -> {
               String rawMetadataJson = TableMetadataParser.toJson(metadata);
-              if (rawMetadataJson.length() * EntityWeigher.APPROXIMATE_BYTES_PER_CHAR < maxMetadataCacheBytes) {
+              if (rawMetadataJson.length() * EntityWeigher.APPROXIMATE_BYTES_PER_CHAR
+                  < maxMetadataCacheBytes) {
                 yield Optional.of(rawMetadataJson);
               } else {
                 yield Optional.empty();
