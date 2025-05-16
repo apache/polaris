@@ -31,7 +31,7 @@ With the policy API, you can:
 
 ## What is a Policy?
 
-A policy in Apache Polaris is a structured object that defines rules governing actions on specified resources under
+A policy in Apache Polaris is a structured entity that defines rules governing actions on specified resources under
 predefined conditions. Each policy contains:
 
 - **Name**: A unique identifier within a namespace
@@ -52,38 +52,42 @@ Polaris supports several predefined system policy types (prefixed with `system.`
 - **`system.metadata-compaction`**: Defines rules for metadata compaction operations
   - Schema Definition: @https://polaris.apache.org/schemas/policies/system/metadata-compaction/2025-02-03.json
   - Optimizes table metadata for improved performance
+  - Applicable resources: Iceberg table, namespace, catalog
 
 - **`system.orphan-file-removal`**: Defines rules for removing orphaned files
   - Schema Definition: @https://polaris.apache.org/schemas/policies/system/orphan-file-removal/2025-02-03.json
   - Identifies and safely removes files that are no longer referenced by the table metadata
+  - Applicable resources: Iceberg table, namespace, catalog 
 
 - **`system.snapshot-expiry`**: Defines rules for snapshot expiration
   - Schema Definition: @https://polaris.apache.org/schemas/policies/system/snapshot-expiry/2025-02-03.json
   - Controls how long snapshots are retained before removal
+  - Applicable resources: Iceberg table, namespace, catalog 
 
 - **Custom policy types**: Can be defined for specific organizational needs (WIP)
 
-- **FGAC (Fine-Grained Access Control) policies**: Row filtering and column masking (WIP)
+- **FGAC (Fine-Grained Access Control) policies**: Row filtering, column masking, column hiding (WIP)
 
 ### Policy Inheritance
 
 The object hierarchy in Polaris is structured as follows:
 
 ```
-      Catalog
-         |
-     Namespace
-         |
-   +-----+-----+
-   |           |
- Table       View
+            Catalog
+               |
+           Namespace
+               |
+   +-----------+----------+
+   |           |          |
+Iceberg     Iceberg     Generic
+ Table       View        Table
 ```
 
 Policies can be attached at any level, and inheritance flows from catalog down to namespace, then to tables and views.
 
 Policies can be inheritable or non-inheritable:
 
-- **Inheritable policies**: Apply to the target resource and all its child resources
+- **Inheritable policies**: Apply to the target resource and all its applicable child resources
 - **Non-inheritable policies**: Apply only to the specific target resource
 
 The inheritance follows an override mechanism:
@@ -155,6 +159,9 @@ PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings
 For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies, multiple policies of the same type can be attached.
 
 ### Retrieving Applicable Policies
+A user can view applicable policies on a resource (e.g., table, namespace, or catalog) as long as they have
+read permission on that resource. The permission model may be enhanced in the future when Fine-Grained Access Control
+policy is introduced, which will provide more granular control over policy visibility and management.
 
 Here is an example to find all policies that apply to a specific resource (including inherited policies):
 ```
