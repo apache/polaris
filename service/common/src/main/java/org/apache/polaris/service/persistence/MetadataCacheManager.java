@@ -66,15 +66,15 @@ public class MetadataCacheManager {
     IcebergTableLikeEntity tableLikeEntity =
         IcebergTableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     Map<String, String> tableEntityProperties = tableLikeEntity.getInternalPropertiesAsMap();
+    String entityLocation = tableEntityProperties.get(IcebergTableLikeEntity.METADATA_LOCATION_KEY);
     String cacheContent =
         tableEntityProperties.get(IcebergTableLikeEntity.METADATA_CACHE_CONTENT_KEY);
-    if (cacheContent != null && !cacheContent.isEmpty()) {
+    String cacheLocation =
+        tableEntityProperties.get(IcebergTableLikeEntity.METADATA_CACHE_LOCATION_KEY);
+    if (cacheContent != null && !cacheContent.isEmpty() && entityLocation.equals(cacheLocation)) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       TableMetadata tableMetadata = TableMetadataParser.fromJson(cacheContent);
-      return TableMetadata.buildFrom(tableMetadata)
-          .withMetadataLocation(
-              tableEntityProperties.get(IcebergTableLikeEntity.METADATA_LOCATION_KEY))
-          .build();
+      return TableMetadata.buildFrom(tableMetadata).withMetadataLocation(cacheLocation).build();
     } else {
       TableMetadata fallbackMetadata = fallback.get();
       var cacheResult =
@@ -105,7 +105,8 @@ public class MetadataCacheManager {
       PolarisMetaStoreManager metaStoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     String metadataString = TableMetadataParser.toJson(tableMetadata);
-    if (maxBytesToCache != FeatureConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING) {
+    if (maxBytesToCache
+        != FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING) {
       if (metadataString.length() * 2 > maxBytesToCache) {
         LOGGER.debug(
             String.format(

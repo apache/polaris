@@ -183,7 +183,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.event-listener.type",
           "test",
           "polaris.features." + FeatureConfiguration.METADATA_CACHE_MAX_BYTES.key,
-          "10000");
+          String.valueOf(FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING));
     }
   }
 
