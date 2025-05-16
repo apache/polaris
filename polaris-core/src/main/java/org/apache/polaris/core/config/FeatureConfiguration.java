@@ -44,6 +44,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
     super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
   }
 
+  public static final class Constants {
+    public static final int METADATA_CACHE_MAX_BYTES_NO_CACHING = 0;
+    public static final int METADATA_CACHE_MAX_BYTES_INFINITE_CACHING = -1;
+  }
+
   /**
    * Helper for the common scenario of gating a feature with a boolean FeatureConfiguration, where
    * we want to throw an UnsupportedOperationException if it's not enabled.
@@ -272,8 +277,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(4)
           .buildFeatureConfiguration();
 
-  public static final int METADATA_CACHE_MAX_BYTES_NO_CACHING = 0;
-  public static final int METADATA_CACHE_MAX_BYTES_INFINITE_CACHING = -1;
   public static final PolarisConfiguration<Integer> METADATA_CACHE_MAX_BYTES =
       PolarisConfiguration.<Integer>builder()
           .key("METADATA_CACHE_MAX_BYTES")
@@ -282,7 +285,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence"
                   + " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata"
                   + " will be cached.")
-          .defaultValue(METADATA_CACHE_MAX_BYTES_NO_CACHING)
+          .defaultValue(Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING)
           .validation(value -> value >= -1)
           .buildFeatureConfiguration();
 

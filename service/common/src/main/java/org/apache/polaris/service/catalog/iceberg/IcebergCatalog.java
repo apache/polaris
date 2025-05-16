@@ -919,7 +919,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         () -> {
           return loadTableMetadata(loadTable(identifier));
         };
-    if (maxMetadataCacheBytes == FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
+    if (maxMetadataCacheBytes == FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
       return fallback.get();
     } else {
       return MetadataCacheManager.loadTableMetadata(
@@ -1514,8 +1514,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
       Optional<String> metadataJsonToCache =
           switch (maxMetadataCacheBytes) {
-            case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> Optional.empty();
-            case FeatureConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
+            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING -> Optional.empty();
+            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
               yield Optional.of(TableMetadataParser.toJson(metadata));
             }
             default -> {
