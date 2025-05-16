@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
@@ -282,7 +283,11 @@ public class PolarisEclipseLinkStore {
   }
 
   List<ModelEntity> lookupFullEntitiesActive(
-      EntityManager session, long catalogId, long parentId, @Nonnull PolarisEntityType entityType) {
+      EntityManager session,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PageToken pageToken) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 

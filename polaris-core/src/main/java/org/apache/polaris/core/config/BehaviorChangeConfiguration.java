@@ -38,8 +38,9 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
+      Optional<String> catalogConfigUnsafe,
       Optional<Function<T, Boolean>> validation) {
-    super(key, description, defaultValue, catalogConfig, validation);
+    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
   }
 
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =

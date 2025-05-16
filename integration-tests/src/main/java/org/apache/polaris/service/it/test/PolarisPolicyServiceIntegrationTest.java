@@ -21,6 +21,8 @@ package org.apache.polaris.service.it.test;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
@@ -35,6 +37,7 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -60,6 +63,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.ApplicablePolicy;
+import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -72,6 +76,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisPolicyServiceIntegrationTest {
@@ -260,6 +266,60 @@ public class PolarisPolicyServiceIntegrationTest {
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        " invalid",
+        "invalid ",
+        " invalid ",
+        "",
+        "policy name",
+        "policy@name",
+        "policy#name",
+        "policy$name",
+        "policy!name",
+        "policy name with space",
+        "policy.name",
+        "policy,name",
+        "policy~name",
+        "policy`name",
+        "policy;name",
+        "policy:name",
+        "policy<>name",
+        "policy[]name",
+        "policy{}name",
+        "policy|name",
+        "policy\\name",
+        "policy/name",
+        "policy*name",
+        "policy^name",
+        "policy%name",
+      })
+  public void testCreatePolicyWithInvalidName(String policyName) {
+    restCatalog.createNamespace(NS1);
+    PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, policyName);
+
+    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    CreatePolicyRequest request =
+        CreatePolicyRequest.builder()
+            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
+            .setName(policyIdentifier.getName())
+            .setDescription("test policy")
+            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", ns))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains(
+              "{\"error\":{\"message\":\"Invalid value: createPolicy.arg2.name: must match \\\"^[A-Za-z0-9\\\\-_]+$\\\"\",\"type\":\"ResteasyReactiveViolationException\",\"code\":400}}");
+    }
+  }
+
   @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
@@ -372,7 +432,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
     restCatalog
         .buildTable(
-            NS2_T1, new Schema(Types.NestedField.of(1, true, "string", Types.StringType.get())))
+            NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
         .create();
 
     PolicyAttachmentTarget catalogTarget =

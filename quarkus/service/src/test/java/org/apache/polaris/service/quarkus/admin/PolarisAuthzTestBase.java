@@ -80,14 +80,17 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -111,9 +114,9 @@ public abstract class PolarisAuthzTestBase {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
           "true");
     }
   }
@@ -180,6 +183,7 @@ public abstract class PolarisAuthzTestBase {
               Map.of(
                   FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
                   true)));
+  protected final ReservedProperties reservedProperties = ReservedProperties.NONE;
 
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
@@ -188,9 +192,11 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
+  @Inject protected PolarisEventListener polarisEventListener;
+  @Inject protected CatalogHandlerUtils catalogHandlerUtils;
 
   protected IcebergCatalog baseCatalog;
-  protected GenericTableCatalog genericTableCatalog;
+  protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
@@ -262,7 +268,8 @@ public abstract class PolarisAuthzTestBase {
             metaStoreManager,
             userSecretsManager,
             securityContext(authenticatedRoot, Set.of()),
-            polarisAuthorizer);
+            polarisAuthorizer,
+            reservedProperties);
 
     String storageLocation = "file:///tmp/authz";
     FileStorageConfigInfo storageConfigModel =
@@ -469,13 +476,15 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }
 
@@ -485,7 +494,7 @@ public abstract class PolarisAuthzTestBase {
       extends PolarisCallContextCatalogFactory {
 
     public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null, null);
+      super(null, null, null, null, null, null);
     }
 
     @Inject
@@ -494,13 +503,15 @@ public abstract class PolarisAuthzTestBase {
         MetaStoreManagerFactory metaStoreManagerFactory,
         UserSecretsManagerFactory userSecretsManagerFactory,
         TaskExecutor taskExecutor,
-        FileIOFactory fileIOFactory) {
+        FileIOFactory fileIOFactory,
+        PolarisEventListener polarisEventListener) {
       super(
           entityManagerFactory,
           metaStoreManagerFactory,
           userSecretsManagerFactory,
           taskExecutor,
-          fileIOFactory);
+          fileIOFactory,
+          polarisEventListener);
     }
 
     @Override

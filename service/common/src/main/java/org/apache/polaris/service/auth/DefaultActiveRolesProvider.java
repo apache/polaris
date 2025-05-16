@@ -82,7 +82,9 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
           principal.getId());
       throw new NotAuthorizedException("Unable to authenticate");
     }
-    boolean allRoles = tokenRoles.contains(BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL);
+
+    // FIXME how to distinguish allRoles from no roles at all?
+    boolean allRoles = tokenRoles.isEmpty();
     Predicate<PrincipalRoleEntity> includeRoleFilter =
         allRoles ? r -> true : r -> tokenRoles.contains(r.getName());
     List<PrincipalRoleEntity> activeRoles =

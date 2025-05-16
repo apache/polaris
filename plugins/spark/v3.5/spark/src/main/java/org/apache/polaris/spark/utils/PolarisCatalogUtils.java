@@ -51,6 +51,16 @@ public class PolarisCatalogUtils {
   }
 
   /**
+   * For tables whose location is manged by Spark Session Catalog, there will be no location or path
+   * in the properties.
+   */
+  public static boolean isTableWithSparkManagedLocation(Map<String, String> properties) {
+    boolean hasLocationClause = properties.containsKey(TableCatalog.PROP_LOCATION);
+    boolean hasPathClause = properties.containsKey(TABLE_PATH_KEY);
+    return !hasLocationClause && !hasPathClause;
+  }
+
+  /**
    * Load spark table using DataSourceV2.
    *
    * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns

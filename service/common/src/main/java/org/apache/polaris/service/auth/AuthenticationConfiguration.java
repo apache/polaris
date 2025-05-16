@@ -18,60 +18,22 @@
  */
 package org.apache.polaris.service.auth;
 
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.Optional;
+import java.util.Map;
+import org.apache.polaris.core.context.RealmContext;
 
-public interface AuthenticationConfiguration {
+public interface AuthenticationConfiguration<R extends AuthenticationRealmConfiguration> {
 
-  /** The configuration for the authenticator. */
-  AuthenticatorConfiguration authenticator();
+  String DEFAULT_REALM_KEY = "<default>";
 
-  interface AuthenticatorConfiguration {}
+  Map<String, R> realms();
 
-  /** The configuration for the OAuth2 service that delivers OAuth2 tokens. */
-  TokenServiceConfiguration tokenService();
+  default R forRealm(RealmContext realmContext) {
+    return forRealm(realmContext.getRealmIdentifier());
+  }
 
-  interface TokenServiceConfiguration {}
-
-  /**
-   * The configuration for the token broker factory. Token brokers are used by both the
-   * authenticator and the token service.
-   */
-  TokenBrokerConfiguration tokenBroker();
-
-  interface TokenBrokerConfiguration {
-
-    /** The maximum token duration. */
-    Duration maxTokenGeneration();
-
-    /** Configuration for the rsa-key-pair token broker factory. */
-    Optional<RSAKeyPairConfiguration> rsaKeyPair();
-
-    /** Configuration for the symmetric-key token broker factory. */
-    Optional<SymmetricKeyConfiguration> symmetricKey();
-
-    interface RSAKeyPairConfiguration {
-
-      /** The path to the public key file. */
-      Path publicKeyFile();
-
-      /** The path to the private key file. */
-      Path privateKeyFile();
-    }
-
-    interface SymmetricKeyConfiguration {
-
-      /**
-       * The secret to use for both signing and verifying signatures. Either this option of {@link
-       * #file()} must be provided.
-       */
-      Optional<String> secret();
-
-      /**
-       * The file to read the secret from. Either this option of {@link #secret()} must be provided.
-       */
-      Optional<Path> file();
-    }
+  default R forRealm(String realmIdentifier) {
+    return realms().containsKey(realmIdentifier)
+        ? realms().get(realmIdentifier)
+        : realms().get(DEFAULT_REALM_KEY);
   }
 }

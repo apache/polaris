@@ -20,7 +20,6 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +33,9 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrin
 
 public class QueryGenerator {
 
-  public static String generateSelectQuery(
-      @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
-    return generateSelectQuery(entityClass, generateWhereClause(whereClause));
+  public static <T> String generateSelectQuery(
+      @Nonnull Converter<T> entity, @Nonnull Map<String, Object> whereClause) {
+    return generateSelectQuery(entity, generateWhereClause(whereClause));
   }
 
   public static String generateDeleteQueryForEntityGrantRecords(
@@ -96,7 +95,7 @@ public class QueryGenerator {
     condition.append(")");
     condition.append(" AND realm_id = '").append(realmId).append("'");
 
-    return generateSelectQuery(ModelEntity.class, " WHERE " + condition);
+    return generateSelectQuery(new ModelEntity(), " WHERE " + condition);
   }
 
   public static <T> String generateInsertQuery(
@@ -158,24 +157,16 @@ public class QueryGenerator {
 
   @VisibleForTesting
   public static <T> String generateSelectQuery(
-      @Nonnull Class<?> entityClass, @Nonnull String filter) {
-    String tableName = getTableName(entityClass);
-    try {
-      Converter<T> entity = (Converter<T>) entityClass.getDeclaredConstructor().newInstance();
-      Map<String, Object> objectMap = entity.toMap();
-      String columns = String.join(", ", objectMap.keySet());
-      StringBuilder query =
-          new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
-      if (!filter.isEmpty()) {
-        query.append(filter);
-      }
-      return query.toString();
-    } catch (InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException e) {
-      throw new RuntimeException("Failed to create instance of " + entityClass.getName(), e);
+      @Nonnull Converter<T> entity, @Nonnull String filter) {
+    String tableName = getTableName(entity.getClass());
+    Map<String, Object> objectMap = entity.toMap();
+    String columns = String.join(", ", objectMap.keySet());
+    StringBuilder query =
+        new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
+    if (!filter.isEmpty()) {
+      query.append(filter);
     }
+    return query.toString();
   }
 
   @VisibleForTesting

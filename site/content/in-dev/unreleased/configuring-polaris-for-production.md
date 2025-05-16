@@ -135,33 +135,31 @@ default, Polaris uses an in-memory metastore.
 > The default in-memory metastore is not suitable for production use, as it will lose all data
 > when the server is restarted; it is also unusable when multiple Polaris replicas are used.
 
-To use a durable metastore, you need to switch to the EclipseLink metastore, and provide your own
-`persistence.xml` file. This file contains details of the database used for metastore management and
-the connection settings. For more information, refer to the [metastore documentation]({{% ref
-"metastores" %}}).
+To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore.
+This implementation leverages Quarkus for datasource management and supports configuration through
+environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
-Then, configure Polaris to use your metastore by setting the following properties:
+Configure the metastore by setting the following ENV variables:
 
-```properties
-polaris.persistence.type=eclipse-link
-polaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
-polaris.persistence.eclipselink.persistence-unit=polaris
+```
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
+
+QUARKUS_DATASOURCE_DB_KIND=postgresql
+QUARKUS_DATASOURCE_USERNAME=<your-username>
+QUARKUS_DATASOURCE_PASSWORD=<your-password>
+QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
 
-Where:
 
-- `polaris.persistence.type` indicates that we are using the EclipseLink metastore.
-- `polaris.persistence.eclipselink.configuration-file` is the path to the `persistence.xml` file.
-- `polaris.persistence.eclipselink.persistence-unit` is the name of the persistence unit to use (in
-  case the configuration file has many persistence units).
-
-Typically, in Kubernetes, you would define the `persistence.xml` file as a `ConfigMap` and set the
-`polaris.persistence.eclipselink.configuration-file` property to the path of the mounted file in
-the container.
+The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
+Please refer to the documentation here:
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
 > [!IMPORTANT]
 > Be sure to secure your metastore backend since it will be storing sensitive data and catalog
 > metadata.
+
+Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ### Bootstrapping
 
@@ -215,7 +213,7 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
 
 When deploying Polaris in production, consider adjusting the following configurations:
 
-#### `polaris.features.defaults."SUPPORTED_CATALOG_STORAGE_TYPES"`
+#### `polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"`
 
 - By default, Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage
   type. This should be disabled for production systems.

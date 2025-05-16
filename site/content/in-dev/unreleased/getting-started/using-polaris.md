@@ -21,7 +21,12 @@ Title: Using Polaris
 type: docs
 weight: 400
 ---
-
+## Setup
+Define your `CLIENT_ID` & `CLIENT_SECRET` and export them for future use.
+```shell
+export CLIENT_ID=YOUR_CLIENT_ID
+export CLIENT_SECRET=YOUR_CLIENT_SECRET
+```
 ## Defining a Catalog
 
 In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
@@ -79,11 +84,13 @@ With a catalog created, we can create a [principal]({{% relref "../entities#prin
 
 Be sure to provide the necessary credentials, hostname, and port as before.
 
-When the `principals create` command completes successfully, it will return the credentials for this new principal. Be sure to note these down for later. For example:
+When the `principals create` command completes successfully, it will return the credentials for this new principal. Export them for future use. For example:
 
-```
+```shell
 ./polaris ... principals create example
 {"clientId": "XXXX", "clientSecret": "YYYY"}
+export USER_CLIENT_ID=XXXX
+export USER_CLIENT_SECRET=YYYY
 ```
 
 Now, we grant the principal the [principal role]({{% relref "../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
@@ -147,21 +154,19 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-sql \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
 --conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \
 --conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
---conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \
+--conf spark.sql.catalog.quickstart_catalog.credential='${USER_CLIENT_ID}:${USER_CLIENT_SECRET}' \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
-
-Replace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.
 
 Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
@@ -169,12 +174,8 @@ Finally, note that we include the `hadoop-aws` package here. If your table is us
 
 #### Using Spark SQL from a Docker container
 
-Replace the credentials used in the Docker container using the following code:
-
+Refresh the Docker container with the user's credentials:
 ```shell
-USER_CLIENT_ID="XXXX"
-USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(.*spark\.sql\.catalog\.polaris\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}\",/" getting-started/eclipselink/docker-compose.yml
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
@@ -189,7 +190,7 @@ docker attach $(docker ps -q --filter name=spark-sql)
 Once the Spark session starts, we can create a namespace and table within the catalog:
 
 ```sql
-USE polaris;
+USE quickstart_catalog;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace;
 CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema;
 USE NAMESPACE quickstart_namespace.schema;
@@ -233,12 +234,9 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 
 ### Connecting with Trino
 
-Replace the credentials used in the Docker container using the following code:
+Refresh the Docker container with the user's credentials:
 
 ```shell
-USER_CLIENT_ID="XXXX"
-USER_CLIENT_SECRET="YYYY"
-sed -i "s/^\(iceberg\.rest-catalog\.oauth2\.credential=\).*/\1${USER_CLIENT_ID}:${USER_CLIENT_SECRET}/" getting-started/eclipselink/trino-config/catalog/iceberg.properties
 docker compose -f getting-started/eclipselink/docker-compose.yml down trino
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```

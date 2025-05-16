@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.test.commons;
 
 import io.quarkus.test.common.DevServicesContext;
@@ -56,6 +55,8 @@ public class PostgresRelationalJdbcLifeCycleManagement
     return Map.of(
         "polaris.persistence.type",
         "relational-jdbc",
+        "polaris.persistence.relational.jdbc.max-retries",
+        "2",
         "quarkus.datasource.db-kind",
         "pgsql",
         "quarkus.datasource.jdbc.url",

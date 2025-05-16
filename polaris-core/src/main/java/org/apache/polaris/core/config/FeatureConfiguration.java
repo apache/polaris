@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
@@ -38,8 +39,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
+      Optional<String> catalogConfigUnsafe,
       Optional<Function<T, Boolean>> validation) {
-    super(key, description, defaultValue, catalogConfig, validation);
+    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
   }
 
   /**
@@ -86,7 +88,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
-          .catalogConfig("allow.overlapping.table.location")
+          .catalogConfig("polaris.config.allow.overlapping.table.location")
+          .catalogConfigUnsafe("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
@@ -120,7 +123,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
-          .catalogConfig("allow.unstructured.table.location")
+          .catalogConfig("polaris.config.allow.unstructured.table.location")
+          .catalogConfigUnsafe("allow.unstructured.table.location")
           .description("If set to true, allows unstructured table locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -128,7 +132,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
-          .catalogConfig("allow.external.table.location")
+          .catalogConfig("polaris.config.allow.external.table.location")
+          .catalogConfigUnsafe("allow.external.table.location")
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
@@ -137,7 +142,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
-          .catalogConfig("enable.credential.vending")
+          .catalogConfig("polaris.config.enable.credential.vending")
+          .catalogConfigUnsafe("enable.credential.vending")
           .description("If set to true, allow credential vending for external catalogs.")
           .defaultValue(true)
           .buildFeatureConfiguration();
@@ -145,7 +151,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
-          .catalogConfig("supported.storage.types")
+          .catalogConfig("polaris.config.supported.storage.types")
+          .catalogConfigUnsafe("supported.storage.types")
           .description("The list of supported storage types for a catalog")
           .defaultValue(
               List.of(
@@ -158,7 +165,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
-          .catalogConfig("cleanup.on.namespace.drop")
+          .catalogConfig("polaris.config.cleanup.on.namespace.drop")
+          .catalogConfigUnsafe("cleanup.on.namespace.drop")
           .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -166,7 +174,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
-          .catalogConfig("cleanup.on.catalog.drop")
+          .catalogConfig("polaris.config.cleanup.on.catalog.drop")
+          .catalogConfigUnsafe("cleanup.on.catalog.drop")
           .description("If set to true, clean up data when a catalog is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -174,7 +183,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
-          .catalogConfig("drop-with-purge.enabled")
+          .catalogConfig("polaris.config.drop-with-purge.enabled")
+          .catalogConfigUnsafe("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
@@ -205,6 +215,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "How many times to retry refreshing metadata when the previous error was retryable")
           .defaultValue(2)
+          .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("LIST_PAGINATION_ENABLED")
+          .description("If set to true, pagination for APIs like listTables is enabled.")
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
@@ -240,12 +257,27 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
+          .description("The list of supported catalog connection types for federation")
+          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
+      PolarisConfiguration.<Integer>builder()
+          .key("ICEBERG_COMMIT_MAX_RETRIES")
+          .catalogConfig("polaris.config.iceberg-commit-max-retries")
+          .description("The max number of times to try committing to an Iceberg table")
+          .defaultValue(4)
+          .buildFeatureConfiguration();
+
   public static final int METADATA_CACHE_MAX_BYTES_NO_CACHING = 0;
   public static final int METADATA_CACHE_MAX_BYTES_INFINITE_CACHING = -1;
   public static final PolarisConfiguration<Integer> METADATA_CACHE_MAX_BYTES =
       PolarisConfiguration.<Integer>builder()
           .key("METADATA_CACHE_MAX_BYTES")
-          .catalogConfig("metadata.cache.max.bytes")
+          .catalogConfig("polaris.config.metadata-cache-max-bytes")
           .description(
               "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence"
                   + " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata"

@@ -75,7 +75,7 @@ public class PolarisConfigurationStoreTest {
   public void testInvalidApplyThrowsException() {
     // Bool not included because Boolean.valueOf turns non-boolean strings to false
     List<PolarisConfiguration<?>> configs =
-        List.of(buildConfig("int", 12), buildConfig("long", 34L), buildConfig("double", 5.6D));
+        List.of(buildConfig("int2", 12), buildConfig("long2", 34L), buildConfig("double2", 5.6D));
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
@@ -135,7 +135,7 @@ public class PolarisConfigurationStoreTest {
 
     BehaviorChangeConfiguration<Boolean> behaviorChangeConfig =
         PolarisConfiguration.<Boolean>builder()
-            .key("example")
+            .key("example2")
             .description("example")
             .defaultValue(true)
             .buildBehaviorChangeConfiguration();

@@ -20,6 +20,7 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,20 +31,36 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
+
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
-  private final DataSource datasource;
+  // POSTGRES RETRYABLE EXCEPTIONS
+  private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
-  public DatasourceOperations(DataSource datasource) {
+  private final DataSource datasource;
+  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
+
+  private final Random random = new Random();
+
+  public DatasourceOperations(
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
+    this.relationalJdbcConfiguration = relationalJdbcConfiguration;
   }
 
   /**
@@ -90,44 +107,47 @@ public class DatasourceOperations {
   }
 
   /**
-   * Executes SELECT Query
+   * Executes SELECT Query and returns the results after applying a transformer
    *
    * @param query : Query to executed
-   * @param entityClass : Class of the entity being selected
-   * @param transformer : Transformation of entity class to Result class
-   * @param entityFilter : Filter to applied on the Result class
-   * @param limit : Limit to to enforced.
-   * @return List of Result class objects
-   * @param <T> : Entity class
-   * @param <R> : Result class
+   * @param converterInstance : An instance of the type being selected, used to convert to a
+   *     business entity like PolarisBaseEntity
+   * @return The list of results yielded by the query
+   * @param <T> : Business entity class
    * @throws SQLException : Exception during the query execution.
    */
-  public <T, R> List<R> executeSelect(
-      @Nonnull String query,
-      @Nonnull Class<T> entityClass,
-      @Nonnull Function<T, R> transformer,
-      Predicate<R> entityFilter,
-      int limit)
+  public <T> List<T> executeSelect(@Nonnull String query, @Nonnull Converter<T> converterInstance)
       throws SQLException {
-    try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(query)) {
-      List<R> resultList = new ArrayList<>();
-      while (resultSet.next() && resultList.size() < limit) {
-        Converter<T> object =
-            (Converter<T>)
-                entityClass.getDeclaredConstructor().newInstance(); // Create a new instance
-        R entity = transformer.apply(object.fromResultSet(resultSet));
-        if (entityFilter == null || entityFilter.test(entity)) {
-          resultList.add(entity);
-        }
-      }
-      return resultList;
-    } catch (SQLException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
+    return results;
+  }
+
+  /**
+   * Executes SELECT Query and takes a consumer over the results. For callers that want more
+   * sophisticated control over how query results are handled.
+   *
+   * @param query : Query to executed
+   * @param converterInstance : An entity of the type being selected
+   * @param consumer : An function to consume the returned results
+   * @param <T> : Entity class
+   * @throws SQLException : Exception during the query execution.
+   */
+  public <T> void executeSelectOverStream(
+      @Nonnull String query,
+      @Nonnull Converter<T> converterInstance,
+      @Nonnull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              Statement statement = connection.createStatement();
+              ResultSet resultSet = statement.executeQuery(query)) {
+            ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+            consumer.accept(iterator.toStream());
+            return null;
+          }
+        });
   }
 
   /**
@@ -138,16 +158,19 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during Query Execution.
    */
   public int executeUpdate(String query) throws SQLException {
-    try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement()) {
-      boolean autoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(true);
-      try {
-        return statement.executeUpdate(query);
-      } finally {
-        connection.setAutoCommit(autoCommit);
-      }
-    }
+    return withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              Statement statement = connection.createStatement()) {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(true);
+            try {
+              return statement.executeUpdate(query);
+            } finally {
+              connection.setAutoCommit(autoCommit);
+            }
+          }
+        });
   }
 
   /**
@@ -157,23 +180,113 @@ public class DatasourceOperations {
    * @throws SQLException : Exception caught during transaction execution.
    */
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
-    try (Connection connection = borrowConnection()) {
-      boolean autoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(false);
-      boolean success = false;
+    withRetries(
+        () -> {
+          try (Connection connection = borrowConnection()) {
+            boolean autoCommit = connection.getAutoCommit();
+            boolean success = false;
+            connection.setAutoCommit(false);
+            try {
+              try {
+                try (Statement statement = connection.createStatement()) {
+                  success = callback.execute(statement);
+                }
+              } finally {
+                if (success) {
+                  connection.commit();
+                } else {
+                  connection.rollback();
+                }
+              }
+            } finally {
+              connection.setAutoCommit(autoCommit);
+            }
+          }
+          return null;
+        });
+  }
+
+  private boolean isRetryable(SQLException e) {
+    String sqlState = e.getSQLState();
+
+    if (sqlState != null) {
+      return sqlState.equals(SERIALIZATION_FAILURE_SQL_CODE); // Serialization failure
+    }
+
+    // Additionally, one might check for specific error messages or other conditions
+    return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
+        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
+  }
+
+  // TODO: consider refactoring to use a retry library, inorder to have fair retries
+  // and more knobs for tuning retry pattern.
+  @VisibleForTesting
+  <T> T withRetries(Operation<T> operation) throws SQLException {
+    int attempts = 0;
+    // maximum number of retries.
+    int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
+    // How long we should try, since the first attempt.
+    long maxDuration = relationalJdbcConfiguration.maxDurationInMs().orElse(5000L);
+    // How long to wait before first failure.
+    long delay = relationalJdbcConfiguration.initialDelayInMs().orElse(100L);
+
+    // maximum time we will retry till.
+    long maxRetryTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + maxDuration;
+
+    while (attempts < maxAttempts) {
       try {
-        try (Statement statement = connection.createStatement()) {
-          success = callback.execute(statement);
-        }
-      } finally {
-        if (success) {
-          connection.commit();
+        return operation.execute();
+      } catch (SQLException | RuntimeException e) {
+        SQLException sqlException;
+        if (e instanceof RuntimeException) {
+          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
+          // the transactions.
+          if (e.getCause() instanceof SQLException
+              && !(e instanceof EntityAlreadyExistsException)) {
+            sqlException = (SQLException) e.getCause();
+          } else {
+            throw e;
+          }
         } else {
-          connection.rollback();
+          sqlException = (SQLException) e;
         }
-        connection.setAutoCommit(autoCommit);
+
+        attempts++;
+        long timeLeft =
+            Math.max((maxRetryTime - TimeUnit.NANOSECONDS.toMillis(System.nanoTime())), 0L);
+        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
+          String exceptionMessage =
+              String.format(
+                  "Failed due to %s, after , %s attempts and %s milliseconds",
+                  sqlException.getMessage(), attempts, maxDuration);
+          throw new SQLException(
+              exceptionMessage, sqlException.getSQLState(), sqlException.getErrorCode(), e);
+        }
+        // Add jitter
+        long timeToSleep = Math.min(timeLeft, delay + (long) (random.nextFloat() * 0.2 * delay));
+        LOGGER.debug(
+            "Sleeping {} ms before retrying {} on attempt {} / {}, reason {}",
+            timeToSleep,
+            operation,
+            attempts,
+            maxAttempts,
+            e.getMessage(),
+            e);
+        try {
+          Thread.sleep(timeToSleep);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Retry interrupted", ie);
+        }
+        delay *= 2; // Exponential backoff
       }
     }
+    // This should never be reached
+    return null;
+  }
+
+  public interface Operation<T> {
+    T execute() throws SQLException;
   }
 
   // Interface for transaction callback

@@ -32,12 +32,26 @@ import org.apache.polaris.service.auth.ActiveRolesProvider;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that adds active roles to the {@link
- * SecurityIdentity}. This is used to augment the identity with active roles after authentication.
+ * SecurityIdentity}. This is used to augment the identity with valid active roles after
+ * authentication.
  */
 @ApplicationScoped
 public class ActiveRolesAugmentor implements SecurityIdentityAugmentor {
 
-  @Inject ActiveRolesProvider activeRolesProvider;
+  // must run after AuthenticatingAugmentor
+  public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY - 1;
+
+  private final ActiveRolesProvider activeRolesProvider;
+
+  @Inject
+  public ActiveRolesAugmentor(ActiveRolesProvider activeRolesProvider) {
+    this.activeRolesProvider = activeRolesProvider;
+  }
+
+  @Override
+  public int priority() {
+    return PRIORITY;
+  }
 
   @Override
   public Uni<SecurityIdentity> augment(
@@ -45,20 +59,20 @@ public class ActiveRolesAugmentor implements SecurityIdentityAugmentor {
     if (identity.isAnonymous()) {
       return Uni.createFrom().item(identity);
     }
-    return context.runBlocking(() -> augmentWithActiveRoles(identity));
+    return context.runBlocking(() -> validateActiveRoles(identity));
   }
 
-  private SecurityIdentity augmentWithActiveRoles(SecurityIdentity identity) {
-    AuthenticatedPolarisPrincipal polarisPrincipal =
-        identity.getPrincipal(AuthenticatedPolarisPrincipal.class);
-    if (polarisPrincipal == null) {
+  private SecurityIdentity validateActiveRoles(SecurityIdentity identity) {
+    if (!(identity.getPrincipal() instanceof AuthenticatedPolarisPrincipal)) {
       throw new AuthenticationFailedException("No Polaris principal found");
     }
+    AuthenticatedPolarisPrincipal polarisPrincipal =
+        identity.getPrincipal(AuthenticatedPolarisPrincipal.class);
     Set<String> validRoleNames = activeRolesProvider.getActiveRoles(polarisPrincipal);
     return QuarkusSecurityIdentity.builder()
         .setAnonymous(false)
         .setPrincipal(polarisPrincipal)
-        .addRoles(validRoleNames)
+        .addRoles(validRoleNames) // replace the current roles with valid ones
         .addCredentials(identity.getCredentials())
         .addAttributes(identity.getAttributes())
         .addPermissionChecker(identity::checkPermission)

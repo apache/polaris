@@ -23,6 +23,7 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,7 @@ import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +101,7 @@ public class StorageCredentialCache {
    * @param allowedWriteLocations a set of allowed to write locations.
    * @return the a map of string containing the scoped creds information
    */
-  public Map<String, String> getOrGenerateSubScopeCreds(
+  public AccessConfig getOrGenerateSubScopeCreds(
       @Nonnull PolarisCredentialVendor credentialVendor,
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntity polarisEntity,
@@ -142,13 +144,19 @@ public class StorageCredentialCache {
               "Failed to get subscoped credentials: %s",
               scopedCredentialsResult.getExtraInformation());
         };
-    return cache.get(key, loader).convertToMapOfString();
+    return cache.get(key, loader).toAccessConfig();
   }
 
-  public Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+  @VisibleForTesting
+  @Nullable
+  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+    return getAccessConfig(key).map(AccessConfig::credentials).orElse(null);
+  }
+
+  @VisibleForTesting
+  Optional<AccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
-        .map(StorageCredentialCacheEntry::convertToMapOfString)
-        .orElse(null);
+        .map(StorageCredentialCacheEntry::toAccessConfig);
   }
 
   private boolean isTypeSupported(PolarisEntityType type) {

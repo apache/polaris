@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
@@ -32,17 +32,17 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * configuration.
  */
 public interface SupportsCredentialDelegation {
-  default Map<String, String> getCredentialConfig(
+  default AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions) {
-    return getCredentialConfig(
+    return getAccessConfig(
         tableIdentifier,
         IcebergMetadataUtil.getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions);
   }
 
-  Map<String, String> getCredentialConfig(
+  AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       Set<String> locationsAllowedToBeAccessed,
       Set<PolarisStorageActions> storageActions);

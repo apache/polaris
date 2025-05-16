@@ -18,19 +18,15 @@
  */
 
 plugins {
+  alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("java-test-fixtures")
+  id("polaris-quarkus")
 }
 
 configurations.all {
   exclude(group = "org.antlr", module = "antlr4-runtime")
   exclude(group = "org.scala-lang", module = "scala-library")
   exclude(group = "org.scala-lang", module = "scala-reflect")
-}
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_21
-  targetCompatibility = JavaVersion.VERSION_21
 }
 
 dependencies {

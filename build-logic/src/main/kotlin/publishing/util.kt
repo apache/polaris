@@ -79,8 +79,7 @@ internal fun <T : Any> parseJson(url: String): T {
   }
 }
 
-// TODO: this function doesn't work because name attribute doesn't exist on
-// public_ldap_projects.json
+/** Retrieves the project name, for example `Polaris` using the lower-case project ID. */
 internal fun fetchAsfProjectName(apacheId: String): String {
   val projectsAll: Map<String, Map<String, Any>> =
     parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")
@@ -90,7 +89,25 @@ internal fun fetchAsfProjectName(apacheId: String): String {
       ?: throw IllegalArgumentException(
         "No project '$apacheId' found in https://whimsy.apache.org/public/public_ldap_projects.json"
       )
-  return project["name"] as String
+  val isPodlingCurrent = project.containsKey("podling") && project["podling"] == "current"
+  if (isPodlingCurrent) {
+    val podlingsAll: Map<String, Map<String, Any>> =
+      parseJson("https://whimsy.apache.org/public/public_podlings.json")
+    val podlings = unsafeCast<Map<String, Map<String, Any>>>(podlingsAll["podling"])
+    val podling =
+      podlings[apacheId]
+        ?: throw IllegalArgumentException(
+          "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json"
+        )
+    return podling["name"] as String
+  } else {
+    // top-level-project
+    val committeesAll: Map<String, Map<String, Any>> =
+      parseJson("https://whimsy.apache.org/public/committee-info.json")
+    val committees = unsafeCast<Map<String, Map<String, Any>>>(committeesAll["committees"])
+    val committee = unsafeCast<Map<String, Any>>(committees[apacheId])
+    return committee["display_name"] as String
+  }
 }
 
 internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
@@ -146,6 +163,7 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     val mentors = unsafeCast(podling["mentors"]) as List<String>
     mentors.forEach { member -> peopleProjectRoles[member]!!.add("Mentor") }
   } else {
+    // top-level-project
     val tlpPrj: Map<String, Any> =
       parseJson("https://projects.apache.org/json/projects/$apacheId.json")
     website = tlpPrj["homepage"] as String

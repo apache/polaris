@@ -104,8 +104,11 @@ public class PolarisIntegrationTestFixture {
     }
 
     RealmContext realmContext =
-        helper.realmContextResolver.resolveRealmContext(
-            baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm));
+        helper
+            .realmContextResolver
+            .resolveRealmContext(baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm))
+            .toCompletableFuture()
+            .join();
 
     BasePersistence metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();

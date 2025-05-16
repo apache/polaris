@@ -32,6 +32,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -49,6 +50,7 @@ public class GenericTableCatalogAdapter
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
+  private final ReservedProperties reservedProperties;
   private final CatalogPrefixParser prefixParser;
 
   @Inject
@@ -58,13 +60,15 @@ public class GenericTableCatalogAdapter
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       PolarisAuthorizer polarisAuthorizer,
-      CatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser,
+      ReservedProperties reservedProperties) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
+    this.reservedProperties = reservedProperties;
 
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
@@ -98,7 +102,7 @@ public class GenericTableCatalogAdapter
             TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getDoc(),
-            createGenericTableRequest.getProperties());
+            reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()));
 
     return Response.ok(response).build();
   }

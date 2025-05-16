@@ -54,7 +54,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @param allowedWriteLocations a set of allowed to write locations
    * @return An enum map including the scoped credentials
    */
-  public abstract EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+  public abstract EnumMap<StorageAccessProperty, String> getSubscopedCreds(
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull T storageConfig,
       boolean allowListOperation,
