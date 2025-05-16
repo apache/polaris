@@ -1481,7 +1481,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             }
             default -> {
               String rawMetadataJson = TableMetadataParser.toJson(metadata);
-              if (rawMetadataJson.length() < maxMetadataCacheBytes) {
+              if (rawMetadataJson.length() * 2 < maxMetadataCacheBytes) {
                 yield Optional.of(rawMetadataJson);
               } else {
                 yield Optional.empty();
@@ -1535,9 +1535,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     public void setCurrentMetadata(String metadataLocation, TableMetadata metadata) {
-      if (metadata == null) {
-        return;
-      }
       currentMetadata =
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(metadataLocation)

@@ -58,7 +58,6 @@ public class MetadataCacheManager {
       PolarisMetaStoreManager metastoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       Supplier<TableMetadata> fallback) {
-    LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(
             tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
@@ -66,6 +65,7 @@ public class MetadataCacheManager {
     if (resolvedEntities == null) {
       return MetadataJson.fromMetadata(fallback.get());
     }
+    LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
     IcebergTableLikeEntity tableLikeEntity =
         IcebergTableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     String cacheContent = tableLikeEntity.getMetadataCacheContent();
@@ -141,7 +141,7 @@ public class MetadataCacheManager {
       // PersistenceException (& other extension-specific exceptions) may not be in scope,
       // but we can make a best-effort attempt to swallow it and just forego caching
       if (e.toString().contains("PersistenceException")) {
-        LOGGER.debug(
+        LOGGER.warn(
             String.format(
                 "Encountered an error while caching %s: %s",
                 tableLikeEntity.getTableIdentifier(), e));
