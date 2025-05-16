@@ -118,9 +118,14 @@ public interface PolarisConfigurationStore {
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
       Map<String, String> propertiesMap = catalogEntity.getPropertiesAsMap();
-      String propertyValue = propertiesMap.get(config.catalogConfig());
+      String propertyValue = null;
+      if (config.hasCatalogConfig()) {
+        propertyValue = propertiesMap.get(config.catalogConfig());
+      }
       if (propertyValue == null) {
-        propertyValue = propertiesMap.get(config.catalogConfigUnsafe());
+        if (config.hasCatalogConfigUnsafe()) {
+          propertyValue = propertiesMap.get(config.catalogConfigUnsafe());
+        }
         if (propertyValue != null) {
           LOGGER.warn(
               String.format(
