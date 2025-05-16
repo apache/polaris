@@ -557,7 +557,7 @@ NOTICE:
 Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
 Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
 Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
-Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config-validator Version: 3.12.4
 
 NOTICE:
 | Copyright 2009-2017 Mark Struberg
@@ -574,9 +574,9 @@ Group: io.swagger Name: swagger-jaxrs Version: 1.6.15
 Group: io.swagger Name: swagger-models Version: 1.6.15
 
 NOTICE:
-| Swagger Core - ${pom.name}
+| Swagger Core
 | Copyright (c) 2015. SmartBear Software Inc.
-| Swagger Core - ${pom.name}  is licensed under Apache 2.0 license.
+| Swagger Core is licensed under Apache 2.0 license.
 | Copy of the Apache 2.0 license can be found in `LICENSE` file.
 
 --------------------------------------------------------------------------------
