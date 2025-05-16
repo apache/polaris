@@ -868,6 +868,8 @@ components:
           description: URI to the remote catalog service
         authenticationParameters:
           $ref: "#/components/schemas/AuthenticationParameters"
+        serviceIdentity:
+          $ref: '#/components/schemas/ServiceIdentityInfo'
       required:
         - connectionType
       discriminator:
@@ -966,8 +968,6 @@ components:
           type: string
           description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
           example: "glue"
-        serviceIdentity:
-          $ref: '#/components/schemas/ServiceIdentityInfo'
       required:
         - roleArn
         - signingRegion
