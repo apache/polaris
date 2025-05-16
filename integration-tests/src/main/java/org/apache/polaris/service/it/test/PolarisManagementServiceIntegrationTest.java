@@ -2181,7 +2181,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     PrincipalRole badPrincipalRole =
         new PrincipalRole(
-            client.newEntityName("myprincipalrole"), Map.of("polaris.reserved", "foo"), 0L, 0L, 1);
+            client.newEntityName("myprincipalrole"),
+            false,
+            Map.of("polaris.reserved", "foo"),
+            0L,
+            0L,
+            1);
     try (Response response =
         managementApi
             .request("v1/principal-roles")
@@ -2192,7 +2197,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     PrincipalRole goodPrincipalRole =
         new PrincipalRole(
-            client.newEntityName("myprincipalrole"), Map.of("not.reserved", "foo"), 0L, 0L, 1);
+            client.newEntityName("myprincipalrole"),
+            false,
+            Map.of("not.reserved", "foo"),
+            0L,
+            0L,
+            1);
     try (Response response =
         managementApi
             .request("v1/principal-roles")

@@ -52,6 +52,7 @@ import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -219,7 +220,18 @@ public class ManagementServiceTest {
             return "";
           }
         },
-        new PolarisAuthorizerImpl(new DefaultConfigurationStore(Map.of())));
+        new PolarisAuthorizerImpl(new DefaultConfigurationStore(Map.of())),
+        new ReservedProperties() {
+          @Override
+          public List<String> prefixes() {
+            return List.of();
+          }
+
+          @Override
+          public Set<String> allowlist() {
+            return Set.of();
+          }
+        });
   }
 
   private PrincipalEntity createPrincipal(
