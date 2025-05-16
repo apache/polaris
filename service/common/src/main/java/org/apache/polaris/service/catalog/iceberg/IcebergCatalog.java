@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler.SNAPSHOTS_ALL;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -136,7 +135,6 @@ import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.persistence.MetadataCacheManager;
-import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -910,22 +908,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         storageInfo.get());
   }
 
-  public MetadataJson loadTableMetadataJson(TableIdentifier identifier) {
-    return loadTableMetadataJson(identifier, SNAPSHOTS_ALL);
-  }
-
-  boolean shouldFilterSnapshots(String snapshots) {
-    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
-      return false;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(), FeatureConfiguration.ALWAYS_FILTER_SNAPSHOTS);
-  }
-
-  public MetadataJson loadTableMetadataJson(TableIdentifier identifier, String snapshots) {
+  public TableMetadata loadTableMetadata(TableIdentifier identifier) {
     int maxMetadataCacheBytes =
         callContext
             .getPolarisCallContext()
@@ -937,9 +920,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           return loadTableMetadata(loadTable(identifier));
         };
     if (maxMetadataCacheBytes == FeatureConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
-      return MetadataJson.fromMetadata(fallback.get(), snapshots);
+      return fallback.get();
     } else {
-      return MetadataCacheManager.loadTableMetadataJson(
+      return MetadataCacheManager.loadTableMetadata(
           identifier,
           maxMetadataCacheBytes,
           callContext.getPolarisCallContext(),

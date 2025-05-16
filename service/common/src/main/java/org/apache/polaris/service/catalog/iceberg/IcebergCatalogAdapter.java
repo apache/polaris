@@ -256,8 +256,6 @@ public class IcebergCatalogAdapter
     final String metadataLocation;
     if (response instanceof LoadTableResponse loadTableResponse) {
       metadataLocation = loadTableResponse.metadataLocation();
-    } else if (response instanceof IcebergCatalogHandler.StringLoadTableResponse stringResponse) {
-      metadataLocation = stringResponse.metadataLocation();
     } else {
       throw new IllegalStateException("Cannot build etag from: " + response);
     }
@@ -587,9 +585,6 @@ public class IcebergCatalogAdapter
           final List<Credential> credentials;
           if (restResponse instanceof LoadTableResponse loadTableResponse) {
             credentials = loadTableResponse.credentials();
-          } else if (restResponse
-              instanceof IcebergCatalogHandler.StringLoadTableResponse stringResponse) {
-            credentials = stringResponse.credentials();
           } else {
             throw new IllegalStateException("Cannot extract credentials from " + restResponse);
           }

@@ -40,7 +40,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
 
   // For applicable types, this key on the "internalProperties" map will return the content of the
   // metadata.json file located at `METADATA_CACHE_LOCATION_KEY`
-  private static final String METADATA_CACHE_CONTENT_KEY = "metadata-cache-content";
+  public static final String METADATA_CACHE_CONTENT_KEY = "metadata-cache-content";
 
   // For applicable types, this key on the "internalProperties" map will return the location of the
   // `metadata.json` that is cached in `METADATA_CACHE_CONTENT_KEY`. This will often match the

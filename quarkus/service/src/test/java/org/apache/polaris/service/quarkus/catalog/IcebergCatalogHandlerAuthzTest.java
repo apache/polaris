@@ -772,10 +772,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   }
 
   private static String getMetadataLocation(RESTResponse resp) {
-    final String metadataLocation =
-        resp instanceof IcebergCatalogHandler.StringLoadTableResponse
-            ? ((IcebergCatalogHandler.StringLoadTableResponse) resp).metadataLocation()
-            : ((LoadTableResponse) resp).metadataLocation();
+    final String metadataLocation = ((LoadTableResponse) resp).metadataLocation();
     return metadataLocation;
   }
 

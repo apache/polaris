@@ -129,7 +129,6 @@ import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.persistence.MetadataCacheManager;
-import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -182,7 +181,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.features.\"LIST_PAGINATION_ENABLED\"",
           "true",
           "polaris.event-listener.type",
-          "test");
+          "test",
+          "polaris.features." + FeatureConfiguration.METADATA_CACHE_MAX_BYTES.key,
+          "10000");
     }
   }
 
@@ -1820,11 +1821,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Schema schema = buildSchema(10);
 
     catalog.createNamespace(namespace);
-    Table createdTable = catalog.createTable(tableIdentifier, schema);
-    TableMetadata originalMetadata = ((BaseTable) createdTable).operations().current();
+    catalog.createTable(tableIdentifier, schema);
+    TableMetadata originalMetadata = catalog.loadTableMetadata(tableIdentifier);
 
-    MetadataJson cachedMetadataJson =
-        MetadataCacheManager.loadTableMetadataJson(
+    TableMetadata cachedMetadata =
+        MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
             Integer.MAX_VALUE,
             polarisContext,
@@ -1835,7 +1836,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             });
 
     // The content should match what was cached
-    Assertions.assertThat(cachedMetadataJson.content())
+    Assertions.assertThat(TableMetadataParser.toJson(cachedMetadata))
         .isEqualTo(TableMetadataParser.toJson(originalMetadata));
 
     // Update the table
@@ -1844,8 +1845,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     tableOps.commit(tableOps.current(), updatedMetadata);
 
     // Read from the cache; it should detect a change due to the update and load the new fallback
-    MetadataJson reloadedMetadataJson =
-        MetadataCacheManager.loadTableMetadataJson(
+    TableMetadata reloadedMetadata =
+        MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
             Integer.MAX_VALUE,
             polarisContext,
@@ -1856,10 +1857,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                   "Fell back even though a cache entry should be updated on write");
             });
 
-    Assertions.assertThat(reloadedMetadataJson).isNotSameAs(cachedMetadataJson);
-    Assertions.assertThat(
-            TableMetadataParser.fromJson(reloadedMetadataJson.content()).schema().columns().size())
-        .isEqualTo(100);
+    Assertions.assertThat(TableMetadataParser.toJson(reloadedMetadata))
+        .isNotSameAs(TableMetadataParser.toJson(cachedMetadata));
+    Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
   }
 
   @Test

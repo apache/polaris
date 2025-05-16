@@ -18,10 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonRawValue;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -38,10 +37,10 @@ import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
@@ -59,7 +58,6 @@ import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTResponse;
-import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -104,7 +102,6 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.persistence.MetadataJson;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -444,16 +441,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withProperties(properties)
             .create();
     if (table instanceof BaseTable baseTable) {
-      final MetadataJson tableMetadataJson;
-      if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-        tableMetadataJson = icebergCatalog.loadTableMetadataJson(tableIdentifier);
-      } else {
-        TableMetadata tableMetadata = baseTable.operations().current();
-        tableMetadataJson = MetadataJson.fromMetadata(tableMetadata);
-      }
+      TableMetadata tableMetadata = baseTable.operations().current();
       return buildLoadTableResponseWithDelegationCredentials(
           tableIdentifier,
-          tableMetadataJson,
+          tableMetadata,
           Set.of(
               PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST));
     } else if (table instanceof BaseMetadataTable) {
@@ -544,7 +535,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-        ident, MetadataJson.fromMetadata(metadata), Set.of(PolarisStorageActions.ALL));
+        ident, metadata, Set.of(PolarisStorageActions.ALL));
   }
 
   /**
@@ -651,16 +642,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
+    LoadTableResponse rawResponse;
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      MetadataJson metadataJson = icebergCatalog.loadTableMetadataJson(tableIdentifier);
-      if (icebergCatalog.shouldFilterSnapshots(snapshots)) {
-        TableMetadata metadata = TableMetadataParser.fromJson(metadataJson.content());
-        metadataJson = MetadataJson.fromMetadata(metadata, snapshots); // round-trip to filter
-      }
-      return Optional.of(new StringLoadTableResponse(metadataJson));
+      TableMetadata metadata = icebergCatalog.loadTableMetadata(tableIdentifier);
+      rawResponse = LoadTableResponse.builder().withTableMetadata(metadata).build();
     } else {
-      return Optional.of(catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier));
+      rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
     }
+    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
   public RESTResponse loadTableWithAccessDelegation(
@@ -750,48 +739,48 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         }
       }
     }
-    MetadataJson metadataJson = null;
+    TableMetadata metadata = null;
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      metadataJson = icebergCatalog.loadTableMetadataJson(tableIdentifier, snapshots);
-      if (icebergCatalog.shouldFilterSnapshots(snapshots)) {
-        TableMetadata metadata = TableMetadataParser.fromJson(metadataJson.content());
-        metadataJson = MetadataJson.fromMetadata(metadata, snapshots); // round-trip to filter
-      }
+      metadata = icebergCatalog.loadTableMetadata(tableIdentifier);
     }
 
     // The metadata failed to load
-    if (metadataJson == null) {
+    if (metadata == null) {
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     } else {
+      metadata = filterMetadataToSnapshots(metadata, snapshots);
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier, metadataJson, actionsRequested));
+              tableIdentifier, metadata, actionsRequested));
     }
   }
 
   private RESTResponse buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
-      MetadataJson metadataJson,
+      TableMetadata tableMetadata,
       Set<PolarisStorageActions> actions) {
-    Map<String, String> config = Map.of();
-    List<Credential> credentials = List.of();
+    LoadTableResponse.Builder responseBuilder =
+        LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
       LOGGER
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocation", metadataJson.location())
+          .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
       AccessConfig accessConfig =
-          credentialDelegation.getAccessConfig(
-              tableIdentifier, metadataJson.tableLocations(), actions);
-      config = accessConfig.credentials();
-      if (!config.isEmpty()) {
-        credentials.add(
-            ImmutableCredential.builder().prefix(metadataJson.location()).config(config).build());
+          credentialDelegation.getAccessConfig(tableIdentifier, tableMetadata, actions);
+      Map<String, String> credentialConfig = accessConfig.credentials();
+      responseBuilder.addAllConfig(credentialConfig);
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
+      if (!credentialConfig.isEmpty()) {
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
       }
     }
-    return new StringLoadTableResponse(
-        metadataJson.location(), metadataJson.content(), config, credentials);
+    return responseBuilder.build();
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
@@ -886,7 +875,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      icebergCatalog.loadTableMetadataJson(tableIdentifier);
+      icebergCatalog.loadTableMetadata(tableIdentifier);
     } else {
       catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
     }
@@ -952,16 +941,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               final TableOperations tableOps;
               if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
                 tableOps = icebergCatalog.newTableOps(change.identifier());
-                MetadataJson metadataJson =
-                    icebergCatalog.loadTableMetadataJson(change.identifier());
-                currentMetadata =
-                    TableMetadata.buildFrom(TableMetadataParser.fromJson(metadataJson.content()))
-                        .withMetadataLocation(metadataJson.location())
-                        .build();
+                currentMetadata = icebergCatalog.loadTableMetadata(change.identifier());
                 // Update tableOps.current() to reflect the cached metadata
-                if (tableOps instanceof IcebergCatalog.BasePolarisTableOperations bpto) {
-                  bpto.setCurrentMetadata(metadataJson.location(), currentMetadata);
-                  bpto.shouldRefresh = false;
+                if (tableOps instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
+                  polarisOps.setCurrentMetadata(
+                      currentMetadata.metadataFileLocation(), currentMetadata);
+                  polarisOps.shouldRefresh = false;
                 }
               } else {
                 final Table table = baseCatalog.loadTable(change.identifier());
@@ -1132,26 +1117,34 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     catalogHandlerUtils.renameView(viewCatalog, request);
   }
 
+  private @Nonnull TableMetadata filterMetadataToSnapshots(
+      TableMetadata metadata, String snapshots) {
+    Set<Long> referencedSnapshotIds =
+        metadata.refs().values().stream().map(SnapshotRef::snapshotId).collect(Collectors.toSet());
+    return metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+  }
+
+  private @Nonnull LoadTableResponse filterResponseToSnapshots(
+      LoadTableResponse loadTableResponse, String snapshots) {
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return loadTableResponse;
+    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+      TableMetadata filteredMetadata =
+          filterMetadataToSnapshots(loadTableResponse.tableMetadata(), snapshots);
+      return LoadTableResponse.builder()
+          .withTableMetadata(filteredMetadata)
+          .addAllConfig(loadTableResponse.config())
+          .addAllCredentials(loadTableResponse.credentials())
+          .build();
+    } else {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
+  }
+
   @Override
   public void close() throws Exception {
     if (baseCatalog instanceof Closeable closeable) {
       closeable.close();
-    }
-  }
-
-  public record StringLoadTableResponse(
-      @JsonProperty("metadata-location") String metadataLocation,
-      @JsonProperty("metadata") @JsonRawValue String metadata,
-      @JsonProperty("config") Map<String, String> config,
-      @JsonProperty("storage-credentials") List<Credential> credentials)
-      implements RESTResponse {
-    @Override
-    public void validate() {
-      Preconditions.checkNotNull(this.metadata, "Invalid metadata: null");
-    }
-
-    public StringLoadTableResponse(MetadataJson metadataJson) {
-      this(metadataJson.location(), metadataJson.content(), Map.of(), List.of());
     }
   }
 }
