@@ -302,21 +302,22 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
-    CatalogEntity catalogEntityWithProperties =
-        new CatalogEntity.Builder()
-            .setName(CATALOG_NAME)
-            .setDefaultBaseLocation(storageLocation)
-            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(FeatureConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
-            .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-            .build();
 
     catalogEntity =
         adminService.createCatalog(
-            new CreateCatalogRequest(catalogEntityWithProperties.asCatalog()));
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .setDefaultBaseLocation(storageLocation)
+                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .build()
+                    .asCatalog()));
 
     passthroughView =
         new PolarisPassthroughResolutionView(
