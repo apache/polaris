@@ -152,16 +152,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   static final String ALLOW_SPECIFYING_FILE_IO_IMPL = "ALLOW_SPECIFYING_FILE_IO_IMPL";
   static final boolean ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT = false;
 
-  // Config key for initializing a default "catalogFileIO" that is available either via getIo()
-  // or for any TableOperations/ViewOperations instantiated, via ops.io() before entity-specific
-  // FileIO initialization is triggered for any such operations.
-  // Typically this should only be used in test scenarios where a PolarisIcebergCatalog instance
-  // is used for both the "client-side" and "server-side" logic instead of being access through
-  // a REST layer.
-  static final String INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
-      "INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST";
-  static final boolean INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT = false;
-
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
@@ -297,11 +287,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
 
-    Boolean initializeDefaultCatalogFileioForTest =
-        getBooleanContextConfiguration(
-            INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST,
-            INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT);
-    if (Boolean.TRUE.equals(initializeDefaultCatalogFileioForTest)) {
+    // For test environments only
+    if (false) {
       LOGGER.debug(
           "Initializing a default catalogFileIO with properties {}", tableDefaultProperties);
       this.catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
