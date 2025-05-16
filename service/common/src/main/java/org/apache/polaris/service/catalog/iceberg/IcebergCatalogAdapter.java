@@ -554,7 +554,8 @@ public class IcebergCatalogAdapter
           final List<Credential> credentials;
           if (restResponse instanceof LoadTableResponse loadTableResponse) {
             credentials = loadTableResponse.credentials();
-          } else if (restResponse instanceof IcebergCatalogHandler.StringLoadTableResponse stringResponse) {
+          } else if (restResponse
+              instanceof IcebergCatalogHandler.StringLoadTableResponse stringResponse) {
             credentials = stringResponse.credentials();
           } else {
             throw new IllegalStateException("Cannot extract credentials from " + restResponse);
