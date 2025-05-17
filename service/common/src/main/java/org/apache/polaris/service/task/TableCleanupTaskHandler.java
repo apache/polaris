@@ -37,6 +37,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -156,6 +157,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
       IcebergTableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
+    String executorId =
+        cleanupTask
+            .getPropertiesAsMap()
+            .getOrDefault(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, "");
     // read the manifest list for each snapshot. dedupe the manifest files and schedule a
     // cleanupTask
     // for each manifest file and its data files to be deleted
@@ -193,10 +198,12 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withData(
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                           tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
+                  .withLastAttemptExecutorId(executorId)
+                  .withAttemptCount(1)
+                  .withLastAttemptStartedTimestamp(polarisCallContext.getClock().millis())
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   // copy the internal properties, which will have storage info
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                  .setProperties(cleanupTask.getPropertiesAsMap())
                   .build();
             });
   }
@@ -212,6 +219,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
+    String executorId =
+        cleanupTask
+            .getPropertiesAsMap()
+            .getOrDefault(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, "");
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
@@ -236,8 +247,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withData(
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                           tableEntity.getTableIdentifier(), metadataBatch))
+                  .withLastAttemptExecutorId(executorId)
+                  .withAttemptCount(1)
+                  .withLastAttemptStartedTimestamp(polarisCallContext.getClock().millis())
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                  .setProperties(cleanupTask.getPropertiesAsMap())
                   .build();
             });
   }

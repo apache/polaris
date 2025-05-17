@@ -224,10 +224,10 @@ class ManifestFileCleanupTaskHandlerTest {
                   retryCounter
                       .computeIfAbsent(location, k -> new AtomicInteger(0))
                       .incrementAndGet();
-              if (attempts == 1) {
+              if (attempts < 3) {
                 throw new RuntimeException("I'm failing to test retries");
               } else {
-                // succeed on the new attempt
+                // succeed on the third attempt
                 super.deleteFile(location);
               }
             }
@@ -261,27 +261,11 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
 
-      // Since manifestFileCleanupTaskHandler performs two rounds of deletion — first for data files, then for manifest files —
-      // and this test mocks a failure on the first deletion attempt, it takes 3 attempts to successfully delete all files.
-
-      // First attempt, fail on data file deletion
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isFalse();
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(dataFile1Path);
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(dataFile2Path);
-
-      // Second attempt, fail on manifest file deletion
-      assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThat(handler.handleTask(task, callCtx)).isFalse();
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
-      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).accepts(manifestFile.path());
-
-      // Third attempt, deleted all files
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(manifestFile.path());
     }
   }
 }

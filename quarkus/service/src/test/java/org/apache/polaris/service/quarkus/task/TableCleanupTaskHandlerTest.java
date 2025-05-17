@@ -24,7 +24,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +70,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
+import org.threeten.extra.MutableClock;
 
 @QuarkusTest
 class TableCleanupTaskHandlerTest {
@@ -78,6 +81,7 @@ class TableCleanupTaskHandlerTest {
   private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
+  private final MutableClock timeSource = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
     return new TaskFileIOSupplier(
@@ -103,7 +107,7 @@ class TableCleanupTaskHandlerTest {
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone());
+            timeSource);
 
     callContext = CallContext.of(realmContext, polarisCallContext);
   }
@@ -152,6 +156,7 @@ class TableCleanupTaskHandlerTest {
 
     handler.handleTask(task, callContext);
 
+    timeSource.add(Duration.ofMinutes(10));
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
@@ -232,6 +237,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
+    timeSource.add(Duration.ofMinutes(10));
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
@@ -293,6 +299,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
+    timeSource.add(Duration.ofMinutes(10));
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
@@ -413,6 +420,7 @@ class TableCleanupTaskHandlerTest {
 
     handler.handleTask(task, callContext);
 
+    timeSource.add(Duration.ofMinutes(10));
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(realmContext)
@@ -587,6 +595,7 @@ class TableCleanupTaskHandlerTest {
 
     handler.handleTask(task, callContext);
 
+    timeSource.add(Duration.ofMinutes(10));
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(callContext.getRealmContext())

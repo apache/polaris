@@ -20,6 +20,7 @@ package org.apache.polaris.service.task;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
@@ -53,25 +54,53 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   public abstract boolean handleTask(TaskEntity task, CallContext callContext);
 
   public CompletableFuture<Void> tryDelete(
-      TableIdentifier tableId, FileIO fileIO, String baseFile, String file) {
+      TableIdentifier tableId,
+      FileIO fileIO,
+      String baseFile,
+      String file,
+      Throwable e,
+      int attempt) {
+    if (e != null && attempt <= MAX_ATTEMPTS) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("file", file)
+          .addKeyValue("attempt", attempt)
+          .addKeyValue("error", e.getMessage())
+          .log("Error encountered attempting to delete file");
+    }
+    if (attempt > MAX_ATTEMPTS && e != null) {
+      return CompletableFuture.failedFuture(e);
+    }
     return CompletableFuture.runAsync(
-        () -> {
-          // totally normal for a file to already be missing, e.g. a data file
-          // may be in multiple manifests. There's a possibility we check the
-          // file's existence, but then it is deleted before we have a chance to
-          // send the delete request. In such a case, we <i>should</i> retry
-          // and find
-          if (TaskUtils.exists(file, fileIO)) {
-            fileIO.deleteFile(file);
-          } else {
-            LOGGER
-                .atInfo()
-                .addKeyValue("file", file)
-                .addKeyValue("baseFile", baseFile != null ? baseFile : "")
-                .addKeyValue("tableId", tableId)
-                .log("table file cleanup task scheduled, but data file doesn't exist");
-          }
-        },
-        executorService);
+            () -> {
+              // totally normal for a file to already be missing, e.g. a data file
+              // may be in multiple manifests. There's a possibility we check the
+              // file's existence, but then it is deleted before we have a chance to
+              // send the delete request. In such a case, we <i>should</i> retry
+              // and find
+              if (TaskUtils.exists(file, fileIO)) {
+                fileIO.deleteFile(file);
+              } else {
+                LOGGER
+                    .atInfo()
+                    .addKeyValue("file", file)
+                    .addKeyValue("baseFile", baseFile != null ? baseFile : "")
+                    .addKeyValue("tableId", tableId)
+                    .log("table file cleanup task scheduled, but data file doesn't exist");
+              }
+            },
+            executorService)
+        .exceptionallyComposeAsync(
+            newEx -> {
+              LOGGER
+                  .atWarn()
+                  .addKeyValue("file", file)
+                  .addKeyValue("tableIdentifier", tableId)
+                  .addKeyValue("baseFile", baseFile != null ? baseFile : "")
+                  .log("Exception caught deleting data file", newEx);
+              return tryDelete(tableId, fileIO, baseFile, file, newEx, attempt + 1);
+            },
+            CompletableFuture.delayedExecutor(
+                FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));
   }
 }

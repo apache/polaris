@@ -33,6 +33,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +70,7 @@ public class TaskRecoveryManager {
           new PolarisCallContext(
               metastore, new PolarisDefaultDiagServiceImpl(), configurationStore, clock);
       EntitiesResult entitiesResult =
-          metaStoreManager.loadTasks(polarisCallContext, executorId, 20, true);
+          metaStoreManager.loadTasks(polarisCallContext, executorId, PageToken.fromLimit(20));
       if (entitiesResult.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
         entitiesResult.getEntities().stream()
             .map(TaskEntity::of)

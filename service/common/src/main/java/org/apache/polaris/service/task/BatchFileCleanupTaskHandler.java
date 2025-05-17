@@ -80,7 +80,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
       // Schedule the deletion for each file asynchronously
       List<CompletableFuture<Void>> deleteFutures =
           validFiles.stream()
-              .map(file -> super.tryDelete(tableId, authorizedFileIO, null, file))
+              .map(file -> super.tryDelete(tableId, authorizedFileIO, null, file, null, 1))
               .toList();
 
       try {
