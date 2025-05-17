@@ -18,7 +18,13 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
+import static org.apache.polaris.core.policy.content.PolicyContentUtil.MAPPER;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -41,11 +47,15 @@ public class EntityWeigherTest {
       String metadataLocation,
       String properties,
       Optional<String> internalProperties) {
-    var entity =
-        new IcebergTableLikeEntity.Builder(TableIdentifier.of(name), metadataLocation).build();
-    entity.setProperties(properties);
-    internalProperties.ifPresent(p -> entity.setInternalProperties(p));
-    return new ResolvedPolarisEntity(diagnostics, entity, List.of(), 1);
+    Map<String, String> propertiesMap = getPropertiesMap(properties);
+    var entity = new IcebergTableLikeEntity.Builder(TableIdentifier.of(name), metadataLocation);
+    entity.setProperties(propertiesMap);
+    internalProperties.ifPresent(
+        p -> {
+          Map<String, String> internalPropertiesMap = getPropertiesMap(p);
+          entity.setInternalProperties(internalPropertiesMap);
+        });
+    return new ResolvedPolarisEntity(diagnostics, entity.build(), List.of(), 1);
   }
 
   @Test
@@ -65,7 +75,8 @@ public class EntityWeigherTest {
     int smallWeight =
         EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
     int largeWeight =
-        EntityWeigher.getInstance().weigh(1L, getEntity("looong name", "", "", Optional.empty()));
+        EntityWeigher.getInstance()
+            .weigh(1L, getEntity("{\"v\":\"looong properties\"}", "", "", Optional.empty()));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
@@ -85,7 +96,7 @@ public class EntityWeigherTest {
         EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.empty()));
     int largeWeight =
         EntityWeigher.getInstance()
-            .weigh(1L, getEntity("t", "", "looong properties", Optional.empty()));
+            .weigh(1L, getEntity("t", "", "{\"v\":\"looong properties\"}", Optional.empty()));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
@@ -95,7 +106,7 @@ public class EntityWeigherTest {
         EntityWeigher.getInstance().weigh(1L, getEntity("t", "", "", Optional.of("")));
     int largeWeight =
         EntityWeigher.getInstance()
-            .weigh(1L, getEntity("t", "", "", Optional.of("looong iproperties")));
+            .weigh(1L, getEntity("t", "", "", Optional.of("{\"v\":\"looong iproperties\"}")));
     Assertions.assertThat(smallWeight).isLessThan(largeWeight);
   }
 
@@ -103,7 +114,24 @@ public class EntityWeigherTest {
   public void testExactWeightCalculation() {
     int preciseWeight =
         EntityWeigher.getInstance()
-            .weigh(1L, getEntity("name", "location", "{a: b}", Optional.of("{c: d, e: f}")));
-    Assertions.assertThat(preciseWeight).isEqualTo(1066);
+            .weigh(
+                1L,
+                getEntity(
+                    "name",
+                    "location",
+                    "{\"a\": \"b\"}",
+                    Optional.of("{\"c\": \"d\", \"e\": \"f\"}")));
+    Assertions.assertThat(preciseWeight).isEqualTo(1090);
+  }
+
+  private static Map<String, String> getPropertiesMap(String properties) {
+    if (properties == null || properties.isEmpty()) return new HashMap<>();
+    Map<String, String> propertiesMap;
+    try {
+      propertiesMap = MAPPER.readValue(properties, new TypeReference<>() {});
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
+    return propertiesMap;
   }
 }
