@@ -274,7 +274,7 @@ public class BatchFileCleanupTaskHandlerTest {
                   retryCounter
                       .computeIfAbsent(location, k -> new AtomicInteger(0))
                       .incrementAndGet();
-              if (attempts < 3) {
+              if (attempts == 1) {
                 throw new RuntimeException("Simulating failure to test retries");
               } else {
                 super.deleteFile(location);
@@ -323,12 +323,25 @@ public class BatchFileCleanupTaskHandlerTest {
       // Wait for all async tasks to finish
       future.join();
 
+      // Check if the file not deleted after attempt
+      assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isTrue();
+
+      CompletableFuture<Void> future1 =
+          CompletableFuture.runAsync(
+              () -> {
+                CallContext.setCurrentContext(callCtx);
+                addTaskLocation(task);
+                assertThatPredicate(handler::canHandleTask).accepts(task);
+                handler.handleTask(task, callCtx); // this will schedule the batch deletion
+              });
+      future1.join();
+
       // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
 
       // Ensure that retries happened as expected
       assertThat(retryCounter.containsKey(statisticsFile.path())).isTrue();
-      assertThat(retryCounter.get(statisticsFile.path()).get()).isEqualTo(3);
+      assertThat(retryCounter.get(statisticsFile.path()).get()).isEqualTo(2);
     }
   }
 }

@@ -1429,6 +1429,16 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
       properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, refreshEntityToDrop));
+      // Update LAST_ATTEMPT_START_TIME to prevent multiple executors from picking the same task
+      // simultaneously; protected by TASK_TIMEOUT_MILLIS
+      properties.put(
+          PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
+          String.valueOf(callCtx.getClock().millis()));
+      properties.put(
+          PolarisTaskConstants.ATTEMPT_COUNT,
+          String.valueOf(
+              Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                  + 1));
       taskEntity.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
       if (cleanupProperties != null) {
         taskEntity.setInternalProperties(
