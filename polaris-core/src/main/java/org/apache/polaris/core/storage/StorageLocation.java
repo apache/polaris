@@ -20,12 +20,15 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** An abstraction over a storage location */
 public class StorageLocation {
   private final String location;
   public static final String LOCAL_PATH_PREFIX = "file:///";
+  public static final Pattern SLASHES = Pattern.compile("/+");
 
   /** Create a StorageLocation from a String path */
   public static StorageLocation of(String location) {
@@ -40,12 +43,21 @@ public class StorageLocation {
   protected StorageLocation(@Nonnull String location) {
     if (location == null) {
       this.location = null;
-    } else if (location.startsWith("file:/") && !location.startsWith(LOCAL_PATH_PREFIX)) {
-      this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
-    } else if (location.startsWith("/")) {
-      this.location = URI.create(location.replaceFirst("/+", LOCAL_PATH_PREFIX)).toString();
+      return;
+    }
+    String scheme = scheme(location);
+    String path;
+    if (scheme == null) {
+      path = location;
+      scheme = "file";
     } else {
-      this.location = URI.create(location).toString();
+      path = location.substring(scheme.length() + 1);
+    }
+    path = normalizePath(path);
+    if (scheme.equals("file")) {
+      this.location = URI.create(LOCAL_PATH_PREFIX + path).toString();
+    } else {
+      this.location = scheme + "://" + path;
     }
   }
 
@@ -98,5 +110,24 @@ public class StorageLocation {
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
     }
+  }
+
+  private static String scheme(String location) {
+    int schemePos = location.indexOf(':');
+    if (schemePos > 0) {
+      return location.substring(0, schemePos).toLowerCase(Locale.ROOT);
+    }
+    return null;
+  }
+
+  protected String normalizePath(String path) {
+    path = SLASHES.matcher(path).replaceAll("/");
+    if (path.endsWith("/") || path.startsWith("/")) {
+      path =
+          path.substring(
+              path.startsWith("/") && path.length() > 1 ? 1 : 0,
+              path.endsWith("/") ? path.length() - 1 : path.length());
+    }
+    return path;
   }
 }
