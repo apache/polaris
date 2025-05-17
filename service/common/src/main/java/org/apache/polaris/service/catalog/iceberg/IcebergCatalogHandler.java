@@ -57,6 +57,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -404,7 +405,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse createTableDirectWithWriteDelegation(
+  public RESTResponse createTableDirectWithWriteDelegation(
       Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
@@ -439,23 +440,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withSortOrder(request.writeOrder())
             .withProperties(properties)
             .create();
-
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
       return buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier,
-              tableMetadata,
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL)
-          .build();
+          tableIdentifier,
+          tableMetadata,
+          Set.of(
+              PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
     }
-
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
@@ -520,7 +515,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return LoadTableResponse.builder().withTableMetadata(metadata).build();
   }
 
-  public LoadTableResponse createTableStagedWithWriteDelegation(
+  public RESTResponse createTableStagedWithWriteDelegation(
       Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
@@ -540,8 +535,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-            ident, metadata, Set.of(PolarisStorageActions.ALL), SNAPSHOTS_ALL)
-        .build();
+        ident, metadata, Set.of(PolarisStorageActions.ALL));
   }
 
   /**
@@ -605,11 +599,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    */
   private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
-
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
 
-  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
+  public RESTResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
     return loadTableIfStale(tableIdentifier, null, snapshots).get();
   }
 
@@ -623,7 +616,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
    *     load table response, otherwise
    */
-  public Optional<LoadTableResponse> loadTableIfStale(
+  public Optional<RESTResponse> loadTableIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(
@@ -649,11 +642,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    LoadTableResponse rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
+    LoadTableResponse rawResponse;
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      TableMetadata metadata = icebergCatalog.loadTableMetadata(tableIdentifier);
+      rawResponse = LoadTableResponse.builder().withTableMetadata(metadata).build();
+    } else {
+      rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
+    }
     return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
-  public LoadTableResponse loadTableWithAccessDelegation(
+  public RESTResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier, String snapshots) {
     return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
   }
@@ -668,7 +667,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
    *     load table response, otherwise
    */
-  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
+  public Optional<RESTResponse> loadTableWithAccessDelegationIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
@@ -740,30 +739,26 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         }
       }
     }
-
-    // TODO: Find a way for the configuration or caller to better express whether to fail or omit
-    // when data-access is specified but access delegation grants are not found.
-    Table table = baseCatalog.loadTable(tableIdentifier);
-
-    if (table instanceof BaseTable baseTable) {
-      TableMetadata tableMetadata = baseTable.operations().current();
-      return Optional.of(
-          buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
-              .build());
-    } else if (table instanceof BaseMetadataTable) {
-      // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    TableMetadata metadata = null;
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      metadata = icebergCatalog.loadTableMetadata(tableIdentifier);
     }
 
-    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    // The metadata failed to load
+    if (metadata == null) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    } else {
+      metadata = filterMetadataToSnapshots(metadata, snapshots);
+      return Optional.of(
+          buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier, metadata, actionsRequested));
+    }
   }
 
-  private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
+  private RESTResponse buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> actions,
-      String snapshots) {
+      Set<PolarisStorageActions> actions) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -785,7 +780,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .build());
       }
     }
-    return responseBuilder;
+    return responseBuilder.build();
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
@@ -879,8 +874,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      icebergCatalog.loadTableMetadata(tableIdentifier);
+    } else {
+      catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
+    }
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -938,19 +936,33 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
-              Table table = baseCatalog.loadTable(change.identifier());
-              if (!(table instanceof BaseTable)) {
-                throw new IllegalStateException(
-                    "Cannot wrap catalog that does not produce BaseTable");
+              // TODO we are still loading metadata redundantly against the same table
+              final TableMetadata currentMetadata;
+              final TableOperations tableOps;
+              if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+                tableOps = icebergCatalog.newTableOps(change.identifier());
+                currentMetadata = icebergCatalog.loadTableMetadata(change.identifier());
+                // Update tableOps.current() to reflect the cached metadata
+                if (tableOps instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
+                  polarisOps.setCurrentMetadata(
+                      currentMetadata.metadataFileLocation(), currentMetadata);
+                  polarisOps.shouldRefresh = false;
+                }
+              } else {
+                final Table table = baseCatalog.loadTable(change.identifier());
+                if (!(table instanceof BaseTable)) {
+                  throw new IllegalStateException(
+                      "Cannot wrap catalog that does not produce BaseTable");
+                }
+                tableOps = ((BaseTable) table).operations();
+                currentMetadata = tableOps.current();
               }
+
               if (isCreate(change)) {
                 throw new BadRequestException(
                     "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
                     change);
               }
-
-              TableOperations tableOps = ((BaseTable) table).operations();
-              TableMetadata currentMetadata = tableOps.current();
 
               // Validate requirements; any CommitFailedExceptions will fail the overall request
               change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
@@ -1105,21 +1117,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     catalogHandlerUtils.renameView(viewCatalog, request);
   }
 
+  private @Nonnull TableMetadata filterMetadataToSnapshots(
+      TableMetadata metadata, String snapshots) {
+    Set<Long> referencedSnapshotIds =
+        metadata.refs().values().stream().map(SnapshotRef::snapshotId).collect(Collectors.toSet());
+    return metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+  }
+
   private @Nonnull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
     if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
-      TableMetadata metadata = loadTableResponse.tableMetadata();
-
-      Set<Long> referencedSnapshotIds =
-          metadata.refs().values().stream()
-              .map(SnapshotRef::snapshotId)
-              .collect(Collectors.toSet());
-
       TableMetadata filteredMetadata =
-          metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
-
+          filterMetadataToSnapshots(loadTableResponse.tableMetadata(), snapshots);
       return LoadTableResponse.builder()
           .withTableMetadata(filteredMetadata)
           .addAllConfig(loadTableResponse.config())

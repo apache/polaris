@@ -32,8 +32,18 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * configuration.
  */
 public interface SupportsCredentialDelegation {
-  AccessConfig getAccessConfig(
+  default AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
+      Set<PolarisStorageActions> storageActions) {
+    return getAccessConfig(
+        tableIdentifier,
+        IcebergMetadataUtil.getLocationsAllowedToBeAccessed(tableMetadata),
+        storageActions);
+  }
+
+  AccessConfig getAccessConfig(
+      TableIdentifier tableIdentifier,
+      Set<String> locationsAllowedToBeAccessed,
       Set<PolarisStorageActions> storageActions);
 }

@@ -46,6 +46,7 @@ public abstract class PolarisConfiguration<T> {
   private final Optional<String> catalogConfigImpl;
   private final Optional<String> catalogConfigUnsafeImpl;
   private final Class<T> typ;
+  private final Optional<Function<T, Boolean>> validation;
 
   /** catalog configs are expected to start with this prefix */
   private static final String SAFE_CATALOG_CONFIG_PREFIX = "polaris.config.";
@@ -90,13 +91,18 @@ public abstract class PolarisConfiguration<T> {
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
-      Optional<String> catalogConfigUnsafe) {
+      Optional<String> catalogConfigUnsafe,
+      Optional<Function<T, Boolean>> validation) {
     this.key = key;
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
     this.catalogConfigUnsafeImpl = catalogConfigUnsafe;
     this.typ = (Class<T>) defaultValue.getClass();
+    this.validation = validation;
+
+    // Force validation:
+    apply(defaultValue);
   }
 
   public boolean hasCatalogConfig() {
@@ -110,6 +116,22 @@ public abstract class PolarisConfiguration<T> {
                 "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
+  T apply(Object value) {
+    T result = this.typ.cast(value);
+    validate(result);
+    return result;
+  }
+
+  private void validate(T value) {
+    this.validation.ifPresent(
+        v -> {
+          if (!v.apply(value)) {
+            throw new IllegalArgumentException(
+                String.format("Configuration %s has invalid value %s", key, defaultValue));
+          }
+        });
+  }
+
   public boolean hasCatalogConfigUnsafe() {
     return catalogConfigUnsafeImpl.isPresent();
   }
@@ -121,16 +143,13 @@ public abstract class PolarisConfiguration<T> {
                 "Attempted to read an unsafe catalog config key from a configuration that doesn't have one."));
   }
 
-  T cast(Object value) {
-    return this.typ.cast(value);
-  }
-
   public static class Builder<T> {
     private String key;
     private String description;
     private T defaultValue;
     private Optional<String> catalogConfig = Optional.empty();
     private Optional<String> catalogConfigUnsafe = Optional.empty();
+    private Optional<Function<T, Boolean>> validation = Optional.empty();
 
     public Builder<T> key(String key) {
       this.key = key;
@@ -162,6 +181,11 @@ public abstract class PolarisConfiguration<T> {
       return this;
     }
 
+    public Builder<T> validation(Function<T, Boolean> validation) {
+      this.validation = Optional.of(validation);
+      return this;
+    }
+
     /**
      * Used to support backwards compatability before there were reserved properties. Usage of this
      * method should be removed over time.
@@ -177,7 +201,7 @@ public abstract class PolarisConfiguration<T> {
       return this;
     }
 
-    private void validateOrThrow() {
+    private void validateFieldsOrThrow() {
       if (key == null || description == null || defaultValue == null) {
         throw new IllegalArgumentException("key, description, and defaultValue are required");
       }
@@ -187,23 +211,23 @@ public abstract class PolarisConfiguration<T> {
     }
 
     public FeatureConfiguration<T> buildFeatureConfiguration() {
-      validateOrThrow();
+      validateFieldsOrThrow();
       FeatureConfiguration<T> config =
           new FeatureConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
-      validateOrThrow();
+      validateFieldsOrThrow();
       if (catalogConfig.isPresent() || catalogConfigUnsafe.isPresent()) {
         throw new IllegalArgumentException(
             "catalog configs are not valid for behavior change configs");
       }
       BehaviorChangeConfiguration<T> config =
           new BehaviorChangeConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }

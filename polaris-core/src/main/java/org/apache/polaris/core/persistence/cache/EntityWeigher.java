@@ -35,7 +35,7 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   private static final int APPROXIMATE_ENTITY_OVERHEAD = 1000;
 
   /* Represents the amount of bytes that a character is expected to take up */
-  private static final int APPROXIMATE_BYTES_PER_CHAR = 3;
+  public static final int APPROXIMATE_BYTES_PER_CHAR = 3;
 
   /** Singleton instance */
   private static final EntityWeigher instance = new EntityWeigher();
