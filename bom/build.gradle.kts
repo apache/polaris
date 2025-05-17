@@ -54,5 +54,6 @@ dependencies {
     api(project(":polaris-quarkus-spark-tests"))
 
     api(project(":polaris-tests"))
+    api(project(":polaris-jcstress-tests"))
   }
 }
