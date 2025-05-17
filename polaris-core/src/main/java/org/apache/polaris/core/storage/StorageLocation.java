@@ -44,8 +44,10 @@ public class StorageLocation {
       this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
     } else if (location.startsWith("/")) {
       this.location = URI.create(location.replaceFirst("/+", LOCAL_PATH_PREFIX)).toString();
-    } else {
+    } else if (location.startsWith(LOCAL_PATH_PREFIX)) {
       this.location = URI.create(location).toString();
+    } else {
+      this.location = location;
     }
   }
 
