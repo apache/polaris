@@ -70,7 +70,7 @@ Polaris supports several predefined system policy types (prefixed with `system.`
 
 ### Policy Inheritance
 
-The object hierarchy in Polaris is structured as follows:
+The entity hierarchy in Polaris is structured as follows:
 
 ```
             Catalog
