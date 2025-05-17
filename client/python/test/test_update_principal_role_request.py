@@ -1,5 +1,3 @@
-
-# coding: utf-8
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,6 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+# coding: utf-8
+
 """
     Polaris Management Service
 
@@ -45,7 +46,7 @@ class TestUpdatePrincipalRoleRequest(unittest.TestCase):
 
     def make_instance(self, include_optional) -> UpdatePrincipalRoleRequest:
         """Test UpdatePrincipalRoleRequest
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `UpdatePrincipalRoleRequest`
@@ -60,6 +61,10 @@ class TestUpdatePrincipalRoleRequest(unittest.TestCase):
             )
         else:
             return UpdatePrincipalRoleRequest(
+                current_entity_version = 56,
+                properties = {
+                    'key' : ''
+                    },
         )
         """
 

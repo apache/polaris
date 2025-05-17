@@ -141,6 +141,18 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("plugins/**/*.ref")
 }
 
+tasks.register<Exec>("regeneratePythonClient") {
+  description = "Regenerates the python client"
+
+  workingDir = project.projectDir
+  commandLine("bash", "client/templates/regenerate.sh")
+
+  dependsOn(":polaris-api-iceberg-service:processResources")
+  dependsOn(":polaris-api-management-service:processResources")
+  dependsOn(":polaris-api-catalog-service:processResources")
+  dependsOn(":polaris-api-management-model:processResources")
+}
+
 // Pass environment variables:
 //    ORG_GRADLE_PROJECT_apacheUsername
 //    ORG_GRADLE_PROJECT_apachePassword

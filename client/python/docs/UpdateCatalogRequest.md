@@ -20,7 +20,7 @@
 -->
 # UpdateCatalogRequest
 
-Updates to apply to a Catalog
+Updates to apply to a Catalog. Any fields which are required in the Catalog will remain unaltered if omitted from the contents of this Update request.
 
 ## Properties
 

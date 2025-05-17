@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,10 +36,11 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictStr
+from pydantic import ConfigDict, Field
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.management.models.catalog import Catalog
 from polaris.management.models.catalog_properties import CatalogProperties
+from polaris.management.models.connection_config_info import ConnectionConfigInfo
 from polaris.management.models.storage_config_info import StorageConfigInfo
 from typing import Optional, Set
 from typing_extensions import Self
@@ -47,8 +49,8 @@ class ExternalCatalog(Catalog):
     """
     An externally managed catalog
     """ # noqa: E501
-    remote_url: Optional[StrictStr] = Field(default=None, description="URL to the remote catalog API", alias="remoteUrl")
-    __properties: ClassVar[List[str]] = ["type", "name", "properties", "createTimestamp", "lastUpdateTimestamp", "entityVersion", "storageConfigInfo", "remoteUrl"]
+    connection_config_info: Optional[ConnectionConfigInfo] = Field(default=None, alias="connectionConfigInfo")
+    __properties: ClassVar[List[str]] = ["type", "name", "properties", "createTimestamp", "lastUpdateTimestamp", "entityVersion", "storageConfigInfo", "connectionConfigInfo"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -95,6 +97,9 @@ class ExternalCatalog(Catalog):
         # override the default output from pydantic by calling `to_dict()` of storage_config_info
         if self.storage_config_info:
             _dict['storageConfigInfo'] = self.storage_config_info.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of connection_config_info
+        if self.connection_config_info:
+            _dict['connectionConfigInfo'] = self.connection_config_info.to_dict()
         return _dict
 
     @classmethod
@@ -114,7 +119,7 @@ class ExternalCatalog(Catalog):
             "lastUpdateTimestamp": obj.get("lastUpdateTimestamp"),
             "entityVersion": obj.get("entityVersion"),
             "storageConfigInfo": StorageConfigInfo.from_dict(obj["storageConfigInfo"]) if obj.get("storageConfigInfo") is not None else None,
-            "remoteUrl": obj.get("remoteUrl")
+            "connectionConfigInfo": ConnectionConfigInfo.from_dict(obj["connectionConfigInfo"]) if obj.get("connectionConfigInfo") is not None else None
         })
         return _obj
 

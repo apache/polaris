@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestGrantResource(unittest.TestCase):
 
     def make_instance(self, include_optional) -> GrantResource:
         """Test GrantResource
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `GrantResource`
@@ -53,11 +54,11 @@ class TestGrantResource(unittest.TestCase):
         model = GrantResource()
         if include_optional:
             return GrantResource(
-                type = ''
+                type = 'catalog'
             )
         else:
             return GrantResource(
-                type = '',
+                type = 'catalog',
         )
         """
 

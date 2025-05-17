@@ -20,11 +20,12 @@
 -->
 # RemoveStatisticsUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **snapshot_id** | **int** |  | 
 
 ## Example

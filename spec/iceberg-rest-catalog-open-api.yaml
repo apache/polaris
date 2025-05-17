@@ -260,6 +260,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/prefix'
         - name: parent
           in: query
           description:
@@ -510,6 +511,8 @@ paths:
       description: Return all table identifiers under this namespace
       operationId: listTables
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:
@@ -933,6 +936,9 @@ paths:
         for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration
         key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/table'
         - $ref: '#/components/parameters/data-access'
         - name: If-None-Match
           in: header
@@ -1447,6 +1453,8 @@ paths:
       description: Return all view identifiers under this namespace
       operationId: listViews
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:

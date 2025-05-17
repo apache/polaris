@@ -20,6 +20,7 @@
 -->
 # PrincipalRole
 
+
 ## Properties
 
 Name | Type | Description | Notes

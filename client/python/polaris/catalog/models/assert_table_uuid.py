@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, StrictStr, field_validator
+from pydantic import ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List
 from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
@@ -48,13 +49,6 @@ class AssertTableUUID(TableRequirement):
     type: StrictStr
     uuid: StrictStr
     __properties: ClassVar[List[str]] = ["type"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-table-uuid']):
-            raise ValueError("must be one of enum values ('assert-table-uuid')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

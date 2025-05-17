@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestEqualityDeleteFile(unittest.TestCase):
 
     def make_instance(self, include_optional) -> EqualityDeleteFile:
         """Test EqualityDeleteFile
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `EqualityDeleteFile`
@@ -53,14 +54,14 @@ class TestEqualityDeleteFile(unittest.TestCase):
         model = EqualityDeleteFile()
         if include_optional:
             return EqualityDeleteFile(
-                content = 'equality-deletes',
+                content = '',
                 equality_ids = [
                     56
                     ]
             )
         else:
             return EqualityDeleteFile(
-                content = 'equality-deletes',
+                content = '',
         )
         """
 

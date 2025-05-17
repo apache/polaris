@@ -20,6 +20,8 @@
 -->
 # OAuthTokenResponse
 
+The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this spec, see description of the endpoint.
+
 ## Properties
 
 Name | Type | Description | Notes

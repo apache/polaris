@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.base_update import BaseUpdate
 from polaris.catalog.models.model_schema import ModelSchema
@@ -46,17 +47,10 @@ class AddSchemaUpdate(BaseUpdate):
     """
     AddSchemaUpdate
     """ # noqa: E501
-    action: StrictStr
+    action: Optional[StrictStr] = None
     var_schema: ModelSchema = Field(alias="schema")
-    last_column_id: Optional[StrictInt] = Field(default=None, description="The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side.", alias="last-column-id")
+    last_column_id: Optional[StrictInt] = Field(default=None, description="This optional field is **DEPRECATED for REMOVAL** since it more safe to handle this internally, and shouldn't be exposed to the clients. The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side.", alias="last-column-id")
     __properties: ClassVar[List[str]] = ["action"]
-
-    @field_validator('action')
-    def action_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['add-schema']):
-            raise ValueError("must be one of enum values ('add-schema')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

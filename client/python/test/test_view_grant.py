@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestViewGrant(unittest.TestCase):
 
     def make_instance(self, include_optional) -> ViewGrant:
         """Test ViewGrant
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `ViewGrant`
@@ -56,7 +57,7 @@ class TestViewGrant(unittest.TestCase):
                 namespace = [
                     ''
                     ],
-                view_name = '',
+                view_name = '0',
                 privilege = 'CATALOG_MANAGE_ACCESS'
             )
         else:
@@ -64,7 +65,7 @@ class TestViewGrant(unittest.TestCase):
                 namespace = [
                     ''
                     ],
-                view_name = '',
+                view_name = '0',
                 privilege = 'CATALOG_MANAGE_ACCESS',
         )
         """

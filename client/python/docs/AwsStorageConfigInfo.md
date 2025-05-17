@@ -29,6 +29,7 @@ Name | Type | Description | Notes
 **role_arn** | **str** | the aws role arn that grants privileges on the S3 buckets | 
 **external_id** | **str** | an optional external id used to establish a trust relationship with AWS in the trust policy | [optional] 
 **user_arn** | **str** | the aws user arn used to assume the aws role | [optional] 
+**region** | **str** | the aws region where data is stored | [optional] 
 
 ## Example
 

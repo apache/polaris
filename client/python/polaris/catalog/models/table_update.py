@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -42,6 +43,8 @@ from polaris.catalog.models.add_schema_update import AddSchemaUpdate
 from polaris.catalog.models.add_snapshot_update import AddSnapshotUpdate
 from polaris.catalog.models.add_sort_order_update import AddSortOrderUpdate
 from polaris.catalog.models.assign_uuid_update import AssignUUIDUpdate
+from polaris.catalog.models.enable_row_lineage_update import EnableRowLineageUpdate
+from polaris.catalog.models.remove_partition_specs_update import RemovePartitionSpecsUpdate
 from polaris.catalog.models.remove_properties_update import RemovePropertiesUpdate
 from polaris.catalog.models.remove_snapshot_ref_update import RemoveSnapshotRefUpdate
 from polaris.catalog.models.remove_snapshots_update import RemoveSnapshotsUpdate
@@ -58,7 +61,7 @@ from typing import Union, Any, List, Set, TYPE_CHECKING, Optional, Dict
 from typing_extensions import Literal, Self
 from pydantic import Field
 
-TABLEUPDATE_ANY_OF_SCHEMAS = ["AddPartitionSpecUpdate", "AddSchemaUpdate", "AddSnapshotUpdate", "AddSortOrderUpdate", "AssignUUIDUpdate", "RemovePropertiesUpdate", "RemoveSnapshotRefUpdate", "RemoveSnapshotsUpdate", "RemoveStatisticsUpdate", "SetCurrentSchemaUpdate", "SetDefaultSortOrderUpdate", "SetDefaultSpecUpdate", "SetLocationUpdate", "SetPropertiesUpdate", "SetSnapshotRefUpdate", "SetStatisticsUpdate", "UpgradeFormatVersionUpdate"]
+TABLEUPDATE_ANY_OF_SCHEMAS = ["AddPartitionSpecUpdate", "AddSchemaUpdate", "AddSnapshotUpdate", "AddSortOrderUpdate", "AssignUUIDUpdate", "EnableRowLineageUpdate", "RemovePartitionSpecsUpdate", "RemovePropertiesUpdate", "RemoveSnapshotRefUpdate", "RemoveSnapshotsUpdate", "RemoveStatisticsUpdate", "SetCurrentSchemaUpdate", "SetDefaultSortOrderUpdate", "SetDefaultSpecUpdate", "SetLocationUpdate", "SetPropertiesUpdate", "SetSnapshotRefUpdate", "SetStatisticsUpdate", "UpgradeFormatVersionUpdate"]
 
 class TableUpdate(BaseModel):
     """
@@ -99,11 +102,15 @@ class TableUpdate(BaseModel):
     anyof_schema_16_validator: Optional[SetStatisticsUpdate] = None
     # data type: RemoveStatisticsUpdate
     anyof_schema_17_validator: Optional[RemoveStatisticsUpdate] = None
+    # data type: RemovePartitionSpecsUpdate
+    anyof_schema_18_validator: Optional[RemovePartitionSpecsUpdate] = None
+    # data type: EnableRowLineageUpdate
+    anyof_schema_19_validator: Optional[EnableRowLineageUpdate] = None
     if TYPE_CHECKING:
-        actual_instance: Optional[Union[AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]] = None
+        actual_instance: Optional[Union[AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, EnableRowLineageUpdate, RemovePartitionSpecsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]] = None
     else:
         actual_instance: Any = None
-    any_of_schemas: Set[str] = { "AddPartitionSpecUpdate", "AddSchemaUpdate", "AddSnapshotUpdate", "AddSortOrderUpdate", "AssignUUIDUpdate", "RemovePropertiesUpdate", "RemoveSnapshotRefUpdate", "RemoveSnapshotsUpdate", "RemoveStatisticsUpdate", "SetCurrentSchemaUpdate", "SetDefaultSortOrderUpdate", "SetDefaultSpecUpdate", "SetLocationUpdate", "SetPropertiesUpdate", "SetSnapshotRefUpdate", "SetStatisticsUpdate", "UpgradeFormatVersionUpdate" }
+    any_of_schemas: Set[str] = { "AddPartitionSpecUpdate", "AddSchemaUpdate", "AddSnapshotUpdate", "AddSortOrderUpdate", "AssignUUIDUpdate", "EnableRowLineageUpdate", "RemovePartitionSpecsUpdate", "RemovePropertiesUpdate", "RemoveSnapshotRefUpdate", "RemoveSnapshotsUpdate", "RemoveStatisticsUpdate", "SetCurrentSchemaUpdate", "SetDefaultSortOrderUpdate", "SetDefaultSpecUpdate", "SetLocationUpdate", "SetPropertiesUpdate", "SetSnapshotRefUpdate", "SetStatisticsUpdate", "UpgradeFormatVersionUpdate" }
 
     model_config = {
         "validate_assignment": True,
@@ -229,9 +236,21 @@ class TableUpdate(BaseModel):
         else:
             return v
 
+        # validate data type: RemovePartitionSpecsUpdate
+        if not isinstance(v, RemovePartitionSpecsUpdate):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `RemovePartitionSpecsUpdate`")
+        else:
+            return v
+
+        # validate data type: EnableRowLineageUpdate
+        if not isinstance(v, EnableRowLineageUpdate):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `EnableRowLineageUpdate`")
+        else:
+            return v
+
         if error_messages:
             # no match
-            raise ValueError("No match found when setting the actual_instance in TableUpdate with anyOf schemas: AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when setting the actual_instance in TableUpdate with anyOf schemas: AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, EnableRowLineageUpdate, RemovePartitionSpecsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate. Details: " + ", ".join(error_messages))
         else:
             return v
 
@@ -346,10 +365,22 @@ class TableUpdate(BaseModel):
             return instance
         except (ValidationError, ValueError) as e:
              error_messages.append(str(e))
+        # anyof_schema_18_validator: Optional[RemovePartitionSpecsUpdate] = None
+        try:
+            instance.actual_instance = RemovePartitionSpecsUpdate.from_json(json_str)
+            return instance
+        except (ValidationError, ValueError) as e:
+             error_messages.append(str(e))
+        # anyof_schema_19_validator: Optional[EnableRowLineageUpdate] = None
+        try:
+            instance.actual_instance = EnableRowLineageUpdate.from_json(json_str)
+            return instance
+        except (ValidationError, ValueError) as e:
+             error_messages.append(str(e))
 
         if error_messages:
             # no match
-            raise ValueError("No match found when deserializing the JSON string into TableUpdate with anyOf schemas: AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when deserializing the JSON string into TableUpdate with anyOf schemas: AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, EnableRowLineageUpdate, RemovePartitionSpecsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate. Details: " + ", ".join(error_messages))
         else:
             return instance
 
@@ -363,7 +394,7 @@ class TableUpdate(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Optional[Union[Dict[str, Any], AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
+    def to_dict(self) -> Optional[Union[Dict[str, Any], AddPartitionSpecUpdate, AddSchemaUpdate, AddSnapshotUpdate, AddSortOrderUpdate, AssignUUIDUpdate, EnableRowLineageUpdate, RemovePartitionSpecsUpdate, RemovePropertiesUpdate, RemoveSnapshotRefUpdate, RemoveSnapshotsUpdate, RemoveStatisticsUpdate, SetCurrentSchemaUpdate, SetDefaultSortOrderUpdate, SetDefaultSpecUpdate, SetLocationUpdate, SetPropertiesUpdate, SetSnapshotRefUpdate, SetStatisticsUpdate, UpgradeFormatVersionUpdate]]:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None

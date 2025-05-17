@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -38,6 +39,7 @@ import json
 from importlib import import_module
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional, Union
+from typing_extensions import Annotated
 from polaris.management.models.catalog_properties import CatalogProperties
 from polaris.management.models.storage_config_info import StorageConfigInfo
 from typing import Optional, Set
@@ -50,10 +52,10 @@ if TYPE_CHECKING:
 
 class Catalog(BaseModel):
     """
-    A catalog object. A catalog may be internal or external. Internal catalogs are managed entirely by an external catalog interface. Third party catalogs may be other Iceberg REST implementations or other services with their own proprietary APIs
+    A catalog object. A catalog may be internal or external. External catalogs are managed entirely by an external catalog interface. Third party catalogs may be other Iceberg REST implementations or other services with their own proprietary APIs
     """ # noqa: E501
     type: StrictStr = Field(description="the type of catalog - internal or external")
-    name: StrictStr = Field(description="The name of the catalog")
+    name: Annotated[str, Field(min_length=1, strict=True, max_length=256)] = Field(description="The name of the catalog")
     properties: CatalogProperties
     create_timestamp: Optional[StrictInt] = Field(default=None, description="The creation time represented as unix epoch timestamp in milliseconds", alias="createTimestamp")
     last_update_timestamp: Optional[StrictInt] = Field(default=None, description="The last update time represented as unix epoch timestamp in milliseconds", alias="lastUpdateTimestamp")
@@ -66,6 +68,13 @@ class Catalog(BaseModel):
         """Validates the enum"""
         if value not in set(['INTERNAL', 'EXTERNAL']):
             raise ValueError("must be one of enum values ('INTERNAL', 'EXTERNAL')")
+        return value
+
+    @field_validator('name')
+    def name_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if not re.match(r"^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$", value):
+            raise ValueError(r"must validate the regular expression /^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$/")
         return value
 
     model_config = ConfigDict(
