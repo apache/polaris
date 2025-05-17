@@ -21,32 +21,52 @@ services:
 
   polaris:
     image: apache/polaris:postgres-latest
+    depends_on:
+      postgres-minio: # Polaris server depends on PostgreSQL being healthy
+        condition: service_healthy
+      # polaris-bootstrap-minio is a setup task; polaris server doesn't need to wait for it on every start
+      # after the initial successful bootstrap. Other services that *use* Polaris data
+      # (like polaris-setup-catalog-minio) should depend on polaris: service_healthy.
     ports:
-      # API port
-      - "8181:8181"
-      # Management port (metrics and health checks)
-      - "8182:8182"
-      # Optional, allows attaching a debugger to the Polaris JVM
-      - "5005:5005"
+      # The host port is defined by POLARIS_MINIO_API_PORT from .env, container port is 8181
+      - "${POLARIS_MINIO_API_PORT:-8183}:${QUARKUS_HTTP_PORT:-8181}" # Or just - "${POLARIS_MINIO_API_PORT:-8183}:8181"
+      # The host port is defined by POLARIS_MINIO_MGMT_PORT from .env, container port is 8182
+      - "${POLARIS_MINIO_MGMT_PORT:-8184}:${QUARKUS_MANAGEMENT_PORT:-8182}" # Or just - "${POLARIS_MINIO_MGMT_PORT:-8184}:8182"
     environment:
-      - JAVA_DEBUG=true
-      - JAVA_DEBUG_PORT=*:5005
-      - POLARIS_PERSISTENCE_TYPE=relational-jdbc
-      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_RETRIES=5
-      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_INITIAL_DELAY_IN_MS=100
-      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DELAY_IN_MS=5000
-      - QUARKUS_DATASOURCE_DB_KIND=pgsql
-      - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
-      - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
-      - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
-      - POLARIS_REALM_CONTEXT_REALMS=POLARIS
-      - QUARKUS_OTEL_SDK_DISABLED=true
+      # These variables will be sourced from the .env file (or shell environment).
+      # Docker Compose makes them available to the container if they are defined.
+      - QUARKUS_DATASOURCE_DB_KIND
+      - QUARKUS_DATASOURCE_JDBC_URL
+      - QUARKUS_DATASOURCE_USERNAME
+      - QUARKUS_DATASOURCE_PASSWORD
+
+      - POLARIS_PERSISTENCE_TYPE
+      - POLARIS_REALM_CONTEXT_REALMS
+
+      # Optional JDBC retry settings
+      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_RETRIES
+      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_INITIAL_DELAY_IN_MS
+      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DELAY_IN_MS
+
+      # Other Quarkus/App settings from .env
+      - QUARKUS_OTEL_SDK_DISABLED
+      - QUARKUS_HTTP_PORT         # Tells Quarkus which port to bind to inside the container
+      - QUARKUS_MANAGEMENT_PORT # Tells Quarkus which management port to bind to inside the container
+
+      # Optional: Debug logging settings (will be sourced from .env if uncommented there)
+      - QUARKUS_LOG_CONSOLE_LEVEL
+      - QUARKUS_LOG_CATEGORY_IO_SMALLRYE_CONFIG_LEVEL
+      - QUARKUS_LOG_CATEGORY_ORG_APACHE_POLARIS_LEVEL
+      - QUARKUS_LOG_CATEGORY_IO_QUARKUS_DATASOURCE_LEVEL
+      - QUARKUS_LOG_CATEGORY_ORG_AGROAL_LEVEL
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
-      interval: 2s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
+      # Uses the management port defined by POLARIS_MINIO_MGMT_PORT (which sets QUARKUS_MANAGEMENT_PORT for inside the container)
+      # The healthcheck runs INSIDE the container network, so it checks localhost:QUARKUS_MANAGEMENT_PORT (e.g. localhost:8182)
+      test: ["CMD-SHELL", "curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health/live || curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health/ready || curl -f http://localhost:${QUARKUS_MANAGEMENT_PORT:-8182}/q/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   polaris-setup:
     image: alpine/curl
