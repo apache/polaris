@@ -181,6 +181,8 @@ public class TaskExecutorImpl implements TaskExecutor {
             .addKeyValue("taskEntityName", taskEntity.getName())
             .log("Unable to execute async task");
       }
+    } catch (Exception e) {
+      LOGGER.error("Error while handling task entity id {}, error: {}", taskEntityId, e);
     } finally {
       polarisEventListener.onAfterTaskAttempted(
           new AfterTaskAttemptedEvent(taskEntityId, ctx, attempt, success));

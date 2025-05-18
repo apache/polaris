@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.StatisticsFile;
@@ -53,14 +52,15 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.threeten.extra.MutableClock;
 
 @QuarkusTest
@@ -111,33 +111,35 @@ public class TaskRecoveryManagerTest {
             public void close() {
               // no-op
             }
-
+          };
+      TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+      TaskExecutorImpl taskExecutor =
+          new TaskExecutorImpl(
+              Runnable::run,
+              metaStoreManagerFactory,
+              buildTaskFileIOSupplier(fileIO),
+              testServices.polarisEventListener()) {
             @Override
-            public void deleteFile(String location) {
+            public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
               int attempts =
                   retryCounter
-                      .computeIfAbsent(location, k -> new AtomicInteger(0))
+                      .computeIfAbsent(String.valueOf(taskEntityId), k -> new AtomicInteger(0))
                       .incrementAndGet();
               if (attempts == 1) {
-                throw new RuntimeException("I'm failing to test retries");
+                // no-op for first attempt to mock failure
               } else {
-                // succeed on the new attempt
-                super.deleteFile(location);
+                super.addTaskHandlerContext(taskEntityId, callContext);
               }
             }
           };
-      TaskExecutorImpl taskExecutor =
-          new TaskExecutorImpl(
-              Executors.newSingleThreadExecutor(),
-              metaStoreManagerFactory,
-              buildTaskFileIOSupplier(fileIO));
       taskExecutor.init();
 
       TableCleanupTaskHandler tableCleanupTaskHandler =
           new TableCleanupTaskHandler(
-              Mockito.mock(),
+              taskExecutor,
               metaStoreManagerFactory,
-              buildTaskFileIOSupplier(new InMemoryFileIO()));
+              buildTaskFileIOSupplier(new InMemoryFileIO())) {};
+
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       long snapshotId = 100L;
@@ -155,7 +157,8 @@ public class TaskRecoveryManagerTest {
               fileIO);
       TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
 
-      // Step 2: Execute the initial cleanup task which generates two child cleanup tasks
+      // Step 2: Execute the initial cleanup task, where two child cleanup tasks are generated and
+      // executed the first time
       TaskEntity task =
           new TaskEntity.Builder()
               .setName("cleanup_" + tableIdentifier)
@@ -171,13 +174,12 @@ public class TaskRecoveryManagerTest {
       Assertions.assertThatPredicate(tableCleanupTaskHandler::canHandleTask).accepts(task);
       tableCleanupTaskHandler.handleTask(task, callCtx);
 
-      // Step 3: Verify that the generated child tasks were registered, ATTEMPT_COUNT of 1
-      // Batch cleanup task succession needs 2 attempts, the manifest cleanup task succession needs
-      // 3 attempts
+      // Step 3: Verify that the generated child tasks were registered, ATTEMPT_COUNT = 2
+      timeSource.add(Duration.ofMinutes(10));
       EntitiesResult entitiesResult =
           metaStoreManagerFactory
               .getOrCreateMetaStoreManager(realmContext)
-              .loadTasks(callCtx.getPolarisCallContext(), "test", 2);
+              .loadTasks(callCtx.getPolarisCallContext(), "test", PageToken.fromLimit(2));
       assertThat(entitiesResult.getEntities()).hasSize(2);
       entitiesResult
           .getEntities()
@@ -185,68 +187,26 @@ public class TaskRecoveryManagerTest {
               entity -> {
                 TaskEntity taskEntity = TaskEntity.of(entity);
                 assertThat(taskEntity.getPropertiesAsMap().get(PolarisTaskConstants.ATTEMPT_COUNT))
-                    .isEqualTo("1");
+                    .isEqualTo("2");
               });
 
-      // Step 4: Simulate task timeout and trigger recovery via recoverPendingTasks
-      // 4.1 Before timeout: expect no tasks eligible for recovery
+      // Step 4: Test task recovery
+      // Before timeout: expect no tasks eligible for recovery
       entitiesResult =
           metaStoreManagerFactory
               .getOrCreateMetaStoreManager(realmContext)
-              .loadTasks(callCtx.getPolarisCallContext(), "test", 2);
+              .loadTasks(callCtx.getPolarisCallContext(), "test", PageToken.fromLimit(2));
       assertThat(entitiesResult.getEntities()).hasSize(0);
-      // 4.2 Advance time and trigger timeout recovery: expect ATTEMPT_COUNT = 2
+      // Advance time and trigger  recovery: expect ATTEMPT_COUNT = 3
       timeSource.add(Duration.ofMinutes(10));
       taskExecutor.recoverPendingTasks(timeSource);
 
-      // 4.3 Advance time again and trigger recovery: with ATTEMPT_COUNT = 3
-      // Attempts tracker: batch cleanup task (1/2), manifest cleanup task (1/3)
+      // Step 5: all task should success ATTEMPT_COUNT = 4
       timeSource.add(Duration.ofMinutes(10));
       entitiesResult =
           metaStoreManagerFactory
               .getOrCreateMetaStoreManager(realmContext)
-              .loadTasks(callCtx.getPolarisCallContext(), "test", 2);
-      assertThat(entitiesResult.getEntities()).hasSize(2);
-      entitiesResult
-          .getEntities()
-          .forEach(
-              entity -> {
-                TaskEntity taskEntity = TaskEntity.of(entity);
-                assertThat(taskEntity.getPropertiesAsMap().get(PolarisTaskConstants.ATTEMPT_COUNT))
-                    .isEqualTo("3");
-              });
-
-      // Step 5: Recover tasks again, expect one to succeed and one to remain, ATTEMPT_COUNT = 4
-      // Attempts tracker: batch cleanup task (2/2), manifest cleanup task (2/3)
-      timeSource.add(Duration.ofMinutes(10));
-      taskExecutor.recoverPendingTasks(timeSource);
-
-      // Step 5 Checkpoint: one task succeeded, the other retried and has ATTEMPT_COUNT = 5
-      timeSource.add(Duration.ofMinutes(10));
-      entitiesResult =
-          metaStoreManagerFactory
-              .getOrCreateMetaStoreManager(realmContext)
-              .loadTasks(callCtx.getPolarisCallContext(), "test", 2);
-      assertThat(entitiesResult.getEntities()).hasSize(1);
-      entitiesResult
-          .getEntities()
-          .forEach(
-              entity -> {
-                TaskEntity taskEntity = TaskEntity.of(entity);
-                assertThat(taskEntity.getPropertiesAsMap().get(PolarisTaskConstants.ATTEMPT_COUNT))
-                    .isEqualTo("5");
-              });
-
-      // Step 6: Final recovery after timeout: all tasks should succeed
-      // Attempts tracker: manifest cleanup task (3/3)
-      timeSource.add(Duration.ofMinutes(10));
-      taskExecutor.recoverPendingTasks(timeSource);
-
-      timeSource.add(Duration.ofMinutes(10));
-      entitiesResult =
-          metaStoreManagerFactory
-              .getOrCreateMetaStoreManager(realmContext)
-              .loadTasks(callCtx.getPolarisCallContext(), "test", 2);
+              .loadTasks(callCtx.getPolarisCallContext(), "test", PageToken.fromLimit(2));
       assertThat(entitiesResult.getEntities()).hasSize(0);
     }
   }

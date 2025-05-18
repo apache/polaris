@@ -86,7 +86,7 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
                     .addKeyValue("file", file)
                     .addKeyValue("baseFile", baseFile != null ? baseFile : "")
                     .addKeyValue("tableId", tableId)
-                    .log("table file cleanup task scheduled, but data file doesn't exist");
+                    .log("File does not exist in FileIO, skipping deletion");
               }
             },
             executorService)
@@ -97,7 +97,8 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
                   .addKeyValue("file", file)
                   .addKeyValue("tableIdentifier", tableId)
                   .addKeyValue("baseFile", baseFile != null ? baseFile : "")
-                  .log("Exception caught deleting data file", newEx);
+                  .addKeyValue("error", newEx.getMessage())
+                  .log("Exception caught deleting data file");
               return tryDelete(tableId, fileIO, baseFile, file, newEx, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
