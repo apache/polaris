@@ -22,16 +22,20 @@ import static org.apache.iceberg.TableProperties.COMMIT_MAX_RETRY_WAIT_MS_DEFAUL
 import static org.apache.iceberg.TableProperties.COMMIT_MIN_RETRY_WAIT_MS_DEFAULT;
 import static org.apache.iceberg.TableProperties.COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,9 +43,13 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
+import org.apache.iceberg.DataOperations;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.MetadataUpdate.UpgradeFormatVersion;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -74,6 +82,8 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.util.Pair;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.SnapshotUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.SQLViewRepresentation;
@@ -94,6 +104,8 @@ import org.apache.polaris.core.context.RealmContext;
 public class CatalogHandlerUtils {
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
+  private static final String ROLLBACKABLE_REPLACE_SNAPSHOT =
+      "polaris.rollback.compaction.on-conflict";
 
   private final RealmContext realmContext;
   private final PolarisConfigurationStore configurationStore;
@@ -421,7 +433,8 @@ public class CatalogHandlerUtils {
     return ops.current();
   }
 
-  protected TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
+  @VisibleForTesting
+  public TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
     AtomicBoolean isRetry = new AtomicBoolean(false);
     try {
       Tasks.foreach(ops)
@@ -433,37 +446,172 @@ public class CatalogHandlerUtils {
               2.0 /* exponential */)
           .onlyRetryOn(CommitFailedException.class)
           .run(
-              taskOps -> {
+              (taskOps) -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
-                isRetry.set(true);
 
-                // validate requirements
+                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
+                TableMetadata newBase = base;
                 try {
-                  request.requirements().forEach(requirement -> requirement.validate(base));
+                  request.requirements().forEach((requirement) -> requirement.validate(base));
                 } catch (CommitFailedException e) {
-                  // wrap and rethrow outside of tasks to avoid unnecessary retry
+                  if (!isRollbackCompactionEnabled()) {
+                    throw new ValidationFailureException(e);
+                  }
+                  UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
+                      findAssertRefSnapshotID(request);
+                  MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
+
+                  if (assertRefSnapshotId == null || setSnapshotRef == null) {
+                    // This implies the request was not trying to add a snapshot.
+                    throw new ValidationFailureException(e);
+                  }
+
+                  // snapshot-id the client expects the table current_snapshot_id
+                  long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
+                  // table current_snapshot_id.
+                  long currentSnapshotId = base.currentSnapshot().snapshotId();
+                  List<MetadataUpdate> metadataUpdates =
+                      generateUpdatesToRemoveNoopSnapshot(
+                          base,
+                          currentSnapshotId,
+                          expectedCurrentSnapshotId,
+                          setSnapshotRef.name());
+
+                  if (metadataUpdates == null || metadataUpdates.isEmpty()) {
+                    // Nothing can be done as this implies that there were not all
+                    // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
+                    // currentSnapshotId. hence re-throw the exception caught.
+                    throw new ValidationFailureException(e);
+                  }
+
+                  // Set back the ref we wanted to set, back to the snapshot-id
+                  // the client is expecting the table to be at.
+                  metadataBuilder.setBranchSnapshot(
+                      expectedCurrentSnapshotId, setSnapshotRef.name());
+
+                  // apply the remove snapshots update in the current metadata.
+                  // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
+                  // remove, as otherwise the remove will drop the reference.
+                  // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
+                  // just something good to do, and not leave for Remove Orphans.
+                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
+                  // Ref rolled back update correctly to snapshot to be committed parent now.
+                  newBase = metadataBuilder.build();
+                  // move the lastSequenceNumber back, to apply snapshot properly on the
+                  // current-metadata Seq number are considered increasing monotonically
+                  // snapshot over snapshot, the client generates the manifest list and hence
+                  // the sequence number can't be changed for a snapshot the only possible option
+                  // then is to change the sequenceNumber tracked by metadata.json
+                  Class<?> clazz = newBase.getClass();
+                  try {
+                    Field field = clazz.getDeclaredField("lastSequenceNumber");
+                    field.setAccessible(true);
+                    // this should point to the sequence number that current tip of the
+                    // branch belongs to, as the new commit will be applied on top of this.
+                    field.set(newBase, newBase.currentSnapshot().sequenceNumber());
+                  } catch (NoSuchFieldException | IllegalAccessException ex) {
+                    throw new RuntimeException(ex);
+                  }
+                }
+                // double check if the requirements passes now.
+                try {
+                  TableMetadata baseWithRemovedSnaps = newBase;
+                  request
+                      .requirements()
+                      .forEach((requirement) -> requirement.validate(baseWithRemovedSnaps));
+                } catch (CommitFailedException e) {
                   throw new ValidationFailureException(e);
                 }
 
-                // apply changes
-                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
-                request.updates().forEach(update -> update.applyTo(metadataBuilder));
-
-                TableMetadata updated = metadataBuilder.build();
-                if (updated.changes().isEmpty()) {
-                  // do not commit if the metadata has not changed
-                  return;
-                }
-
-                // commit
+                TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
+                request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                TableMetadata updated = newMetadataBuilder.build();
+                // always commit this
                 taskOps.commit(base, updated);
               });
-
     } catch (ValidationFailureException e) {
       throw e.wrapped();
     }
 
     return ops.current();
+  }
+
+  private UpdateRequirement.AssertRefSnapshotID findAssertRefSnapshotID(
+      UpdateTableRequest request) {
+    UpdateRequirement.AssertRefSnapshotID assertRefSnapshotID = null;
+    int total = 0;
+    for (UpdateRequirement requirement : request.requirements()) {
+      if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
+        ++total;
+        assertRefSnapshotID = (UpdateRequirement.AssertRefSnapshotID) requirement;
+      }
+    }
+
+    // if > 1 assertion for refs, then it's not safe to roll back, make this Noop.
+    return total != 1 ? null : assertRefSnapshotID;
+  }
+
+  private List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
+      TableMetadata base,
+      long currentSnapshotId,
+      long expectedCurrentSnapshotId,
+      String updateRefName) {
+    // find the all the snapshots we want to retain which are not the part of current branch.
+    Set<Long> idsToRetain = Sets.newHashSet();
+    for (Map.Entry<String, SnapshotRef> ref : base.refs().entrySet()) {
+      String refName = ref.getKey();
+      SnapshotRef snapshotRef = ref.getValue();
+      if (refName.equals(updateRefName)) {
+        continue;
+      }
+      idsToRetain.add(ref.getValue().snapshotId());
+      // check all other branches
+      if (snapshotRef.isBranch()) {
+        for (Snapshot ancestor :
+            SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
+          idsToRetain.add(ancestor.snapshotId());
+        }
+      } else if (snapshotRef.isTag()) {
+        idsToRetain.add(snapshotRef.snapshotId());
+      }
+    }
+
+    List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
+    Long snapshotId = currentSnapshotId;
+    while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
+      Snapshot snap = base.snapshot(snapshotId);
+      if (!isRollbackSnapshot(snap) || idsToRetain.contains(snapshotId)) {
+        // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
+        // reference either by branch or a tag.
+        break;
+      }
+      updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
+      snapshotId = snap.parentId();
+    }
+
+    boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
+    return wasExpectedSnapshotReached ? updateToRemoveSnapshot : null;
+  }
+
+  private boolean isRollbackSnapshot(Snapshot snapshot) {
+    // Only Snapshots with {@ROLLBACKABLE_REPLACE_SNAPSHOT} are allowed to be rollback.
+    return DataOperations.REPLACE.equals(snapshot.operation())
+        && PropertyUtil.propertyAsBoolean(snapshot.summary(), ROLLBACKABLE_REPLACE_SNAPSHOT, false);
+  }
+
+  private MetadataUpdate.SetSnapshotRef findSetSnapshotRefUpdate(UpdateTableRequest request) {
+    int total = 0;
+    MetadataUpdate.SetSnapshotRef setSnapshotRefUpdate = null;
+    // find the SetRefName snapshot update
+    for (MetadataUpdate update : request.updates()) {
+      if (update instanceof MetadataUpdate.SetSnapshotRef) {
+        total++;
+        setSnapshotRefUpdate = (MetadataUpdate.SetSnapshotRef) update;
+      }
+    }
+
+    // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
+    return total != 1 ? null : setSnapshotRefUpdate;
   }
 
   private BaseView asBaseView(View view) {
@@ -607,8 +755,15 @@ public class CatalogHandlerUtils {
     return ops.current();
   }
 
-  private int maxCommitRetries() {
+  @VisibleForTesting
+  public int maxCommitRetries() {
     return configurationStore.getConfiguration(
         realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
+  }
+
+  @VisibleForTesting
+  public boolean isRollbackCompactionEnabled() {
+    return configurationStore.getConfiguration(
+        polarisCallContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
   }
 }

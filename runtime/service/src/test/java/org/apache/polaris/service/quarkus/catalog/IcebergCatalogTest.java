@@ -132,12 +132,13 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
@@ -594,12 +595,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       catalog.createNamespace(NS);
     }
 
-    Table table =
-        catalog
-            .buildTable(TABLE, SCHEMA)
-            .withPartitionSpec(SPEC)
-            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
-            .create();
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
     this.assertNoFiles(table);
 
     // commit FILE_A
@@ -629,12 +625,26 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
 
     // replace FILE_A with FILE_B
-    // commit the transaction.
-    catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
+    // set the snapshot property in the summary to make this snapshot
+    // rollback-able.
+    catalog
+        .loadTable(TABLE)
+        .newRewrite()
+        .addFile(FILE_B)
+        .deleteFile(FILE_A)
+        .set("polaris.rollback.compaction.on-conflict", "true")
+        .commit();
 
     try {
       // Now call IRC server to commit delete operation.
-      IcebergCatalogHandler.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
+      PolarisConfigurationStore pc =
+          new DefaultConfigurationStore(
+              Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+      CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
+      when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
+      when(mockCatalogHandleUtils.maxCommitRetries()).thenReturn(5);
+      mockCatalogHandleUtils.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
     } catch (Exception e) {
       fail("Rollback Compaction on conflict feature failed : " + e.getMessage());
     }
@@ -697,12 +707,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       catalog.createNamespace(NS);
     }
 
-    Table table =
-        catalog
-            .buildTable(TABLE, SCHEMA)
-            .withPartitionSpec(SPEC)
-            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
-            .create();
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
     this.assertNoFiles(table);
 
     // commit FILE_A
@@ -733,13 +738,25 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     // replace FILE_A with FILE_B
     // commit the transaction.
-    catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
+    catalog
+        .loadTable(TABLE)
+        .newRewrite()
+        .addFile(FILE_B)
+        .deleteFile(FILE_A)
+        .set("polaris.rollback.compaction.on-conflict", "true")
+        .commit();
 
     // commit FILE_C
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
+    PolarisConfigurationStore pc =
+        new DefaultConfigurationStore(
+            Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
+    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
     Assertions.assertThatThrownBy(
             () ->
-                IcebergCatalogHandler.commit(
+                mockCatalogHandleUtils.commit(
                     ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
@@ -765,12 +782,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       catalog.createNamespace(NS);
     }
 
-    Table table =
-        catalog
-            .buildTable(TABLE, SCHEMA)
-            .withPartitionSpec(SPEC)
-            .withProperties(Map.of("polaris.rollback.compaction.on-conflicts.enabled", "true"))
-            .create();
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
     this.assertNoFiles(table);
 
     // commit FILE_A
@@ -800,7 +812,13 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
 
     // replace FILE_A with FILE_B
-    catalog.loadTable(TABLE).newRewrite().addFile(FILE_B).deleteFile(FILE_A).commit();
+    catalog
+        .loadTable(TABLE)
+        .newRewrite()
+        .addFile(FILE_B)
+        .deleteFile(FILE_A)
+        .set("polaris.rollback.compaction.on-conflict", "true")
+        .commit();
 
     Table t = catalog.loadTable(TABLE);
     // add another branch B
@@ -810,10 +828,15 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .commit();
     // now add more files to main branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
-
+    PolarisConfigurationStore pc =
+        new DefaultConfigurationStore(
+            Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
+    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
     Assertions.assertThatThrownBy(
             () ->
-                IcebergCatalogHandler.commit(
+                mockCatalogHandleUtils.commit(
                     ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");

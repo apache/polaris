@@ -18,16 +18,11 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.iceberg.TableProperties.*;
-
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
-import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -35,25 +30,18 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
-import org.apache.iceberg.BaseTransaction;
-import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
-import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -85,10 +73,6 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.iceberg.types.Types;
-import org.apache.iceberg.util.PropertyUtil;
-import org.apache.iceberg.util.SnapshotUtil;
-import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -138,9 +122,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
-
-  private static final String ROLLBACK_REPLACE_ENABLED_PROPERTY =
-      "polaris.rollback.compaction.on-conflicts.enabled";
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
@@ -846,243 +827,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    // TODO: pending discussion if table property is right way, or a writer specific knob is
-    // required.
-    return updateTableWithRollback(baseCatalog, tableIdentifier, applyUpdateFilters(request));
-  }
-
-  // TODO: Clean this up when CatalogHandler become extensible.
-  // Copy of CatalogHandler#update
-  private static LoadTableResponse updateTableWithRollback(
-      Catalog catalog, TableIdentifier ident, UpdateTableRequest request) {
-    Schema EMPTY_SCHEMA = new Schema(new Types.NestedField[0]);
-    TableMetadata finalMetadata;
-    if (isCreate(request)) {
-      Transaction transaction =
-          catalog.buildTable(ident, EMPTY_SCHEMA).createOrReplaceTransaction();
-      if (!(transaction instanceof BaseTransaction)) {
-        throw new IllegalStateException(
-            "Cannot wrap catalog that does not produce BaseTransaction");
-      }
-
-      BaseTransaction baseTransaction = (BaseTransaction) transaction;
-      finalMetadata = create(baseTransaction.underlyingOps(), request);
-    } else {
-      Table table = catalog.loadTable(ident);
-      if (!(table instanceof BaseTable)) {
-        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-      }
-
-      TableOperations ops = ((BaseTable) table).operations();
-      finalMetadata = commit(ops, request);
-    }
-
-    return LoadTableResponse.builder().withTableMetadata(finalMetadata).build();
-  }
-
-  // TODO: Clean this up when CatalogHandler become extensible.
-  // Copy of CatalogHandler#create
-  private static TableMetadata create(TableOperations ops, UpdateTableRequest request) {
-    request.requirements().forEach((requirement) -> requirement.validate(ops.current()));
-    Optional<Integer> formatVersion =
-        request.updates().stream()
-            .filter((update) -> update instanceof MetadataUpdate.UpgradeFormatVersion)
-            .map((update) -> ((MetadataUpdate.UpgradeFormatVersion) update).formatVersion())
-            .findFirst();
-    TableMetadata.Builder builder =
-        (TableMetadata.Builder)
-            formatVersion
-                .map(TableMetadata::buildFromEmpty)
-                .orElseGet(TableMetadata::buildFromEmpty);
-    request.updates().forEach((update) -> update.applyTo(builder));
-    ops.commit((TableMetadata) null, builder.build());
-    return ops.current();
-  }
-
-  @VisibleForTesting
-  // TODO: Clean this up when CatalogHandler become extensible.
-  // Copy of CatalogHandler#commit
-  public static TableMetadata commit(TableOperations ops, UpdateTableRequest request) {
-    AtomicBoolean isRetry = new AtomicBoolean(false);
-
-    try {
-      Tasks.foreach(new TableOperations[] {ops})
-          .retry(COMMIT_NUM_RETRIES_DEFAULT)
-          .exponentialBackoff(
-              COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
-              COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
-              COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
-              (double) 2.0F)
-          .onlyRetryOn(CommitFailedException.class)
-          .run(
-              (taskOps) -> {
-                TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
-                boolean rollbackCompaction =
-                    PropertyUtil.propertyAsBoolean(
-                        taskOps.current().properties(), ROLLBACK_REPLACE_ENABLED_PROPERTY, false);
-
-                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
-                TableMetadata newBase = base;
-                try {
-                  request.requirements().forEach((requirement) -> requirement.validate(base));
-                } catch (CommitFailedException e) {
-                  if (!rollbackCompaction) {
-                    throw new ValidationFailureException(e);
-                  }
-                  UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
-                      findAssertRefSnapshotID(request);
-                  MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
-
-                  if (assertRefSnapshotId == null || setSnapshotRef == null) {
-                    // This implies the request was not trying to add a snapshot.
-                    throw new ValidationFailureException(e);
-                  }
-
-                  // snapshot-id the client expects the table current_snapshot_id
-                  long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
-                  // table current_snapshot_id.
-                  long currentSnapshotId = base.currentSnapshot().snapshotId();
-                  List<MetadataUpdate> metadataUpdates =
-                      generateUpdatesToRemoveNoopSnapshot(
-                          base,
-                          currentSnapshotId,
-                          expectedCurrentSnapshotId,
-                          setSnapshotRef.name());
-
-                  if (metadataUpdates == null || metadataUpdates.isEmpty()) {
-                    // Nothing can be done as this implies that there were not all
-                    // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
-                    // currentSnapshotId. hence re-throw the exception caught.
-                    throw new ValidationFailureException(e);
-                  }
-
-                  // Set back the ref we wanted to set, back to the snapshot-id
-                  // the client is expecting the table to be at.
-                  metadataBuilder.setBranchSnapshot(
-                      expectedCurrentSnapshotId, setSnapshotRef.name());
-
-                  // apply the remove snapshots update in the current metadata.
-                  // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
-                  // remove, as otherwise the remove will drop the reference.
-                  // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
-                  // just something good to do, and not leave for Remove Orphans.
-                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
-                  // Ref rolled back update correctly to snapshot to be committed parent now.
-                  newBase = metadataBuilder.build();
-                  // move the lastSequenceNumber back, to apply snapshot properly on the
-                  // current-metadata Seq number are considered increasing monotonically
-                  // snapshot over snapshot, the client generates the manifest list and hence
-                  // the sequence number can't be changed for a snapshot the only possible option
-                  // then is to change the sequenceNumber tracked by metadata.json
-                  Class<?> clazz = newBase.getClass();
-                  try {
-                    Field field = clazz.getDeclaredField("lastSequenceNumber");
-                    field.setAccessible(true);
-                    // this should point to the sequence number that current tip of the
-                    // branch belongs to, as the new commit will be applied on top of this.
-                    field.set(newBase, newBase.currentSnapshot().sequenceNumber());
-                  } catch (NoSuchFieldException | IllegalAccessException ex) {
-                    throw new RuntimeException(ex);
-                  }
-                }
-                // double check if the requirements passes now.
-                try {
-                  TableMetadata baseWithRemovedSnaps = newBase;
-                  request
-                      .requirements()
-                      .forEach((requirement) -> requirement.validate(baseWithRemovedSnaps));
-                } catch (CommitFailedException e) {
-                  throw new ValidationFailureException(e);
-                }
-
-                TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
-                request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
-                TableMetadata updated = newMetadataBuilder.build();
-                // always commit this
-                taskOps.commit(base, updated);
-              });
-    } catch (ValidationFailureException e) {
-      throw e.wrapped();
-    }
-
-    return ops.current();
-  }
-
-  private static UpdateRequirement.AssertRefSnapshotID findAssertRefSnapshotID(
-      UpdateTableRequest request) {
-    UpdateRequirement.AssertRefSnapshotID assertRefSnapshotID = null;
-    int total = 0;
-    for (UpdateRequirement requirement : request.requirements()) {
-      if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
-        ++total;
-        assertRefSnapshotID = (UpdateRequirement.AssertRefSnapshotID) requirement;
-      }
-    }
-
-    // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
-    return total != 1 ? null : assertRefSnapshotID;
-  }
-
-  private static List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
-      TableMetadata base,
-      long currentSnapshotId,
-      long expectedCurrentSnapshotId,
-      String updateRefName) {
-    // find the all the snapshots we want to retain which are not the part of current branch.
-    Set<Long> idsToRetain = Sets.newHashSet();
-    for (Map.Entry<String, SnapshotRef> ref : base.refs().entrySet()) {
-      String refName = ref.getKey();
-      SnapshotRef snapshotRef = ref.getValue();
-      if (refName.equals(updateRefName)) {
-        continue;
-      }
-      idsToRetain.add(ref.getValue().snapshotId());
-      // check all other branches
-      if (snapshotRef.isBranch()) {
-        for (Snapshot ancestor :
-            SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
-          idsToRetain.add(ancestor.snapshotId());
-        }
-      } else if (snapshotRef.isTag()) {
-        idsToRetain.add(snapshotRef.snapshotId());
-      }
-    }
-
-    List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
-    Long snapshotId = currentSnapshotId;
-    while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
-      Snapshot snap = base.snapshot(snapshotId);
-      if (!DataOperations.REPLACE.equals(snap.operation()) || idsToRetain.contains(snapshotId)) {
-        // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
-        // reference either by branch or a tag.
-        break;
-      }
-      updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
-      snapshotId = snap.parentId();
-    }
-
-    boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
-    return wasExpectedSnapshotReached ? updateToRemoveSnapshot : null;
-  }
-
-  private static MetadataUpdate.SetSnapshotRef findSetSnapshotRefUpdate(
-      UpdateTableRequest request) {
-    int total = 0;
-    MetadataUpdate.SetSnapshotRef setSnapshotRefUpdate = null;
-    // find the SetRefName snapshot update
-    for (MetadataUpdate update : request.updates()) {
-      if (update instanceof MetadataUpdate.SetSnapshotRef) {
-        total++;
-        setSnapshotRefUpdate = (MetadataUpdate.SetSnapshotRef) update;
-      }
-    }
-
-    // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
-    return total != 1 ? null : setSnapshotRefUpdate;
-  }
-
-  private static boolean hasJustMainBranch(TableMetadata tableMetadata) {
-    return tableMetadata.refs().values().stream().filter(SnapshotRef::isBranch).count() == 1;
+    return catalogHandlerUtils.updateTable(
+        baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
   public LoadTableResponse updateTableForStagedCreate(
