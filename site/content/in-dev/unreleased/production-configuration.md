@@ -24,14 +24,14 @@ weight: 600
 ---
 
 The default server configuration is intended for development and testing. When you deploy Polaris in production,
-start with this short checklist:
-- [ ] Set OAuth2 keys
-- [ ] Enforce realm header (`require-header=true`)
-- [ ] Use durable metastore (JDBC + PostgreSQL)
-- [ ] Bootstrap valid realms in metastore
-- [ ] Disable FILE storage type
+review and apply the following checklist:
+- [ ] Configure OAuth2 keys
+- [ ] Enforce realm header validation (`require-header=true`)
+- [ ] Use a durable metastore (JDBC + PostgreSQL)
+- [ ] Bootstrap valid realms in the metastore
+- [ ] Disable local FILE storage
 
-### OAuth2
+### Configure OAuth2
 
 Polaris authentication requires specifying a token broker factory type. Two implementations are
 supported out of the box:
