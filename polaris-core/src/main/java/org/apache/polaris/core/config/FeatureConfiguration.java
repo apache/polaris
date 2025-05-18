@@ -287,4 +287,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "This should only be set to 'true' for tests!")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS")
+          .catalogConfig("polaris.config.rollback.compaction.on-conflicts.enabled")
+          .description(
+              "Rollback replace snapshots created by compaction which have polaris.rollback.compaction.on-conflict property in their snapshot summary")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
