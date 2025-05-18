@@ -17,21 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring Apache Polaris (Incubating) for Production
-linkTitle: Deploying In Production
+title: Configuring Polaris for Production
+linkTitle: Production Configuration
 type: docs
 weight: 600
 ---
 
-## Configuring Polaris for Production
-
-The default server configuration is intended for development and testing. When deploying Polaris in
-production, there are several best practices to keep in mind.
-
-Notable configuration used to secure a Polaris deployment are outlined below.
-
-For more information on how to configure Polaris and what configuration options are available,
-refer to the [configuration reference page]({{% ref "configuration" %}}).
+The default server configuration is intended for development and testing. When you deploy Polaris in production,
+start with this short checklist:
+- [ ] Set OAuth2 keys
+- [ ] Enforce realm header (`require-header=true`)
+- [ ] Use durable metastore (JDBC + PostgreSQL)
+- [ ] Bootstrap valid realms in metastore
+- [ ] Disable FILE storage type
 
 ### OAuth2
 
@@ -209,13 +207,11 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d "scope=PRINCIPAL_ROLE:ALL"
 ```
 
-## Other Configurations
-
-When deploying Polaris in production, consider adjusting the following configurations:
-
-#### `polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"`
-
-- By default, Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage
-  type. This should be disabled for production systems.
-- Use this configuration to additionally disable any other storage types that will not be in use.
+### Disable FILE Storage Type
+By default, Polaris allows using the local file system (`FILE`) for catalog storage. This is fine for testing,
+but **not recommended for production**. To disable it, set the supported storage types like this:
+```hocon
+polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
+```
+Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
 
