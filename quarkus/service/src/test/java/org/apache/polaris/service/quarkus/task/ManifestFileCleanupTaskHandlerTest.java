@@ -260,10 +260,12 @@ class ManifestFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
       addTaskLocation(task);
+
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
+      assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(manifestFile.path());
     }
   }
 }

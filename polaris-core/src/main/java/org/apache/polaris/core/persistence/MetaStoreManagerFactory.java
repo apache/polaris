@@ -43,4 +43,8 @@ public interface MetaStoreManagerFactory {
 
   /** Purge all metadata for the realms provided */
   Map<String, BaseResult> purgeRealms(Iterable<String> realms);
+
+  default Map<String, PolarisMetaStoreManager> getMetaStoreManagerMap() {
+    throw new UnsupportedOperationException("getMetaStoreManagerMap not supported");
+  }
 }
