@@ -222,7 +222,7 @@ public class ProductionReadinessChecks {
           Error.ofSevere(
               "Must not enable a configuration that exposes known and severe security risks: "
                   + insecure.description,
-              format("polaris.features.defaults.\"%s\"", insecure.key)));
+              format("polaris.features.\"%s\"", insecure.key)));
     }
 
     featureConfiguration
@@ -255,7 +255,7 @@ public class ProductionReadinessChecks {
                         format(
                             "The storage type '%s' is considered insecure and to expose the service to severe security ricks!",
                             t),
-                        format("polaris.features.defaults.\"%s\"", storageTypes.key))));
+                        format("polaris.features.\"%s\"", storageTypes.key))));
     realmOverrides.forEach(
         (realmId, overrides) -> {
           @SuppressWarnings("unchecked")
