@@ -36,7 +36,8 @@ cd ~/polaris
   :polaris-quarkus-admin:assemble --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
-docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
+export ASSETS_PATH=$(pwd)/getting-started/assets/
+docker compose --env-file getting-started/assets/.env -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
 ```
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:

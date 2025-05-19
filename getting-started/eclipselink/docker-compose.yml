@@ -38,7 +38,7 @@ services:
       quarkus.otel.sdk.disabled: "true"
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${CLIENT_ID},${CLIENT_SECRET}
     volumes:
-      - ../assets/eclipselink/:/deployments/config/eclipselink
+      - ${ASSETS_PATH}/eclipselink/:/deployments/config/eclipselink
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
@@ -58,7 +58,7 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
-      - ../assets/polaris/:/polaris
+      - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
@@ -82,7 +82,7 @@ services:
       --conf, "spark.sql.catalog.quickstart_catalog.type=rest",
       --conf, "spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog",
       --conf, "spark.sql.catalog.quickstart_catalog.uri=http://polaris:8181/api/catalog",
-      --conf, "spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET}",
+      --conf, "spark.sql.catalog.quickstart_catalog.credential=${CLIENT_ID}:${CLIENT_SECRET}",
       --conf, "spark.sql.catalog.quickstart_catalog.scope=PRINCIPAL_ROLE:ALL",
       --conf, "spark.sql.defaultCatalog=quickstart_catalog",
       --conf, "spark.sql.catalogImplementation=in-memory",
@@ -102,4 +102,4 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../assets/trino-config/catalog:/etc/trino/catalog
+      - ${ASSETS_PATH}/trino-config/catalog:/etc/trino/catalog
