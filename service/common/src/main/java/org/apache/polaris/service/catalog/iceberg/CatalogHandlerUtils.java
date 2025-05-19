@@ -104,8 +104,8 @@ import org.apache.polaris.core.context.RealmContext;
 public class CatalogHandlerUtils {
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
-  private static final String ROLLBACKABLE_REPLACE_SNAPSHOT =
-      "polaris.rollback.compaction.on-conflict";
+  private static final String CONFLICT_RESOLUTION_ACTION =
+      "polaris.conflict-resolution.by-operation-type.replace";
 
   private final RealmContext realmContext;
   private final PolarisConfigurationStore configurationStore;
@@ -571,8 +571,6 @@ public class CatalogHandlerUtils {
             SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
           idsToRetain.add(ancestor.snapshotId());
         }
-      } else if (snapshotRef.isTag()) {
-        idsToRetain.add(snapshotRef.snapshotId());
       }
     }
 
@@ -596,7 +594,8 @@ public class CatalogHandlerUtils {
   private boolean isRollbackSnapshot(Snapshot snapshot) {
     // Only Snapshots with {@ROLLBACKABLE_REPLACE_SNAPSHOT} are allowed to be rollback.
     return DataOperations.REPLACE.equals(snapshot.operation())
-        && PropertyUtil.propertyAsBoolean(snapshot.summary(), ROLLBACKABLE_REPLACE_SNAPSHOT, false);
+        && PropertyUtil.propertyAsString(snapshot.summary(), CONFLICT_RESOLUTION_ACTION, "")
+            .equalsIgnoreCase("rollback");
   }
 
   private MetadataUpdate.SetSnapshotRef findSetSnapshotRefUpdate(UpdateTableRequest request) {
