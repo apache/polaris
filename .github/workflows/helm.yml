@@ -57,16 +57,7 @@ jobs:
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.6.1
 
-      - name: Run chart-testing (list-changed)
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }} --chart-dirs helm)
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Run 'helm template' validation
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           cd helm/polaris
           for f in values.yaml ci/*.yaml; do
@@ -76,27 +67,22 @@ jobs:
           done
 
       - name: Run Helm unit tests
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
           helm unittest helm/polaris
 
       - name: Run chart-testing (lint)
-        if: steps.list-changed.outputs.changed == 'true'
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
 
       - name: Set up Minikube
-        if: steps.list-changed.outputs.changed == 'true'
         uses: medyagh/setup-minikube@v0.0.18
 
       - name: Print Docker info
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           docker -v
           minikube docker-env
 
       - name: Image build
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           eval $(minikube -p minikube docker-env)
           ./gradlew \
@@ -108,13 +94,11 @@ jobs:
           minikube image ls
 
       - name: Install fixtures
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           kubectl create namespace polaris-ns
           kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures 
 
       - name: Run chart-testing (install)
-        if: steps.list-changed.outputs.changed == 'true'
         run: |
           ct install --target-branch ${{ github.event.repository.default_branch }} \
             --namespace polaris-ns \
