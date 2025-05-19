@@ -48,8 +48,10 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
+import org.apache.iceberg.view.SQLViewRepresentation;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
@@ -1509,6 +1511,28 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> newWrapper().loadView(VIEW_NS1A_2),
         null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadViewSufficientPrivilegesWithDynamicViewResolution() {
+//    doTestSufficientPrivileges(
+//            List.of(
+//                    PolarisPrivilege.VIEW_READ_PROPERTIES,
+//                    PolarisPrivilege.VIEW_WRITE_PROPERTIES,
+//                    PolarisPrivilege.VIEW_FULL_METADATA,
+//                    PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+//            () -> {
+//              LoadViewResponse lv1 =  newWrapper(Set.of("ANALYST")).loadView(VIEW_NS1A_3_DYNAMIC);
+//              Assertions.assertThat(((SQLViewRepresentation) (lv1.metadata().currentVersion().representations().getFirst())).sql()).isEqualTo("select * from ns1.layer1_table where TRUE");
+//            },
+//            null /* cleanupAction */);
+    doTestSufficientPrivileges(
+            List.of(PolarisPrivilege.VIEW_READ_PROPERTIES),
+            () -> {
+              LoadViewResponse lv1 =  newWrapper().loadView(VIEW_NS1A_3_DYNAMIC);
+              Assertions.assertThat(((SQLViewRepresentation) (lv1.metadata().currentVersion().representations().getFirst())).sql()).isEqualTo("select * from ns1.layer1_table where TRUE");
+            },
+            null /* cleanupAction */);
   }
 
   @Test

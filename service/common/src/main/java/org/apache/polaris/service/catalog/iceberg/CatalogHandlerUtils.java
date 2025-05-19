@@ -27,14 +27,15 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
@@ -75,13 +76,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.Tasks;
-import org.apache.iceberg.view.BaseView;
-import org.apache.iceberg.view.SQLViewRepresentation;
-import org.apache.iceberg.view.View;
-import org.apache.iceberg.view.ViewBuilder;
-import org.apache.iceberg.view.ViewMetadata;
-import org.apache.iceberg.view.ViewOperations;
-import org.apache.iceberg.view.ViewRepresentation;
+import org.apache.iceberg.view.*;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -94,6 +89,12 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 public class CatalogHandlerUtils {
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
+
+  // is_principal_role('ANALYST')
+  private static final Pattern IS_PRINCIPAL_ROLE = Pattern.compile(
+          "is_principal_role\\(\\s*'([^']+)'\\s*\\)",
+          Pattern.CASE_INSENSITIVE                     // drop this flag if you want case-sensitive
+  );
 
   private final PolarisCallContext polarisCallContext;
   private final PolarisConfigurationStore configurationStore;
@@ -517,11 +518,43 @@ public class CatalogHandlerUtils {
 
     View view = viewBuilder.create();
 
-    return viewResponse(view);
+    return viewResponse(view, Set.of());
   }
 
-  private LoadViewResponse viewResponse(View view) {
+  private LoadViewResponse viewResponse(View view, Set<String> authenticatedPrincipals) {
     ViewMetadata metadata = asBaseView(view).operations().current();
+    // in all the representations, find and replace the is_principal_role('ANALYST')
+    ViewVersion version = metadata.currentVersion();
+    List<ViewRepresentation> representations = version.representations();
+    List<ViewRepresentation> identityResolved = new ArrayList<>(representations.size());
+    for (ViewRepresentation viewRepresentation : representations) {
+      if (viewRepresentation instanceof SQLViewRepresentation sqlView) {
+          Matcher m = IS_PRINCIPAL_ROLE.matcher(sqlView.sql());
+        StringBuffer sb = new StringBuffer();         // efficient incremental builder
+        while (m.find()) {
+          String groupName = m.group(1);      // captured expected principal name
+          String replacement = authenticatedPrincipals.contains(groupName) ? "TRUE" : "FALSE";
+          m.appendReplacement(sb, replacement);
+        }
+        m.appendTail(sb);
+        identityResolved.add(ImmutableSQLViewRepresentation.builder().sql(sb.toString()).dialect(sqlView.dialect()).build());
+      } else {
+        identityResolved.add(viewRepresentation);
+      }
+    }
+    ImmutableViewVersion resolvedViewVersion = ImmutableViewVersion.builder().from(version).build().withRepresentations(identityResolved);
+
+    // This is a temp hack, for quick POC
+    Class<?> clazz = metadata.getClass();
+    try {
+      Field f = clazz.getDeclaredField("versions");
+      f.setAccessible(true);
+      // TODO: handle more than view versions.
+      f.set(metadata, List.of(resolvedViewVersion));
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+
     return ImmutableLoadViewResponse.builder()
         .metadata(metadata)
         .metadataLocation(metadata.metadataFileLocation())
@@ -534,9 +567,9 @@ public class CatalogHandlerUtils {
     }
   }
 
-  public LoadViewResponse loadView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
+  public LoadViewResponse loadView(ViewCatalog catalog, TableIdentifier viewIdentifier, Set<String> principal) {
     View view = catalog.loadView(viewIdentifier);
-    return viewResponse(view);
+    return viewResponse(view, principal);
   }
 
   public LoadViewResponse updateView(
