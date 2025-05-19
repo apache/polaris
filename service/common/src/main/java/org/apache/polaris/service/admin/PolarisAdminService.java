@@ -475,12 +475,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     PolarisResolvedPathWrapper entityWrapper =
-        getResolvedPathWrapper(resolutionManifest, catalogName, entityType, namespace, entityName);
-    if (entityType == PolarisEntityType.TABLE_LIKE
-        && !subTypes.contains(entityWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(
-          TableIdentifier.of(namespace, entityName), subTypes);
-    }
+        getResolvedPathWrapper(catalogName, entityType, subTypes, namespace, entityName, true);
 
     authorizer.authorizeOrThrow(
         callContext,
@@ -489,30 +484,6 @@ public class PolarisAdminService {
         op,
         entityWrapper,
         catalogRoleWrapper);
-  }
-
-  private PolarisResolvedPathWrapper getResolvedPathWrapper(
-      PolarisResolutionManifest resolutionManifest,
-      String catalogName,
-      PolarisEntityType entityType,
-      @Nullable Namespace namespace,
-      @Nullable String entityName) {
-    return switch (entityType) {
-      case CATALOG ->
-          resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
-
-      case NAMESPACE -> resolutionManifest.getResolvedPath(namespace, true);
-
-      case TABLE_LIKE ->
-          resolutionManifest.getResolvedPath(
-              TableIdentifier.of(namespace, entityName),
-              PolarisEntityType.TABLE_LIKE,
-              PolarisEntitySubType.ANY_SUBTYPE,
-              true);
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported entity type for grant operation: " + entityType);
-    };
   }
 
   /** Get all locations where data for a `CatalogEntity` may be stored */
@@ -1552,21 +1523,15 @@ public class PolarisAdminService {
     authorizeGrantOnEntityOperationOrThrow(
         op, catalogName, catalogRoleName, PolarisEntityType.CATALOG, List.of(), null, null);
 
-    PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
-            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return managePrivilegeOnEntityForRole(
+        true,
+        catalogName,
+        catalogRoleName,
+        PolarisEntityType.CATALOG,
+        List.of(),
+        null,
+        null,
+        privilege);
   }
 
   /** Removes a catalog-level grant on {@code catalogName} from {@code catalogRoleName}. */
@@ -1577,21 +1542,15 @@ public class PolarisAdminService {
     authorizeGrantOnEntityOperationOrThrow(
         op, catalogName, catalogRoleName, PolarisEntityType.CATALOG, List.of(), null, null);
 
-    PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
-            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return managePrivilegeOnEntityForRole(
+        false,
+        catalogName,
+        catalogRoleName,
+        PolarisEntityType.CATALOG,
+        List.of(),
+        null,
+        null,
+        privilege);
   }
 
   /** Adds a namespace-level grant on {@code namespace} to {@code catalogRoleName}. */
@@ -1602,25 +1561,15 @@ public class PolarisAdminService {
     authorizeGrantOnEntityOperationOrThrow(
         op, catalogName, catalogRoleName, PolarisEntityType.NAMESPACE, List.of(), namespace, null);
 
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
-    if (resolvedPathWrapper == null) {
-      throw new NotFoundException("Namespace %s not found", namespace);
-    }
-    List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
-    PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
-
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return managePrivilegeOnEntityForRole(
+        true,
+        catalogName,
+        catalogRoleName,
+        PolarisEntityType.NAMESPACE,
+        List.of(),
+        namespace,
+        null,
+        privilege);
   }
 
   /** Removes a namespace-level grant on {@code namespace} from {@code catalogRoleName}. */
@@ -1632,25 +1581,15 @@ public class PolarisAdminService {
     authorizeGrantOnEntityOperationOrThrow(
         op, catalogName, catalogRoleName, PolarisEntityType.NAMESPACE, List.of(), namespace, null);
 
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
-    if (resolvedPathWrapper == null) {
-      throw new NotFoundException("Namespace %s not found", namespace);
-    }
-    List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
-    PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
-
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return managePrivilegeOnEntityForRole(
+        false,
+        catalogName,
+        catalogRoleName,
+        PolarisEntityType.NAMESPACE,
+        List.of(),
+        namespace,
+        null,
+        privilege);
   }
 
   public boolean grantPrivilegeOnTableToRole(
@@ -1668,12 +1607,14 @@ public class PolarisAdminService {
         List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
         identifier.namespace(),
         identifier.name());
-
-    return grantPrivilegeOnTableLikeToRole(
+    return managePrivilegeOnEntityForRole(
+        true,
         catalogName,
         catalogRoleName,
-        identifier,
+        PolarisEntityType.TABLE_LIKE,
         List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier.namespace(),
+        identifier.name(),
         privilege);
   }
 
@@ -1693,11 +1634,14 @@ public class PolarisAdminService {
         List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
         identifier.namespace(),
         identifier.name());
-    return revokePrivilegeOnTableLikeFromRole(
+    return managePrivilegeOnEntityForRole(
+        false,
         catalogName,
         catalogRoleName,
-        identifier,
+        PolarisEntityType.TABLE_LIKE,
         List.of(PolarisEntitySubType.GENERIC_TABLE, PolarisEntitySubType.ICEBERG_TABLE),
+        identifier.namespace(),
+        identifier.name(),
         privilege);
   }
 
@@ -1717,11 +1661,14 @@ public class PolarisAdminService {
         identifier.namespace(),
         identifier.name());
 
-    return grantPrivilegeOnTableLikeToRole(
+    return managePrivilegeOnEntityForRole(
+        true,
         catalogName,
         catalogRoleName,
-        identifier,
+        PolarisEntityType.TABLE_LIKE,
         List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        identifier.namespace(),
+        identifier.name(),
         privilege);
   }
 
@@ -1742,12 +1689,58 @@ public class PolarisAdminService {
         identifier.namespace(),
         identifier.name());
 
-    return revokePrivilegeOnTableLikeFromRole(
+    return managePrivilegeOnEntityForRole(
+        false,
         catalogName,
         catalogRoleName,
-        identifier,
+        PolarisEntityType.TABLE_LIKE,
         List.of(PolarisEntitySubType.ICEBERG_VIEW),
+        identifier.namespace(),
+        identifier.name(),
         privilege);
+  }
+
+  private boolean managePrivilegeOnEntityForRole(
+      boolean isGrant,
+      String catalogName,
+      String catalogRoleName,
+      PolarisEntityType entityType,
+      List<PolarisEntitySubType> subTypes,
+      @Nullable Namespace namespace,
+      @Nullable String entityName,
+      PolarisPrivilege privilege) {
+    PolarisEntity catalogRoleEntity =
+        findCatalogRoleByName(catalogName, catalogRoleName)
+            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
+    PolarisEntity catalogEntity =
+        findCatalogByName(catalogName)
+            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
+
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        getResolvedPathWrapper(catalogName, entityType, subTypes, namespace, entityName, false);
+
+    List<PolarisEntity> catalogPath =
+        entityType == PolarisEntityType.CATALOG
+            ? List.of(catalogEntity)
+            : resolvedPathWrapper.getRawParentPath();
+    PolarisEntity entity = resolvedPathWrapper.getRawLeafEntity();
+    return isGrant
+        ? metaStoreManager
+            .grantPrivilegeOnSecurableToRole(
+                getCurrentPolarisContext(),
+                catalogRoleEntity,
+                PolarisEntity.toCoreList(catalogPath),
+                entity,
+                privilege)
+            .isSuccess()
+        : metaStoreManager
+            .revokePrivilegeOnSecurableFromRole(
+                getCurrentPolarisContext(),
+                catalogRoleEntity,
+                PolarisEntity.toCoreList(catalogPath),
+                entity,
+                privilege)
+            .isSuccess();
   }
 
   public List<PolarisEntity> listAssigneePrincipalRolesForCatalogRole(
@@ -1898,73 +1891,43 @@ public class PolarisAdminService {
     return null;
   }
 
-  /** Adds a table-level or view-level grant on {@code identifier} to {@code catalogRoleName}. */
-  private boolean grantPrivilegeOnTableLikeToRole(
+  private PolarisResolvedPathWrapper getResolvedPathWrapper(
       String catalogName,
-      String catalogRoleName,
-      TableIdentifier identifier,
+      PolarisEntityType entityType,
       List<PolarisEntitySubType> subTypes,
-      PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
-      throw new NotFoundException("Parent catalog %s not found", catalogName);
-    }
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
+      @Nullable Namespace namespace,
+      @Nullable String entityName,
+      boolean prependRootContainer) {
+    return switch (entityType) {
+      case CATALOG ->
+          resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
 
-    PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
-    if (resolvedPathWrapper == null
-        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
-    }
-    List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
-    PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
+      case NAMESPACE -> {
+        var resolvedPathWrapper =
+            resolutionManifest.getResolvedPath(namespace, prependRootContainer);
+        if (resolvedPathWrapper == null) {
+          throw new NotFoundException("Namespace %s not found", namespace);
+        }
+        yield resolvedPathWrapper;
+      }
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
-  }
-
-  /**
-   * Removes a table-level or view-level grant on {@code identifier} from {@code catalogRoleName}.
-   */
-  private boolean revokePrivilegeOnTableLikeFromRole(
-      String catalogName,
-      String catalogRoleName,
-      TableIdentifier identifier,
-      List<PolarisEntitySubType> subTypes,
-      PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
-      throw new NotFoundException("Parent catalog %s not found", catalogName);
-    }
-    PolarisEntity catalogRoleEntity =
-        findCatalogRoleByName(catalogName, catalogRoleName)
-            .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-
-    PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
-    if (resolvedPathWrapper == null
-        || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
-    }
-    List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
-    PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
-
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
+      case TABLE_LIKE -> {
+        TableIdentifier identifier = TableIdentifier.of(namespace, entityName);
+        var resolvedPathWrapper =
+            resolutionManifest.getResolvedPath(
+                identifier,
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ANY_SUBTYPE,
+                prependRootContainer);
+        if (resolvedPathWrapper == null
+            || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+          CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+        }
+        yield resolvedPathWrapper;
+      }
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported entity type for grant operation: " + entityType);
+    };
   }
 }
