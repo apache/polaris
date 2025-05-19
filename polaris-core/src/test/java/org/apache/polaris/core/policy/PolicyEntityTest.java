@@ -52,7 +52,7 @@ public class PolicyEntityTest {
   }
 
   @Test
-  public void testBuildPolicyEntityWithoutPolicyTye() {
+  public void testBuildPolicyEntityWithoutPolicyType() {
     Assertions.assertThatThrownBy(
             () ->
                 new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", null)
