@@ -193,14 +193,14 @@ components:
           type: string
         format:
           type: string
+        location:
+          type: string
         doc:
           type: string
         properties:
           type: object
           additionalProperties:
             type: string
-        location:
-          type: string
 
     GenericTable:
       type: object
@@ -215,7 +215,7 @@ components:
         
         - `doc` comment or description for the generic table
         
-        - `location` location for the table
+        - `location` table root location in URI format. For example: s3://<my-bucket>/path/to/table
       required:
         - name
         - format
@@ -224,14 +224,14 @@ components:
           type: string
         format:
           type: string
+        location:
+          type: string
         doc:
           type: string
         properties:
           type: object
           additionalProperties:
             type: string
-        location:
-          type: string
 
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
