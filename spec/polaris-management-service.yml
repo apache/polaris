@@ -1432,8 +1432,6 @@ components:
                 type: string
             policyName:
               type: string
-              minLength: 1
-              maxLength: 256
             privilege:
               $ref: '#/components/schemas/PolicyPrivilege'
           required:
