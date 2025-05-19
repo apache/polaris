@@ -293,7 +293,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS")
           .catalogConfig("polaris.config.rollback.compaction.on-conflicts.enabled")
           .description(
-              "Rollback replace snapshots created by compaction which have polaris.rollback.compaction.on-conflict property in their snapshot summary")
+              "Rollback replace snapshots created by compaction which have polaris.conflict-resolution.by-operation-type.replace property set to rollback in their snapshot summary")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }
