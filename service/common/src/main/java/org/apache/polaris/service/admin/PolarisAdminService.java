@@ -560,9 +560,7 @@ public class PolarisAdminService {
       }
     }
 
-    PolarisResolvedPathWrapper policyWrapper =
-        resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.ANY_SUBTYPE, true);
+    PolarisResolvedPathWrapper policyWrapper = resolutionManifest.getResolvedPath(identifier, true);
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
@@ -2060,9 +2058,7 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(identifier);
     if (resolvedPathWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy not exists: %s", identifier));
     }
@@ -2092,9 +2088,7 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(identifier);
     if (resolvedPathWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy not exists: %s", identifier));
     }
