@@ -110,8 +110,6 @@ public class PolarisGenericTableCatalogTest {
           "true",
           "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
-          "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
-          "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
           "polaris.readiness.ignore-severe-issues",

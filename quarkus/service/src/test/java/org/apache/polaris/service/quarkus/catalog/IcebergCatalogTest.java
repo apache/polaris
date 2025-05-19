@@ -99,6 +99,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -173,8 +174,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "true",
           "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
-          "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
-          "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",
           "polaris.features.\"LIST_PAGINATION_ENABLED\"",
@@ -226,6 +225,45 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
+
+  /**
+   * A subclass of IcebergCatalog that adds FileIO management capabilities. This allows the file IO
+   * logic to be encapsulated in a dedicated class.
+   */
+  public static class IcebergFileIOCatalog extends IcebergCatalog {
+
+    public IcebergFileIOCatalog(
+        PolarisEntityManager entityManager,
+        PolarisMetaStoreManager metaStoreManager,
+        CallContext callContext,
+        PolarisResolutionManifestCatalogView resolvedEntityView,
+        SecurityContext securityContext,
+        TaskExecutor taskExecutor,
+        FileIOFactory fileIOFactory,
+        PolarisEventListener polarisEventListener) {
+      super(
+          entityManager,
+          metaStoreManager,
+          callContext,
+          resolvedEntityView,
+          securityContext,
+          taskExecutor,
+          fileIOFactory,
+          polarisEventListener);
+    }
+
+    @Override
+    public synchronized FileIO getIo() {
+      if (catalogFileIO == null) {
+        catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
+        if (closeableGroup != null) {
+          closeableGroup.addCloseable(catalogFileIO);
+        }
+      }
+
+      return catalogFileIO;
+    }
+  }
 
   @BeforeAll
   public static void setUpMocks() {
@@ -368,7 +406,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog icebergCatalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1000,7 +1038,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog catalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1067,7 +1105,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog catalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
