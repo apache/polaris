@@ -57,6 +57,8 @@ services:
       - STORAGE_LOCATION=${STORAGE_LOCATION}
       - AWS_ROLE_ARN=${AWS_ROLE_ARN}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
