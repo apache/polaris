@@ -22,30 +22,61 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
 
   private final Map<String, Object> defaults;
+  private final Map<String, Map<String, Object>> realmOverrides;
+  @Inject private Instance<RealmContext> realmContextInstance;
 
   // FIXME the whole PolarisConfigurationStore + PolarisConfiguration needs to be refactored
   // to become a proper Quarkus configuration object
   @Inject
   public DefaultConfigurationStore(
       ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this(configurations.parseDefaults(objectMapper));
+    this(
+        configurations.parseDefaults(objectMapper),
+        configurations.parseRealmOverrides(objectMapper));
   }
 
   public DefaultConfigurationStore(Map<String, Object> defaults) {
+    this(defaults, Map.of());
+  }
+
+  public DefaultConfigurationStore(
+      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides) {
     this.defaults = Map.copyOf(defaults);
+    this.realmOverrides = Map.copyOf(realmOverrides);
   }
 
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
+    if (realmContextInstance != null && !realmContextInstance.isUnsatisfied()) {
+      RealmContext realmContext = realmContextInstance.get();
+      String realm = realmContext.getRealmIdentifier();
+      LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
+      @SuppressWarnings("unchecked")
+      T confgValue =
+          (T)
+              Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
+                  .orElseGet(() -> getDefaultConfiguration(configName));
+      return confgValue;
+    } else {
+      LOGGER.debug(
+          "No RealmContext is injected when lookup value for configuration {} ", configName);
+      return getDefaultConfiguration(configName);
+    }
+  }
+
+  private <T> @Nullable T getDefaultConfiguration(String configName) {
     @SuppressWarnings("unchecked")
     T confgValue = (T) defaults.get(configName);
     return confgValue;
