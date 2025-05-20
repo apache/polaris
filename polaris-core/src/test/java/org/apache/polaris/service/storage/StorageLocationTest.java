@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.service.storage;
 
+import java.net.URISyntaxException;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.net.URISyntaxException;
 
 public class StorageLocationTest {
 
@@ -31,19 +30,27 @@ public class StorageLocationTest {
   public void testOfDifferentPrefixes() {
     StorageLocation standardLocation = StorageLocation.of("file:///path/to/file");
     StorageLocation slashLeadingLocation = StorageLocation.of("/path/to/file");
+    StorageLocation manySlashLeadingLocation = StorageLocation.of("////////path/to/file");
     StorageLocation fileSingleSlashLocation = StorageLocation.of("file:/path/to/file");
+    StorageLocation fileTooManySlashesLocation = StorageLocation.of("file://///////path/to/file");
     Assertions.assertThat(slashLeadingLocation.equals(standardLocation)).isTrue();
+    Assertions.assertThat(manySlashLeadingLocation.equals(standardLocation)).isTrue();
     Assertions.assertThat(fileSingleSlashLocation.equals(standardLocation)).isTrue();
+    Assertions.assertThat(fileTooManySlashesLocation.equals(standardLocation)).isTrue();
     Assertions.assertThat(standardLocation instanceof AzureLocation).isFalse();
     Assertions.assertThat(slashLeadingLocation instanceof AzureLocation).isFalse();
+    Assertions.assertThat(manySlashLeadingLocation instanceof AzureLocation).isFalse();
     Assertions.assertThat(fileSingleSlashLocation instanceof AzureLocation).isFalse();
+    Assertions.assertThat(fileTooManySlashesLocation instanceof AzureLocation).isFalse();
   }
 
   @Test
   public void testBlobStorageLocations() {
-    StorageLocation azureLocation = StorageLocation.of("wasb://container@storageaccount.blob.core.windows.net/myfile");
+    StorageLocation azureLocation =
+        StorageLocation.of("wasb://container@storageaccount.blob.core.windows.net/myfile");
     Assertions.assertThat(azureLocation instanceof AzureLocation).isTrue();
-    azureLocation = StorageLocation.of("abfss://container@storageaccount.blob.core.windows.net/myfile");
+    azureLocation =
+        StorageLocation.of("abfss://container@storageaccount.blob.core.windows.net/myfile");
     Assertions.assertThat(azureLocation instanceof AzureLocation).isTrue();
 
     String s3LocationStr = "s3://test-bucket/mydirectory";
@@ -59,10 +66,15 @@ public class StorageLocationTest {
     String specialCharsBlobStorage = "s3://test-bucket/quote'/equals=/period/../myfile.parquet";
     StorageLocation s3LocationSpecialCharacters = StorageLocation.of(specialCharsBlobStorage);
 
-    Assertions.assertThat(s3LocationSpecialCharacters.toString()).isEqualTo(specialCharsBlobStorage);
+    Assertions.assertThat(s3LocationSpecialCharacters.toString())
+        .isEqualTo(specialCharsBlobStorage);
 
     // But local filesystems do
     String specialCharsLocalStorage = "file:///var/tmp\"/myfile.parquet";
-    Assertions.assertThatThrownBy(() -> { StorageLocation.of(specialCharsLocalStorage); }).hasCauseInstanceOf(URISyntaxException.class);
+    Assertions.assertThatThrownBy(
+            () -> {
+              StorageLocation.of(specialCharsLocalStorage);
+            })
+        .hasCauseInstanceOf(URISyntaxException.class);
   }
 }
