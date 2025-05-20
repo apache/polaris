@@ -269,4 +269,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description("The max number of times to try committing to an Iceberg table")
           .defaultValue(4)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS")
+          .catalogConfig("polaris.config.rollback.compaction.on-conflicts.enabled")
+          .description(
+              "Rollback replace snapshots created by compaction which have polaris.conflict-resolution.by-operation-type.replace property set to rollback in their snapshot summary")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
