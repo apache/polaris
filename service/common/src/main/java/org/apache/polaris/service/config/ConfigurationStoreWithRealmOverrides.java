@@ -34,6 +34,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ConfigurationStoreWithRealmOverrides is a decorator class that implements the
+ * PolarisConfigurationStore interface and provides realm overrides capability on top of
+ * DefaultConfigurationStore.
+ */
 @Decorator
 @Priority(1)
 public class ConfigurationStoreWithRealmOverrides implements PolarisConfigurationStore {
