@@ -104,10 +104,10 @@ public class DefaultConfigurationStoreTest {
             polarisContext, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
 
-    // the falseByDefaultKey is set to true for all realms
+    // the falseByDefaultKey is set to true for all realms in Profile.getConfigOverrides
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
         .isTrue();
-    // the trueByDefaultKey is set to false for all realms
+    // the trueByDefaultKey is set to false for all realms in Profile.getConfigOverrides
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isFalse();
   }
