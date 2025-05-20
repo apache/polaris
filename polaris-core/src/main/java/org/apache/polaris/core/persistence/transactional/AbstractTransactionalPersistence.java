@@ -781,7 +781,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
-      long policyTypeCode) {
+      int policyTypeCode) {
     return this.runInReadTransaction(
         callCtx,
         () ->

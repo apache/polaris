@@ -763,7 +763,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
-      long policyTypeCode) {
+      int policyTypeCode) {
     return this.store
         .loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId, policyTypeCode)
         .stream()

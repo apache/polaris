@@ -658,7 +658,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
-      long policyTypeCode) {
+      int policyTypeCode) {
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));

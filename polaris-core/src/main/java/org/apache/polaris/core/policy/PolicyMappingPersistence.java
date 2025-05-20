@@ -149,7 +149,7 @@ public interface PolicyMappingPersistence {
       @Nonnull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
-      long policyTypeCode) {
+      int policyTypeCode) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 }

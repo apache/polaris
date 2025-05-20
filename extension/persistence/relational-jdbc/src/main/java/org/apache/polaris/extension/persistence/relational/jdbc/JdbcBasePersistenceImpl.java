@@ -858,7 +858,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
-      long policyTypeCode) {
+      int policyTypeCode) {
     Map<String, Object> params =
         Map.of(
             "policy_type_code",

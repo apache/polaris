@@ -484,7 +484,7 @@ public class PolarisEclipseLinkStore {
       EntityManager session,
       long targetCatalogId,
       long targetId,
-      long policyTypeCode,
+      int policyTypeCode,
       long policyCatalogId,
       long policyId) {
     diagnosticServices.check(session != null, "session_is_null");
@@ -544,7 +544,7 @@ public class PolarisEclipseLinkStore {
   }
 
   List<ModelPolicyMappingRecord> loadAllTargetsOnPolicy(
-      EntityManager session, long policyCatalogId, long policyId, long policyTypeCode) {
+      EntityManager session, long policyCatalogId, long policyId, int policyTypeCode) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
