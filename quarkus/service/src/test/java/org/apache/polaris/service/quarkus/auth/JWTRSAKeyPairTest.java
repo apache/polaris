@@ -29,7 +29,11 @@ import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
+
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -48,7 +52,10 @@ import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+@QuarkusTest
 public class JWTRSAKeyPairTest {
+
+  @Inject protected PolarisConfigurationStore configurationStore;
 
   @Test
   public void testSuccessfulTokenGeneration() throws Exception {
@@ -59,8 +66,7 @@ public class JWTRSAKeyPairTest {
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
-    DefaultConfigurationStore store = new DefaultConfigurationStore(new HashMap<>());
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, store, null);
+    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, configurationStore, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =

@@ -45,19 +45,8 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   @Inject
   public DefaultConfigurationStore(
       ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this(
-        configurations.parseDefaults(objectMapper),
-        configurations.parseRealmOverrides(objectMapper));
-  }
-
-  public DefaultConfigurationStore(Map<String, Object> defaults) {
-    this(defaults, Map.of());
-  }
-
-  public DefaultConfigurationStore(
-      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides) {
-    this.defaults = Map.copyOf(defaults);
-    this.realmOverrides = Map.copyOf(realmOverrides);
+    this.defaults = Map.copyOf(configurations.parseDefaults(objectMapper));
+    this.realmOverrides = Map.copyOf(configurations.parseRealmOverrides(objectMapper));
   }
 
   @Override
