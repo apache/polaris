@@ -231,6 +231,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     for (int i = 0; i < properties.length; i += 2) {
       catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
     }
+    catalogPropsBuilder.addProperty(
+        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
     if (!s3BucketBase.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");

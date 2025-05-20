@@ -314,6 +314,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));

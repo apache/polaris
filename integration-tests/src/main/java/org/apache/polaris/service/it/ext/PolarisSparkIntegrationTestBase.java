@@ -115,7 +115,9 @@ public abstract class PolarisSparkIntegrationTestBase {
             "s3.access-key-id",
             "foo",
             "s3.secret-access-key",
-            "bar"));
+            "bar",
+            "polaris.config.drop-with-purge.enabled",
+            "true"));
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -144,7 +146,9 @@ public abstract class PolarisSparkIntegrationTestBase {
             "s3.access-key-id",
             "foo",
             "s3.secret-access-key",
-            "bar"));
+            "bar",
+            "polaris.config.drop-with-purge.enabled",
+            "true"));
     Catalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
