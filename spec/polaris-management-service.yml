@@ -1282,6 +1282,20 @@ components:
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
         - TABLE_FULL_METADATA
+        - TABLE_ATTACH_POLICY
+        - TABLE_DETACH_POLICY
+
+    PolicyPrivilege:
+      type: string
+      enum:
+        - CATALOG_MANAGE_ACCESS
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_WRITE
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - POLICY_ATTACH
+        - POLICY_DETACH
 
     NamespacePrivilege:
       type: string
@@ -1309,6 +1323,14 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - NAMESPACE_ATTACH_POLICY
+        - NAMESPACE_DETACH_POLICY
 
     CatalogPrivilege:
       type: string
@@ -1338,6 +1360,14 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - CATALOG_ATTACH_POLICY
+        - CATALOG_DETACH_POLICY
 
     AddGrantRequest:
       type: object
@@ -1391,6 +1421,24 @@ components:
             - tableName
             - privilege
 
+    PolicyGrant:
+      allOf:
+        - $ref: '#/components/schemas/GrantResource'
+        - type: object
+          properties:
+            namespace:
+              type: array
+              items:
+                type: string
+            policyName:
+              type: string
+            privilege:
+              $ref: '#/components/schemas/PolicyPrivilege'
+          required:
+            - namespace
+            - policyName
+            - privilege
+
     NamespaceGrant:
       allOf:
         - $ref: '#/components/schemas/GrantResource'
@@ -1426,6 +1474,7 @@ components:
           namespace: '#/components/schemas/NamespaceGrant'
           table: '#/components/schemas/TableGrant'
           view: '#/components/schemas/ViewGrant'
+          policy: '#/components/schemas/PolicyGrant'
       properties:
         type:
           type: string
@@ -1434,6 +1483,7 @@ components:
             - namespace
             - table
             - view
+            - policy
       required:
         - type
 
