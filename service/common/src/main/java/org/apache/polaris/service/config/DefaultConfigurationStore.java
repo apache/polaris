@@ -29,9 +29,12 @@ import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
+  Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationStore.class);
 
   private final Map<String, Object> defaults;
   private final Map<String, Map<String, Object>> realmOverrides;
