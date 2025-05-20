@@ -105,7 +105,7 @@ public class ProductionReadinessChecks {
           throw new IllegalStateException(
               "Severe production readiness issues detected, startup aborted!");
         }
-        LOGGER.error(
+        LOGGER.warn(
             "{} severe production readiness issues detected, but user explicitly requested startup by setting "
                 + "polaris.readiness.ignore-severe-issues=true and accepts the risk of denial-of-service, "
                 + "data-loss, corruption and others !",
@@ -253,7 +253,7 @@ public class ProductionReadinessChecks {
                 errors.add(
                     Error.ofSevere(
                         format(
-                            "The storage type '%s' is considered insecure and to expose the service to severe security ricks!",
+                            "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
                             t),
                         format("polaris.features.\"%s\"", storageTypes.key))));
     realmOverrides.forEach(
@@ -267,7 +267,7 @@ public class ProductionReadinessChecks {
                       errors.add(
                           Error.ofSevere(
                               format(
-                                  "The storage type '%s' is considered insecure and to expose the service to severe security ricks!",
+                                  "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
                                   t),
                               format(
                                   "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",

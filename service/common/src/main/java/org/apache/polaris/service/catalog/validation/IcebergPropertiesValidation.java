@@ -37,10 +37,10 @@ public class IcebergPropertiesValidation {
 
   public static void validateIcebergProperties(
       @Nonnull CallContext callContext, @Nonnull Map<String, String> properties) {
-    validateIcebergPropertiesForFileIo(callContext, properties, null);
+    determineFileIOClassName(callContext, properties, null);
   }
 
-  public static String validateIcebergPropertiesForFileIo(
+  public static String determineFileIOClassName(
       @Nonnull CallContext callContext,
       @Nonnull Map<String, String> properties,
       @Nullable PolarisStorageConfigurationInfo storageConfigurationInfo) {
