@@ -28,6 +28,8 @@ import java.util.*;
 import java.util.function.Supplier;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
@@ -61,19 +63,29 @@ public interface StorageConfiguration {
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {
+    return stsClientSupplier(true);
+  }
+
+  default Supplier<StsClient> stsClientSupplier(boolean withCredentials) {
     return Suppliers.memoize(
         () -> {
           StsClientBuilder stsClientBuilder = StsClient.builder();
-          if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
-            LoggerFactory.getLogger(StorageConfiguration.class)
-                .warn("Using hard-coded AWS credentials - this is not recommended for production");
-            StaticCredentialsProvider awsCredentialsProvider =
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
-            stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+          if (withCredentials) {
+            stsClientBuilder.credentialsProvider(stsCredentials());
           }
           return stsClientBuilder.build();
         });
+  }
+
+  default AwsCredentialsProvider stsCredentials() {
+    if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
+      LoggerFactory.getLogger(StorageConfiguration.class)
+          .warn("Using hard-coded AWS credentials - this is not recommended for production");
+      return StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
+    } else {
+      return DefaultCredentialsProvider.create();
+    }
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier() {

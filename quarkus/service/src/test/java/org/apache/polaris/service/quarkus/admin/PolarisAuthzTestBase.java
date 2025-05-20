@@ -32,10 +32,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.iceberg.CatalogProperties;
@@ -219,7 +216,9 @@ public abstract class PolarisAuthzTestBase {
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
+            Mockito::mock,
+            Optional.empty(),
+            () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
