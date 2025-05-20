@@ -45,28 +45,15 @@ predefined conditions. Each policy contains:
 
 Polaris supports several predefined system policy types (prefixed with `system.`):
 
-- **`system.data-compaction`**: Defines rules for data compaction operations
-  - Schema Definition: @https://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json
-  - Controls file compaction to optimize storage and query performance
-  
-- **`system.metadata-compaction`**: Defines rules for metadata compaction operations
-  - Schema Definition: @https://polaris.apache.org/schemas/policies/system/metadata-compaction/2025-02-03.json
-  - Optimizes table metadata for improved performance
-  - Applicable resources: Iceberg table, namespace, catalog
+| Policy Type | Purpose                                               | JSON-Schema | Applies To |
+|-------------|-------------------------------------------------------|-------------|------------|
+| **`system.data-compaction`** | Defines rules for data file compaction operations     | [`data-compaction/2025-02-03.json`](https://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json) | Iceberg **table**, **namespace**, **catalog** |
+| **`system.metadata-compaction`** | Defines rules for metadata file compaction operations | [`metadata-compaction/2025-02-03.json`](https://polaris.apache.org/schemas/policies/system/metadata-compaction/2025-02-03.json) | Iceberg **table**, **namespace**, **catalog** |
+| **`system.orphan-file-removal`** | Defines rules for removing orphaned files             | [`orphan-file-removal/2025-02-03.json`](https://polaris.apache.org/schemas/policies/system/orphan-file-removal/2025-02-03.json) | Iceberg **table**, **namespace**, **catalog** |
+| **`system.snapshot-expiry`** | Defines rules for snapshot expiration                 | [`snapshot-expiry/2025-02-03.json`](https://polaris.apache.org/schemas/policies/system/snapshot-expiry/2025-02-03.json) | Iceberg **table**, **namespace**, **catalog** |
 
-- **`system.orphan-file-removal`**: Defines rules for removing orphaned files
-  - Schema Definition: @https://polaris.apache.org/schemas/policies/system/orphan-file-removal/2025-02-03.json
-  - Identifies and safely removes files that are no longer referenced by the table metadata
-  - Applicable resources: Iceberg table, namespace, catalog 
-
-- **`system.snapshot-expiry`**: Defines rules for snapshot expiration
-  - Schema Definition: @https://polaris.apache.org/schemas/policies/system/snapshot-expiry/2025-02-03.json
-  - Controls how long snapshots are retained before removal
-  - Applicable resources: Iceberg table, namespace, catalog 
-
-- **Custom policy types**: Can be defined for specific organizational needs (WIP)
-
-- **FGAC (Fine-Grained Access Control) policies**: Row filtering, column masking, column hiding (WIP)
+Support for additional predefined system policy types and custom policy type definitions is in progress.
+For more details, please refer to the [roadmap](https://github.com/apache/polaris/discussions/1028).
 
 ### Policy Inheritance
 
@@ -94,6 +81,9 @@ The inheritance follows an override mechanism:
 1. Table-level policies override namespace and catalog policies
 2. Namespace-level policies override parent namespace and catalog policies
 
+> **Important:** Because an override completely replaces the same policy type at higher levels, 
+> **only one instance of a given policy type can be attached to (and therefore affect) a resource**.
+
 ## Working with Policies
 
 ### Creating a Policy
@@ -110,7 +100,7 @@ POST /polaris/v1/{prefix}/namespaces/{namespace}/policies
 }
 ```
 
-The policy content is validated against a schema specific to its type. Here are a few policy content examples
+The policy content is validated against a schema specific to its type. Here are a few policy content examples:
 - Data Compaction Policy
 ```json
 {
@@ -156,12 +146,12 @@ PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings
 }
 ```
 
-For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies, multiple policies of the same type can be attached.
+For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies,
+multiple policies of the same type can be attached.
 
 ### Retrieving Applicable Policies
 A user can view applicable policies on a resource (e.g., table, namespace, or catalog) as long as they have
-read permission on that resource. The permission model may be enhanced in the future when Fine-Grained Access Control
-policy is introduced, which will provide more granular control over policy visibility and management.
+read permission on that resource.
 
 Here is an example to find all policies that apply to a specific resource (including inherited policies):
 ```
