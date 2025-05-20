@@ -27,23 +27,26 @@ import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Decorator
 @Priority(1)
-public class DefaultConfigurationStoreDecorator implements PolarisConfigurationStore {
+public class ConfigurationStoreWithRealmOverrides implements PolarisConfigurationStore {
+  Logger LOGGER = LoggerFactory.getLogger(ConfigurationStoreWithRealmOverrides.class);
+
   @Inject @Delegate PolarisConfigurationStore delegate;
 
-  private final Map<String, Object> defaults;
   private final Map<String, Map<String, Object>> realmOverrides;
   @Inject private Instance<RealmContext> realmContextInstance;
 
   @Inject
-  public DefaultConfigurationStoreDecorator(
+  public ConfigurationStoreWithRealmOverrides(
       ObjectMapper objectMapper, FeaturesConfiguration configurations) {
-    this.defaults = Map.copyOf(configurations.parseDefaults(objectMapper));
     this.realmOverrides = Map.copyOf(configurations.parseRealmOverrides(objectMapper));
   }
 
@@ -52,14 +55,16 @@ public class DefaultConfigurationStoreDecorator implements PolarisConfigurationS
     if (!realmContextInstance.isUnsatisfied()) {
       RealmContext realmContext = realmContextInstance.get();
       String realm = realmContext.getRealmIdentifier();
+      LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
       @SuppressWarnings("unchecked")
       T confgValue =
           (T)
-              realmOverrides
-                  .getOrDefault(realm, Map.of())
-                  .getOrDefault(configName, defaults.get(configName));
+              Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
+                  .orElseGet(() -> delegate.getConfiguration(ctx, configName));
       return confgValue;
     } else {
+      LOGGER.debug(
+          "No RealmContext is injected when lookup value for configuration {} ", configName);
       return delegate.getConfiguration(ctx, configName);
     }
   }
