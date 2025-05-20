@@ -21,7 +21,6 @@ package org.apache.polaris.service.quarkus.catalog;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.quarkus.test.junit.QuarkusTest;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,6 @@ import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@QuarkusTest
 public class GetConfigTest {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})

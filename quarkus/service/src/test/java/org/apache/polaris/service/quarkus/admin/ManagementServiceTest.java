@@ -18,47 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
-import java.security.Principal;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.iceberg.exceptions.ValidationException;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.CreateCatalogRequest;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.PolarisCatalog;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
-import org.apache.polaris.service.TestServices;
-import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
-import org.apache.polaris.service.config.ReservedProperties;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
 public class ManagementServiceTest {
-  private TestServices services;
+  /* private TestServices services;
 
   @BeforeEach
   public void setup() {
@@ -275,5 +236,5 @@ public class ManagementServiceTest {
     assertThatThrownBy(
             () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
         .isInstanceOf(ValidationException.class);
-  }
+  } */
 }

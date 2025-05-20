@@ -104,8 +104,10 @@ public class DefaultConfigurationStoreTest {
             polarisContext, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
 
+    // the falseByDefaultKey is set to true for all realms
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
         .isTrue();
+    // the trueByDefaultKey is set to false for all realms
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isFalse();
   }
@@ -114,15 +116,21 @@ public class DefaultConfigurationStoreTest {
   public void testGetRealmConfiguration() {
     // check the realmOne configuration
     QuarkusMock.installMockForType(realmOneContext, RealmContext.class);
+    // the falseByDefaultKey is set to true for all realms, but overwrite with value false for
+    // realmOne.
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
         .isFalse();
+    // the trueByDefaultKey is set to false for all realms, no overwrite for realmOne
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isFalse();
 
     // check the realmTwo configuration
     QuarkusMock.installMockForType(realmTwoContext, RealmContext.class);
+    // the falseByDefaultKey is set to false for all realms, but overwrite with value true for
+    // realmTwo.
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
         .isTrue();
+    // the trueByDefaultKey is set to false for all realms, no overwrite for realmTwo
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isTrue();
   }

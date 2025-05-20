@@ -62,7 +62,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
 
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
-    if (realmContextInstance != null && !realmContextInstance.isUnsatisfied()) {
+    if (!realmContextInstance.isUnsatisfied()) {
       RealmContext realmContext = realmContextInstance.get();
       String realm = realmContext.getRealmIdentifier();
       LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
