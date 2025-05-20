@@ -219,6 +219,11 @@ This product includes code from Apache Iceberg.
 * spec/polaris-catalog-apis/oauth-tokens-api.yaml
 * integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationTest.java
 * service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
+* service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/CatalogHandlerUtils.java
+* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisSparkCatalog.java
+* plugins/spark/v3.5/spark/src/test/java/org/apache/polaris/spark/PolarisInMemoryCatalog.java
+* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
+* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
@@ -261,11 +266,12 @@ License: https://www.apache.org/licenses/LICENSE-2.0
 This product includes code from Project Nessie.
 
 * build-logic/src/main/kotlin/LicenseFileValidation.kt
-* build-logic/src/main/kotlin/publishing/MemoizedGitInfo.kt
-* build-logic/src/main/kotlin/publishing/PublishingHelperExtension.kt
+* build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerPlugin.kt
+* build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerExtension.kt
 * build-logic/src/main/kotlin/publishing/PublishingHelperPlugin.kt
-* build-logic/src/main/kotlin/publishing/shadowPub.kt
-* build-logic/src/main/kotlin/publishing/util.kt
+* build-logic/src/main/kotlin/Utilities.kt
+* build-logic/src/main/kotlin/polaris-shadow-jar.gradle.kts
+* build-logic/src/main/kotlin/polaris-quarkus.gradle.kts
 * tools/config-docs/annotations/src/main/java/org/apache/polaris/docs/ConfigDocs.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/DocGenDoclet.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownFormatter.java
@@ -277,8 +283,8 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertyInfo.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigMappingInfo.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigPropertyInfo.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigSectionPage.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigs.java
+* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/ReferenceConfigDocsGenerator.java
 * tools/config-docs/generator/src/test/java/org/apache/polaris/docs/generator/TestDocGenTool.java
 * tools/config-docs/generator/src/test/java/tests/properties/ConfigProps.java
 * tools/config-docs/generator/src/test/java/tests/properties/MoreProps.java
@@ -304,6 +310,15 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/OtherMapped.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
+* tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
+* quarkus/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* helm/polaris/tests/logging_storage_test.yaml
+* helm/polaris/tests/quantity_test.yaml
+* helm/polaris/tests/service_monitor_test.yaml
+* helm/polaris/templates/_helpers.tpl
+* helm/polaris/templates/serviceaccount.yaml
+* helm/polaris/templates/servicemonitor.yaml
+* helm/polaris/templates/storage.yaml
 
 Copyright: Copyright 2015-2025 Dremio Corporation
 Home page: https://projectnessie.org/

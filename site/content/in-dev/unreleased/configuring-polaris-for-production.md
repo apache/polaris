@@ -17,23 +17,21 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring Apache Polaris (Incubating) for Production
-linkTitle: Deploying In Production
+title: Configuring Polaris for Production
+linkTitle: Production Configuration
 type: docs
 weight: 600
 ---
 
-## Configuring Polaris for Production
+The default server configuration is intended for development and testing. When you deploy Polaris in production,
+review and apply the following checklist:
+- [ ] Configure OAuth2 keys
+- [ ] Enforce realm header validation (`require-header=true`)
+- [ ] Use a durable metastore (JDBC + PostgreSQL)
+- [ ] Bootstrap valid realms in the metastore
+- [ ] Disable local FILE storage
 
-The default server configuration is intended for development and testing. When deploying Polaris in
-production, there are several best practices to keep in mind.
-
-Notable configuration used to secure a Polaris deployment are outlined below.
-
-For more information on how to configure Polaris and what configuration options are available,
-refer to the [configuration reference page]({{% ref "configuration" %}}).
-
-### OAuth2
+### Configure OAuth2
 
 Polaris authentication requires specifying a token broker factory type. Two implementations are
 supported out of the box:

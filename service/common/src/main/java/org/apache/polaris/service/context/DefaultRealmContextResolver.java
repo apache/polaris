@@ -21,6 +21,8 @@ package org.apache.polaris.service.context;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 
@@ -36,21 +38,25 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
   }
 
   @Override
-  public RealmContext resolveRealmContext(
+  public CompletionStage<RealmContext> resolveRealmContext(
       String requestURL, String method, String path, Function<String, String> headers) {
-    String realm = resolveRealmIdentifier(headers);
-    return () -> realm;
+    try {
+      String realm = resolveRealmIdentifier(headers);
+      return CompletableFuture.completedFuture(() -> realm);
+    } catch (Exception e) {
+      return CompletableFuture.failedFuture(e);
+    }
   }
 
   private String resolveRealmIdentifier(Function<String, String> headers) {
     String realm = headers.apply(configuration.headerName());
     if (realm != null) {
       if (!configuration.realms().contains(realm)) {
-        throw new UnresolvableRealmContextException("Unknown realm: " + realm);
+        throw new IllegalArgumentException("Unknown realm: " + realm);
       }
     } else {
       if (configuration.requireHeader()) {
-        throw new UnresolvableRealmContextException(
+        throw new IllegalArgumentException(
             "Missing required realm header: " + configuration.headerName());
       }
       realm = configuration.defaultRealm();

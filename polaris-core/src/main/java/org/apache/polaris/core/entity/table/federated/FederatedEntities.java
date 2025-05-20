@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.core.entity.table.federated;
 
-import java.util.Map;
-import org.apache.polaris.core.exceptions.PolarisException;
+import java.util.Optional;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 
-/**
- * Exception thrown when a realm context cannot be resolved.
- *
- * @see RealmContextResolver#resolveRealmContext(String, String, String, Map)
- */
-public class UnresolvableRealmContextException extends PolarisException {
+public final class FederatedEntities {
 
-  public UnresolvableRealmContextException(String message) {
-    super(message);
+  public static final String FEDERATED_ENTITY = "federated";
+
+  public static boolean isFederated(PolarisBaseEntity entity) {
+    return Optional.ofNullable(entity.getInternalPropertiesAsMap())
+        .map(map -> Boolean.parseBoolean(map.get(FEDERATED_ENTITY)))
+        .orElse(false);
   }
+
+  private FederatedEntities() {}
 }

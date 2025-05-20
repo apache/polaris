@@ -31,7 +31,6 @@ import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
-import org.apache.polaris.service.context.UnresolvableRealmContextException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -48,8 +47,6 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   private Response.Status getStatus(PolarisException exception) {
     if (exception instanceof AlreadyExistsException) {
       return Response.Status.CONFLICT;
-    } else if (exception instanceof UnresolvableRealmContextException) {
-      return Response.Status.NOT_FOUND;
     } else if (exception instanceof InvalidPolicyException) {
       return Response.Status.BAD_REQUEST;
     } else if (exception instanceof PolicyAttachException) {

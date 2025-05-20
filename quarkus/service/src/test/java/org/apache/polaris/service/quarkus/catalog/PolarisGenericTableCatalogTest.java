@@ -76,7 +76,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -98,8 +98,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
-@TestProfile(GenericTableCatalogTest.Profile.class)
-public class GenericTableCatalogTest {
+@TestProfile(PolarisGenericTableCatalogTest.Profile.class)
+public class PolarisGenericTableCatalogTest {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -128,7 +128,7 @@ public class GenericTableCatalogTest {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
-  private GenericTableCatalog genericTableCatalog;
+  private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
   private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
@@ -262,7 +262,8 @@ public class GenericTableCatalogTest {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,
