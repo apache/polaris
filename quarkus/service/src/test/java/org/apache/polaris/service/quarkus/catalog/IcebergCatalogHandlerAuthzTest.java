@@ -52,6 +52,7 @@ import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -252,7 +253,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         List.of(PolarisPrivilege.values()),
         principalName,
         () -> wrapper.listNamespaces(Namespace.of()));
-    /*  Namespace ns3 = Namespace.of("ns3");
+    Namespace ns3 = Namespace.of("ns3");
     doTestInsufficientPrivileges(
         List.of(PolarisPrivilege.values()),
         principalName,
@@ -298,7 +299,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         List.of(Set.of(PolarisPrivilege.TABLE_LIST)),
         () -> refreshedWrapper.listTables(ns3),
         null,
-        principalName); */
+        principalName);
   }
 
   @Test
