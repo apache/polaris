@@ -722,7 +722,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   @Override
   public void deleteAllEntityPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     this.runActionInTransaction(
@@ -778,8 +778,14 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   @Override
   @Nonnull
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      long policyTypeCode) {
     return this.runInReadTransaction(
-        callCtx, () -> this.loadAllTargetsOnPolicyInCurrentTxn(callCtx, policyCatalogId, policyId));
+        callCtx,
+        () ->
+            this.loadAllTargetsOnPolicyInCurrentTxn(
+                callCtx, policyCatalogId, policyId, policyTypeCode));
   }
 }

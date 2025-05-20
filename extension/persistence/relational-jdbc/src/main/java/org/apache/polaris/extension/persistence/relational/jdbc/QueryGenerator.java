@@ -21,10 +21,14 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -60,23 +64,20 @@ public class QueryGenerator {
   }
 
   public static String generateDeleteQueryForEntityPolicyMappingRecords(
-      @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
-    String targetCondition =
-        String.format(
-            "target_id = %s AND target_catalog_id = %s", entity.getId(), entity.getCatalogId());
-    String sourceCondition =
-        String.format(
-            "policy_id = %s AND policy_catalog_id = %s", entity.getId(), entity.getCatalogId());
+      @Nonnull PolarisBaseEntity entity, @Nonnull String realmId) {
+    Map<String, Object> objMap = new HashMap<>();
+    if (entity.getType() == PolarisEntityType.POLICY) {
+      PolicyEntity policyEntity = PolicyEntity.of(entity);
+      objMap.put("policy_type_code", policyEntity.getPolicyTypeCode());
+      objMap.put("policy_catalog_id", policyEntity.getCatalogId());
+      objMap.put("policy_id", policyEntity.getId());
+    } else {
+      objMap.put("target_catalog_id", entity.getCatalogId());
+      objMap.put("target_id", entity.getId());
+    }
+    objMap.put("realm_id", realmId);
 
-    String whereClause =
-        " WHERE ("
-            + targetCondition
-            + " OR "
-            + sourceCondition
-            + ") AND realm_id = '"
-            + realmId
-            + "'";
-    return generateDeleteQuery(ModelPolicyMappingRecord.class, whereClause);
+    return generateDeleteQuery(ModelPolicyMappingRecord.class, objMap);
   }
 
   public static String generateSelectQueryWithEntityIds(

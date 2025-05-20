@@ -43,6 +43,7 @@ import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -588,20 +589,30 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
-    // build composite prefix key and delete policy mapping records on the indexed side of each
-    // mapping table
-    String prefix = this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId());
-    this.store.getSlicePolicyMappingRecords().deleteRange(prefix);
-    this.store.getSlicePolicyMappingRecordsByPolicy().deleteRange(prefix);
-
-    // also delete the other side. We need to delete these mapping one at a time versus doing a
-    // range delete
-    mappingOnTarget.forEach(
-        record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
-    mappingOnPolicy.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
+    if (entity.getType() == PolarisEntityType.POLICY) {
+      PolicyEntity policyEntity = PolicyEntity.of(entity);
+      this.store
+          .getSlicePolicyMappingRecordsByPolicy()
+          .deleteRange(
+              this.store.buildPrefixKeyComposite(
+                  policyEntity.getPolicyTypeCode(),
+                  policyEntity.getCatalogId(),
+                  policyEntity.getId()));
+      // also delete the other side. We need to delete these mapping one at a time versus doing a
+      // range delete
+      mappingOnPolicy.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
+    } else {
+      this.store
+          .getSlicePolicyMappingRecords()
+          .deleteRange(this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId()));
+      // also delete the other side. We need to delete these mapping one at a time versus doing a
+      // range delete
+      mappingOnTarget.forEach(
+          record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
+    }
   }
 
   /** {@inheritDoc} */
@@ -644,9 +655,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      long policyTypeCode) {
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
-        .readRange(this.store.buildPrefixKeyComposite(policyCatalogId, policyId));
+        .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 }
