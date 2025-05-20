@@ -64,32 +64,60 @@ Before starting on a large code change, please describe the concept/design of wh
 
 The best way to provide changes is to fork Apache Polaris repository on GitHub and provide a Pull Request with your changes. To make it easy to apply your changes please use the following conventions:
 
-* Every Pull Request should have a matching GitHub Issue.
-* Create a branch that will house your change:
-
-```bash
-git clone https://github.com/apache/polaris
-cd polaris
-git fetch --all
-git checkout -b my-branch origin/main
-```
-
-  Don't forget to periodically rebase your branch:
-
-```bash
-git pull --rebase
-git push GitHubUser my-branch --force
-```
-
-  Ensure the code is properly formatted:
-
-```bash
-./gradlew format
-```
+#### Before opening a pull request
 
 * Pull Requests should be based on the `main` branch.
+* Create a branch that will house your change:
+  ```bash
+  git clone https://github.com/apache/polaris
+  cd polaris
+  git checkout main
+  git pull
+  git checkout -b my-branch
+  ```
+* Work on the changes of your pull requests locally.
+* Ensure the code is properly formatted:
+  ```bash
+  ./gradlew format
+  ```
+* Ensure the code is passing the tests:
+  ```bash
+  ./gradlew check
+  ```
+* You may want to push your changes to your personal Polaris fork. Git will emit a URL that you can use to create the pull request. Do not create the pull request yet.
+  ```bash
+  git push --set-upstream your-github-accout
+  ```
+
+#### Opening a pull request
+
+* Before opening a pull request, squash all commits in your branch into a single commit
+* Update the subject and message of the commit to match the summary and description of the latter pull-request, GitHub will populate the PR summary and description from the "single" commit.
+* Make sure that the summary reflects the targeted area of the code base, for example `docs` or `CI`. Get inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+* The PR description should describe the background of the change and a description of the changes in way that someone who has no prior knowledge can understand the rationale of the change and the change itself.
+* If there is a matching GitHub Issue, add a separate line at the end of the commit message of the issue that the PR fixes. Do not add the issue number into the subject.
+  ```
+  Fixes #123456
+  ```
+  If the PR does not fully fix the issue, use `Related to #123456` instead of `Fixes #123456`.
+* When opening a PR consider whether the PR is "draft" or already "ready for review". "Draft" means work in progress, things will change, but comments are welcome. "Ready for review" means that the PR is requested to be merged as is (pending review feedback).
+
+#### Working on a pull request
+
+* Don't forget to periodically rebase your branch:
+  ```bash
+  git pull --rebase
+  git push your-github-accout my-branch --force
+  ```
 * Test that your changes works by adapting or adding tests. Verify the build passes (see `README.md` for build instructions).
 * If your Pull Request has conflicts with the `main` branch, please rebase and fix the conflicts.
+* If your PR requires more work or time or bigger changes, please put the PR to "draft" state to indicate that it is not meant to be "thoroughly" reviewed at this point.
+
+#### Merging a pull request
+
+* When a PR is about to be merged, cross-check the commit summary and message for the merged Git commit.
+* Keep in mind that the Git commit subject and message is going to be read by other people, potentially even after years. The Git commit subject and message will appear "as is" in release notes.
+* Make sure the subject and message are properly formatted and contains a concise description of the changes in way that someone who has no prior knowledge can understand the rationale of the change and the change itself. Remove information that's of no use for someone reading the Git commit log, for example single intermediate commit messages like `formatting` or `fix test`.
 
 ## Java version requirements
 
