@@ -95,19 +95,23 @@ The below instructions assume a local Kubernetes cluster is running and Helm is 
 
 #### Common setup
 
-Create and populate the target namespace:
+Create the target namespace:
 
 ```bash
 kubectl create namespace polaris
-kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
-
-kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
-The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
-different configurations.
+Create all the required resources in the `polaris` namespace. This usually includes a Postgres
+database and a Kubernetes Secret for the `persistence.xml` file. The Polaris chart does not create
+these resources automatically, as they are not required for all Polaris deployments. The chart will
+fail if these resources are not created beforehand.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
+
+> [!WARNING]
+> The examples below use values files located in the `helm/polaris/ci` directory.
+> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
+> For production deployments, create your own values files based on the provided examples.
 
 #### Non-persistent backend
 
@@ -117,6 +121,16 @@ Install the chart with a non-persistent backend. From Polaris repo root:
 helm upgrade --install --namespace polaris \
   --debug --values helm/polaris/ci/simple-values.yaml \
    polaris helm/polaris
+```
+
+Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
+above, then you need to run `helm upgrade` as follows:
+
+```bash
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/simple-values.yaml \
+  --set=image.repository=localhost:5001/apache/polaris \
+  polaris helm/polaris
 ```
 
 #### Persistent backend
@@ -189,6 +203,17 @@ Quick installation instructions for these tools:
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 brew install chart-testing
 ```
+
+The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
+contains the required resources. To deploy them, run the following command:
+
+```bash
+kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+```
+
+The `helm/polaris/ci` contains a number of values files that will be used to install the chart with
+different configurations.
 
 ### Running the unit tests
 
