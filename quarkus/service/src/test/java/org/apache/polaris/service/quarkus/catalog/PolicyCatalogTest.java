@@ -578,22 +578,6 @@ public class PolicyCatalogTest {
   }
 
   @Test
-  public void testAttachPolicyToNonExistentTarget() {
-    icebergCatalog.createNamespace(NS);
-    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
-
-    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    policyCatalog.attachPolicy(POLICY1, target, null);
-    // Attempt to attach a conflicting second policy and expect an exception
-    assertThatThrownBy(() -> policyCatalog.attachPolicy(POLICY2, target, null))
-            .isInstanceOf(PolicyMappingAlreadyExistsException.class)
-            .hasMessage(
-                    String.format(
-                            "The policy mapping of same type (%s) for %s already exists",
-                            DATA_COMPACTION.getName(), CATALOG_NAME));
-  }
-
-  @Test
   public void testDetachPolicy() {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");

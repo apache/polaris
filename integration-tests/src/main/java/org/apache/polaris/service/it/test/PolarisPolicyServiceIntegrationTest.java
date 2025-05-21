@@ -334,6 +334,34 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testCreatePolicyWithInvalidNamespace() {
+    restCatalog.createNamespace(NS1);
+    PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, "P1");
+
+    CreatePolicyRequest request =
+        CreatePolicyRequest.builder()
+            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
+            .setName(policyIdentifier.getName())
+            .setDescription("test policy")
+            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
+            .build();
+
+    String invalidNamespace = "INVALID_NAMESPACE";
+    String nsEncoded = RESTUtil.encodeNamespace(Namespace.of(invalidNamespace));
+
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", nsEncoded))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      System.out.println(res.readEntity(String.class));
+      Assertions.assertThat(res.readEntity(String.class)).contains("Namespace does not exist");
+    }
+  }
+
+  @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
