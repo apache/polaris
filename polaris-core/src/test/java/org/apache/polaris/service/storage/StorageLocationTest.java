@@ -37,11 +37,11 @@ public class StorageLocationTest {
     Assertions.assertThat(manySlashLeadingLocation.equals(standardLocation)).isTrue();
     Assertions.assertThat(fileSingleSlashLocation.equals(standardLocation)).isTrue();
     Assertions.assertThat(fileTooManySlashesLocation.equals(standardLocation)).isTrue();
-    Assertions.assertThat(standardLocation instanceof AzureLocation).isFalse();
-    Assertions.assertThat(slashLeadingLocation instanceof AzureLocation).isFalse();
-    Assertions.assertThat(manySlashLeadingLocation instanceof AzureLocation).isFalse();
-    Assertions.assertThat(fileSingleSlashLocation instanceof AzureLocation).isFalse();
-    Assertions.assertThat(fileTooManySlashesLocation instanceof AzureLocation).isFalse();
+    Assertions.assertThat(standardLocation).isExactlyInstanceOf(StorageLocation.class);
+    Assertions.assertThat(slashLeadingLocation).isExactlyInstanceOf(StorageLocation.class);
+    Assertions.assertThat(manySlashLeadingLocation).isExactlyInstanceOf(StorageLocation.class);
+    Assertions.assertThat(fileSingleSlashLocation).isExactlyInstanceOf(StorageLocation.class);
+    Assertions.assertThat(fileTooManySlashesLocation).isExactlyInstanceOf(StorageLocation.class);
   }
 
   @Test
