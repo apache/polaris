@@ -1055,7 +1055,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
     Set<String> principal = authenticatedPrincipal.getActivatedPrincipalRoleNames();
 
-    return catalogHandlerUtils.loadView(viewCatalog, viewIdentifier, Set.of("ANALYST"));
+    return catalogHandlerUtils.loadView(viewCatalog, viewIdentifier, principal);
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
@@ -1086,7 +1086,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils.loadView(viewCatalog, viewIdentifier, authenticatedPrincipal.getActivatedPrincipalRoleNames());
+    catalogHandlerUtils.loadView(
+        viewCatalog, viewIdentifier, authenticatedPrincipal.getActivatedPrincipalRoleNames());
   }
 
   public void renameView(RenameTableRequest request) {

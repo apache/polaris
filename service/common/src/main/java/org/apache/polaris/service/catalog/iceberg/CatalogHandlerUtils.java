@@ -27,16 +27,22 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -91,10 +97,11 @@ public class CatalogHandlerUtils {
   private static final String INITIAL_PAGE_TOKEN = "";
 
   // is_principal_role('ANALYST')
-  private static final Pattern IS_PRINCIPAL_ROLE = Pattern.compile(
+  private static final Pattern IS_PRINCIPAL_ROLE =
+      Pattern.compile(
           "is_principal_role\\(\\s*'([^']+)'\\s*\\)",
-          Pattern.CASE_INSENSITIVE                     // drop this flag if you want case-sensitive
-  );
+          Pattern.CASE_INSENSITIVE // drop this flag if you want case-sensitive
+          );
 
   private final PolarisCallContext polarisCallContext;
   private final PolarisConfigurationStore configurationStore;
@@ -521,28 +528,91 @@ public class CatalogHandlerUtils {
     return viewResponse(view, Set.of());
   }
 
+  // NOTE: This is just put together to do a quick POC
+  public static String rewriteIdentityFunctions(String sql, Set<String> authenticatedPrincipals) {
+    Statement statement = null;
+    try {
+      statement = CCJSqlParserUtil.parse(sql);
+    } catch (Exception e) {
+      return sql;
+    }
+
+    class CustomExpressionDeParser extends ExpressionDeParser {
+      private boolean isConverted = false;
+
+      @Override
+      public void visit(Function function) {
+        String name = function.getName().toLowerCase(Locale.ROOT);
+        if (Set.of("is_principal", "is_principal_role", "is_catalog_role").contains(name)) {
+          ExpressionList params = function.getParameters();
+          if (params != null && !params.getExpressions().isEmpty()) {
+            Expression argExpr = params.getExpressions().getFirst();
+            String arg =
+                argExpr instanceof StringValue
+                    ? ((StringValue) argExpr).getValue()
+                    : argExpr.toString();
+
+            boolean result = evaluateFunction(name, arg);
+            getBuffer().append(result ? "TRUE" : "FALSE");
+            isConverted = true;
+          } else {
+            super.visit(function);
+          }
+        } else {
+          super.visit(function);
+        }
+      }
+
+      private boolean evaluateFunction(String functionName, String arg) {
+        return switch (functionName) {
+          case "is_principal", "is_catalog_role", "is_principal_role" ->
+              authenticatedPrincipals.contains(arg);
+          default -> false;
+        };
+      }
+
+      public boolean isConverted() {
+        return isConverted;
+      }
+    }
+
+    StringBuilder buffer = new StringBuilder();
+    CustomExpressionDeParser exprDeParser = new CustomExpressionDeParser();
+
+    SelectDeParser selectDeParser = new SelectDeParser((ExpressionDeParser) exprDeParser, buffer);
+    exprDeParser.setSelectVisitor(selectDeParser);
+    exprDeParser.setBuffer(buffer);
+
+    if (statement instanceof Select select) {
+      select.getSelectBody().accept(selectDeParser);
+    }
+
+    if (exprDeParser.isConverted()) {
+      return buffer.toString();
+    } else {
+      return sql;
+    }
+  }
+
   private LoadViewResponse viewResponse(View view, Set<String> authenticatedPrincipals) {
     ViewMetadata metadata = asBaseView(view).operations().current();
-    // in all the representations, find and replace the is_principal_role('ANALYST')
     ViewVersion version = metadata.currentVersion();
     List<ViewRepresentation> representations = version.representations();
     List<ViewRepresentation> identityResolved = new ArrayList<>(representations.size());
     for (ViewRepresentation viewRepresentation : representations) {
       if (viewRepresentation instanceof SQLViewRepresentation sqlView) {
-          Matcher m = IS_PRINCIPAL_ROLE.matcher(sqlView.sql());
-        StringBuffer sb = new StringBuffer();         // efficient incremental builder
-        while (m.find()) {
-          String groupName = m.group(1);      // captured expected principal name
-          String replacement = authenticatedPrincipals.contains(groupName) ? "TRUE" : "FALSE";
-          m.appendReplacement(sb, replacement);
-        }
-        m.appendTail(sb);
-        identityResolved.add(ImmutableSQLViewRepresentation.builder().sql(sb.toString()).dialect(sqlView.dialect()).build());
+        String modifiedSQL = rewriteIdentityFunctions(sqlView.sql(), authenticatedPrincipals);
+        identityResolved.add(
+            ImmutableSQLViewRepresentation.builder()
+                .sql(modifiedSQL)
+                .dialect(sqlView.dialect())
+                .build());
       } else {
         identityResolved.add(viewRepresentation);
       }
     }
-    ImmutableViewVersion resolvedViewVersion = ImmutableViewVersion.builder().from(version).build().withRepresentations(identityResolved);
+    ImmutableViewVersion resolvedViewVersion =
+        ImmutableViewVersion.builder().from(version).build().withRepresentations(identityResolved);
 
     // This is a temp hack, for quick POC
     Class<?> clazz = metadata.getClass();
@@ -567,7 +637,8 @@ public class CatalogHandlerUtils {
     }
   }
 
-  public LoadViewResponse loadView(ViewCatalog catalog, TableIdentifier viewIdentifier, Set<String> principal) {
+  public LoadViewResponse loadView(
+      ViewCatalog catalog, TableIdentifier viewIdentifier, Set<String> principal) {
     View view = catalog.loadView(viewIdentifier);
     return viewResponse(view, principal);
   }

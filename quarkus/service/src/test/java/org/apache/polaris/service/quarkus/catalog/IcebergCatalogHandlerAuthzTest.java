@@ -1515,24 +1515,31 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testLoadViewSufficientPrivilegesWithDynamicViewResolution() {
-//    doTestSufficientPrivileges(
-//            List.of(
-//                    PolarisPrivilege.VIEW_READ_PROPERTIES,
-//                    PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-//                    PolarisPrivilege.VIEW_FULL_METADATA,
-//                    PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-//            () -> {
-//              LoadViewResponse lv1 =  newWrapper(Set.of("ANALYST")).loadView(VIEW_NS1A_3_DYNAMIC);
-//              Assertions.assertThat(((SQLViewRepresentation) (lv1.metadata().currentVersion().representations().getFirst())).sql()).isEqualTo("select * from ns1.layer1_table where TRUE");
-//            },
-//            null /* cleanupAction */);
+    //    doTestSufficientPrivileges(
+    //            List.of(
+    //                    PolarisPrivilege.VIEW_READ_PROPERTIES,
+    //                    PolarisPrivilege.VIEW_WRITE_PROPERTIES,
+    //                    PolarisPrivilege.VIEW_FULL_METADATA,
+    //                    PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+    //            () -> {
+    //              LoadViewResponse lv1 =
+    // newWrapper(Set.of("ANALYST")).loadView(VIEW_NS1A_3_DYNAMIC);
+    //              Assertions.assertThat(((SQLViewRepresentation)
+    // (lv1.metadata().currentVersion().representations().getFirst())).sql()).isEqualTo("select *
+    // from ns1.layer1_table where TRUE");
+    //            },
+    //            null /* cleanupAction */);
     doTestSufficientPrivileges(
-            List.of(PolarisPrivilege.VIEW_READ_PROPERTIES),
-            () -> {
-              LoadViewResponse lv1 =  newWrapper().loadView(VIEW_NS1A_3_DYNAMIC);
-              Assertions.assertThat(((SQLViewRepresentation) (lv1.metadata().currentVersion().representations().getFirst())).sql()).isEqualTo("select * from ns1.layer1_table where TRUE");
-            },
-            null /* cleanupAction */);
+        List.of(PolarisPrivilege.VIEW_READ_PROPERTIES),
+        () -> {
+          LoadViewResponse lv1 = newWrapper(Set.of(PRINCIPAL_ROLE1)).loadView(VIEW_NS1A_3_DYNAMIC);
+          Assertions.assertThat(
+                  ((SQLViewRepresentation)
+                          (lv1.metadata().versions().getFirst().representations().getFirst()))
+                      .sql())
+              .isEqualTo("SELECT * FROM ns1.layer1_table WHERE TRUE OR IS_MEMBER()");
+        },
+        null /* cleanupAction */);
   }
 
   @Test

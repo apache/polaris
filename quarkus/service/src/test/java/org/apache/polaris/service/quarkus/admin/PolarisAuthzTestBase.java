@@ -174,7 +174,8 @@ public abstract class PolarisAuthzTestBase {
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
-  protected static final String VIEW_QUERY_DYNAMIC = "select * from ns1.layer1_table where is_principal_role('ANALYST')";
+  protected static final String VIEW_QUERY_DYNAMIC =
+      String.format("SELECT * from ns1.layer1_table where is_principal_role('%s') OR IS_MEMBER()", PRINCIPAL_ROLE1);
 
   public static final Schema SCHEMA =
       new Schema(
@@ -363,11 +364,11 @@ public abstract class PolarisAuthzTestBase {
         .withQuery("spark", VIEW_QUERY)
         .create();
     baseCatalog
-            .buildView(VIEW_NS1A_3_DYNAMIC)
-            .withSchema(SCHEMA)
-            .withDefaultNamespace(NS1)
-            .withQuery("spark", VIEW_QUERY_DYNAMIC)
-            .create();
+        .buildView(VIEW_NS1A_3_DYNAMIC)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS1)
+        .withQuery("spark", VIEW_QUERY_DYNAMIC)
+        .create();
     baseCatalog
         .buildView(VIEW_NS1B_1)
         .withSchema(SCHEMA)
