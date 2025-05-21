@@ -212,10 +212,12 @@ components:
         - `format`(REQUIRED): format for the generic table, i.e. "delta", "csv"
         
         - `location`(OPTIONAL): table root location in URI format. For example: s3://<my-bucket>/path/to/table.
-          - the table root location is a location that includes all files for the table.
-          - clients (engines) are responsible to make sure all files are written under the configured location.
-          - a table with multiple root locations (i.e. contain files that are outside the configured root location) is not compliant with the generic table support of Polaris.
-          - no two tables are allowed to be under the same location or have overlapped location, otherwise, a BadRequestErrorResponse will thrown.
+          - The table root location is a location that includes all files for the table.
+          - Clients (engines) are responsible to make sure all files are written under the configured location.
+          - A table with multiple root locations (i.e. containing files that are outside the configured root location) is not compliant with the current generic table support of Polaris.
+          - No two tables can have the same or overlapped location, otherwise, a ForbiddenException will be thrown on creation.
+          - If no location is provided, clients (engines) are responsible to manage the location and location related concerns such as path conflict, credential vending etc.
+          - The location configuration can not be updated once the table is created.
         
         - `properties`(OPTIONAL): properties for the generic table passed on creation
         
