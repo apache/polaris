@@ -95,8 +95,8 @@ services:
       polaris-setup:
         condition: service_completed_successfully
     environment:
-      - CLIENT_ID=${CLIENT_ID}
-      - CLIENT_SECRET=${CLIENT_SECRET}
+      - CLIENT_ID=${USER_CLIENT_ID}
+      - CLIENT_SECRET=${USER_CLIENT_SECRET}
     stdin_open: true
     tty: true
     ports:
