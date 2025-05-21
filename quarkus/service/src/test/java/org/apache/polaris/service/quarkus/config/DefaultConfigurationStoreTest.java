@@ -146,8 +146,7 @@ public class DefaultConfigurationStoreTest {
 
     QuarkusMock.installMockForType(realmTwoContext, RealmContext.class);
     // the value for falseByDefaultKey is `false`, and no realm override for realmTwo
-    boolean realmTwoValue =
-        configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
+    boolean realmTwoValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
     assertThat(realmTwoValue).isFalse();
 
     // Now, realmOne override falseByDefaultKey to `True`
