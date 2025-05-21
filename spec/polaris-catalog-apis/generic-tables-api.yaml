@@ -207,15 +207,19 @@ components:
       description: >
         Generic Table information.
         
-        - `name` name for the generic table
+        - `name`(REQUIRED): name for the generic table
         
-        - `format` format for the generic table, i.e. "delta", "csv"
+        - `format`(REQUIRED): format for the generic table, i.e. "delta", "csv"
         
-        - `properties` properties for the generic table passed on creation
+        - `location`(OPTIONAL): table root location in URI format. For example: s3://<my-bucket>/path/to/table.
+          - the table root location is a location that includes all files for the table.
+          - clients (engines) are responsible to make sure all files are written under the configured location.
+          - a table with multiple root locations (i.e. contain files that are outside the configured root location) is not compliant with the generic table support of Polaris.
+          - no two tables are allowed to be under the same location or have overlapped location, otherwise, a BadRequestErrorResponse will thrown.
         
-        - `doc` comment or description for the generic table
+        - `properties`(OPTIONAL): properties for the generic table passed on creation
         
-        - `location` table root location in URI format. For example: s3://<my-bucket>/path/to/table
+        - `doc`(OPTIONAL): comment or description for the generic table
       required:
         - name
         - format
