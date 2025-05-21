@@ -44,7 +44,9 @@ import org.junit.jupiter.api.TestInfo;
 @QuarkusTest
 @TestProfile(DefaultConfigurationStoreTest.Profile.class)
 public class DefaultConfigurationStoreTest {
+  // the key whose value is set to `false` for all realms
   private static final String falseByDefaultKey = "ALLOW_SPECIFYING_FILE_IO_IMPL";
+  // the key whose value is set to `true` for all realms
   private static final String trueByDefaultKey = "ENABLE_GENERIC_TABLES";
   private static final String realmOne = "realm1";
   private static final String realmTwo = "realm2";
@@ -58,16 +60,16 @@ public class DefaultConfigurationStoreTest {
       return Map.of(
           "polaris.realm-context.realms",
           "realm1,realm2",
-          String.format("polaris.features.\"%s\"", falseByDefaultKey),
-          "true",
           String.format("polaris.features.\"%s\"", trueByDefaultKey),
+          "true",
+          String.format("polaris.features.\"%s\"", falseByDefaultKey),
           "false",
           String.format(
               "polaris.features.realm-overrides.\"%s\".\"%s\"", realmOne, falseByDefaultKey),
-          "false",
+          "true",
           String.format(
               "polaris.features.realm-overrides.\"%s\".\"%s\"", realmTwo, trueByDefaultKey),
-          "true");
+          "false");
     }
   }
 
@@ -104,54 +106,54 @@ public class DefaultConfigurationStoreTest {
             polarisContext, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
 
-    // the falseByDefaultKey is set to true for all realms in Profile.getConfigOverrides
+    // the falseByDefaultKey is set to false for all realms in Profile.getConfigOverrides
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
-        .isTrue();
-    // the trueByDefaultKey is set to false for all realms in Profile.getConfigOverrides
-    assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isFalse();
+    // the trueByDefaultKey is set to true for all realms in Profile.getConfigOverrides
+    assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
+        .isTrue();
   }
 
   @Test
   public void testGetRealmConfiguration() {
     // check the realmOne configuration
     QuarkusMock.installMockForType(realmOneContext, RealmContext.class);
-    // the falseByDefaultKey is set to true for all realms, but overwrite with value false for
+    // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
     // realmOne.
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
-        .isFalse();
-    // the trueByDefaultKey is set to false for all realms, no overwrite for realmOne
+        .isTrue();
+    // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
-        .isFalse();
+        .isTrue();
 
     // check the realmTwo configuration
     QuarkusMock.installMockForType(realmTwoContext, RealmContext.class);
-    // the falseByDefaultKey is set to false for all realms, but overwrite with value true for
-    // realmTwo.
+    // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
-        .isTrue();
-    // the trueByDefaultKey is set to false for all realms, no overwrite for realmTwo
+        .isFalse();
+    // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
+    // realmTwo
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
-        .isTrue();
+        .isFalse();
   }
 
   @Test
   public void testInjectedConfigurationStore() {
-    // Feature override makes this `false`
-    boolean featureOverrideValue =
+    // the default value for trueByDefaultKey is `true`
+    boolean featureDefaultValue =
         configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
-    assertThat(featureOverrideValue).isFalse();
+    assertThat(featureDefaultValue).isTrue();
 
-    // Feature override value makes this `true`
     QuarkusMock.installMockForType(realmTwoContext, RealmContext.class);
-    boolean realmOverrideValue =
+    // the value for falseByDefaultKey is `false`, and no realm override for realmTwo
+    boolean realmTwoValue =
         configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
-    assertThat(realmOverrideValue).isTrue();
+    assertThat(realmTwoValue).isFalse();
 
-    // Now, realm override value makes this `false`
+    // Now, realmOne override falseByDefaultKey to `True`
     QuarkusMock.installMockForType(realmOneContext, RealmContext.class);
-    realmOverrideValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
-    assertThat(realmOverrideValue).isFalse();
+    boolean realmOneValue = configurationStore.getConfiguration(polarisContext, falseByDefaultKey);
+    assertThat(realmOneValue).isTrue();
 
     assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
   }
