@@ -456,6 +456,8 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    System.out.println("[DEBUG] WE ARE IN DROP TABLE " + tableIdentifier);
+    System.out.println("[DEBUG] PURGE_REQUESTED = " + purgeRequested);
     return withCatalog(
         securityContext,
         prefix,
