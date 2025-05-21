@@ -72,7 +72,12 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.apache.polaris.service.types.*;
+import org.apache.polaris.service.types.ApplicablePolicy;
+import org.apache.polaris.service.types.AttachPolicyRequest;
+import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.Policy;
+import org.apache.polaris.service.types.PolicyAttachmentTarget;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -384,6 +389,7 @@ public class PolarisPolicyServiceIntegrationTest {
             AttachPolicyRequest.builder()
                     .setTarget(namespaceTarget)
                     .setParameters(Map.of())
+                    .build();
                     .build();
     AttachPolicyRequest tableAttachRequest =
             AttachPolicyRequest.builder()
