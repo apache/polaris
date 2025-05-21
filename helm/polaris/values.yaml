@@ -507,13 +507,12 @@ realmContext:
 features:
   # -- Features to enable or disable globally. If a feature is not present in the map, the default
   # built-in value is used.
-  defaults: {}
-    # ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
-    # SUPPORTED_CATALOG_STORAGE_TYPES:
-    #   - S3
-    #   - GCS
-    #   - AZURE
-    #   - FILE
+  # ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
+  # SUPPORTED_CATALOG_STORAGE_TYPES:
+  #   - S3
+  #   - GCS
+  #   - AZURE
+  #   - FILE
   # -- Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of
   # feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used.
   realmOverrides: {}
