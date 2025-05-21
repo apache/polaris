@@ -124,6 +124,8 @@ public abstract class PolarisAuthzTestBase {
           "polaris.features.\"ENABLE_GENERIC_TABLES\"",
           "true",
           "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+          "true",
+          "polaris.features.\"DROP_WITH_PURGE_ENABLED\"",
           "true");
     }
   }

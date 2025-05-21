@@ -128,7 +128,9 @@ public class FileIOFactoryTest {
                     "ALLOW_INSECURE_STORAGE_TYPES",
                     true,
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
-                    List.of("FILE", "S3")))
+                    List.of("FILE", "S3"),
+                    "DROP_WITH_PURGE_ENABLED",
+                    true))
             .realmContext(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)

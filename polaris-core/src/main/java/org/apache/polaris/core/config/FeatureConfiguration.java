@@ -184,7 +184,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfigUnsafe("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
-          .defaultValue(true)
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
