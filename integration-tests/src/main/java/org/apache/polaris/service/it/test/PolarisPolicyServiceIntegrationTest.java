@@ -358,7 +358,9 @@ public class PolarisPolicyServiceIntegrationTest {
                 Map.of("cat", currentCatalogName, "ns", nsEncoded))
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
-      Assertions.assertThat(res.readEntity(String.class)).contains("Namespace does not exist");
+      Assertions.assertThat(res.readEntity(String.class))
+              .contains(
+                      "{\"error\":{\"message\":\"Invalid value: createPolicy.arg2.name: must match \\\"^[A-Za-z0-9\\\\-_]+$\\\"\",\"type\":\"ResteasyReactiveViolationException\",\"code\":400}}"po);
     }
   }
 
@@ -390,7 +392,6 @@ public class PolarisPolicyServiceIntegrationTest {
                     .setTarget(namespaceTarget)
                     .setParameters(Map.of())
                     .build();
-                    .build();
     AttachPolicyRequest tableAttachRequest =
             AttachPolicyRequest.builder()
                     .setTarget(tableTarget)
@@ -399,20 +400,12 @@ public class PolarisPolicyServiceIntegrationTest {
 
     String ns2 = RESTUtil.encodeNamespace(NS2_P1.getNamespace());
 
-    try (Response res =
-                 policyApi
-                         .request(
-                                 "polaris/v1/{cat}/namespaces/{ns}/policies",
-                                 Map.of("cat", currentCatalogName, "ns", ns2))
-                         .post(Entity.json(catalogAttachRequest))) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
-    }
+    Response res = policyApi.request("polaris/v1/{cat}", Map.of("cat", currentCatalogName))
+                            .post(Entity.json(catalogAttachRequest));
+    Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
 
-    try (Response res =
-                 policyApi
-                         .request(
-                                 "polaris/v1/{cat}/namespaces/{ns}/policies",
-                                 Map.of("cat", currentCatalogName, "ns", ns2))
+    res = policyApi.request("polaris/v1/{cat}/namespaces/{ns}/policies",
+                            Map.of("cat", currentCatalogName, "ns", ns2))
                          .post(Entity.json(catalogAttachRequest))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
