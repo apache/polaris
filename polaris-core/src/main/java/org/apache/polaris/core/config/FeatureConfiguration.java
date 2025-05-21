@@ -156,8 +156,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
+                  StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
@@ -268,5 +267,24 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.iceberg-commit-max-retries")
           .description("The max number of times to try committing to an Iceberg table")
           .defaultValue(4)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_SPECIFYING_FILE_IO_IMPL =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_SPECIFYING_FILE_IO_IMPL")
+          .description(
+              "Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. "
+                  + "Must only be enabled in dev/test environments, should not be in production systems.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_INSECURE_STORAGE_TYPES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_INSECURE_STORAGE_TYPES")
+          .description(
+              "Allow usage of FileIO implementations that are considered insecure. "
+                  + "Enabling this setting may expose the service to possibly severe security risks!"
+                  + "This should only be set to 'true' for tests!")
+          .defaultValue(false)
           .buildFeatureConfiguration();
 }

@@ -27,6 +27,7 @@ import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
@@ -60,7 +61,15 @@ public class FileIOExceptionsTest {
 
   @BeforeAll
   public static void beforeAll() {
-    services = TestServices.builder().build();
+    services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3")))
+            .build();
     ioFactory = (MeasuredFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
