@@ -24,17 +24,13 @@
 # This workflow will build a Python project with Poetry and cache/restore any dependencies to improve the workflow execution time
 # For more information see: https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-python
 
-name: Python CI with Poetry
+name: Python Client CI
 
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'client/python/**'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'client/python/**'
 
 jobs:
   build:
@@ -53,24 +49,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache Poetry
-        id: cache-poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('client/python/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
       - name: Install Poetry
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
         run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.8.5
-          export PATH="$HOME/.local/bin:$PATH"
+          pip install --user --upgrade -r regtests/requirements.txt
 
+      # TODO: add cache for poetry dependencies once we have poetry.lock in the repo
       - name: Install dependencies
         working-directory: client/python
-        run: poetry install
+        run: poetry install --all-extras
 
       - name: Lint with flake8
         working-directory: client/python
