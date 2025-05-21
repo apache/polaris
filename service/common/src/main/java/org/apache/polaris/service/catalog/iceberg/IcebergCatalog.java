@@ -91,7 +91,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -170,14 +169,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final SecurityContext securityContext;
   private final PolarisEventListener polarisEventListener;
 
-  private String ioImplClassName;
-  private FileIO catalogFileIO;
+  protected String ioImplClassName;
+  protected FileIO catalogFileIO;
+  protected CloseableGroup closeableGroup;
+  protected Map<String, String> tableDefaultProperties;
+
   private final String catalogName;
   private long catalogId = -1;
   private String defaultBaseLocation;
-  private CloseableGroup closeableGroup;
   private Map<String, String> catalogProperties;
-  private Map<String, String> tableDefaultProperties;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
@@ -263,16 +263,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
 
-    if (initializeDefaultCatalogFileioForTest()) {
-      LOGGER.debug(
-          "Initializing a default catalogFileIO with properties {}", tableDefaultProperties);
-      this.catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
-      closeableGroup.addCloseable(this.catalogFileIO);
-    } else {
-      LOGGER.debug("Not initializing default catalogFileIO");
-      this.catalogFileIO = null;
-    }
-
     callContext.closeables().addCloseable(this);
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
@@ -280,16 +270,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
-
-    if (initializeDefaultCatalogFileioForTest()) {
-      LOGGER.debug(
-          "Initializing a default catalogFileIO with properties {}", tableDefaultProperties);
-      this.catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
-      closeableGroup.addCloseable(this.catalogFileIO);
-    } else {
-      LOGGER.debug("Not initializing default catalogFileIO");
-      this.catalogFileIO = null;
-    }
   }
 
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
@@ -359,8 +339,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @VisibleForTesting
   public TableOperations newTableOps(
       TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
-    return new BasePolarisTableOperations(
-        catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
+    return new BasePolarisTableOperations(getIo(), tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
@@ -862,9 +841,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace, pageToken);
   }
 
+  @VisibleForTesting
   @Override
   protected ViewOperations newViewOps(TableIdentifier identifier) {
-    return new BasePolarisViewOperations(catalogFileIO, identifier);
+    return new BasePolarisViewOperations(getIo(), identifier);
   }
 
   @Override
@@ -2514,7 +2494,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * @param properties used to initialize the FileIO implementation
    * @return FileIO object
    */
-  private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+  protected FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(catalogEntity);
     TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
     Set<String> locations = Set.of(catalogEntity.getDefaultBaseLocation());
@@ -2545,12 +2525,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
   }
 
-  private boolean initializeDefaultCatalogFileioForTest() {
-    var ctx = callContext.getPolarisCallContext();
-    return ctx.getConfigurationStore()
-        .getConfiguration(ctx, INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST);
-  }
-
   private int getMaxMetadataRefreshRetries() {
     var ctx = callContext.getPolarisCallContext();
     return ctx.getConfigurationStore()
@@ -2574,11 +2548,4 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return PageToken.build(tokenString, pageSize);
     }
   }
-
-  static final FeatureConfiguration<Boolean> INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
-      PolarisConfiguration.<Boolean>builder()
-          .key("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST")
-          .defaultValue(false)
-          .description("")
-          .buildFeatureConfiguration();
 }
