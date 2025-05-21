@@ -24,10 +24,10 @@ weight: 200
 
 Polaris can be deployed via a docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant prerequisites detailed in the previous page.
 
-## Docker Image
+## Common Setup
+Before running Polaris, ensure you have completed the following setup steps:
 
-To start using Polaris in Docker, build and launch Polaris, which is packaged with a Postgres instance, Apache Spark, and Trino. 
-
+1. **Build Polaris**
 ```shell
 cd ~/polaris
 ./gradlew \
@@ -36,9 +36,37 @@ cd ~/polaris
   :polaris-quarkus-admin:assemble --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
-export ASSETS_PATH=$(pwd)/getting-started/assets/
-docker compose --env-file getting-started/assets/getting-started.env -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
 ```
+- **For standalone**: Omit the `-Dquarkus.container-image.tag` and `-Dquarkus.container-image.build` options if you do not need to build a Docker image.
+
+2. **Set the Assets Path**
+```shell
+export ASSETS_PATH=$(pwd)/getting-started/assets/
+```
+
+3. **Set Authentication Credentials**
+
+Polaris supports multiple authentication methods, including the use of `CLIENT_ID` and `CLIENT_SECRET` environment variables. If you choose to use these credentials, you can set them as follows:
+
+```shell
+export CLIENT_ID=root
+export CLIENT_SECRET=s3cr3t
+```
+- **For Docker**: These variables are configured in the `getting-started.env` file. To use custom values, export them as shown above and remove the `--env-file` option from the `docker compose` command.
+- **For Standalone**: These variables are used for interacting with the Polaris CLI or other tools.
+
+## Running Polaris with Docker
+
+To start using Polaris in Docker and launch Polaris, which is packaged with a Postgres instance, Apache Spark, and Trino. 
+
+```shell
+docker compose -p polaris --env-file getting-started/assets/getting-started.env \
+  -f getting-started/assets/postgres/docker-compose-postgres.yml \
+  -f getting-started/eclipselink/docker-compose-bootstrap-db.yml \
+  -f getting-started/eclipselink/docker-compose.yml up
+```
+
+By default, this command uses the `getting-started.env` file to configure environment variables, including `CLIENT_ID` and `CLIENT_SECRET`. If you want to use custom authentication credentials, refer to the [Common Setup](#common-setup) section.
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:
 
@@ -49,24 +77,17 @@ spark-sql-1          | 25/04/04 05:39:38 WARN SparkSQLCLIDriver: WARNING: Direct
 spark-sql-1          | 25/04/04 05:39:39 WARN RESTSessionCatalog: Iceberg REST client is missing the OAuth2 server URI configuration and defaults to http://polaris:8181/api/catalogv1/oauth/tokens. This automatic fallback will be removed in a future Iceberg release.It is recommended to configure the OAuth2 endpoint using the 'oauth2-server-uri' property to be prepared. This warning will disappear if the OAuth2 endpoint is explicitly configured. See https://github.com/apache/iceberg/issues/10537
 ```
 
-Finally, set the following static credentials for interacting with the Polaris server in the following exercises:
-
-```shell
-export CLIENT_ID=root
-export CLIENT_SECRET=s3cr3t
-```
-
 The Docker image pre-configures a sample catalog called `quickstart_catalog` that uses a local file system.
 
 ## Running Polaris as a Standalone Process
 
 You can also start Polaris through Gradle (packaged within the Polaris repository):
 
+1. **Start the Server**  
+
+Run the following command to start Polaris:
+
 ```shell
-cd ~/polaris
-# Build the server
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-server:quarkusAppPartsBuild --rerun
-# Start the server
 ./gradlew run
 ```
 
@@ -84,11 +105,6 @@ When using a Gradle-launched Polaris instance in this tutorial, we'll launch an 
 For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
 When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `secret` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
-You can also set these credentials as environment variables for use with the Polaris CLI:
-```shell
-export CLIENT_ID=root
-export CLIENT_SECRET=secret
-```
 
 ### Installing Apache Spark and Trino Locally for Testing
 

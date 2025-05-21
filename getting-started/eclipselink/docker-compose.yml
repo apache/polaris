@@ -82,7 +82,7 @@ services:
       --conf, "spark.sql.catalog.quickstart_catalog.type=rest",
       --conf, "spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog",
       --conf, "spark.sql.catalog.quickstart_catalog.uri=http://polaris:8181/api/catalog",
-      --conf, "spark.sql.catalog.quickstart_catalog.credential=${CLIENT_ID}:${CLIENT_SECRET}",
+      --conf, "spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET}",
       --conf, "spark.sql.catalog.quickstart_catalog.scope=PRINCIPAL_ROLE:ALL",
       --conf, "spark.sql.defaultCatalog=quickstart_catalog",
       --conf, "spark.sql.catalogImplementation=in-memory",

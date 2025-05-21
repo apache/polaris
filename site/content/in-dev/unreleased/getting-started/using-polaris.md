@@ -21,12 +21,16 @@ Title: Using Polaris
 type: docs
 weight: 400
 ---
+
 ## Setup
+
 Define your `CLIENT_ID` & `CLIENT_SECRET` and export them for future use.
+
 ```shell
 export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
+
 ## Defining a Catalog
 
 In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
@@ -167,7 +171,6 @@ bin/spark-sql \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
-
 Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
 Finally, note that we include the `iceberg-aws-bundle` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
@@ -176,6 +179,7 @@ Finally, note that we include the `iceberg-aws-bundle` package here. If your tab
 
 Refresh the Docker container with the user's credentials:
 ```shell
+docker compose -f getting-started/eclipselink/docker-compose.yml down spark-sql
 docker compose -f getting-started/eclipselink/docker-compose.yml up -d
 ```
 
