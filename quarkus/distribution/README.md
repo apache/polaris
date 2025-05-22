@@ -30,11 +30,11 @@ polaris-quarkus-distribution-@version@/
 ├── LICENSE
 ├── NOTICE
 ├── README.md
+├── admin/           # Admin tool files
 ├── bin/             # Executable scripts
 │   ├── admin
 │   └── server
 └── server/          # Server files
-├── admin/           # Admin tool files
 ```
 
 ## Usage

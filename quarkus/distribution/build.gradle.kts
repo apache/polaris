@@ -68,12 +68,12 @@ distributions {
 
             // Copy scripts to bin directory
             into("bin") {
-                from("scripts/server")
-                from("scripts/admin")
+                from("bin/server")
+                from("bin/admin")
             }
 
-            from("distribution/README.md")
-            from("../../DISCLAIMER")
+            from("README.md")
+            from("DISCLAIMER")
 
             // TODO: combine the LICENSE and NOTICE in a follow-up PR
             from(adminDocs)
