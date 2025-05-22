@@ -21,9 +21,6 @@ package org.apache.polaris.service.auth;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,28 +56,26 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   private JWTRSAKeyPair createTokenBroker(RealmContext realmContext) {
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
-    RSAKeyPairConfiguration keyPairConfiguration =
-        config.tokenBroker().rsaKeyPair().orElseGet(this::generateKeyPair);
+    KeyProvider keyProvider =
+        config
+            .tokenBroker()
+            .rsaKeyPair()
+            .map(this::fileSystemKeyPair)
+            .orElseGet(this::generateEphemeralKeyPair);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    return new JWTRSAKeyPair(
-        metaStoreManager,
-        (int) maxTokenGeneration.toSeconds(),
-        keyPairConfiguration.publicKeyFile(),
-        keyPairConfiguration.privateKeyFile());
+    return new JWTRSAKeyPair(metaStoreManager, (int) maxTokenGeneration.toSeconds(), keyProvider);
   }
 
-  private RSAKeyPairConfiguration generateKeyPair() {
+  private KeyProvider fileSystemKeyPair(RSAKeyPairConfiguration config) {
+    return LocalRSAKeyProvider.fromFiles(config.publicKeyFile(), config.privateKeyFile());
+  }
+
+  private KeyProvider generateEphemeralKeyPair() {
     try {
-      Path privateFileLocation = Files.createTempFile("polaris-private", ".pem");
-      Path publicFileLocation = Files.createTempFile("polaris-public", ".pem");
-      PemUtils.generateKeyPair(privateFileLocation, publicFileLocation);
-      return new GeneratedKeyPair(privateFileLocation, publicFileLocation);
-    } catch (IOException | NoSuchAlgorithmException e) {
+      return new LocalRSAKeyProvider(PemUtils.generateKeyPair());
+    } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
   }
-
-  private record GeneratedKeyPair(Path privateKeyFile, Path publicKeyFile)
-      implements RSAKeyPairConfiguration {}
 }
