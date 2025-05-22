@@ -1288,8 +1288,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         LOGGER.info("Nothing to commit.");
         return;
       } else if (base != null
-            && metadata != null
-            && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+          && metadata != null
+          && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
         // if the metadata is not changed, return early
         LOGGER.info("Nothing to commit.");
         return;

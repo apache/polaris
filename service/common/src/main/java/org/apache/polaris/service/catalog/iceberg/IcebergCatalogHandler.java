@@ -1123,7 +1123,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       return metadata;
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
       Set<Long> referencedSnapshotIds =
-          metadata.refs().values().stream().map(SnapshotRef::snapshotId).collect(Collectors.toSet());
+          metadata.refs().values().stream()
+              .map(SnapshotRef::snapshotId)
+              .collect(Collectors.toSet());
       return metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
     } else {
       throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
