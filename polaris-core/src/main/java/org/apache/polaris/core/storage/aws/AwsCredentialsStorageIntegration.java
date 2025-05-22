@@ -170,8 +170,6 @@ public class AwsCredentialsStorageIntegration
                     .addAction("kms:DescribeKey")
                     .addResource("*")
                     .addCondition(IamConditionOperator.STRING_EQUALS,"aws:PrincipalArn",roleArn)
-                    .addCondition(IamConditionOperator.STRING_LIKE,"aws:s3:arn","")
-                    .addCondition(IamConditionOperator.STRING_EQUALS,"kms:ViaService","")
                     .build());
     return policyBuilder.build();
   }
