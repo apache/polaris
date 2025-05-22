@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
-public abstract class PolarisRestCatalogViewFileIntegrationTest
+public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   static String baseLocation;
 
