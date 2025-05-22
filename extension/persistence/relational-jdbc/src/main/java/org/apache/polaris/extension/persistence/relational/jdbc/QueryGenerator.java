@@ -65,19 +65,19 @@ public class QueryGenerator {
 
   public static String generateDeleteQueryForEntityPolicyMappingRecords(
       @Nonnull PolarisBaseEntity entity, @Nonnull String realmId) {
-    Map<String, Object> objMap = new HashMap<>();
+    Map<String, Object> queryParams = new HashMap<>();
     if (entity.getType() == PolarisEntityType.POLICY) {
       PolicyEntity policyEntity = PolicyEntity.of(entity);
-      objMap.put("policy_type_code", policyEntity.getPolicyTypeCode());
-      objMap.put("policy_catalog_id", policyEntity.getCatalogId());
-      objMap.put("policy_id", policyEntity.getId());
+      queryParams.put("policy_type_code", policyEntity.getPolicyTypeCode());
+      queryParams.put("policy_catalog_id", policyEntity.getCatalogId());
+      queryParams.put("policy_id", policyEntity.getId());
     } else {
-      objMap.put("target_catalog_id", entity.getCatalogId());
-      objMap.put("target_id", entity.getId());
+      queryParams.put("target_catalog_id", entity.getCatalogId());
+      queryParams.put("target_id", entity.getId());
     }
-    objMap.put("realm_id", realmId);
+    queryParams.put("realm_id", realmId);
 
-    return generateDeleteQuery(ModelPolicyMappingRecord.class, objMap);
+    return generateDeleteQuery(ModelPolicyMappingRecord.class, queryParams);
   }
 
   public static String generateSelectQueryWithEntityIds(
