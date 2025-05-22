@@ -359,6 +359,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.CATALOG_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
@@ -405,6 +406,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
@@ -453,6 +455,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_1, attachPolicyRequest),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_1, detachPolicyRequest));
@@ -507,6 +510,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.CATALOG_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
         () ->
@@ -589,6 +593,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
         () ->
@@ -674,6 +679,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivilegeSets(
         List.of(
             Set.of(PolarisPrivilege.POLICY_DETACH, PolarisPrivilege.TABLE_DETACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).detachPolicy(POLICY_NS1_1, detachPolicyRequest),
         () ->
