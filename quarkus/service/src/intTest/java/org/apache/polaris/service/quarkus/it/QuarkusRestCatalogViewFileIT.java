@@ -22,12 +22,12 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
-public class QuarkusRestCatalogViewFileIT extends PolarisRestCatalogViewFileIntegrationTest {
+public class QuarkusRestCatalogViewFileIT extends PolarisRestCatalogViewFileIntegrationTestBase {
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {

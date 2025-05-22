@@ -25,14 +25,14 @@ import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Map;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestProfile(QuarkusRestCatalogViewFileIntegrationTest.Profile.class)
 public class QuarkusRestCatalogViewFileIntegrationTest
-    extends PolarisRestCatalogViewFileIntegrationTest {
+    extends PolarisRestCatalogViewFileIntegrationTestBase {
 
   public static class Profile implements QuarkusTestProfile {
 

@@ -26,7 +26,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -47,6 +46,7 @@ import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
 import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 @QuarkusTest
@@ -55,9 +55,9 @@ public class JWTRSAKeyPairTest {
   @Inject protected PolarisConfigurationStore configurationStore;
 
   @Test
-  public void testSuccessfulTokenGeneration() throws Exception {
-    Path privateFileLocation = Files.createTempFile("test-private", ".pem");
-    Path publicFileLocation = Files.createTempFile("test-public", ".pem");
+  public void testSuccessfulTokenGeneration(@TempDir Path tempDir) throws Exception {
+    Path privateFileLocation = tempDir.resolve("test-private.pem");
+    Path publicFileLocation = tempDir.resolve("test-public.pem");
     PemUtils.generateKeyPair(privateFileLocation, publicFileLocation);
 
     final String clientId = "test-client-id";
