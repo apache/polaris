@@ -19,7 +19,6 @@
 
 import io.quarkus.gradle.tasks.QuarkusBuild
 import io.quarkus.gradle.tasks.QuarkusRun
-import publishing.GenerateDigest
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -27,17 +26,10 @@ plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-quarkus")
   // id("polaris-license-report")
-  id("distribution")
 }
 
 val quarkusRunner by
   configurations.creating { description = "Used to reference the generated runner-jar" }
-
-val distributionZip by
-  configurations.creating { description = "Used to reference the distribution zip" }
-
-val distributionTar by
-  configurations.creating { description = "Used to reference the distribution tarball" }
 
 // Configuration to expose distribution artifacts
 val distributionElements by
@@ -87,51 +79,7 @@ tasks.named<QuarkusRun>("quarkusRun") {
     listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret", "-Dquarkus.console.color=true")
 }
 
-distributions {
-  main {
-    contents {
-      from(project.layout.buildDirectory.dir("quarkus-app"))
-      from("distribution/NOTICE")
-      from("distribution/LICENSE")
-      from("distribution/DISCLAIMER")
-    }
-  }
-}
-
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
-
-val distTar =
-  tasks.named<Tar>("distTar") {
-    dependsOn(quarkusBuild)
-    compression = Compression.GZIP
-  }
-
-val distZip = tasks.named<Zip>("distZip") { dependsOn(quarkusBuild) }
-
-val digestDistTar =
-  tasks.register<GenerateDigest>("digestDistTar") {
-    description = "Generate the distribution tar digest"
-    mustRunAfter(distTar)
-    file.set { distTar.get().archiveFile.get().asFile }
-  }
-
-val digestDistZip =
-  tasks.register<GenerateDigest>("digestDistZip") {
-    description = "Generate the distribution zip digest"
-    mustRunAfter(distZip)
-    file.set { distZip.get().archiveFile.get().asFile }
-  }
-
-distTar.configure { finalizedBy(digestDistTar) }
-
-distZip.configure { finalizedBy(digestDistZip) }
-
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-  signing {
-    sign(distTar.get())
-    sign(distZip.get())
-  }
-}
 
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
@@ -139,20 +87,5 @@ artifacts {
   add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add(distributionTar.name, provider { distTar.get().archiveFile }) { builtBy(distTar) }
-  add(distributionTar.name, provider { digestDistTar.get().outputFile }) { builtBy(digestDistTar) }
-  add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
-  add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-}
-
-afterEvaluate {
-  publishing {
-    publications {
-      named<MavenPublication>("maven") {
-        artifact(distTar.get().archiveFile) { builtBy(distTar) }
-        artifact(distZip.get().archiveFile) { builtBy(distZip) }
-      }
-    }
-  }
 }
