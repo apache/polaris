@@ -56,6 +56,7 @@ github:
           - markdown-link-check
           - build
           - regtest
+          - spark-plugin-regtest
           - site
           - "Helm tests"
 
