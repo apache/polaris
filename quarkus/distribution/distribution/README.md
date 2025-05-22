@@ -30,27 +30,29 @@ polaris-quarkus-distribution-@version@/
 ├── LICENSE
 ├── NOTICE
 ├── README.md
+├── bin/             # Executable scripts
+│   ├── admin
+│   └── server
+└── server/          # Server files
 ├── admin/           # Admin tool files
-├── server/          # Server files
-└── run.sh
 ```
 
 ## Usage
 
-The `run.sh` script can launch either the server or admin tool:
+The distribution includes separate scripts for running the server and admin tool:
 
 ### Start the Server
 
 ```bash
-./run.sh server     # or just ./run.sh (server is default)
+./bin/server
 ```
 
 ### Use the Admin Tool
 
 ```bash
-./run.sh admin --help              # Show admin commands
-./run.sh admin bootstrap -h        # Show bootstrap help
-./run.sh admin purge -h           # Show purge help
+./bin/admin --help              # Show admin commands
+./bin/admin bootstrap -h        # Show bootstrap help
+./bin/admin purge -h            # Show purge help
 ```
 
 ### Configuration
@@ -59,10 +61,10 @@ Both components can be configured using environment variables or system properti
 
 ```bash
 # Configure server port
-JAVA_OPTS="-Dquarkus.http.port=8080" ./run.sh server
+JAVA_OPTS="-Dquarkus.http.port=8080" ./bin/server
 
 # Configure admin tool
-JAVA_OPTS="-Dpolaris.persistence.type=relational-jdbc" ./run.sh admin
+JAVA_OPTS="-Dpolaris.persistence.type=relational-jdbc" ./bin/admin
 ```
 
 For more details on configuration, please refer to the Polaris documentation:

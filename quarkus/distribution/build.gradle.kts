@@ -66,7 +66,12 @@ distributions {
                 from(serverDistribution)
             }
 
-            from("scripts/run.sh")
+            // Copy scripts to bin directory
+            into("bin") {
+                from("scripts/server")
+                from("scripts/admin")
+            }
+
             from("distribution/README.md")
             from("../../DISCLAIMER")
 

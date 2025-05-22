@@ -18,23 +18,5 @@
 # under the License.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}"
-
-# Default to server if no component specified
-COMPONENT=${1:-server}
-
-if [ "$COMPONENT" != "server" ] && [ "$COMPONENT" != "admin" ]; then
-    echo "Usage: $0 [server|admin] [additional arguments...]"
-    exit 1
-fi
-
-# Shift off the first argument so $@ contains remaining args
-shift
-
-if [ "$COMPONENT" = "server" ]; then
-    cd server
-    java -jar quarkus-run.jar "$@"
-else
-    cd admin
-    java -jar quarkus-run.jar "$@"
-fi 
+cd "${SCRIPT_DIR}/../server" || exit
+java -jar quarkus-run.jar "$@"
