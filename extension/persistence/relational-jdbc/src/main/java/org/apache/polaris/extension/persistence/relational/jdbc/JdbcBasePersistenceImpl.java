@@ -780,7 +780,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteAllEntityPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     try {
@@ -855,9 +855,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Nonnull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
     Map<String, Object> params =
-        Map.of("policy_catalog_id", policyCatalogId, "policy_id", policyId, "realm_id", realmId);
+        Map.of(
+            "policy_type_code",
+            policyTypeCode,
+            "policy_catalog_id",
+            policyCatalogId,
+            "policy_id",
+            policyId,
+            "realm_id",
+            realmId);
     String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
