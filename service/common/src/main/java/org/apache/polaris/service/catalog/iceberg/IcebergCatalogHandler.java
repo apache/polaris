@@ -1119,26 +1119,26 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   private @Nonnull TableMetadata filterMetadataToSnapshots(
       TableMetadata metadata, String snapshots) {
-    Set<Long> referencedSnapshotIds =
-        metadata.refs().values().stream().map(SnapshotRef::snapshotId).collect(Collectors.toSet());
-    return metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return metadata;
+    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+      Set<Long> referencedSnapshotIds =
+          metadata.refs().values().stream().map(SnapshotRef::snapshotId).collect(Collectors.toSet());
+      return metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+    } else {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
   }
 
   private @Nonnull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
-    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
-      return loadTableResponse;
-    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
-      TableMetadata filteredMetadata =
-          filterMetadataToSnapshots(loadTableResponse.tableMetadata(), snapshots);
-      return LoadTableResponse.builder()
-          .withTableMetadata(filteredMetadata)
-          .addAllConfig(loadTableResponse.config())
-          .addAllCredentials(loadTableResponse.credentials())
-          .build();
-    } else {
-      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
-    }
+    TableMetadata filteredMetadata =
+        filterMetadataToSnapshots(loadTableResponse.tableMetadata(), snapshots);
+    return LoadTableResponse.builder()
+        .withTableMetadata(filteredMetadata)
+        .addAllConfig(loadTableResponse.config())
+        .addAllCredentials(loadTableResponse.credentials())
+        .build();
   }
 
   @Override
