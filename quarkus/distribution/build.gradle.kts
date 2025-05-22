@@ -30,18 +30,40 @@ description = "Apache Polaris Binary Distribution"
 val adminProject = project(":polaris-quarkus-admin")
 val serverProject = project(":polaris-quarkus-server")
 
+// Configurations to resolve artifacts from other projects
+val adminDistribution by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val serverDistribution by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val adminDocs by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    adminDistribution(project(":polaris-quarkus-admin", "distributionElements"))
+    serverDistribution(project(":polaris-quarkus-server", "distributionElements"))
+    adminDocs(project(":polaris-quarkus-admin", "distributionDocs"))
+}
+
 distributions {
     main {
         distributionBaseName.set("polaris-bin")
         contents {
             // Copy admin distribution contents
             into("admin") {
-                from(adminProject.layout.buildDirectory.dir("quarkus-app"))
+                from(adminDistribution)
             }
 
             // Copy server distribution contents
             into("server") {
-                from(serverProject.layout.buildDirectory.dir("quarkus-app"))
+                from(serverDistribution)
             }
 
             from("scripts/run.sh")
@@ -49,19 +71,16 @@ distributions {
             from("../../DISCLAIMER")
 
             // TODO: combine the LICENSE and NOTICE in a follow-up PR
-            from("${adminProject.projectDir}/distribution/NOTICE")
-            from("${adminProject.projectDir}/distribution/LICENSE")
+            from(adminDocs)
         }
     }
 }
 
 val distTar = tasks.named<Tar>("distTar") {
-    dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
     compression = Compression.GZIP
 }
 
 val distZip = tasks.named<Zip>("distZip") {
-    dependsOn(":polaris-quarkus-admin:quarkusBuild", ":polaris-quarkus-server:quarkusBuild")
 }
 
 val digestDistTar =

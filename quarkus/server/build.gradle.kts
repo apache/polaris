@@ -39,6 +39,13 @@ val distributionZip by
 val distributionTar by
   configurations.creating { description = "Used to reference the distribution tarball" }
 
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-service"))
@@ -136,6 +143,7 @@ artifacts {
   add(distributionTar.name, provider { digestDistTar.get().outputFile }) { builtBy(digestDistTar) }
   add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
   add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
+  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
 
 afterEvaluate {

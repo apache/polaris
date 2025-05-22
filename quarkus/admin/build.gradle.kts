@@ -141,6 +141,31 @@ artifacts {
   add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
 }
 
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
+// Register the quarkus app directory as an artifact
+artifacts {
+  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
+}
+
+// Configuration to expose LICENSE and NOTICE files
+val distributionDocs by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
+// Add LICENSE and NOTICE as artifacts
+artifacts {
+  add("distributionDocs", file("distribution/LICENSE"))
+  add("distributionDocs", file("distribution/NOTICE"))
+}
+
 afterEvaluate {
   publishing {
     publications {
