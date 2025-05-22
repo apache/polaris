@@ -169,10 +169,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final SecurityContext securityContext;
   private final PolarisEventListener polarisEventListener;
 
-  protected String ioImplClassName;
-  protected FileIO catalogFileIO;
-  protected CloseableGroup closeableGroup;
-  protected Map<String, String> tableDefaultProperties;
+  private String ioImplClassName;
+  private FileIO catalogFileIO;
+  private CloseableGroup closeableGroup;
+  private Map<String, String> tableDefaultProperties;
 
   private final String catalogName;
   private long catalogId = -1;
@@ -218,8 +218,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  public FileIO getIo() {
-    return catalogFileIO;
+  public void setCatalogFileIo(FileIO fileIO) {
+    catalogFileIO = fileIO;
   }
 
   @Override
@@ -339,7 +339,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @VisibleForTesting
   public TableOperations newTableOps(
       TableIdentifier tableIdentifier, boolean makeMetadataCurrentOnCommit) {
-    return new BasePolarisTableOperations(getIo(), tableIdentifier, makeMetadataCurrentOnCommit);
+    return new BasePolarisTableOperations(
+        catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
   @Override
@@ -844,7 +845,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @VisibleForTesting
   @Override
   protected ViewOperations newViewOps(TableIdentifier identifier) {
-    return new BasePolarisViewOperations(getIo(), identifier);
+    return new BasePolarisViewOperations(catalogFileIO, identifier);
   }
 
   @Override
