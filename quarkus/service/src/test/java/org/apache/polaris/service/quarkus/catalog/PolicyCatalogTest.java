@@ -389,12 +389,12 @@ public class PolicyCatalogTest {
   public void testCreatePolicyUnderNonExistentNamespace() {
     assertThatThrownBy(
             () ->
-                    policyCatalog.createPolicy(
-                            POLICY1,
-                            PredefinedPolicyTypes.DATA_COMPACTION.getName(),
-                            "test",
-                            "{\"enable\": false}"))
-            .isInstanceOf(IllegalStateException.class);
+                policyCatalog.createPolicy(
+                    POLICY1,
+                    PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+                    "test",
+                    "{\"enable\": false}"))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -577,13 +577,15 @@ public class PolicyCatalogTest {
   @Test
   public void testAttachPolicyToNonExistingNamespace() {
     icebergCatalog.createNamespace(NS);
-    Namespace NS2 = Namespace.of("INVALID_NAMESPACE");
+    Namespace invalidNamespace = Namespace.of("INVALID_NAMESPACE");
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    var invalidTarget = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(NS2.levels()));
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
     assertThatThrownBy(() -> policyCatalog.attachPolicy(POLICY1, invalidTarget, null))
-            .isInstanceOf(NoSuchNamespaceException.class)
-            .hasMessage("Namespace does not exist: INVALID_NAMESPACE");
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessage("Namespace does not exist: INVALID_NAMESPACE");
   }
 
   @Test
@@ -591,10 +593,12 @@ public class PolicyCatalogTest {
     icebergCatalog.createNamespace(NS);
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
 
-    var invalidTarget = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(NS.levels()));
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(NS.levels()));
     assertThatThrownBy(() -> policyCatalog.attachPolicy(POLICY1, invalidTarget, null))
-            .isInstanceOf(NoSuchTableException.class)
-            .hasMessage("Iceberg Table does not exist: ns1");
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessage("Iceberg Table does not exist: ns1");
   }
 
   @Test
@@ -633,13 +637,13 @@ public class PolicyCatalogTest {
     Namespace invalidNamespace = Namespace.of("INVALID_NAMESPACE");
 
     PolicyAttachmentTarget invalidTarget =
-            new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
 
     assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, invalidTarget))
-            .isInstanceOf(NoSuchNamespaceException.class)
-            .hasMessage("Namespace does not exist: INVALID_NAMESPACE");
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessage("Namespace does not exist: INVALID_NAMESPACE");
   }
-
 
   @Test
   public void testDetachPolicyFromNonExistingTable() {
@@ -648,12 +652,13 @@ public class PolicyCatalogTest {
 
     TableIdentifier invalidTable = TableIdentifier.of(NS, "INVALID_TABLE");
     PolicyAttachmentTarget invalidTarget =
-            new PolicyAttachmentTarget(
-                    PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(invalidTable.toString().split("\\.")));
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE,
+            List.of(invalidTable.toString().split("\\.")));
 
     assertThatThrownBy(() -> policyCatalog.detachPolicy(POLICY1, invalidTarget))
-            .isInstanceOf(NoSuchTableException.class)
-            .hasMessage("Iceberg Table does not exist: ns1.INVALID_TABLE");
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessage("Iceberg Table does not exist: ns1.INVALID_TABLE");
   }
 
   @Test
@@ -740,8 +745,8 @@ public class PolicyCatalogTest {
   @Test
   public void testGetApplicablePoliciesOnNonExistingNamespace() {
     assertThatThrownBy(() -> policyCatalog.getApplicablePolicies(NS, null, DATA_COMPACTION))
-            .isInstanceOf(NoSuchNamespaceException.class)
-            .hasMessage("Namespace does not exist: ns1");
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessage("Namespace does not exist: ns1");
   }
 
   @Test
@@ -750,9 +755,10 @@ public class PolicyCatalogTest {
     policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
     TableIdentifier invalidTable = TableIdentifier.of(NS, "INVALID_TABLE");
 
-    assertThatThrownBy(() -> policyCatalog.getApplicablePolicies(NS, "INVALID_TABLE", DATA_COMPACTION))
-            .isInstanceOf(NoSuchTableException.class)
-            .hasMessage("Iceberg Table does not exist: ns1.INVALID_TABLE");
+    assertThatThrownBy(
+            () -> policyCatalog.getApplicablePolicies(NS, "INVALID_TABLE", DATA_COMPACTION))
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessage("Iceberg Table does not exist: ns1.INVALID_TABLE");
   }
 
   private static ApplicablePolicy policyToApplicablePolicy(

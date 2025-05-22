@@ -73,6 +73,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.ApplicablePolicy;
+import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
@@ -330,6 +331,58 @@ public class PolarisPolicyServiceIntegrationTest {
       Assertions.assertThat(res.readEntity(String.class))
           .contains(
               "{\"error\":{\"message\":\"Invalid value: createPolicy.arg2.name: must match \\\"^[A-Za-z0-9\\\\-_]+$\\\"\",\"type\":\"ResteasyReactiveViolationException\",\"code\":400}}");
+    }
+  }
+
+  @Test
+  public void testCreatePolicyWithNonExistingNamespace() {
+    String ns = RESTUtil.encodeNamespace(NS1);
+    CreatePolicyRequest request =
+        CreatePolicyRequest.builder()
+            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
+            .setName(currentCatalogName)
+            .setDescription("test policy")
+            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", ns))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("Namespace does not exist: NS1");
+    }
+  }
+
+  @Test
+  public void testAttachPolicyToNonExistingNamespace() {
+    restCatalog.createNamespace(NS1);
+    String ns = RESTUtil.encodeNamespace(NS1);
+    policyApi.createPolicy(
+            currentCatalogName,
+            NS1_P1,
+            PredefinedPolicyTypes.DATA_COMPACTION,
+            EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+            "test policy");
+
+    Namespace invalidNamespace = Namespace.of("INVALID_NAMESPACE");
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
+
+    AttachPolicyRequest request =
+        AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", ns, "policy-name", NS1_P1.getName()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("Namespace does not exist: INVALID_NAMESPACE");
     }
   }
 
