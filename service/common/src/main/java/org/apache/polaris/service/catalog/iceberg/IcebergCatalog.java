@@ -1327,14 +1327,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (base == metadata) {
         LOGGER.info("Nothing to commit.");
         return;
-      } else {
-        if (base != null
+      } else if (base != null
             && metadata != null
             && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
-          // if the metadata is not changed, return early
-          LOGGER.info("Nothing to commit.");
-          return;
-        }
+        // if the metadata is not changed, return early
+        LOGGER.info("Nothing to commit.");
+        return;
       }
 
       long start = System.currentTimeMillis();
@@ -1516,8 +1514,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
       Optional<String> metadataJsonToCache =
           switch (maxMetadataCacheBytes) {
-            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING ->
-                Optional.empty();
+            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING -> {
+              yield Optional.empty();
+            }
             case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
               yield Optional.of(TableMetadataParser.toJson(metadata));
             }
