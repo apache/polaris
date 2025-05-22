@@ -73,7 +73,6 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.ApplicablePolicy;
-import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
@@ -367,63 +366,47 @@ public class PolarisPolicyServiceIntegrationTest {
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
       LOG.info(res.readEntity(String.class));
-      Assertions.assertThat(res.readEntity(String.class)).contains("The given namespace does not exist");
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("The given namespace does not exist");
     }
   }
 
-    @Test
-    public void testAttachPolicy() {
-      restCatalog.createNamespace(NS1);
-      restCatalog.createNamespace(NS2);
-      policyApi.createPolicy(
-              currentCatalogName,
-              NS1_P1,
-              PredefinedPolicyTypes.DATA_COMPACTION,
-              EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
-              "test policy");
+  @Test
+  public void testAttachPolicy() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
 
-      PolicyAttachmentTarget catalogTarget = PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
-      PolicyAttachmentTarget namespaceTarget = PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE).build();
-      PolicyAttachmentTarget tableTarget = PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE).build();
+    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS1)).hasSize(1);
 
-      AttachPolicyRequest catalogAttachRequest =
-              AttachPolicyRequest.builder()
-                      .setTarget(catalogTarget)
-                      .setParameters(Map.of())
-                      .build();
-      AttachPolicyRequest namespaceAttachRequest =
-              AttachPolicyRequest.builder()
-                      .setTarget(namespaceTarget)
-                      .setParameters(Map.of())
-                      .build();
-      AttachPolicyRequest tableAttachRequest =
-              AttachPolicyRequest.builder()
-                      .setTarget(tableTarget)
-                      .setParameters(Map.of())
-                      .build();
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    PolicyAttachmentTarget namespaceTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE).build();
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .build();
 
-      String ns1 = RESTUtil.encodeNamespace(NS2_P1.getNamespace());
-      String ns2 = RESTUtil.encodeNamespace(NS2_P1.getNamespace());
+    policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, Map.of());
+    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS1)).hasSize(2);
+    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS1, null, null))
+        .hasSize(2);
 
-      Response res = policyApi.request("polaris/v1/{cat}", Map.of("cat", currentCatalogName))
-                              .put(Entity.json(catalogAttachRequest));
+    policyApi.attachPolicy(currentCatalogName, NS2_P1, namespaceTarget, Map.of());
+    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS2)).hasSize(1);
+    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS2, null, null))
+        .hasSize(1);
 
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
-
-      res = policyApi.request("polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
-                      Map.of("cat", currentCatalogName, "ns", ns1, "policy", NS1_P1.getName()))
-              .put(Entity.json(tableAttachRequest));
-
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
-
-
-      res = policyApi.request("polaris/v1/{cat}/namespaces/{ns}/policies",
-                                   Map.of("cat", currentCatalogName, "ns", ns2))
-                           .post(Entity.json(tableAttachRequest));
-
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
-
-    }
+    policyApi.attachPolicy(currentCatalogName, NS2_P1, tableTarget, Map.of());
+    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS2)).hasSize(2);
+    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS2, null, null))
+        .hasSize(2);
+  }
 
   @Test
   public void testDropPolicy() {
