@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -213,6 +215,7 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createNamespaceRequest.properties());
     return withCatalog(
         securityContext,
         prefix,
@@ -308,6 +311,7 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, updateNamespacePropertiesRequest.updates());
     Namespace ns = decodeNamespace(namespace);
     UpdateNamespacePropertiesRequest revisedRequest =
         UpdateNamespacePropertiesRequest.builder()
@@ -342,6 +346,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
@@ -513,6 +518,11 @@ public class IcebergCatalogAdapter
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    commitTableRequest.updates().stream()
+        .filter(MetadataUpdate.SetProperties.class::isInstance)
+        .map(MetadataUpdate.SetProperties.class::cast)
+        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+
     UpdateTableRequest revisedRequest =
         UpdateTableRequest.create(
             commitTableRequest.identifier(),
@@ -542,6 +552,8 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    validateIcebergProperties(callContext, createViewRequest.properties());
+
     CreateViewRequest revisedRequest =
         ImmutableCreateViewRequest.copyOf(createViewRequest)
             .withProperties(
@@ -687,6 +699,12 @@ public class IcebergCatalogAdapter
       CommitTransactionRequest commitTransactionRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    commitTransactionRequest.tableChanges().stream()
+        .flatMap(updateTableRequest -> updateTableRequest.updates().stream())
+        .filter(MetadataUpdate.SetProperties.class::isInstance)
+        .map(MetadataUpdate.SetProperties.class::cast)
+        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
             commitTransactionRequest.tableChanges().stream()

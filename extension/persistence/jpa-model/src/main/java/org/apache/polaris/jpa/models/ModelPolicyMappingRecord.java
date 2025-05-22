@@ -33,7 +33,7 @@ import org.eclipse.persistence.annotations.PrimaryKey;
     indexes = {
       @Index(
           name = "POLICY_MAPPING_RECORDS_BY_POLICY_INDEX",
-          columnList = "policyCatalogId,policyId,targetCatalogId,targetId")
+          columnList = "policyTypeCode,policyCatalogId,policyId,targetCatalogId,targetId")
     })
 @PrimaryKey(
     columns = {

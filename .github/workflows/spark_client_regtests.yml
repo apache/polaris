@@ -25,7 +25,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  regtest:
+  spark-plugin-regtest:
 
     runs-on: ubuntu-latest
     permissions:

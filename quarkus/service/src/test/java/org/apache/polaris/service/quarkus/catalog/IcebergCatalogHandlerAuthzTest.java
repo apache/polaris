@@ -82,20 +82,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(IcebergCatalogHandlerAuthzTest.Profile.class)
+@TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  public static class Profile extends PolarisAuthzTestBase.Profile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
-          "true");
-    }
-  }
 
   private IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());

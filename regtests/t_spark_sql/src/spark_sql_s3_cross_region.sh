@@ -30,7 +30,7 @@ ROLE_ARN="${AWS_ROLE_FOR_CROSS_REGION_BUCKET}"
 
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d "{\"name\": \"spark_sql_s3_cross_region_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"client.region\": \"${AWS_REGION_FOR_CROSS_REGION_TEST}\", \"default-base-location\": \"s3://${BUCKET}/polaris_test/spark_sql_s3_cross_region_catalog/\"}, \"storageConfigInfo\": {\"storageType\": \"S3\", \"allowedLocations\": [\"s3://${BUCKET}/polaris_test/\"], \"roleArn\": \"${ROLE_ARN}\", \"region\": \"${AWS_REGION_FOR_CROSS_REGION_TEST}\"}}" > /dev/stderr
+  -d "{\"name\": \"spark_sql_s3_cross_region_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"client.region\": \"${AWS_REGION_FOR_CROSS_REGION_TEST}\", \"default-base-location\": \"s3://${BUCKET}/polaris_test/spark_sql_s3_cross_region_catalog/\", \"drop-with-purge.enabled\": \"true\"}, \"storageConfigInfo\": {\"storageType\": \"S3\", \"allowedLocations\": [\"s3://${BUCKET}/polaris_test/\"], \"roleArn\": \"${ROLE_ARN}\", \"region\": \"${AWS_REGION_FOR_CROSS_REGION_TEST}\"}}" > /dev/stderr
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \

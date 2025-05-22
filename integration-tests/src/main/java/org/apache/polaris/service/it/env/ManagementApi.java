@@ -115,6 +115,16 @@ public class ManagementApi extends RestApi {
     }
   }
 
+  public void revokeGrant(String catalogName, String catalogRoleName, GrantResource grant) {
+    try (Response response =
+        request(
+                "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                Map.of("cat", catalogName, "role", catalogRoleName))
+            .post(Entity.json(grant))) {
+      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
   public void grantCatalogRoleToPrincipalRole(
       String principalRoleName, String catalogName, CatalogRole catalogRole) {
     try (Response response =

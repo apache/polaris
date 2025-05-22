@@ -174,14 +174,16 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       return Map.of(
           "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
-          "polaris.features.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
+          "[\"FILE\",\"S3\"]",
           "polaris.features.\"LIST_PAGINATION_ENABLED\"",
           "true",
           "polaris.event-listener.type",
           "test",
+          "polaris.readiness.ignore-severe-issues",
+          "true",
           "polaris.features." + FeatureConfiguration.METADATA_CACHE_MAX_BYTES.key,
           String.valueOf(FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING));
     }
@@ -229,6 +231,45 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
 
+  /**
+   * A subclass of IcebergCatalog that adds FileIO management capabilities. This allows the file IO
+   * logic to be encapsulated in a dedicated class.
+   */
+  public static class IcebergFileIOCatalog extends IcebergCatalog {
+
+    public IcebergFileIOCatalog(
+        PolarisEntityManager entityManager,
+        PolarisMetaStoreManager metaStoreManager,
+        CallContext callContext,
+        PolarisResolutionManifestCatalogView resolvedEntityView,
+        SecurityContext securityContext,
+        TaskExecutor taskExecutor,
+        FileIOFactory fileIOFactory,
+        PolarisEventListener polarisEventListener) {
+      super(
+          entityManager,
+          metaStoreManager,
+          callContext,
+          resolvedEntityView,
+          securityContext,
+          taskExecutor,
+          fileIOFactory,
+          polarisEventListener);
+    }
+
+    @Override
+    public synchronized FileIO getIo() {
+      if (catalogFileIO == null) {
+        catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
+        if (closeableGroup != null) {
+          closeableGroup.addCloseable(catalogFileIO);
+        }
+      }
+
+      return catalogFileIO;
+    }
+  }
+
   @BeforeAll
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
@@ -248,6 +289,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
@@ -256,6 +298,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+
     entityManager =
         new PolarisEntityManager(
             metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
@@ -315,6 +358,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
@@ -375,7 +420,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog icebergCatalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1007,7 +1052,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog catalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1074,7 +1119,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog catalog =
-        new IcebergCatalog(
+        new IcebergFileIOCatalog(
             entityManager,
             metaStoreManager,
             callContext,
