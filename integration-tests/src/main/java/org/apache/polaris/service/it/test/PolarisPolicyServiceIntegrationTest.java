@@ -384,6 +384,7 @@ public class PolarisPolicyServiceIntegrationTest {
       Assertions.assertThat(res.readEntity(String.class))
           .contains("Namespace does not exist: INVALID_NAMESPACE");
     }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
 
   @Test
