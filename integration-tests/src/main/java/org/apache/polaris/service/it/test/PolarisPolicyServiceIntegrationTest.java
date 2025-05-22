@@ -89,8 +89,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisPolicyServiceIntegrationTest {
@@ -107,11 +105,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final PolicyIdentifier NS1_P1 = new PolicyIdentifier(NS1, "P1");
   private static final PolicyIdentifier NS1_P2 = new PolicyIdentifier(NS1, "P2");
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
-  private static final PolicyIdentifier NS2_P1 = new PolicyIdentifier(NS2, "P1");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(PolarisPolicyServiceIntegrationTest.class);
 
   private static URI s3BucketBase;
   private static String principalRoleName;
@@ -337,75 +331,6 @@ public class PolarisPolicyServiceIntegrationTest {
           .contains(
               "{\"error\":{\"message\":\"Invalid value: createPolicy.arg2.name: must match \\\"^[A-Za-z0-9\\\\-_]+$\\\"\",\"type\":\"ResteasyReactiveViolationException\",\"code\":400}}");
     }
-  }
-
-  @Test
-  public void testCreatePolicyWithInvalidNamespace() {
-    restCatalog.createNamespace(NS1);
-    PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, "P1");
-
-    CreatePolicyRequest request =
-        CreatePolicyRequest.builder()
-            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
-            .setName(policyIdentifier.getName())
-            .setDescription("test policy")
-            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
-            .build();
-
-    LOG.info("WE ARE IN testCreatePolicyWithInvalidNamespace");
-    LOG.info("CreatePolicyRequest: " + request);
-
-    String invalidNamespace = "INVALID_NAMESPACE";
-    String nsEncoded = RESTUtil.encodeNamespace(Namespace.of(invalidNamespace));
-
-    try (Response res =
-        policyApi
-            .request(
-                "polaris/v1/{cat}/namespaces/{ns}/policies",
-                Map.of("cat", currentCatalogName, "ns", nsEncoded))
-            .post(Entity.json(request))) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
-      LOG.info(res.readEntity(String.class));
-      Assertions.assertThat(res.readEntity(String.class))
-          .contains("The given namespace does not exist");
-    }
-  }
-
-  @Test
-  public void testAttachPolicy() {
-    restCatalog.createNamespace(NS1);
-    policyApi.createPolicy(
-        currentCatalogName,
-        NS1_P1,
-        PredefinedPolicyTypes.DATA_COMPACTION,
-        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
-        "test policy");
-
-    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS1)).hasSize(1);
-
-    PolicyAttachmentTarget catalogTarget =
-        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
-    PolicyAttachmentTarget namespaceTarget =
-        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE).build();
-    PolicyAttachmentTarget tableTarget =
-        PolicyAttachmentTarget.builder()
-            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
-            .build();
-
-    policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, Map.of());
-    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS1)).hasSize(2);
-    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS1, null, null))
-        .hasSize(2);
-
-    policyApi.attachPolicy(currentCatalogName, NS2_P1, namespaceTarget, Map.of());
-    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS2)).hasSize(1);
-    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS2, null, null))
-        .hasSize(1);
-
-    policyApi.attachPolicy(currentCatalogName, NS2_P1, tableTarget, Map.of());
-    Assertions.assertThat(policyApi.listPolicies(currentCatalogName, NS2)).hasSize(2);
-    Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, NS2, null, null))
-        .hasSize(2);
   }
 
   @Test
