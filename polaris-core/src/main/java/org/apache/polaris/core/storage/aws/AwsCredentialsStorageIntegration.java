@@ -47,17 +47,17 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClient stsClient;
-  private final Optional<AwsCredentialsProvider> credentials;
+  private final Optional<AwsCredentialsProvider> credentialsProvider;
 
   public AwsCredentialsStorageIntegration(StsClient stsClient) {
     this(stsClient, Optional.empty());
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClient stsClient, Optional<AwsCredentialsProvider> credentials) {
+      StsClient stsClient, Optional<AwsCredentialsProvider> credentialsProvider) {
     super(AwsCredentialsStorageIntegration.class.getName());
     this.stsClient = stsClient;
-    this.credentials = credentials;
+    this.credentialsProvider = credentialsProvider;
   }
 
   /** {@inheritDoc} */
@@ -81,7 +81,8 @@ public class AwsCredentialsStorageIntegration
                         allowedWriteLocations)
                     .toJson())
             .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
-    credentials.ifPresent(c -> request.overrideConfiguration(b -> b.credentialsProvider(c)));
+    credentialsProvider.ifPresent(
+        cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
     EnumMap<StorageAccessProperty, String> credentialMap =
         new EnumMap<>(StorageAccessProperty.class);
