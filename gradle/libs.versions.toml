@@ -26,7 +26,7 @@ picocli = "4.7.7"
 scala212 = "2.12.19"
 spark35 = "3.5.5"
 slf4j = "2.0.17"
-swagger = "1.6.15"
+swagger = "1.6.16"
 
 [bundles]
 
@@ -39,16 +39,15 @@ swagger = "1.6.15"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.40" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.45" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.34" }
-bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.80" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.6" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.38.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.52.2" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.52.3" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
@@ -72,23 +71,23 @@ jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.12.2" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.7" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
-mockito-core = { module = "org.mockito:mockito-core", version = "5.17.0" }
-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.17.0" }
+mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.18.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.50.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.32.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.5" }
-prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.6" }
+prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.7" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
-s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.2.0" }
+s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.3.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.12.0" }
-smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.12.4" }
+smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.13.0" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }

@@ -23,7 +23,7 @@ SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d "{\"name\": \"spark_sql_gcp_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"${GCS_TEST_BASE}/polaris_test/spark_sql_gcp_catalog/\"}, \"storageConfigInfo\": {\"storageType\": \"GCS\", \"allowedLocations\": [\"${GCS_TEST_BASE}/polaris_test/spark_sql_gcp_catalog2/\"]}}" > /dev/stderr
+  -d "{\"name\": \"spark_sql_gcp_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"${GCS_TEST_BASE}/polaris_test/spark_sql_gcp_catalog/\", \"drop-with-purge.enabled\": \"true\"}, \"storageConfigInfo\": {\"storageType\": \"GCS\", \"allowedLocations\": [\"${GCS_TEST_BASE}/polaris_test/spark_sql_gcp_catalog2/\"]}}" > /dev/stderr
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \

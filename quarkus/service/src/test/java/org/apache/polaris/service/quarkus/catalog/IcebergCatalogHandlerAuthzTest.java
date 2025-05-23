@@ -80,20 +80,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(IcebergCatalogHandlerAuthzTest.Profile.class)
+@TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  public static class Profile extends PolarisAuthzTestBase.Profile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
-          "true");
-    }
-  }
 
   private IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
@@ -116,7 +104,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         factory,
         catalogName,
         polarisAuthorizer,
-        reservedProperties);
+        reservedProperties,
+        catalogHandlerUtils);
   }
 
   /**
@@ -256,7 +245,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
-            reservedProperties);
+            reservedProperties,
+            catalogHandlerUtils);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -290,7 +280,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
-            reservedProperties);
+            reservedProperties,
+            catalogHandlerUtils);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),

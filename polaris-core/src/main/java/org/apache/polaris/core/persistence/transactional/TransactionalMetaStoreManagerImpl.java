@@ -206,7 +206,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         final List<PolarisPolicyMappingRecord> mappingOnPolicy =
             (entity.getType() == PolarisEntityType.POLICY)
                 ? ms.loadAllTargetsOnPolicyInCurrentTxn(
-                    callCtx, entity.getCatalogId(), entity.getId())
+                    callCtx,
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolicyEntity.of(entity).getPolicyTypeCode())
                 : List.of();
         final List<PolarisPolicyMappingRecord> mappingOnTarget =
             (entity.getType() == PolarisEntityType.POLICY)
@@ -1402,7 +1405,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       try {
         List<PolarisPolicyMappingRecord> records =
             ms.loadAllTargetsOnPolicyInCurrentTxn(
-                callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                PolicyEntity.of(refreshEntityToDrop).getPolicyTypeCode());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
         }
@@ -2453,7 +2459,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /** See {@link #loadPoliciesOnEntityByType(PolarisCallContext, PolarisEntityCore, PolicyType)} */
-  public LoadPolicyMappingsResult doLoadPoliciesOnEntityByType(
+  private LoadPolicyMappingsResult doLoadPoliciesOnEntityByType(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore target,

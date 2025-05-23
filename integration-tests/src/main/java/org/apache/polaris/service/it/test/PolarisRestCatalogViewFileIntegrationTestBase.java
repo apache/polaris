@@ -18,20 +18,32 @@
  */
 package org.apache.polaris.service.it.test;
 
+import java.nio.file.Path;
 import java.util.List;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
-public class PolarisRestCatalogViewFileIntegrationTest
+public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
-  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
+  static String baseLocation;
+
+  @BeforeAll
+  public static void setUp(@TempDir Path tempDir) {
+    String baseUri = tempDir.toAbsolutePath().toUri().toString();
+    if (baseUri.endsWith("/")) {
+      baseUri = baseUri.substring(0, baseUri.length() - 1);
+    }
+    baseLocation = baseUri;
+  }
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
     return FileStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(List.of(baseLocation))
         .build();
   }
 

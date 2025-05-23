@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
@@ -56,7 +55,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -80,11 +78,11 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
@@ -115,7 +113,19 @@ public abstract class PolarisAuthzTestBase {
       return Map.of(
           "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
           "true",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
           "polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.readiness.ignore-severe-issues",
+          "true",
+          "polaris.features.\"ENABLE_GENERIC_TABLES\"",
+          "true",
+          "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+          "true",
+          "polaris.features.\"DROP_WITH_PURGE_ENABLED\"",
           "true");
     }
   }
@@ -176,12 +186,6 @@ public abstract class PolarisAuthzTestBase {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
-  protected final PolarisAuthorizer polarisAuthorizer =
-      new PolarisAuthorizerImpl(
-          new DefaultConfigurationStore(
-              Map.of(
-                  FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
-                  true)));
   protected final ReservedProperties reservedProperties = ReservedProperties.NONE;
 
   @Inject protected MetaStoreManagerFactory managerFactory;
@@ -192,9 +196,11 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
+  @Inject protected CatalogHandlerUtils catalogHandlerUtils;
+  @Inject protected PolarisConfigurationStore configurationStore;
 
   protected IcebergCatalog baseCatalog;
-  protected GenericTableCatalog genericTableCatalog;
+  protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
@@ -205,6 +211,7 @@ public abstract class PolarisAuthzTestBase {
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
+  protected PolarisAuthorizer polarisAuthorizer;
 
   private PolarisCallContext polarisContext;
 
@@ -219,26 +226,17 @@ public abstract class PolarisAuthzTestBase {
   @BeforeEach
   public void before(TestInfo testInfo) {
     RealmContext realmContext = testInfo::getDisplayName;
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
-    Map<String, Object> configMap =
-        Map.of(
-            "ALLOW_SPECIFYING_FILE_IO_IMPL", true,
-            "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true,
-            "ENABLE_GENERIC_TABLES", true);
+    polarisAuthorizer = new PolarisAuthorizerImpl(configurationStore);
+
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
-            new PolarisConfigurationStore() {
-              @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-                @SuppressWarnings("unchecked")
-                var r = (T) configMap.get(configName);
-                return r;
-              }
-            },
+            configurationStore,
             clock);
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
@@ -481,7 +479,8 @@ public abstract class PolarisAuthzTestBase {
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }
 

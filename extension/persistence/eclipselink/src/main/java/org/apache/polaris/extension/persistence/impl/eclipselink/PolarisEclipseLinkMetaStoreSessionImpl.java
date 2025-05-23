@@ -707,7 +707,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     this.store.deleteAllEntityPolicyMappingRecords(localSession.get(), entity);
@@ -764,8 +764,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Nonnull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
-    return this.store.loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId).stream()
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
+    return this.store
+        .loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId, policyTypeCode)
+        .stream()
         .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
         .toList();
   }

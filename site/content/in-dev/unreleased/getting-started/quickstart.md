@@ -98,10 +98,7 @@ If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/)
 Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
 ```shell
-cd ~
-git clone https://github.com/apache/spark.git
-cd ~/spark
-git checkout branch-3.5
+git clone --branch branch-3.5 https://github.com/apache/spark.git ~/spark
 ```
 
 #### Trino

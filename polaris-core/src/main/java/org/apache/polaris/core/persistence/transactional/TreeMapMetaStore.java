@@ -287,7 +287,8 @@ public class TreeMapMetaStore {
         new Slice<>(
             policyMappingRecord ->
                 String.format(
-                    "%d::%d::%d::%d",
+                    "%d::%d::%d::%d::%d",
+                    policyMappingRecord.getPolicyTypeCode(),
                     policyMappingRecord.getPolicyCatalogId(),
                     policyMappingRecord.getPolicyId(),
                     policyMappingRecord.getTargetCatalogId(),

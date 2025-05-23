@@ -869,6 +869,8 @@ components:
           description: URI to the remote catalog service
         authenticationParameters:
           $ref: "#/components/schemas/AuthenticationParameters"
+        serviceIdentity:
+          $ref: '#/components/schemas/ServiceIdentityInfo'
       required:
         - connectionType
       discriminator:
@@ -901,13 +903,14 @@ components:
 
     AuthenticationParameters:
       type: object
-      description: Authentication-specific information for a REST connection
+      description: Authentication-specific information for a connection
       properties:
         authenticationType:
           type: string
           enum:
             - OAUTH
             - BEARER
+            - SIGV4
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -916,6 +919,7 @@ components:
         mapping:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
+          SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -949,6 +953,36 @@ components:
           type: string
           format: password
           description: Bearer token (input-only)
+
+    SigV4AuthenticationParameters:
+      type: object
+      description: AWS Signature Version 4 authentication
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
+      properties:
+        roleArn:
+          type: string
+          description: The aws IAM role arn assumed by polaris userArn when signing requests
+          example: "arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access"
+        roleSessionName:
+          type: string
+          description: The role session name to be used by the SigV4 protocol for signing requests
+          example: "polaris-remote-catalog-access"
+        externalId:
+          type: string
+          description: An optional external id used to establish a trust relationship with AWS in the trust policy
+          example: "external-id-1234"
+        signingRegion:
+          type: string
+          description: Region to be used by the SigV4 protocol for signing requests
+          example: "us-west-2"
+        signingName:
+          type: string
+          description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
+          example: "glue"
+      required:
+        - roleArn
+        - signingRegion
 
     StorageConfigInfo:
       type: object
@@ -1034,6 +1068,35 @@ components:
       description: file storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
+
+    ServiceIdentityInfo:
+      type: object
+      description: Identity metadata for the Polaris service used to access external resources.
+      readOnly: true
+      properties:
+        identityType:
+          type: string
+          enum:
+            - AWS_IAM
+          description: The type of identity used to access external resources
+      required:
+        - identityType
+      discriminator:
+        propertyName: identityType
+        mapping:
+          AWS_IAM: "#/components/schemas/AwsIamServiceIdentityInfo"
+
+    AwsIamServiceIdentityInfo:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ServiceIdentityInfo'
+      properties:
+        iamArn:
+          type: string
+          description: The ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
+          example: "arn:aws:iam::111122223333:user/polaris-service-user"
+      required:
+        - iamArn
 
     UpdateCatalogRequest:
       description: Updates to apply to a Catalog. Any fields which are required in the Catalog
@@ -1163,6 +1226,10 @@ components:
           maxLength: 256
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
           description: The name of the role
+        federated:
+          type: boolean
+          description: Whether the principal role is a federated role (that is, managed by an external identity provider)
+          default: false
         properties:
           type: object
           additionalProperties:
@@ -1278,6 +1345,20 @@ components:
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
         - TABLE_FULL_METADATA
+        - TABLE_ATTACH_POLICY
+        - TABLE_DETACH_POLICY
+
+    PolicyPrivilege:
+      type: string
+      enum:
+        - CATALOG_MANAGE_ACCESS
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_WRITE
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - POLICY_ATTACH
+        - POLICY_DETACH
 
     NamespacePrivilege:
       type: string
@@ -1305,6 +1386,14 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - NAMESPACE_ATTACH_POLICY
+        - NAMESPACE_DETACH_POLICY
 
     CatalogPrivilege:
       type: string
@@ -1334,6 +1423,14 @@ components:
         - NAMESPACE_FULL_METADATA
         - TABLE_FULL_METADATA
         - VIEW_FULL_METADATA
+        - POLICY_CREATE
+        - POLICY_WRITE
+        - POLICY_READ
+        - POLICY_DROP
+        - POLICY_LIST
+        - POLICY_FULL_METADATA
+        - CATALOG_ATTACH_POLICY
+        - CATALOG_DETACH_POLICY
 
     AddGrantRequest:
       type: object
@@ -1387,6 +1484,24 @@ components:
             - tableName
             - privilege
 
+    PolicyGrant:
+      allOf:
+        - $ref: '#/components/schemas/GrantResource'
+        - type: object
+          properties:
+            namespace:
+              type: array
+              items:
+                type: string
+            policyName:
+              type: string
+            privilege:
+              $ref: '#/components/schemas/PolicyPrivilege'
+          required:
+            - namespace
+            - policyName
+            - privilege
+
     NamespaceGrant:
       allOf:
         - $ref: '#/components/schemas/GrantResource'
@@ -1422,6 +1537,7 @@ components:
           namespace: '#/components/schemas/NamespaceGrant'
           table: '#/components/schemas/TableGrant'
           view: '#/components/schemas/ViewGrant'
+          policy: '#/components/schemas/PolicyGrant'
       properties:
         type:
           type: string
@@ -1430,6 +1546,7 @@ components:
             - namespace
             - table
             - view
+            - policy
       required:
         - type
 

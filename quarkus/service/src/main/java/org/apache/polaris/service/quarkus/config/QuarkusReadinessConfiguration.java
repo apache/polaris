@@ -16,19 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.quarkus.config;
 
-import java.util.Map;
-import org.apache.polaris.core.exceptions.PolarisException;
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
-/**
- * Exception thrown when a realm context cannot be resolved.
- *
- * @see RealmContextResolver#resolveRealmContext(String, String, String, Map)
- */
-public class UnresolvableRealmContextException extends PolarisException {
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.readiness")
+public interface QuarkusReadinessConfiguration {
 
-  public UnresolvableRealmContextException(String message) {
-    super(message);
-  }
+  /**
+   * Setting this to {@code true} means that Polaris will start up even if severe security risks
+   * have been detected, accepting the risk of denial-of-service, data-loss, corruption and other
+   * risks.
+   */
+  @WithDefault("false")
+  boolean ignoreSevereIssues();
 }
