@@ -32,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -398,12 +397,13 @@ public interface PolarisMetaStoreManager
    * location
    *
    * @param callContext the polaris call context
-   * @param table IcebergTableLikeEntity to check for
+   * @param catalogId the catalog to look for duplicates inside
+   * @param location the location to check for overlaps against
    * @return Optional.of(true) if the parent entity has children, Optional.of(false) if not, and
-   *     Optional.empty() if the metastore doesn't support this operation
+   * Optional.empty() if the metastore doesn't support this operation
    */
   Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table);
+      @Nonnull PolarisCallContext callContext, long catalogId, String location);
 
   /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via

@@ -191,6 +191,31 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
+  public static <T> String generateVersionQuery() {
+    return "SELECT MAX(value) FROM POLARIS_SCHEMA.version";
+  }
+
+  @VisibleForTesting
+  public static <T> String generateOverlapQuery(String realmId, long parentId, String location) {
+    String[] components = location.split("/");
+    StringBuilder locationClauseBuilder = new StringBuilder();
+    StringBuilder pathBuilder = new StringBuilder();
+    for (String component : components) {
+      pathBuilder.append(component);
+      locationClauseBuilder.append(String.format("AND location = '%s'", pathBuilder));
+    }
+    locationClauseBuilder.append(String.format("AND location LIKE '%s/%%'", location));
+
+    // TODO harden against realmId in this method and others
+    return String.format(
+        "SELECT location FROM entities WHERE realm_id = %s AND parent_id = %d AND (1 = 1 %s)",
+        realmId,
+        parentId,
+        locationClauseBuilder
+    );
+  }
+
+  @VisibleForTesting
   public static String getTableName(@Nonnull Class<?> entityClass) {
     String tableName;
     if (entityClass.equals(ModelEntity.class)) {

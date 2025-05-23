@@ -47,7 +47,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -1822,10 +1821,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext,
-      IcebergTableLikeEntity table) {
+      @Nonnull PolarisCallContext callContext, long catalogId, String location) {
     BasePersistence ms = callContext.getMetaStore();
-    return ms.hasOverlappingSiblings(callContext, table);
+    return ms.hasOverlappingSiblings(callContext, catalogId, location);
   }
 
   @Override

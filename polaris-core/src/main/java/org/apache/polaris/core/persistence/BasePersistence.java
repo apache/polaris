@@ -32,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
@@ -410,12 +409,13 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * location
    *
    * @param callContext the polaris call context
-   * @param table IcebergTableLikeEntity to check for
-   * @return Optional.of(true) if the parent entity has children, Optional.of(false) if not, and
-   *     Optional.empty() if the metastore doesn't support this operation
+   * @param parentId    the parent entity to look for duplicates inside
+   * @param location    the location to check for overlaps against
+   * @return Optional.of("") if the parent entity has children, Optional.of(false) if not, and
+   * Optional.empty() if the metastore doesn't support this operation
    */
   Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table);
+      @Nonnull PolarisCallContext callContext, long parentId, String location);
 
   /**
    * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}

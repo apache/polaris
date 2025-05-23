@@ -19,6 +19,16 @@
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
 
+CREATE TABLE IF NOT EXISTS version (
+    version TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+);
+INSERT INTO singleton_table (id, value)
+VALUES ('version', 2)
+ON CONFLICT (id) DO UPDATE
+SET value = EXCLUDED.value;
+COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,

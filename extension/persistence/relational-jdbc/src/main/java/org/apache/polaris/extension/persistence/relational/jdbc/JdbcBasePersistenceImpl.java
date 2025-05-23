@@ -43,7 +43,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -63,6 +62,7 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEnti
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +74,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final int version;
 
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
@@ -84,6 +85,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.version = loadVersion();
   }
 
   @Override
@@ -558,10 +560,53 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  private int loadVersion() {
+    String query = generateVersionQuery();
+    try {
+      List<SchemaVersion> schemaVersion =
+          datasourceOperations.executeSelect(query, new SchemaVersion());
+      if (schemaVersion == null || schemaVersion.size() != 1) {
+        throw new RuntimeException("Failed to retrieve schema version");
+      }
+      return schemaVersion.getFirst().getValue();
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to load schema version due to {}",
+          e.getMessage(),
+          e);
+      throw new RuntimeException("Failed to retrieve schema version", e);
+    }
+  }
+
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
-    return Optional.empty();
+      @Nonnull PolarisCallContext callContext, long parentId, String location) {
+    if (this.version < 2) {
+      return Optional.empty();
+    }
+    // TODO fix parent ID
+    Map<String, Object> params =
+        Map.of(
+            "parent_id",
+            parentId,
+            "location",
+            location,
+            "realm_id",
+            realmId);
+    String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
+    try {
+      var results =
+          datasourceOperations.executeSelect(query, new ModelEntity());
+      return results == null || results.isEmpty() ? null : results.getFirst();
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to retrieve principals secrets for client id: {}, due to {}",
+          clientId,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to retrieve principal secrets for clientId: %s", clientId), e);
+    }
   }
 
   @Nullable

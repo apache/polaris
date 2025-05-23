@@ -1060,6 +1060,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   private void validateNoLocationOverlap(
       String location, List<PolarisEntity> parentPath, String name) {
+
+    // if the entity path has more than just the catalog, check for tables as well as other
+    // namespaces
+    Optional<NamespaceEntity> parentNamespace =
+        parentPath.size() > 1
+            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
+            : Optional.empty();
+
+    // Attempt to directly query for siblings
+    if (parentNamespace.isPresent()) {
+      Optional<Boolean> directSiblingCheckResult = getMetaStoreManager().hasOverlappingSiblings(
+          callContext.getPolarisCallContext(),
+          parentNamespace.get().getCatalogId(),
+          location);
+      if (directSiblingCheckResult.isPresent()) {
+        if (directSiblingCheckResult.get()) {
+          throw new org.apache.iceberg.exceptions.ForbiddenException(
+              "Unable to create entity at location '%s' because it conflicts with existing table or namespace",
+              location);
+        } else {
+          return;
+        }
+      }
+    }
+
+    // Fall through by listing everything:
     ListEntitiesResult siblingNamespacesResult =
         getMetaStoreManager()
             .listEntities(
@@ -1072,13 +1098,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           "Unable to resolve siblings entities to validate location - could not list namespaces");
     }
-
-    // if the entity path has more than just the catalog, check for tables as well as other
-    // namespaces
-    Optional<NamespaceEntity> parentNamespace =
-        parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
-            : Optional.empty();
 
     List<TableIdentifier> siblingTables =
         parentNamespace

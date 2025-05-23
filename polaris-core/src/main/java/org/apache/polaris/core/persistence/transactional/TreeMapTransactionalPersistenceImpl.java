@@ -38,7 +38,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
@@ -668,7 +667,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
+      @Nonnull PolarisCallContext callContext, long parentId, String location) {
     return Optional.empty();
   }
 }
