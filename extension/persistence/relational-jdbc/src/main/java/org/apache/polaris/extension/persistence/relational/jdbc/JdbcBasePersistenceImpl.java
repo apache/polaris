@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -42,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -554,6 +556,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
           e);
     }
+  }
+
+  @Override
+  public Optional<Boolean> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext,
+      IcebergTableLikeEntity table) {
+    return Optional.empty();
   }
 
   @Nullable

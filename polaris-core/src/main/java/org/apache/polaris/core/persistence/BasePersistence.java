@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
@@ -31,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
@@ -402,6 +404,19 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId);
+
+  /**
+   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
+   * location
+   *
+   * @param callContext the polaris call context
+   * @param table IcebergTableLikeEntity to check for
+   * @return Optional.of(true) if the parent entity has children, Optional.of(false) if not, and
+   *     Optional.empty() if the metastore doesn't support this operation
+   */
+  Optional<Boolean> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext,
+      IcebergTableLikeEntity table);
 
   /**
    * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}
