@@ -39,34 +39,18 @@ cd ~/polaris
 ```
 - **For standalone**: Omit the `-Dquarkus.container-image.tag` and `-Dquarkus.container-image.build` options if you do not need to build a Docker image.
 
-2. **Set the Assets Path**
-```shell
-export ASSETS_PATH=$(pwd)/getting-started/assets/
-```
-
-3. **Set Authentication Credentials**
-
-Polaris supports multiple authentication methods, including the use of `CLIENT_ID` and `CLIENT_SECRET` environment variables. If you choose to use these credentials, you can set them as follows:
-
-```shell
-export CLIENT_ID=root
-export CLIENT_SECRET=s3cr3t
-```
-- **For Docker**: These variables are configured in the `getting-started.env` file. To use custom values, export them as shown above and remove the `--env-file` option from the `docker compose` command.
-- **For Standalone**: These variables are used for interacting with the Polaris CLI or other tools.
-
 ## Running Polaris with Docker
 
 To start using Polaris in Docker and launch Polaris, which is packaged with a Postgres instance, Apache Spark, and Trino. 
 
 ```shell
-docker compose -p polaris --env-file getting-started/assets/getting-started.env \
-  -f getting-started/assets/postgres/docker-compose-postgres.yml \
+export ASSETS_PATH=$(pwd)/getting-started/assets/
+export CLIENT_ID=root
+export CLIENT_SECRET=s3cr3t
+docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml \
   -f getting-started/eclipselink/docker-compose-bootstrap-db.yml \
   -f getting-started/eclipselink/docker-compose.yml up
 ```
-
-By default, this command uses the `getting-started.env` file to configure environment variables, including `CLIENT_ID` and `CLIENT_SECRET`. If you want to use custom authentication credentials, refer to the [Common Setup](#common-setup) section.
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:
 

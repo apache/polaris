@@ -58,7 +58,7 @@ services:
       - AWS_ROLE_ARN=${AWS_ROLE_ARN}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
     volumes:
-      - ../assets/polaris/:/polaris
+      - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
@@ -99,4 +99,4 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../assets/trino-config/catalog:/etc/trino/catalog
+      - ${ASSETS_PATH}/trino-config/catalog:/etc/trino/catalog
