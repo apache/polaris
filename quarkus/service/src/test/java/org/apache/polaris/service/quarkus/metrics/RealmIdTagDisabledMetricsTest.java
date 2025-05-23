@@ -22,8 +22,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @TestProfile(RealmIdTagDisabledMetricsTest.Profile.class)
@@ -36,17 +34,5 @@ public class RealmIdTagDisabledMetricsTest extends MetricsTestBase {
       return Map.of(
           "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
     }
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
-  public void testMetricsEmittedOnSuccessfulRequest(String endpoint) {
-    super.testMetricsEmittedOnSuccessfulRequest(endpoint, false);
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
-  public void testMetricsEmittedOnFailedRequest(String endpoint) {
-    super.testMetricsEmittedOnFailedRequest(endpoint, false);
   }
 }

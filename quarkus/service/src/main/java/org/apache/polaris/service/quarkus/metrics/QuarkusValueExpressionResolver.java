@@ -33,7 +33,7 @@ public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
   @Override
   public String resolve(@Nonnull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
-    if (metricsConfiguration.realmIdTag().apiMetricsEnabled()
+    if (metricsConfiguration.realmIdTag().enableInApiMetrics()
         && parameter instanceof RealmContext realmContext
         && expression.equals("realmIdentifier")) {
       return realmContext.getRealmIdentifier();

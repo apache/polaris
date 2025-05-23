@@ -40,7 +40,7 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
   public Tags contribute(Context context) {
     // FIXME retrieve the realm context from context.requestContextLocalData()
     // after upgrading to Quarkus 3.24
-    if (!metricsConfiguration.realmIdTag().httpMetricsEnabled()) {
+    if (!metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
       return Tags.empty();
     }
     HttpServerRequest request = context.request();

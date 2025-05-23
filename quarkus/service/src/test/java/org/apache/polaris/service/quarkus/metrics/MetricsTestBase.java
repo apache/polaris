@@ -39,6 +39,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestEnvironmentExtension.class)
@@ -51,6 +53,7 @@ public abstract class MetricsTestBase {
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry registry;
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -66,7 +69,9 @@ public abstract class MetricsTestBase {
     registry.clear();
   }
 
-  protected void testMetricsEmittedOnSuccessfulRequest(String endpoint, boolean realmIdTagEnabled) {
+  @ParameterizedTest
+  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
+  public void testMetricsEmittedOnSuccessfulRequest(String endpoint) {
     sendSuccessfulRequest();
     Map<String, MetricFamily> allMetrics =
         TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
@@ -78,7 +83,11 @@ public abstract class MetricsTestBase {
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", realmIdTagEnabled ? fixture.realm : ""),
+                      Map.entry(
+                          "realm_id",
+                          metricsConfiguration.realmIdTag().enableInApiMetrics()
+                              ? fixture.realm
+                              : ""),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "none"),
@@ -100,7 +109,7 @@ public abstract class MetricsTestBase {
                       Map.entry("outcome", "SUCCESS"),
                       Map.entry("status", "200"),
                       Map.entry("uri", "/api/management/v1/principals/{principalName}"));
-              if (realmIdTagEnabled) {
+              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
                 assertThat(metric.getLabels()).containsEntry("realm_id", fixture.realm);
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");
@@ -112,7 +121,9 @@ public abstract class MetricsTestBase {
             });
   }
 
-  protected void testMetricsEmittedOnFailedRequest(String endpoint, boolean realmIdTagEnabled) {
+  @ParameterizedTest
+  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
+  public void testMetricsEmittedOnFailedRequest(String endpoint) {
     sendFailingRequest();
     Map<String, MetricFamily> allMetrics =
         TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
@@ -124,7 +135,11 @@ public abstract class MetricsTestBase {
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", realmIdTagEnabled ? fixture.realm : ""),
+                      Map.entry(
+                          "realm_id",
+                          metricsConfiguration.realmIdTag().enableInApiMetrics()
+                              ? fixture.realm
+                              : ""),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "NotFoundException"),
@@ -145,7 +160,7 @@ public abstract class MetricsTestBase {
                       Map.entry("outcome", "CLIENT_ERROR"),
                       Map.entry("status", "404"),
                       Map.entry("uri", "/api/management/v1/principals/{principalName}"));
-              if (realmIdTagEnabled) {
+              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
                 assertThat(metric.getLabels()).containsEntry("realm_id", fixture.realm);
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");

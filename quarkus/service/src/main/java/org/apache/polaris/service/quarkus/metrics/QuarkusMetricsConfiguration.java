@@ -41,7 +41,7 @@ public interface QuarkusMetricsConfiguration {
      * even crash the server.
      */
     @WithDefault("false")
-    boolean apiMetricsEnabled();
+    boolean enableInApiMetrics();
 
     /**
      * Whether to include the Realm ID tag in the HTTP server request metrics.
@@ -50,7 +50,7 @@ public interface QuarkusMetricsConfiguration {
      * even crash the server.
      */
     @WithDefault("false")
-    boolean httpMetricsEnabled();
+    boolean enableInHttpMetrics();
 
     /**
      * The maximum number of Realm ID tag values allowed for the HTTP server request metrics.
