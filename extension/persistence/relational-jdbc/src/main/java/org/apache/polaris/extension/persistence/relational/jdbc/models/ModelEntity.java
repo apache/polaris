@@ -22,9 +22,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.google.common.collect.ImmutableMap;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
@@ -72,6 +77,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   // current version for that entity, will be monotonically incremented
   private int grantRecordsVersion;
+
+  // location for the entity, when applicable
+  private String location;
 
   public long getId() {
     return id;
@@ -133,6 +141,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return grantRecordsVersion;
   }
 
+  public String getLocation() {
+    return location;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -181,6 +193,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("properties", this.getProperties());
     map.put("internal_properties", this.getInternalProperties());
     map.put("grant_records_version", this.getGrantRecordsVersion());
+    map.put("location", this.getLocation());
     return map;
   }
 
@@ -266,13 +279,18 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
+    public Builder location(String location) {
+      entity.location = location;
+      return this;
+    }
+
     public ModelEntity build() {
       return entity;
     }
   }
 
   public static ModelEntity fromEntity(PolarisBaseEntity entity) {
-    return ModelEntity.builder()
+    var builder = ModelEntity.builder()
         .catalogId(entity.getCatalogId())
         .id(entity.getId())
         .parentId(entity.getParentId())
@@ -287,8 +305,19 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
         .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
         .properties(entity.getProperties())
         .internalProperties(entity.getInternalProperties())
-        .grantRecordsVersion(entity.getGrantRecordsVersion())
-        .build();
+        .grantRecordsVersion(entity.getGrantRecordsVersion());
+
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE ||
+          entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        builder.location(((IcebergTableLikeEntity)entity).getBaseLocation());
+      }
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      builder.location(((NamespaceEntity)entity).getBaseLocation());
+    }
+
+    return builder.build();
   }
 
   public static PolarisBaseEntity toEntity(ModelEntity model) {
@@ -324,6 +353,17 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setProperties(model.getProperties());
     entity.setInternalProperties(model.getInternalProperties());
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
+
+    if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
+      entity = new IcebergTableLikeEntity(entity);
+      entity.setPropertiesAsMap(ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+    }
+
+    if (entityType == PolarisEntityType.NAMESPACE) {
+      entity = new NamespaceEntity(entity);
+      entity.setPropertiesAsMap(ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+    }
+
     return entity;
   }
 }

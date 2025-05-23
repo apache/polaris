@@ -1820,7 +1820,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public Optional<Boolean> hasOverlappingSiblings(
+  public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long catalogId, String location) {
     BasePersistence ms = callContext.getMetaStore();
     return ms.hasOverlappingSiblings(callContext, catalogId, location);

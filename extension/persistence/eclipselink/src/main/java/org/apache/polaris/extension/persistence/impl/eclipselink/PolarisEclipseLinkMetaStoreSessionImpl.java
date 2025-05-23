@@ -781,7 +781,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   }
 
   @Override
-  public Optional<Boolean> hasOverlappingSiblings(
+  public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long parentId, String location) {
     return Optional.empty();
   }

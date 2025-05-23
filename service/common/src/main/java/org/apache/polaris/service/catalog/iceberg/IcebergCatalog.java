@@ -1070,15 +1070,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     // Attempt to directly query for siblings
     if (parentNamespace.isPresent()) {
-      Optional<Boolean> directSiblingCheckResult = getMetaStoreManager().hasOverlappingSiblings(
+      Optional<Optional<String>> directSiblingCheckResult = getMetaStoreManager().hasOverlappingSiblings(
           callContext.getPolarisCallContext(),
           parentNamespace.get().getCatalogId(),
           location);
       if (directSiblingCheckResult.isPresent()) {
-        if (directSiblingCheckResult.get()) {
+        if (directSiblingCheckResult.get() != null) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(
-              "Unable to create entity at location '%s' because it conflicts with existing table or namespace",
-              location);
+              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
+              location, directSiblingCheckResult.get());
         } else {
           return;
         }

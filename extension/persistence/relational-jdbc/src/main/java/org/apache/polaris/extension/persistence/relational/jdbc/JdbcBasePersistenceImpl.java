@@ -579,7 +579,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public Optional<Boolean> hasOverlappingSiblings(
+  public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long parentId, String location) {
     if (this.version < 2) {
       return Optional.empty();
@@ -597,15 +597,19 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       var results =
           datasourceOperations.executeSelect(query, new ModelEntity());
-      return results == null || results.isEmpty() ? null : results.getFirst();
+      if (results.isEmpty()) {
+        return Optional.of(Optional.empty());
+      } else {
+        return Optional.of(Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocation()));
+      }
     } catch (SQLException e) {
       LOGGER.error(
-          "Failed to retrieve principals secrets for client id: {}, due to {}",
-          clientId,
+          "Failed to retrieve location overlap for location {} due to {}",
+          location,
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to retrieve principal secrets for clientId: %s", clientId), e);
+          String.format("Failed to retrieve location overlap for location: %s", location), e);
     }
   }
 

@@ -196,7 +196,8 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  public static <T> String generateOverlapQuery(String realmId, long parentId, String location) {
+  public static <T> String generateOverlapQuery(
+      String realmId, long parentId, String location) {
     String[] components = location.split("/");
     StringBuilder locationClauseBuilder = new StringBuilder();
     StringBuilder pathBuilder = new StringBuilder();
@@ -205,10 +206,11 @@ public class QueryGenerator {
       locationClauseBuilder.append(String.format("AND location = '%s'", pathBuilder));
     }
     locationClauseBuilder.append(String.format("AND location LIKE '%s/%%'", location));
+    String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
 
     // TODO harden against realmId in this method and others
-    return String.format(
-        "SELECT location FROM entities WHERE realm_id = %s AND parent_id = %d AND (1 = 1 %s)",
+    return query + String.format(
+        " FROM entities WHERE realm_id = %s AND parent_id = %d AND (1 = 1 %s)",
         realmId,
         parentId,
         locationClauseBuilder
