@@ -20,6 +20,8 @@ package org.apache.polaris.service;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
@@ -53,7 +55,6 @@ import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
@@ -93,6 +94,21 @@ public record TestServices(
           PolarisConfigurationStore,
           FileIOFactory> {}
 
+  private static class MockedConfigurationStore implements PolarisConfigurationStore {
+    private final Map<String, Object> defaults;
+
+    public MockedConfigurationStore(Map<String, Object> defaults) {
+      this.defaults = Map.copyOf(defaults);
+    }
+
+    @Override
+    public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
+      @SuppressWarnings("unchecked")
+      T confgValue = (T) defaults.get(configName);
+      return confgValue;
+    }
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -126,7 +142,7 @@ public record TestServices(
     }
 
     public TestServices build() {
-      DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
+      PolarisConfigurationStore configurationStore = new MockedConfigurationStore(config);
       PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 

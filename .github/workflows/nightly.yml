@@ -43,6 +43,7 @@ permissions:
 jobs:
   nightly_build:
     runs-on: ubuntu-latest
+    if: github.repository == 'apache/polaris'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

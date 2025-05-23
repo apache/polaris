@@ -203,7 +203,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       try {
         final List<PolarisPolicyMappingRecord> mappingOnPolicy =
             (entity.getType() == PolarisEntityType.POLICY)
-                ? ms.loadAllTargetsOnPolicy(callCtx, entity.getCatalogId(), entity.getId())
+                ? ms.loadAllTargetsOnPolicy(
+                    callCtx,
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolicyEntity.of(entity).getPolicyTypeCode())
                 : List.of();
         final List<PolarisPolicyMappingRecord> mappingOnTarget =
             (entity.getType() == PolarisEntityType.POLICY)
@@ -1209,7 +1213,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         //  need to check if the policy is attached to any entity
         List<PolarisPolicyMappingRecord> records =
             ms.loadAllTargetsOnPolicy(
-                callCtx, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId());
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                PolicyEntity.of(refreshEntityToDrop).getPolicyTypeCode());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
         }

@@ -25,14 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -44,10 +42,10 @@ import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -60,18 +58,15 @@ import org.mockito.Mockito;
  */
 public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
 
-  private static Path rootDir;
   private static Path persistenceXml;
   private static Path confJar;
 
   @BeforeAll
-  static void prepareConfFiles() throws IOException {
+  static void prepareConfFiles(@TempDir Path archiveDir) throws IOException {
     URL persistenceXmlSource =
         Objects.requireNonNull(
             PolarisEclipseLinkMetaStoreManagerTest.class.getResource("/META-INF/persistence.xml"));
-    rootDir = Files.createTempDirectory("root");
-    Path archiveDir = rootDir.resolve("archive");
-    Files.createDirectory(archiveDir);
+    Files.createDirectories(archiveDir);
     persistenceXml = archiveDir.resolve("persistence.xml");
     try (InputStream is = persistenceXmlSource.openStream()) {
       Files.copy(is, persistenceXml);
@@ -82,17 +77,6 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     confJar = archiveDir.resolve("test-conf.jar");
     try (InputStream is = confJarSource.openStream()) {
       Files.copy(is, confJar);
-    }
-  }
-
-  @AfterAll
-  static void deleteConfFiles() throws IOException {
-    if (rootDir != null) {
-      try (Stream<Path> paths = Files.walk(rootDir)) {
-        boolean allDeleted =
-            paths.sorted(Comparator.reverseOrder()).map(Path::toFile).allMatch(File::delete);
-        assertTrue(allDeleted);
-      }
     }
   }
 

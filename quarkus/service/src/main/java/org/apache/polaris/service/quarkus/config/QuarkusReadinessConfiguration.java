@@ -16,27 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.test;
+package org.apache.polaris.service.quarkus.config;
 
-import java.util.List;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
-public class PolarisRestCatalogViewFileIntegrationTest
-    extends PolarisRestCatalogViewIntegrationBase {
-  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.readiness")
+public interface QuarkusReadinessConfiguration {
 
-  @Override
-  protected StorageConfigInfo getStorageConfigInfo() {
-    return FileStorageConfigInfo.builder()
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-        .setAllowedLocations(List.of(BASE_LOCATION))
-        .build();
-  }
-
-  @Override
-  protected boolean shouldSkip() {
-    return false;
-  }
+  /**
+   * Setting this to {@code true} means that Polaris will start up even if severe security risks
+   * have been detected, accepting the risk of denial-of-service, data-loss, corruption and other
+   * risks.
+   */
+  @WithDefault("false")
+  boolean ignoreSevereIssues();
 }

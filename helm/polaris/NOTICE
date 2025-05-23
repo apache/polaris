@@ -1,5 +1,13 @@
 Apache Polaris (incubating)
-Copyright 2024 The Apache Software Foundation
+Copyright 2025 The Apache Software Foundation
 
 This product includes software developed at
-The Apache Software Foundation (/).
+The Apache Software Foundation (http://www.apache.org/).
+
+--------------------------------------------------------------------------------
+
+This project includes code from Project Nessie, developed at Dremio,
+with the following copyright notice:
+
+| Nessie
+| Copyright 2015-2025 Dremio Corporation
