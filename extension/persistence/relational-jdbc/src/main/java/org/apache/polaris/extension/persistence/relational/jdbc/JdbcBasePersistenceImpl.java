@@ -560,8 +560,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext,
-      IcebergTableLikeEntity table) {
+      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
     return Optional.empty();
   }
 

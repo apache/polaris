@@ -668,8 +668,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext,
-      IcebergTableLikeEntity table) {
+      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
     return Optional.empty();
   }
 }

@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
@@ -31,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -390,6 +392,18 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
+   * location
+   *
+   * @param callContext the polaris call context
+   * @param table IcebergTableLikeEntity to check for
+   * @return Optional.of(true) if the parent entity has children, Optional.of(false) if not, and
+   *     Optional.empty() if the metastore doesn't support this operation
+   */
+  Optional<Boolean> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table);
 
   /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via

@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -33,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -383,6 +385,14 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "refreshResolvedEntity");
     return null;
+  }
+
+  @Override
+  public Optional<Boolean> hasOverlappingSiblings(@Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
+    callContext
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "hasOverlappingSiblings");
+    return Optional.empty();
   }
 
   @Override

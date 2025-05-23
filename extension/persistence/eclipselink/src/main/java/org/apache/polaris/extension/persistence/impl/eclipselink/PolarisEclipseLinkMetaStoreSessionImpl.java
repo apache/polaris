@@ -783,8 +783,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   @Override
   public Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext,
-      IcebergTableLikeEntity table) {
+      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table) {
     return Optional.empty();
   }
 }

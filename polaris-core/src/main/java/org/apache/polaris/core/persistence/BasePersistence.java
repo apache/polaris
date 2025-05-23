@@ -415,8 +415,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *     Optional.empty() if the metastore doesn't support this operation
    */
   Optional<Boolean> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext,
-      IcebergTableLikeEntity table);
+      @Nonnull PolarisCallContext callContext, IcebergTableLikeEntity table);
 
   /**
    * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}
