@@ -53,8 +53,8 @@ Polaris can add the realm ID as a tag to all API and HTTP request metrics. This 
 default to prevent high cardinality issues, but can be enabled by setting the following properties:
 
 ```properties
-polaris.metrics.realm-id-tag.api-metrics-enabled=true
-polaris.metrics.realm-id-tag.http-metrics-enabled=true
+polaris.metrics.realm-id-tag.enable-in-api-metrics=true
+polaris.metrics.realm-id-tag.enable-in-http-metrics=true
 ```
 
 You should be particularly careful when enabling the realm ID tag in HTTP request metrics, as these
