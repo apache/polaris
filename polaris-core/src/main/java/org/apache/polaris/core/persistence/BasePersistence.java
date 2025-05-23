@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
@@ -272,7 +273,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
    * @param parentId id of the parent, can be the special 0 value representing the root entity
    * @param entityType type of entities to list
-   * @param pageToken the token to start listing after
+   * @param pageRequest the token to start listing after
    * @return the list of entities for the specified list operation
    */
   @Nonnull
@@ -281,7 +282,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /**
    * List entities where some predicate returns true
@@ -292,7 +293,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param entityType type of entities to list
    * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
    *     returns true are returned in the list
-   * @param pageToken the token to start listing after
+   * @param pageRequest the token to start listing after
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
@@ -302,7 +303,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /**
    * List entities where some predicate returns true and transform the entities with a function
@@ -315,6 +316,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *     returns true are returned in the list
    * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
    *     returning
+   * @param pageRequest
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
@@ -325,7 +327,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
-      PageToken pageToken);
+      PageRequest pageRequest);
 
   /**
    * Lookup the current entityGrantRecordsVersion for the specified entity. That version is changed
@@ -413,4 +415,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
   default BasePersistence detach() {
     return this;
   }
+
+  /** Construct a {@link PageToken} from a {@link PageRequest} */
+  PageToken buildPageToken(PageRequest pageRequest);
 }
