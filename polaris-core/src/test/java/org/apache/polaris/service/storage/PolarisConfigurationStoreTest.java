@@ -72,7 +72,7 @@ public class PolarisConfigurationStoreTest {
   }
 
   @Test
-  public void testInvalidCastThrowsException() {
+  public void testInvalidApplyThrowsException() {
     // Bool not included because Boolean.valueOf turns non-boolean strings to false
     List<PolarisConfiguration<?>> configs =
         List.of(buildConfig("int2", 12), buildConfig("long2", 34L), buildConfig("double2", 5.6D));

@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,6 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -104,6 +104,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.cache.EntityWeigher;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -134,6 +135,7 @@ import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.persistence.MetadataCacheManager;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -343,8 +345,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         catalogFileIO, tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
+  @VisibleForTesting
   @Override
-  protected TableOperations newTableOps(TableIdentifier tableIdentifier) {
+  public TableOperations newTableOps(TableIdentifier tableIdentifier) {
     boolean makeMetadataCurrentOnCommit =
         getCurrentPolarisContext()
             .getConfigurationStore()
@@ -378,32 +381,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       return SLASH.join(defaultBaseLocation, SLASH.join(namespace.levels()));
     }
-  }
-
-  private Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
-    Set<String> locations = new HashSet<>();
-    locations.add(tableMetadata.location());
-    if (tableMetadata
-        .properties()
-        .containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)) {
-      locations.add(
-          tableMetadata
-              .properties()
-              .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    }
-    if (tableMetadata
-        .properties()
-        .containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
-      locations.add(
-          tableMetadata
-              .properties()
-              .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    }
-    return locations;
-  }
-
-  private Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
-    return Set.of(viewMetadata.location());
   }
 
   @Override
@@ -872,7 +849,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
-      TableMetadata tableMetadata,
+      Set<String> locationsAllowedToBeAccessed,
       Set<PolarisStorageActions> storageActions) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
@@ -888,9 +865,41 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getCredentialVendor(),
         callContext.getPolarisCallContext().getConfigurationStore(),
         tableIdentifier,
-        getLocationsAllowedToBeAccessed(tableMetadata),
+        locationsAllowedToBeAccessed,
         storageActions,
         storageInfo.get());
+  }
+
+  public TableMetadata loadTableMetadata(TableIdentifier identifier) {
+    int maxMetadataCacheBytes =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
+    Supplier<TableMetadata> fallback =
+        () -> {
+          return loadTableMetadata(loadTable(identifier));
+        };
+    if (maxMetadataCacheBytes
+        == FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
+      return fallback.get();
+    } else {
+      return MetadataCacheManager.loadTableMetadata(
+          identifier,
+          maxMetadataCacheBytes,
+          callContext.getPolarisCallContext(),
+          metaStoreManager,
+          resolvedEntityView,
+          fallback);
+    }
+  }
+
+  private static TableMetadata loadTableMetadata(Table table) {
+    if (table instanceof BaseTable baseTable) {
+      return baseTable.operations().current();
+    }
+    throw new IllegalArgumentException("Cannot load metadata for " + table.name());
   }
 
   /**
@@ -1258,20 +1267,31 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return current();
     }
 
+    /**
+     * With metadata caching, the `base` may not be exactly `current()` by reference so we compare
+     * locations instead
+     */
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
       // if the metadata is already out of date, reject it
-      if (base != current()) {
-        if (base != null) {
-          throw new CommitFailedException("Cannot commit: stale table metadata");
-        } else {
+      if (base == null) {
+        if (current() != null) {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
         }
+      } else if (current() != null
+          && !current().metadataFileLocation().equals(base.metadataFileLocation())) {
+        throw new CommitFailedException("Cannot commit: stale table metadata");
       }
       // if the metadata is not changed, return early
       if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      } else if (base != null
+          && metadata != null
+          && base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+        // if the metadata is not changed, return early
         LOGGER.info("Nothing to commit.");
         return;
       }
@@ -1380,7 +1400,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
-              getLocationsAllowedToBeAccessed(metadata),
+              IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
               new HashMap<>(metadata.properties()),
               Set.of(
@@ -1403,24 +1423,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
-        Set<String> dataLocations = new HashSet<>();
-        dataLocations.add(metadata.location());
-        if (metadata.properties().get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)
-            != null) {
-          dataLocations.add(
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-        }
-        if (metadata
-                .properties()
-                .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)
-            != null) {
-          dataLocations.add(
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-        }
+        Set<String> dataLocations = IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata);
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
@@ -1462,24 +1465,51 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
+      int maxMetadataCacheBytes =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(),
+                  catalogEntity,
+                  FeatureConfiguration.METADATA_CACHE_MAX_BYTES);
+      Optional<String> metadataJsonToCache =
+          switch (maxMetadataCacheBytes) {
+            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING -> {
+              yield Optional.empty();
+            }
+            case FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
+              yield Optional.of(TableMetadataParser.toJson(metadata));
+            }
+            default -> {
+              String rawMetadataJson = TableMetadataParser.toJson(metadata);
+              if (rawMetadataJson.length() * EntityWeigher.APPROXIMATE_BYTES_PER_CHAR
+                  < maxMetadataCacheBytes) {
+                yield Optional.of(rawMetadataJson);
+              } else {
+                yield Optional.empty();
+              }
+            }
+          };
+      final IcebergTableLikeEntity.Builder builder;
       if (null == entity) {
         existingLocation = null;
-        entity =
+        builder =
             new IcebergTableLikeEntity.Builder(tableIdentifier, newLocation)
                 .setCatalogId(getCatalogId())
                 .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
                 .setBaseLocation(metadata.location())
                 .setId(
-                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
-                .build();
+                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId());
       } else {
         existingLocation = entity.getMetadataLocation();
-        entity =
+        builder =
             new IcebergTableLikeEntity.Builder(entity)
                 .setBaseLocation(metadata.location())
-                .setMetadataLocation(newLocation)
-                .build();
+                .setMetadataLocation(newLocation);
       }
+      metadataJsonToCache.ifPresent(s -> builder.setMetadataContent(newLocation, s));
+      entity = builder.build();
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
           throw new AlreadyExistsException("Table already exists: %s", fullTableName);
@@ -1497,12 +1527,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // We diverge from `BaseMetastoreTableOperations` in the below code block
       if (makeMetadataCurrentOnCommit) {
-        currentMetadata =
-            TableMetadata.buildFrom(metadata)
-                .withMetadataLocation(newLocation)
-                .discardChanges()
-                .build();
-        currentMetadataLocation = newLocation;
+        setCurrentMetadata(newLocation, metadata);
       }
 
       if (null == existingLocation) {
@@ -1513,6 +1538,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       polarisEventListener.onAfterTableCommited(
           new AfterTableCommitedEvent(tableIdentifier, base, metadata));
+    }
+
+    public void setCurrentMetadata(String metadataLocation, TableMetadata metadata) {
+      currentMetadata =
+          TableMetadata.buildFrom(metadata)
+              .withMetadataLocation(metadataLocation)
+              .discardChanges()
+              .build();
+      currentMetadataLocation = metadataLocation;
     }
 
     @Override
@@ -1781,7 +1815,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
-              getLocationsAllowedToBeAccessed(metadata),
+              IcebergMetadataUtil.getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
               tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
@@ -2290,6 +2324,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    // Drop the table:
     return getMetaStoreManager()
         .dropEntityIfExists(
             getCurrentPolarisContext(),

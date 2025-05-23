@@ -58,6 +58,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
@@ -126,6 +127,7 @@ import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.persistence.MetadataCacheManager;
 import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
 import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -180,7 +182,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.event-listener.type",
           "test",
           "polaris.readiness.ignore-severe-issues",
-          "true");
+          "true",
+          "polaris.features." + FeatureConfiguration.METADATA_CACHE_MAX_BYTES.key,
+          String.valueOf(FeatureConfiguration.Constants.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING));
     }
   }
 
@@ -222,6 +226,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
+  private PolarisResolutionManifestCatalogView passthroughView;
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
@@ -301,6 +306,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
+
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
@@ -318,6 +324,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
+
+    passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, CATALOG_NAME);
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -1779,6 +1789,63 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
     handler.handleTask(taskEntity, callContext);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
+  }
+
+  private Schema buildSchema(int fields) {
+    Types.NestedField[] fieldsArray = new Types.NestedField[fields];
+    for (int i = 0; i < fields; i++) {
+      fieldsArray[i] = Types.NestedField.optional(i, "field_" + i, Types.IntegerType.get());
+    }
+    return new Schema(fieldsArray);
+  }
+
+  @Test
+  public void testMetadataCachingWithManualFallback() {
+    Namespace namespace = Namespace.of("manual-namespace");
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "t1");
+
+    Schema schema = buildSchema(10);
+
+    catalog.createNamespace(namespace);
+    catalog.createTable(tableIdentifier, schema);
+    TableMetadata originalMetadata = catalog.loadTableMetadata(tableIdentifier);
+
+    TableMetadata cachedMetadata =
+        MetadataCacheManager.loadTableMetadata(
+            tableIdentifier,
+            Integer.MAX_VALUE,
+            polarisContext,
+            metaStoreManager,
+            passthroughView,
+            () -> {
+              throw new IllegalStateException("Fell back even though a cache entry should exist!");
+            });
+
+    // The content should match what was cached
+    Assertions.assertThat(TableMetadataParser.toJson(cachedMetadata))
+        .isEqualTo(TableMetadataParser.toJson(originalMetadata));
+
+    // Update the table
+    TableOperations tableOps = catalog.newTableOps(tableIdentifier);
+    TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100));
+    tableOps.commit(tableOps.current(), updatedMetadata);
+
+    // Read from the cache; it should detect a change due to the update and load the new fallback
+    TableMetadata reloadedMetadata =
+        MetadataCacheManager.loadTableMetadata(
+            tableIdentifier,
+            Integer.MAX_VALUE,
+            polarisContext,
+            metaStoreManager,
+            passthroughView,
+            () -> {
+              throw new IllegalStateException(
+                  "Fell back even though a cache entry should be updated on write");
+            });
+
+    Assertions.assertThat(TableMetadataParser.toJson(reloadedMetadata))
+        .isNotSameAs(TableMetadataParser.toJson(cachedMetadata));
+    Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
   }
 
   @Test

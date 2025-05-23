@@ -75,17 +75,17 @@ public interface PolarisConfigurationStore {
     }
 
     if (config.defaultValue instanceof Boolean) {
-      return config.cast(Boolean.valueOf(String.valueOf(value)));
+      return config.apply(Boolean.valueOf(String.valueOf(value)));
     } else if (config.defaultValue instanceof Integer) {
-      return config.cast(Integer.valueOf(String.valueOf(value)));
+      return config.apply(Integer.valueOf(String.valueOf(value)));
     } else if (config.defaultValue instanceof Long) {
-      return config.cast(Long.valueOf(String.valueOf(value)));
+      return config.apply(Long.valueOf(String.valueOf(value)));
     } else if (config.defaultValue instanceof Double) {
-      return config.cast(Double.valueOf(String.valueOf(value)));
+      return config.apply(Double.valueOf(String.valueOf(value)));
     } else if (config.defaultValue instanceof List<?>) {
-      return config.cast(new ArrayList<>((List<?>) value));
+      return config.apply(new ArrayList<>((List<?>) value));
     } else {
-      return config.cast(value);
+      return config.apply(value);
     }
   }
 

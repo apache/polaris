@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -43,8 +44,10 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.ResourcePaths;
+import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -252,15 +255,19 @@ public class IcebergCatalogAdapter
    * unable to get metadata location and logs a warning.
    */
   private Response.ResponseBuilder tryInsertETagHeader(
-      Response.ResponseBuilder builder,
-      LoadTableResponse response,
-      String namespace,
-      String tableName) {
-    if (response.metadataLocation() != null) {
+      Response.ResponseBuilder builder, RESTResponse response, String namespace, String tableName) {
+    final String metadataLocation;
+    if (response instanceof LoadTableResponse loadTableResponse) {
+      metadataLocation = loadTableResponse.metadataLocation();
+    } else {
+      throw new IllegalStateException("Cannot build etag from: " + response);
+    }
+
+    if (metadataLocation != null) {
       builder =
           builder.header(
               HttpHeaders.ETAG,
-              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()));
+              IcebergHttpUtil.generateETagForMetadataFileLocation(metadataLocation));
     } else {
       LOGGER
           .atWarn()
@@ -361,7 +368,7 @@ public class IcebergCatalogAdapter
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
           } else {
-            LoadTableResponse response =
+            RESTResponse response =
                 catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
@@ -410,7 +417,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response;
+          RESTResponse response;
 
           if (delegationModes.isEmpty()) {
             response =
@@ -586,12 +593,15 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+          RESTResponse restResponse = catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+          final List<Credential> credentials;
+          if (restResponse instanceof LoadTableResponse loadTableResponse) {
+            credentials = loadTableResponse.credentials();
+          } else {
+            throw new IllegalStateException("Cannot extract credentials from " + restResponse);
+          }
           return Response.ok(
-                  ImmutableLoadCredentialsResponse.builder()
-                      .credentials(loadTableResponse.credentials())
-                      .build())
+                  ImmutableLoadCredentialsResponse.builder().credentials(credentials).build())
               .build();
         });
   }

@@ -20,6 +20,7 @@ package org.apache.polaris.core.config;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
@@ -38,8 +39,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
-      Optional<String> catalogConfigUnsafe) {
-    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+      Optional<String> catalogConfigUnsafe,
+      Optional<Function<T, Boolean>> validation) {
+    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe, validation);
+  }
+
+  public static final class Constants {
+    public static final int METADATA_CACHE_MAX_BYTES_NO_CACHING = 0;
+    public static final int METADATA_CACHE_MAX_BYTES_INFINITE_CACHING = -1;
   }
 
   /**
@@ -286,5 +293,26 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Enabling this setting may expose the service to possibly severe security risks!"
                   + "This should only be set to 'true' for tests!")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Integer> METADATA_CACHE_MAX_BYTES =
+      PolarisConfiguration.<Integer>builder()
+          .key("METADATA_CACHE_MAX_BYTES")
+          .catalogConfig("polaris.config.metadata-cache-max-bytes")
+          .description(
+              "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence"
+                  + " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata"
+                  + " will be cached.")
+          .defaultValue(Constants.METADATA_CACHE_MAX_BYTES_NO_CACHING)
+          .validation(value -> value >= -1)
+          .buildFeatureConfiguration();
+
+  public static final PolarisConfiguration<Boolean> ALWAYS_FILTER_SNAPSHOTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALWAYS_FILTER_SNAPSHOTS")
+          .description(
+              "If set, Polaris will always attempt to filter snapshots from a LoadTableResponse even when "
+                  + "doing so requires additional serialization of the TableMetadata")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 }
