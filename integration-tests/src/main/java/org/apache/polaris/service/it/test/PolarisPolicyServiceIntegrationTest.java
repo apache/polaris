@@ -616,8 +616,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
       Assertions.assertThat(res.readEntity(String.class))
-          .contains(
-              "Namespace does not exist: INVALID_NAMESPACE");
+          .contains("Namespace does not exist: INVALID_NAMESPACE");
     }
   }
 
