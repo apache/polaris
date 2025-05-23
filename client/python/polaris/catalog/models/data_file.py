@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictStr, field_validator
+from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.content_file import ContentFile
 from polaris.catalog.models.count_map import CountMap
@@ -57,13 +58,6 @@ class DataFile(ContentFile):
     lower_bounds: Optional[ValueMap] = Field(default=None, description="Map of column id to lower bound primitive type values", alias="lower-bounds")
     upper_bounds: Optional[ValueMap] = Field(default=None, description="Map of column id to upper bound primitive type values", alias="upper-bounds")
     __properties: ClassVar[List[str]] = ["content", "file-path", "file-format", "spec-id", "partition", "file-size-in-bytes", "record-count", "key-metadata", "split-offsets", "sort-order-id"]
-
-    @field_validator('content')
-    def content_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['data']):
-            raise ValueError("must be one of enum values ('data')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

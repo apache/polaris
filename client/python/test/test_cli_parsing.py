@@ -63,6 +63,10 @@ class TestCliParsing(unittest.TestCase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
+            Parser.parse(['catalogs', 'create', 'catalog_name', '--type', 'EXTERNAL', '--remote-url', 'gone'])  # remote-url deprecated
+            self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
             Parser.parse(['principals', 'create', 'name', '--type', 'bad'])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
@@ -122,7 +126,7 @@ class TestCliParsing(unittest.TestCase):
 
     # These commands are valid for parsing, but may cause errors within the command itself
     def test_parse_argparse_valid_commands(self):
-        Parser.parse(['catalogs', 'create', 'catalog_name', '--type', 'internal', '--remote-url', 'www.apache.org'])
+        Parser.parse(['catalogs', 'create', 'catalog_name', '--type', 'internal'])
         Parser.parse(['privileges', 'table', 'grant',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
         Parser.parse(['privileges', 'catalog', 'grant', '--catalog', 'c', '--catalog-role', 'r', 'fake-privilege'])
@@ -212,12 +216,11 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.properties.default_base_location'): 'x',
             })
         check_arguments(
-            mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external', '--remote-url', 'foo.bar',
+            mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
                           '--storage-type', 'gcs', '--default-base-location', 'dbl']),
             'create_catalog', {
                 (0, 'catalog.name'): 'my-catalog',
                 (0, 'catalog.type'): 'EXTERNAL',
-                (0, 'catalog.remote_url'): 'foo.bar',
             })
         check_arguments(
             mock_execute([
@@ -493,11 +496,11 @@ class TestCliParsing(unittest.TestCase):
         check_arguments(
             mock_execute(
                 ['privileges', 'view', 'grant', '--namespace', 'a.b.c', '--catalog', 'foo', '--catalog-role', 'bar',
-                 '--view', 'v', 'VIEW_CREATE']),
+                 '--view', 'v', 'VIEW_FULL_METADATA']),
             'add_grant_to_catalog_role', {
                 (0, None): 'foo',
                 (1, None): 'bar',
-                (2, 'grant.privilege.value'): 'VIEW_CREATE',
+                (2, 'grant.privilege.value'): 'VIEW_FULL_METADATA',
                 (2, 'grant.namespace'): ['a', 'b', 'c'],
                 (2, 'grant.view_name'): 'v',
             })

@@ -20,11 +20,12 @@
 -->
 # AddViewVersionUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **view_version** | [**ViewVersion**](ViewVersion.md) |  | 
 
 ## Example

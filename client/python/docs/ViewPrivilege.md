@@ -20,11 +20,10 @@
 -->
 # ViewPrivilege
 
+
 ## Enum
 
 * `CATALOG_MANAGE_ACCESS` (value: `'CATALOG_MANAGE_ACCESS'`)
-
-* `VIEW_CREATE` (value: `'VIEW_CREATE'`)
 
 * `VIEW_DROP` (value: `'VIEW_DROP'`)
 

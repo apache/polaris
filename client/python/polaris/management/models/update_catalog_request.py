@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -43,7 +44,7 @@ from typing_extensions import Self
 
 class UpdateCatalogRequest(BaseModel):
     """
-    Updates to apply to a Catalog
+    Updates to apply to a Catalog. Any fields which are required in the Catalog will remain unaltered if omitted from the contents of this Update request.
     """ # noqa: E501
     current_entity_version: Optional[StrictInt] = Field(default=None, description="The version of the object onto which this update is applied; if the object changed, the update will fail and the caller should retry after fetching the latest version.", alias="currentEntityVersion")
     properties: Optional[Dict[str, StrictStr]] = None

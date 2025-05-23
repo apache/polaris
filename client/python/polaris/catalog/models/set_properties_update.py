@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.base_update import BaseUpdate
 from typing import Optional, Set
 from typing_extensions import Self
@@ -45,16 +46,9 @@ class SetPropertiesUpdate(BaseUpdate):
     """
     SetPropertiesUpdate
     """ # noqa: E501
-    action: StrictStr
+    action: Optional[StrictStr] = None
     updates: Dict[str, StrictStr]
     __properties: ClassVar[List[str]] = ["action"]
-
-    @field_validator('action')
-    def action_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['set-properties']):
-            raise ValueError("must be one of enum values ('set-properties')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

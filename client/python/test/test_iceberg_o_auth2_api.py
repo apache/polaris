@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -47,7 +48,7 @@ class TestIcebergOAuth2API(unittest.TestCase):
     def test_get_token(self) -> None:
         """Test case for get_token
 
-        Get a token using an OAuth2 flow
+        Get a token using an OAuth2 flow (DEPRECATED for REMOVAL)
         """
         pass
 

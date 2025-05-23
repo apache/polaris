@@ -20,6 +20,7 @@
 -->
 # StructField
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -29,6 +30,8 @@ Name | Type | Description | Notes
 **type** | [**Type**](Type.md) |  | 
 **required** | **bool** |  | 
 **doc** | **str** |  | [optional] 
+**initial_default** | [**PrimitiveTypeValue**](PrimitiveTypeValue.md) |  | [optional] 
+**write_default** | [**PrimitiveTypeValue**](PrimitiveTypeValue.md) |  | [optional] 
 
 ## Example
 
