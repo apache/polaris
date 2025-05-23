@@ -32,6 +32,7 @@ The requirements to run the script below are:
 
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-gcp.sh
+export ASSETS_PATH=$(pwd)/getting-started/assets/
 ./getting-started/assets/cloud_providers/deploy-gcp.sh
 ```
 
@@ -45,6 +46,7 @@ export CLIENT_SECRET=s3cr3t
 To shut down the Polaris server, run the following commands:
 
 ```shell
+export ASSETS_PATH=$(pwd)/getting-started/assets/
 docker compose -f getting-started/eclipselink/docker-compose.yml down
 ```
 

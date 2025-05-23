@@ -64,7 +64,7 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
-      - ../assets/polaris/:/polaris
+      - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
@@ -108,4 +108,4 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
-      - ../assets/trino-config/catalog:/etc/trino/catalog
+      - ${ASSETS_PATH}/trino-config/catalog:/etc/trino/catalog

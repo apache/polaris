@@ -41,7 +41,7 @@ services:
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
       polaris.readiness.ignore-severe-issues: "true"
     volumes:
-      - ../assets/eclipselink/:/deployments/config/eclipselink
+      - ${ASSETS_PATH}/eclipselink/:/deployments/config/eclipselink
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
@@ -61,7 +61,7 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
-      - ../assets/polaris/:/polaris
+      - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
@@ -98,11 +98,11 @@ services:
       polaris-setup:
         condition: service_completed_successfully
     environment:
-      - CLIENT_ID=${CLIENT_ID}
-      - CLIENT_SECRET=${CLIENT_SECRET}
+      - CLIENT_ID=${USER_CLIENT_ID}
+      - CLIENT_SECRET=${USER_CLIENT_SECRET}
     stdin_open: true
     tty: true
     ports:
       - "8080:8080"
     volumes:
-      - ../assets/trino-config/catalog:/etc/trino/catalog
+      - ${ASSETS_PATH}/trino-config/catalog:/etc/trino/catalog

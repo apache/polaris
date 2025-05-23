@@ -40,6 +40,7 @@ This example requires `jq` to be installed on your machine.
     export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/POLARIS
     export QUARKUS_DATASOURCE_USERNAME=postgres
     export QUARKUS_DATASOURCE_PASSWORD=postgres
+    export ASSETS_PATH=$(pwd)/getting-started/assets/
     export CLIENT_ID=root
     export CLIENT_SECRET=s3cr3t
     docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/jdbc/docker-compose.yml up
