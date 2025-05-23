@@ -19,8 +19,10 @@
 package org.apache.polaris.service.it.test;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
@@ -39,6 +41,8 @@ import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.types.Types;
@@ -561,6 +565,26 @@ public class PolarisPolicyServiceIntegrationTest {
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
     policyApi.dropPolicy(currentCatalogName, NS1_P2);
   }
+
+  // @TODO WRAP UP THIS TEST CASE AND WE CAN OPEN A PULL REQUEST
+//  @Test
+//  public void testGetApplicablePoliciesOnNonExistingNamespace() {
+//    assertThatThrownBy(() -> policyCatalog.getApplicablePolicies(NS1, null, DATA_COMPACTION))
+//            .isInstanceOf(NoSuchNamespaceException.class)
+//            .hasMessage("Namespace does not exist: ns1");
+//  }
+//
+//  @Test
+//  public void testGetApplicablePoliciesOnNonExistingTable() {
+//    icebergCatalog.createNamespace(NS);
+//    policyCatalog.createPolicy(POLICY1, DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+//    TableIdentifier invalidTable = TableIdentifier.of(NS, "INVALID_TABLE");
+//
+//    assertThatThrownBy(
+//            () -> policyCatalog.getApplicablePolicies(NS, "INVALID_TABLE", DATA_COMPACTION))
+//            .isInstanceOf(NoSuchTableException.class)
+//            .hasMessage("Iceberg Table does not exist: ns1.INVALID_TABLE");
+//  }
 
   @Test
   public void testPolicyMapping() {
