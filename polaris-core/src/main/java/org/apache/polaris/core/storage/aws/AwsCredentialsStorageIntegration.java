@@ -142,7 +142,10 @@ public class AwsCredentialsStorageIntegration
    * and just assuming the role with full privileges.
    */
   private IamPolicy policyString(
-      String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
+      AwsStorageConfigurationInfo awsStorageConfigurationInfo,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -152,7 +155,10 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = getArnPrefixFor(roleArn);
+    String roleARN = awsStorageConfigurationInfo.getRoleARN();
+    String arnPrefix = getArnPrefixFor(roleARN);
+    String region = awsStorageConfigurationInfo.getRegion();
+    String awsAccountId = awsStorageConfigurationInfo.getAwsAccountId();
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -222,7 +228,18 @@ public class AwsCredentialsStorageIntegration
             .addAction("kms:GenerateDataKey")
             .addAction("kms:Decrypt")
             .addAction("kms:DescribeKey")
-            .addResource("*")
+            .addResource("arn:aws:kms:" + region + ":" + awsAccountId + ":key/*")
+            .addCondition(IamConditionOperator.STRING_EQUALS, "aws:PrincipalArn", roleARN)
+            .addCondition(
+                IamConditionOperator.STRING_LIKE,
+                "kms:EncryptionContext:aws:s3:arn",
+                getArnPrefixFor(roleARN)
+                    + StorageUtil.getBucket(URI.create(awsStorageConfigurationInfo.getAllowedLocations().iterator().next()))
+                    + "/*")
+            .addCondition(
+                IamConditionOperator.STRING_EQUALS,
+                "kms:ViaService",
+                "s3." + region + ".amazonaws.com")
             .build());
 
     return policyBuilder.build();

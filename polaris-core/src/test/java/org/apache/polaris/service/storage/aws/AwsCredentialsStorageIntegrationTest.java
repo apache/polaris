@@ -111,6 +111,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         PolarisStorageConfigurationInfo.StorageType.S3;
     String roleARN;
     String region;
+    String accountId = "012345678901";
     switch (awsPartition) {
       case AWS_PARTITION:
         roleARN = "arn:aws:iam::012345678901:role/jdoe";
@@ -127,7 +128,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
     }
-    ;
     StsClient stsClient = Mockito.mock(StsClient.class);
     String externalId = "externalId";
     String bucket = "bucket";
@@ -226,17 +226,22 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
+                                            .returns(
+                                                    List.of(
+                                                            IamAction.create("kms:GenerateDataKey"),
+                                                            IamAction.create("kms:Decrypt"),
+                                                            IamAction.create("kms:DescribeKey")),
+                                                    IamStatement::actions)
                                         .satisfies(
                                             st ->
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
-                                                        IamResource.create("*")))
-                                        .returns(
-                                            List.of(
-                                                IamAction.create("kms:GenerateDataKey"),
-                                                IamAction.create("kms:Decrypt"),
-                                                IamAction.create("kms:DescribeKey")),
-                                            IamStatement::actions));
+                                                        IamResource.create("arn:aws:kms:"+region+":"+accountId+":key/*")))
+
+                                            .satisfies(st -> assertThat(st.conditions()).containsExactlyInAnyOrder(IamCondition.create(IamConditionOperator.STRING_EQUALS,"aws:PrincipalArn",roleARN),IamCondition.create(IamConditionOperator.STRING_EQUALS,"kms:ViaService","s3."+region+".amazonaws.com"),IamCondition.create(IamConditionOperator.STRING_LIKE,"kms:EncryptionContext:aws:s3:arn",
+                                                    s3Arn(awsPartition, bucket, null)+"/*")))
+                            );
+
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -293,6 +298,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
     String bucket = "bucket";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     String warehouseKeyPrefix = "path/to/warehouse";
     String firstPath = warehouseKeyPrefix + "/namespace/table";
     String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
@@ -359,17 +366,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st ->
-                                                assertThat(st.resources())
-                                                    .containsExactlyInAnyOrder(
-                                                        IamResource.create("*")))
-                                        .returns(
-                                            List.of(
-                                                IamAction.create("kms:GenerateDataKey"),
-                                                IamAction.create("kms:Decrypt"),
-                                                IamAction.create("kms:DescribeKey")),
-                                            IamStatement::actions));
+                                            .returns(
+                                                    List.of(
+                                                            IamAction.create("kms:GenerateDataKey"),
+                                                            IamAction.create("kms:Decrypt"),
+                                                            IamAction.create("kms:DescribeKey")),
+                                                    IamStatement::actions)
+                                            .satisfies(
+                                                    st ->
+                                                            assertThat(st.resources())
+                                                                    .containsExactlyInAnyOrder(
+                                                                            IamResource.create("arn:aws:kms:"+region+":"+accountId+":key/*")))
+
+                                            .satisfies(st -> assertThat(st.conditions()).containsExactlyInAnyOrder(IamCondition.create(IamConditionOperator.STRING_EQUALS,"aws:PrincipalArn",roleARN),IamCondition.create(IamConditionOperator.STRING_EQUALS,"kms:ViaService","s3."+region+".amazonaws.com"),IamCondition.create(IamConditionOperator.STRING_LIKE,"kms:EncryptionContext:aws:s3:arn",
+                                                    s3Arn(AWS_PARTITION, bucket, null)+"/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -384,7 +394,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId,
-                    "us-east-2"),
+                    region),
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -401,9 +411,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   @Test
   public void testGetSubscopedCredsInlinePolicyWithoutWrites() {
     StsClient stsClient = Mockito.mock(StsClient.class);
-    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String accountId = "012345678901";
+    String roleARN = "arn:aws:iam::"+accountId+":role/jdoe";
     String externalId = "externalId";
     String bucket = "bucket";
+    String region = "us-east-2";
     String warehouseKeyPrefix = "path/to/warehouse";
     String firstPath = warehouseKeyPrefix + "/namespace/table";
     String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
@@ -468,17 +480,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st ->
-                                                assertThat(st.resources())
-                                                    .containsExactlyInAnyOrder(
-                                                        IamResource.create("*")))
-                                        .returns(
-                                            List.of(
-                                                IamAction.create("kms:GenerateDataKey"),
-                                                IamAction.create("kms:Decrypt"),
-                                                IamAction.create("kms:DescribeKey")),
-                                            IamStatement::actions));
+                                            .returns(
+                                                    List.of(
+                                                            IamAction.create("kms:GenerateDataKey"),
+                                                            IamAction.create("kms:Decrypt"),
+                                                            IamAction.create("kms:DescribeKey")),
+                                                    IamStatement::actions)
+                                            .satisfies(
+                                                    st ->
+                                                            assertThat(st.resources())
+                                                                    .containsExactlyInAnyOrder(
+                                                                            IamResource.create("arn:aws:kms:"+region+":"+accountId+":key/*")))
+
+                                            .satisfies(st -> assertThat(st.conditions()).containsExactlyInAnyOrder(IamCondition.create(IamConditionOperator.STRING_EQUALS,"aws:PrincipalArn",roleARN),IamCondition.create(IamConditionOperator.STRING_EQUALS,"kms:ViaService","s3."+region+".amazonaws.com"),IamCondition.create(IamConditionOperator.STRING_LIKE,"kms:EncryptionContext:aws:s3:arn",
+                                                    s3Arn(AWS_PARTITION, bucket, null)+"/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -493,7 +508,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId,
-                    "us-east-2"),
+                        region),
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
@@ -510,10 +525,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   @Test
   public void testGetSubscopedCredsInlinePolicyWithEmptyReadAndWrite() {
     StsClient stsClient = Mockito.mock(StsClient.class);
-    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String accountId = "012345678901";
+    String roleARN = "arn:aws:iam::"+accountId+":role/jdoe";
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-2";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -549,17 +566,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st ->
-                                                assertThat(st.resources())
-                                                    .containsExactlyInAnyOrder(
-                                                        IamResource.create("*")))
-                                        .returns(
-                                            List.of(
-                                                IamAction.create("kms:GenerateDataKey"),
-                                                IamAction.create("kms:Decrypt"),
-                                                IamAction.create("kms:DescribeKey")),
-                                            IamStatement::actions));
+                                            .returns(
+                                                    List.of(
+                                                            IamAction.create("kms:GenerateDataKey"),
+                                                            IamAction.create("kms:Decrypt"),
+                                                            IamAction.create("kms:DescribeKey")),
+                                                    IamStatement::actions)
+                                            .satisfies(
+                                                    st ->
+                                                            assertThat(st.resources())
+                                                                    .containsExactlyInAnyOrder(
+                                                                            IamResource.create("arn:aws:kms:"+region+":"+accountId+":key/*")))
+
+                                            .satisfies(st -> assertThat(st.conditions()).containsExactlyInAnyOrder(IamCondition.create(IamConditionOperator.STRING_EQUALS,"aws:PrincipalArn",roleARN),IamCondition.create(IamConditionOperator.STRING_EQUALS,"kms:ViaService","s3."+region+".amazonaws.com"),IamCondition.create(IamConditionOperator.STRING_LIKE,"kms:EncryptionContext:aws:s3:arn",
+                                                    s3Arn(AWS_PARTITION, bucket, null)+"/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -572,7 +592,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId,
-                    "us-east-2"),
+                    region),
                 true, /* allowList = true */
                 Set.of(),
                 Set.of());
