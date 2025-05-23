@@ -32,8 +32,11 @@ services:
     volumes:
       # Bind local conf file to a convenient location in the container
       - type: bind
-        source: ../assets/postgres/postgresql.conf
+        source: postgresql.conf
         target: /etc/postgresql/postgresql.conf
+      - type: bind
+        source: pg_hba.conf
+        target: /etc/postgresql/pg_hba.conf
     command:
       - "postgres"
       - "-c"

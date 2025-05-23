@@ -25,7 +25,7 @@ services:
       polaris.persistence.type: eclipse-link
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
     volumes:
-      - ../assets/eclipselink/:/deployments/config/eclipselink
+      - ../eclipselink/:/deployments/config/eclipselink
     command:
       - "bootstrap"
       - "--realm=POLARIS"
