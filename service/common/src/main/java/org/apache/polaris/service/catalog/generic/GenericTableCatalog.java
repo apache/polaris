@@ -37,7 +37,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,7 +177,7 @@ public class GenericTableCatalog {
                     PolarisEntity.toCoreList(catalogPath),
                     PolarisEntityType.TABLE_LIKE,
                     PolarisEntitySubType.GENERIC_TABLE,
-                    PageToken.readEverything())
+                    PageRequest.readEverything())
                 .getEntities());
     return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
   }

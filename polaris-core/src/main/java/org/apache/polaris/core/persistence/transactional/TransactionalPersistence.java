@@ -37,7 +37,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -208,7 +208,7 @@ public interface TransactionalPersistence
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
@@ -218,7 +218,7 @@ public interface TransactionalPersistence
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
@@ -229,7 +229,7 @@ public interface TransactionalPersistence
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityGrantRecordsVersion}

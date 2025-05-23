@@ -99,7 +99,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -1551,7 +1551,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
         metaStoreManager
-            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .loadTasks(polarisContext, "testExecutor", PageRequest.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
@@ -1762,7 +1762,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TaskEntity.of(
             metaStoreManager
                 .loadTasks(
-                    callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
+                    callContext.getPolarisCallContext(), "testExecutor", PageRequest.fromLimit(1))
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();

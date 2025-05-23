@@ -92,7 +92,7 @@ public class PageTokenTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unrecognized page token");
 
-    PageToken goodToken = PageToken.fromLimit(100);
+    PageToken goodToken = new EntityIdPageToken(100);
     Assertions.assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid token format");

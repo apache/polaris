@@ -19,10 +19,14 @@
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
+import java.util.Optional;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EntityIdPageToken extends PageToken implements HasPageSize {
+  private static final Logger LOGGER = LoggerFactory.getLogger(EntityIdPageToken.class);
 
   public static final String PREFIX = "entity-id";
 
@@ -43,6 +47,38 @@ public class EntityIdPageToken extends PageToken implements HasPageSize {
   public EntityIdPageToken(long entityId, int pageSize) {
     this.entityId = entityId;
     this.pageSize = pageSize;
+  }
+
+  /**
+   * Build an {@link EntityIdPageToken} from a {@link PageRequest}, or else a {@link
+   * ReadEverythingPageToken} if the request doesn't require pagination.
+   */
+  public static PageToken fromPageRequest(PageRequest pageRequest) {
+    if (pageRequest.getPageTokenString().isEmpty()) {
+      if (pageRequest.getPageSize().isEmpty()) {
+        return PageToken.readEverything();
+      } else {
+        return new EntityIdPageToken(pageRequest.getPageSize().get());
+      }
+    } else {
+      String pageTokenString = pageRequest.getPageTokenString().get();
+      Optional<Integer> pageSize = pageRequest.getPageSize();
+
+      try {
+        String[] parts = pageRequest.getPageTokenString().get().split("/");
+        if (parts.length < 1) {
+          throw new IllegalArgumentException("Invalid token format: " + pageTokenString);
+        } else if (parts[0].equals(EntityIdPageToken.PREFIX)) {
+          int resolvedPageSize = pageSize.orElse(Integer.parseInt(parts[2]));
+          return new EntityIdPageToken(Long.parseLong(parts[1]), resolvedPageSize);
+        } else {
+          throw new IllegalArgumentException("Unrecognized page token: " + pageTokenString);
+        }
+      } catch (NumberFormatException | IndexOutOfBoundsException e) {
+        LOGGER.debug(e.getMessage());
+        throw new IllegalArgumentException("Invalid token format: " + pageTokenString);
+      }
+    }
   }
 
   public long getId() {

@@ -65,6 +65,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
@@ -680,8 +681,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link #listEntities(PolarisCallContext, List, PolarisEntityType, PolarisEntitySubType,
-   * PageToken)}
+   * See {@link PolarisMetaStoreManager#listEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, PageRequest)}
    */
   private @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
@@ -689,7 +690,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // first resolve again the catalogPath to that entity
     PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
 
@@ -702,15 +703,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // return list of active entities
     Page<EntityNameLookupRecord> resultPage =
         ms.listEntitiesInCurrentTxn(
-            callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType, pageToken);
+            callCtx,
+            resolver.getCatalogIdOrNull(),
+            resolver.getParentId(),
+            entityType,
+            pageRequest);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
       resultPage =
-          pageToken.buildNextPage(
-              resultPage.items.stream()
-                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-                  .collect(Collectors.toList()));
+          resultPage.filter(
+              rec -> {
+                return rec.getSubTypeCode() == entitySubType.getCode();
+              });
     }
 
     // done
@@ -724,14 +729,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // get meta store we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+        () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageRequest));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
@@ -1374,7 +1379,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   PolarisEntityType.CATALOG_ROLE,
                   entity -> true,
                   Function.identity(),
-                  PageToken.fromLimit(2))
+                  PageRequest.fromLimit(2))
               .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
@@ -1934,7 +1939,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       String executorId,
-      PageToken pageToken) {
+      PageRequest pageRequest) {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
@@ -1958,7 +1963,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
-            pageToken);
+            pageRequest);
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     availableTasks.items.forEach(
@@ -1997,9 +2002,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+      @Nonnull PolarisCallContext callCtx, String executorId, PageRequest pageRequest) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
+    return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageRequest));
   }
 
   /** {@inheritDoc} */

@@ -53,8 +53,10 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -428,9 +430,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageRequest);
   }
 
   @Override
@@ -440,7 +442,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
@@ -456,7 +458,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
                 entity.getName(),
                 entity.getTypeCode(),
                 entity.getSubTypeCode()),
-        pageToken);
+        pageRequest);
   }
 
   @Override
@@ -467,7 +469,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
+    PageToken pageToken = buildPageToken(pageRequest);
+
     // full range scan under the parent for that type
     Stream<PolarisBaseEntity> data =
         this.store
@@ -772,5 +776,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     if (session != null) {
       session.getTransaction().rollback();
     }
+  }
+
+  @Override
+  public PageToken buildPageToken(PageRequest pageRequest) {
+    return EntityIdPageToken.fromPageRequest(pageRequest);
   }
 }

@@ -42,7 +42,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
@@ -114,6 +114,7 @@ public interface PolarisMetaStoreManager
    * @param entityType entity type
    * @param entitySubType entity subtype. Can be the special value ANY_SUBTYPE to match any subtype.
    *     Else exact match will be performed.
+   * @param pageRequest
    * @return all entities name, ids and subtype under the specified namespace.
    */
   @Nonnull
@@ -122,7 +123,7 @@ public interface PolarisMetaStoreManager
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken);
+      @Nonnull PageRequest pageRequest);
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
@@ -302,12 +303,12 @@ public interface PolarisMetaStoreManager
    *
    * @param callCtx call context
    * @param executorId executor id
-   * @param pageToken page token to start after
+   * @param pageRequest page token to start after
    * @return list of tasks to be completed
    */
   @Nonnull
   EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken);
+      @Nonnull PolarisCallContext callCtx, String executorId, PageRequest pageRequest);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each

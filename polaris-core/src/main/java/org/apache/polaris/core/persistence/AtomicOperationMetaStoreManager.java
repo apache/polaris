@@ -63,7 +63,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
@@ -690,7 +690,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -703,15 +703,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
     Page<EntityNameLookupRecord> resultPage =
-        ms.listEntities(callCtx, catalogId, parentId, entityType, pageToken);
+        ms.listEntities(callCtx, catalogId, parentId, entityType, pageRequest);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
       resultPage =
-          pageToken.buildNextPage(
-              resultPage.items.stream()
-                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-                  .collect(Collectors.toList()));
+          resultPage.filter(
+              rec -> {
+                return rec.getSubTypeCode() == entitySubType.getCode();
+              });
     }
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
@@ -1186,7 +1186,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   PolarisEntityType.CATALOG_ROLE,
                   entity -> true,
                   Function.identity(),
-                  PageToken.fromLimit(2))
+                  PageRequest.fromLimit(2))
               .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
@@ -1493,7 +1493,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+      @Nonnull PolarisCallContext callCtx, String executorId, PageRequest pageRequest) {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
@@ -1518,7 +1518,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
-            pageToken);
+            pageRequest);
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
