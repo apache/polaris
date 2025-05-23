@@ -191,12 +191,12 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  public static <T> String generateVersionQuery() {
+  public static String generateVersionQuery() {
     return "SELECT MAX(value) FROM POLARIS_SCHEMA.version";
   }
 
   @VisibleForTesting
-  public static <T> String generateOverlapQuery(String realmId, long parentId, String location) {
+  public static String generateOverlapQuery(String realmId, long parentId, String location) {
     String[] components = location.split("/");
     StringBuilder locationClauseBuilder = new StringBuilder();
     StringBuilder pathBuilder = new StringBuilder();

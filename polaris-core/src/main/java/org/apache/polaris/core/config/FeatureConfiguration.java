@@ -301,8 +301,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")
           .description(
-              "When set, an index is used to perform the sibling check between tables, views, and namespaces. Only" +
-                  " supported by the JDBC metastore.")
+              "When set, an index is used to perform the sibling check between tables, views, and namespaces. Only"
+                  + " supported by the JDBC metastore.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }

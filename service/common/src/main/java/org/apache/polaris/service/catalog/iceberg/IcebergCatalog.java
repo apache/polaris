@@ -526,7 +526,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .setBaseLocation(baseLocation)
             .build();
     if (!callContext
-        .getPolarisCallContext()g
+        .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
@@ -1091,10 +1091,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       long parentId = parentNamespace.map(PolarisEntityCore::getId).orElseGet(() -> catalogId);
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
-              .hasOverlappingSiblings(
-                  callContext.getPolarisCallContext(),
-                  parentId,
-                  location);
+              .hasOverlappingSiblings(callContext.getPolarisCallContext(), parentId, location);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(
