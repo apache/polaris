@@ -234,7 +234,9 @@ public class AwsCredentialsStorageIntegration
                 IamConditionOperator.STRING_LIKE,
                 "kms:EncryptionContext:aws:s3:arn",
                 getArnPrefixFor(roleARN)
-                    + StorageUtil.getBucket(URI.create(awsStorageConfigurationInfo.getAllowedLocations().iterator().next()))
+                    + StorageUtil.getBucket(
+                        URI.create(
+                            awsStorageConfigurationInfo.getAllowedLocations().iterator().next()))
                     + "/*")
             .addCondition(
                 IamConditionOperator.STRING_EQUALS,
