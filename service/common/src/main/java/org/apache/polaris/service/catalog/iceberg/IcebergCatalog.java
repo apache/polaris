@@ -96,6 +96,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
@@ -525,7 +526,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .setBaseLocation(baseLocation)
             .build();
     if (!callContext
-        .getPolarisCallContext()
+        .getPolarisCallContext()g
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
@@ -1068,19 +1069,37 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
             : Optional.empty();
 
+    // Check for / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.REQUIRE_TRAILING_SLASHES);
+    if (requireTrailingSlash && !location.endsWith("/")) {
+      throw new IllegalArgumentException("Paths are required to end with `/`");
+    }
+
     // Attempt to directly query for siblings
-    if (parentNamespace.isPresent()) {
+    boolean useOptimizedSiblingCheck =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (useOptimizedSiblingCheck) {
+      long parentId = parentNamespace.map(PolarisEntityCore::getId).orElseGet(() -> catalogId);
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager()
               .hasOverlappingSiblings(
                   callContext.getPolarisCallContext(),
-                  parentNamespace.get().getCatalogId(),
+                  parentId,
                   location);
       if (directSiblingCheckResult.isPresent()) {
-        if (directSiblingCheckResult.get() != null) {
+        if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(
               "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
-              location, directSiblingCheckResult.get());
+              location, directSiblingCheckResult.get().get());
         } else {
           return;
         }
