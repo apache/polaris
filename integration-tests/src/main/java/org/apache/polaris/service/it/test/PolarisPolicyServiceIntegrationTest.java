@@ -388,6 +388,97 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testAttachPolicyToNonExistingTable() {
+    restCatalog.createNamespace(NS1);
+    String ns = RESTUtil.encodeNamespace(NS1);
+
+    policyApi.createPolicy(
+            currentCatalogName,
+            NS1_P1,
+            PredefinedPolicyTypes.DATA_COMPACTION,
+            EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+            "test policy");
+    TableIdentifier invalidTable = TableIdentifier.of(NS1, "INVALID_TABLE");
+    var invalidTarget =
+            new PolicyAttachmentTarget(
+                    PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(invalidTable.toString().split("\\.")));
+
+    AttachPolicyRequest request =
+            AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+                 policyApi
+                         .request(
+                                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                                 Map.of("cat", currentCatalogName, "ns", ns, "policy-name", NS1_P1.getName()))
+                         .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+              .contains("Table or view does not exist: NS1");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testDetachPolicyFromNonExistingNamespace() {
+    restCatalog.createNamespace(NS1);
+    String ns = RESTUtil.encodeNamespace(NS1);
+    policyApi.createPolicy(
+            currentCatalogName,
+            NS1_P1,
+            PredefinedPolicyTypes.DATA_COMPACTION,
+            EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+            "test policy");
+    Namespace invalidNamespace = Namespace.of("INVALID_NAMESPACE");
+    var invalidTarget =
+            new PolicyAttachmentTarget(
+                    PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
+
+    AttachPolicyRequest request =
+            AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+                 policyApi
+                         .request(
+                                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                                 Map.of("cat", currentCatalogName, "ns", ns, "policy-name", NS1_P1.getName()))
+                         .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+              .contains("Namespace does not exist: INVALID_NAMESPACE");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testDetachPolicyFromNonExistingTable() {
+    restCatalog.createNamespace(NS1);
+    String ns = RESTUtil.encodeNamespace(NS1);
+    policyApi.createPolicy(
+            currentCatalogName,
+            NS1_P1,
+            PredefinedPolicyTypes.DATA_COMPACTION,
+            EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+            "test policy");
+    TableIdentifier invalidTable = TableIdentifier.of(NS1, "INVALID_TABLE");
+    var invalidTarget =
+            new PolicyAttachmentTarget(
+                    PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(invalidTable.toString().split("\\.")));
+
+    AttachPolicyRequest request =
+            AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+                 policyApi
+                         .request(
+                                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                                 Map.of("cat", currentCatalogName, "ns", ns, "policy-name", NS1_P1.getName()))
+                         .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+              .contains("Table or view does not exist: NS1");
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
