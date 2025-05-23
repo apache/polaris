@@ -100,7 +100,7 @@ public class PolicyValidatorsTest {
   public void testCanAttachReturnsTrueForNamespaceType() {
     var targetEntity = new NamespaceEntity.Builder(ns).build();
     var result = PolicyValidators.canAttach(policyEntity, targetEntity);
-    assertThat(result).isTrue().as("Expected canAttach() to return true for NAMESPACE type");
+    assertThat(result).isTrue().as("Expected canAttach() to return true for CATALOG type");
   }
 
   @Test
