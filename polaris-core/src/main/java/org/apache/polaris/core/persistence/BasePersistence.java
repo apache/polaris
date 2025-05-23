@@ -409,10 +409,11 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * location
    *
    * @param callContext the polaris call context
-   * @param parentId    the parent entity to look for duplicates inside
-   * @param location    the location to check for overlaps against
-   * @return Optional.of(Optional.of(location)) if the parent entity has children, Optional.of(Optional.empty())
-   * if not, and Optional.empty() if the metastore doesn't support this operation
+   * @param parentId the parent entity to look for duplicates inside
+   * @param location the location to check for overlaps against
+   * @return Optional.of(Optional.of(location)) if the parent entity has children,
+   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   *     this operation
    */
   Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long parentId, String location);

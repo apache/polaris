@@ -287,4 +287,22 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "This should only be set to 'true' for tests!")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> REQUIRE_TRAILING_SLASHES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("REQUIRE_TRAILING_SLASHES")
+          .catalogConfig("polaris.config.require-trailing-slashes")
+          .description(
+              "When set, the base location for a table or namespace is requries to end with `/`")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
+      PolarisConfiguration.<Boolean>builder()
+          .key("OPTIMIZED_SIBLING_CHECK")
+          .description(
+              "When set, an index is used to perform the sibling check between tables, views, and namespaces. Only" +
+                  " supported by the JDBC metastore.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

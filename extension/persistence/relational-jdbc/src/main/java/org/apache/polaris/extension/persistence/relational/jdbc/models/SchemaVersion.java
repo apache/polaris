@@ -24,30 +24,30 @@ import java.sql.SQLException;
 import java.util.Map;
 
 public class SchemaVersion implements Converter<SchemaVersion> {
-    private final int value;
+  private final int value;
 
-    public SchemaVersion() {
-        this.value = -1;
-    }
+  public SchemaVersion() {
+    this.value = -1;
+  }
 
-    private SchemaVersion(int value) {
-        this.value = value;
-    }
+  private SchemaVersion(int value) {
+    this.value = value;
+  }
 
-    public int getValue() {
-        if (value == -1) {
-            throw new IllegalStateException("Schema version should be constructed via fromResultSet");
-        }
-        return value;
+  public int getValue() {
+    if (value == -1) {
+      throw new IllegalStateException("Schema version should be constructed via fromResultSet");
     }
+    return value;
+  }
 
-    @Override
-    public SchemaVersion fromResultSet(ResultSet rs) throws SQLException {
-        return new SchemaVersion(rs.getInt("value"));
-    }
+  @Override
+  public SchemaVersion fromResultSet(ResultSet rs) throws SQLException {
+    return new SchemaVersion(rs.getInt("value"));
+  }
 
-    @Override
-    public Map<String, Object> toMap() {
-        return Map.of("value", this.value);
-    }
+  @Override
+  public Map<String, Object> toMap() {
+    return Map.of("value", this.value);
+  }
 }

@@ -570,10 +570,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       }
       return schemaVersion.getFirst().getValue();
     } catch (SQLException e) {
-      LOGGER.error(
-          "Failed to load schema version due to {}",
-          e.getMessage(),
-          e);
+      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
       throw new RuntimeException("Failed to retrieve schema version", e);
     }
   }
@@ -586,17 +583,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
     // TODO fix parent ID
     Map<String, Object> params =
-        Map.of(
-            "parent_id",
-            parentId,
-            "location",
-            location,
-            "realm_id",
-            realmId);
+        Map.of("parent_id", parentId, "location", location, "realm_id", realmId);
     String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
     try {
-      var results =
-          datasourceOperations.executeSelect(query, new ModelEntity());
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
         return Optional.of(Optional.empty());
       } else {

@@ -1070,10 +1070,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     // Attempt to directly query for siblings
     if (parentNamespace.isPresent()) {
-      Optional<Optional<String>> directSiblingCheckResult = getMetaStoreManager().hasOverlappingSiblings(
-          callContext.getPolarisCallContext(),
-          parentNamespace.get().getCatalogId(),
-          location);
+      Optional<Optional<String>> directSiblingCheckResult =
+          getMetaStoreManager()
+              .hasOverlappingSiblings(
+                  callContext.getPolarisCallContext(),
+                  parentNamespace.get().getCatalogId(),
+                  location);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get() != null) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(

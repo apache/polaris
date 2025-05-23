@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
+import com.google.common.collect.ImmutableMap;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.google.common.collect.ImmutableMap;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -290,31 +289,32 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   }
 
   public static ModelEntity fromEntity(PolarisBaseEntity entity) {
-    var builder = ModelEntity.builder()
-        .catalogId(entity.getCatalogId())
-        .id(entity.getId())
-        .parentId(entity.getParentId())
-        .typeCode(entity.getTypeCode())
-        .name(entity.getName())
-        .entityVersion(entity.getEntityVersion())
-        .subTypeCode(entity.getSubTypeCode())
-        .createTimestamp(entity.getCreateTimestamp())
-        .dropTimestamp(entity.getDropTimestamp())
-        .purgeTimestamp(entity.getPurgeTimestamp())
-        .toPurgeTimestamp(entity.getToPurgeTimestamp())
-        .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
-        .properties(entity.getProperties())
-        .internalProperties(entity.getInternalProperties())
-        .grantRecordsVersion(entity.getGrantRecordsVersion());
+    var builder =
+        ModelEntity.builder()
+            .catalogId(entity.getCatalogId())
+            .id(entity.getId())
+            .parentId(entity.getParentId())
+            .typeCode(entity.getTypeCode())
+            .name(entity.getName())
+            .entityVersion(entity.getEntityVersion())
+            .subTypeCode(entity.getSubTypeCode())
+            .createTimestamp(entity.getCreateTimestamp())
+            .dropTimestamp(entity.getDropTimestamp())
+            .purgeTimestamp(entity.getPurgeTimestamp())
+            .toPurgeTimestamp(entity.getToPurgeTimestamp())
+            .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
+            .properties(entity.getProperties())
+            .internalProperties(entity.getInternalProperties())
+            .grantRecordsVersion(entity.getGrantRecordsVersion());
 
     if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
-      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE ||
-          entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-        builder.location(((IcebergTableLikeEntity)entity).getBaseLocation());
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        builder.location(((IcebergTableLikeEntity) entity).getBaseLocation());
       }
     }
     if (entity.getType() == PolarisEntityType.NAMESPACE) {
-      builder.location(((NamespaceEntity)entity).getBaseLocation());
+      builder.location(((NamespaceEntity) entity).getBaseLocation());
     }
 
     return builder.build();
@@ -356,12 +356,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
     if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
       entity = new IcebergTableLikeEntity(entity);
-      entity.setPropertiesAsMap(ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      entity.setPropertiesAsMap(
+          ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
     }
 
     if (entityType == PolarisEntityType.NAMESPACE) {
       entity = new NamespaceEntity(entity);
-      entity.setPropertiesAsMap(ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      entity.setPropertiesAsMap(
+          ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
     }
 
     return entity;
