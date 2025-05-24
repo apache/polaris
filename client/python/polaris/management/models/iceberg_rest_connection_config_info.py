@@ -40,6 +40,7 @@ from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.management.models.authentication_parameters import AuthenticationParameters
 from polaris.management.models.connection_config_info import ConnectionConfigInfo
+from polaris.management.models.service_identity_info import ServiceIdentityInfo
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -48,7 +49,7 @@ class IcebergRestConnectionConfigInfo(ConnectionConfigInfo):
     Configuration necessary for connecting to an Iceberg REST Catalog
     """ # noqa: E501
     remote_catalog_name: Optional[StrictStr] = Field(default=None, description="The name of a remote catalog instance within the remote catalog service; in some older systems this is specified as the 'warehouse' when multiple logical catalogs are served under the same base uri, and often translates into a 'prefix' added to all REST resource paths", alias="remoteCatalogName")
-    __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters"]
+    __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters", "serviceIdentity"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -92,6 +93,9 @@ class IcebergRestConnectionConfigInfo(ConnectionConfigInfo):
         # override the default output from pydantic by calling `to_dict()` of authentication_parameters
         if self.authentication_parameters:
             _dict['authenticationParameters'] = self.authentication_parameters.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of service_identity
+        if self.service_identity:
+            _dict['serviceIdentity'] = self.service_identity.to_dict()
         return _dict
 
     @classmethod
@@ -106,7 +110,8 @@ class IcebergRestConnectionConfigInfo(ConnectionConfigInfo):
         _obj = cls.model_validate({
             "connectionType": obj.get("connectionType"),
             "uri": obj.get("uri"),
-            "authenticationParameters": AuthenticationParameters.from_dict(obj["authenticationParameters"]) if obj.get("authenticationParameters") is not None else None
+            "authenticationParameters": AuthenticationParameters.from_dict(obj["authenticationParameters"]) if obj.get("authenticationParameters") is not None else None,
+            "serviceIdentity": ServiceIdentityInfo.from_dict(obj["serviceIdentity"]) if obj.get("serviceIdentity") is not None else None
         })
         return _obj
 
