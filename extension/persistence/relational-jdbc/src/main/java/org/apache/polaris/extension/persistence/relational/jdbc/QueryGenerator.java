@@ -105,7 +105,17 @@ public class QueryGenerator {
     Map<String, Object> obj = entity.toMap();
     List<String> columnNames = new ArrayList<>(obj.keySet());
     List<String> values =
-        new ArrayList<>(obj.values().stream().map(val -> "'" + val.toString() + "'").toList());
+        new ArrayList<>(
+            obj.values().stream()
+                .map(
+                    val -> {
+                      if (val != null) {
+                        return "'" + val.toString() + "'";
+                      } else {
+                        return "NULL";
+                      }
+                    })
+                .toList());
     columnNames.add("realm_id");
     values.add("'" + realmId + "'");
 
@@ -121,7 +131,17 @@ public class QueryGenerator {
     Map<String, Object> obj = entity.toMap();
     List<String> setClauses = new ArrayList<>();
     List<String> columnNames = new ArrayList<>(obj.keySet());
-    List<String> values = obj.values().stream().map(val -> "'" + val.toString() + "'").toList();
+    List<String> values =
+        obj.values().stream()
+            .map(
+                val -> {
+                  if (val != null) {
+                    return "'" + val.toString() + "'";
+                  } else {
+                    return "NULL";
+                  }
+                })
+            .toList();
 
     for (int i = 0; i < columnNames.size(); i++) {
       setClauses.add(columnNames.get(i) + " = " + values.get(i)); // Placeholders

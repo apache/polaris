@@ -169,6 +169,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+            .location(r.getString("location"))
             .build();
 
     return toEntity(modelEntity);
