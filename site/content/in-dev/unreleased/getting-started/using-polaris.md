@@ -309,7 +309,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
 ```shell
-docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml down
+docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml down
 ```
 
 
