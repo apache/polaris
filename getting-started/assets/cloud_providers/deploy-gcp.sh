@@ -52,4 +52,4 @@ export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
+docker compose -p polaris -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
