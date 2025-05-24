@@ -44,6 +44,15 @@ jobs:
       - name: Checkout Polaris project
         uses: actions/checkout@v4
 
+      - name: Set up JDK for Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Run regeneratePythonClient
+        run: ./gradlew regeneratePythonClient
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
