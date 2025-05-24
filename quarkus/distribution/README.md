@@ -58,3 +58,22 @@ bin/admin purge -h            # Show purge help
 ```
 
 For full usage instructions and configuration details, see the official Polaris docs at https://polaris.apache.org/.
+
+### Configuration
+
+Both components can be configured using environment variables or system properties. For example:
+
+```bash
+# Configure server port
+POLARIS_JAVA_OPTS="-Dquarkus.http.port=8080" bin/server
+
+# Configure admin tool
+POLARIS_JAVA_OPTS="-Dpolaris.persistence.type=relational-jdbc" bin/admin
+
+# You can also set JAVA_OPTS as an environment variable
+export POLARIS_JAVA_OPTS="-Xms512m -Xmx1g -Dquarkus.http.port=8080"
+bin/server
+```
+
+For more details on configuration, please refer to the Polaris documentation:
+https://polaris.apache.org/

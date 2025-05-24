@@ -17,6 +17,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set -euo pipefail
+
+# Get the directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}/../admin" || exit
-java -jar quarkus-run.jar "$@"
+cd "$SCRIPT_DIR/../admin"
+
+# Get the Java command
+JAVA_CMD="${JAVA_HOME:+${JAVA_HOME%/}/bin/java}"
+JAVA_CMD="${JAVA_CMD:-$(command -v java)}"
+[ -x "$JAVA_CMD" ] || { echo "Java not found – set JAVA_HOME or add java to PATH." >&2; exit 1; }
+
+# Launch Quarkus
+exec "$JAVA_CMD" ${POLARIS_JAVA_OPTS:-} -jar quarkus-run.jar "$@"
