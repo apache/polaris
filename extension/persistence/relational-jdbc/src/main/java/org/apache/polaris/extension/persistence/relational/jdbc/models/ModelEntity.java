@@ -311,11 +311,13 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
       if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
           || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-        builder.location(((IcebergTableLikeEntity) entity).getBaseLocation());
+        builder.location(
+            entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
       }
     }
     if (entity.getType() == PolarisEntityType.NAMESPACE) {
-      builder.location(((NamespaceEntity) entity).getBaseLocation());
+      builder.location(
+          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
     }
 
     return builder.build();
@@ -355,16 +357,18 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setInternalProperties(model.getInternalProperties());
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
 
-    if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-      entity = new IcebergTableLikeEntity(entity);
-      entity.setPropertiesAsMap(
-          ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
-    }
+    if (model.location != null) {
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
+        entity = new IcebergTableLikeEntity(entity);
+        entity.setPropertiesAsMap(
+            ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      }
 
-    if (entityType == PolarisEntityType.NAMESPACE) {
-      entity = new NamespaceEntity(entity);
-      entity.setPropertiesAsMap(
-          ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      if (entityType == PolarisEntityType.NAMESPACE) {
+        entity = new NamespaceEntity(entity);
+        entity.setPropertiesAsMap(
+            ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      }
     }
 
     return entity;

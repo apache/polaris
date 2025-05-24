@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS entities (
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, catalog_id, location)
+    ON entities USING btree (realm_id, parent_id, location)
     WHERE location IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';

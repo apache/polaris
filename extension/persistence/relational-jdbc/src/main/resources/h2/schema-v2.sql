@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS version (
 
 MERGE INTO version (version_key, version_value)
     KEY (version_key)
-    VALUES ('version', 1);
+    VALUES ('version', 2);
 
 -- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
@@ -50,9 +50,13 @@ CREATE TABLE IF NOT EXISTS entities (
     properties TEXT NOT NULL DEFAULT '{}',
     internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
+    LOCATION TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
+
+DROP INDEX IF EXISTS idx_locations;
+CREATE INDEX idx_locations ON entities(realm_id, parent_id, location);
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);

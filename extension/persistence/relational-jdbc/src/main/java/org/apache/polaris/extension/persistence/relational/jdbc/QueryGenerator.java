@@ -212,7 +212,7 @@ public class QueryGenerator {
 
   @VisibleForTesting
   public static String generateVersionQuery() {
-    return "SELECT version_value FROM POLARIS_SCHEMA.version";
+    return "SELECT version_value FROM POLARIS_SCHEMA.VERSION";
   }
 
   @VisibleForTesting
@@ -222,15 +222,15 @@ public class QueryGenerator {
     StringBuilder pathBuilder = new StringBuilder();
     for (String component : components) {
       pathBuilder.append(component).append("/");
-      locationClauseBuilder.append(String.format("AND location = '%s'", pathBuilder));
+      locationClauseBuilder.append(String.format("OR location = '%s'", pathBuilder));
     }
-    locationClauseBuilder.append(String.format("AND location LIKE '%s%%'", location));
+    locationClauseBuilder.append(String.format("OR location LIKE '%s%%'", location));
     String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
 
     // TODO harden against realmId in this method and others
     return query
         + String.format(
-            " FROM entities WHERE realm_id = %s AND parent_id = %d AND (1 = 1 %s)",
+            " FROM entities WHERE realm_id = %s AND parent_id = %d AND (1 = 2 %s)",
             realmId, parentId, locationClauseBuilder);
   }
 
