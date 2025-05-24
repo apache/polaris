@@ -70,7 +70,7 @@ POSTGRES_ADDR=$(echo $DESCRIBE_DB | jq -r '.["DBInstances"][0]["Endpoint"]' | jq
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
 export QUARKUS_DATASOURCE_PASSWORD=postgres
-echo ($QUARKUS_DATASOURCE_JDBC_URL)
+echo $QUARKUS_DATASOURCE_JDBC_URL
 
 S3_BUCKET_NAME="polaris-quickstart-s3-$RANDOM_SUFFIX"
 echo "S3 Bucket Name: $S3_BUCKET_NAME"
