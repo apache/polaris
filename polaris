@@ -32,7 +32,7 @@ done
 
 
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
-  rm -f "${d
+  rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
 
   if [ ! -d ${dir}/polaris-venv ]; then
