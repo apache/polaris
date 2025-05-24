@@ -43,11 +43,11 @@ public class SchemaVersion implements Converter<SchemaVersion> {
 
   @Override
   public SchemaVersion fromResultSet(ResultSet rs) throws SQLException {
-    return new SchemaVersion(rs.getInt("value"));
+    return new SchemaVersion(rs.getInt("version_value"));
   }
 
   @Override
   public Map<String, Object> toMap() {
-    return Map.of("value", this.value);
+    return Map.of("version_value", this.value);
   }
 }

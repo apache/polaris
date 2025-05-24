@@ -212,7 +212,7 @@ public class QueryGenerator {
 
   @VisibleForTesting
   public static String generateVersionQuery() {
-    return "SELECT MAX(value) FROM POLARIS_SCHEMA.version";
+    return "SELECT version_value FROM POLARIS_SCHEMA.version";
   }
 
   @VisibleForTesting
