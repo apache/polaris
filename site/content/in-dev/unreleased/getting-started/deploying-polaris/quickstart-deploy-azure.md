@@ -33,16 +33,15 @@ The requirements to run the script below are:
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
+export CLIENT_ID=root
+export CLIENT_SECRET=s3cr3t
 ./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
 
-Also, set the following static credentials for interacting with the Polaris server in the following exercises: 
+## Next Steps
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
 
-```shell
-export CLIENT_ID=root
-export CLIENT_SECRET=s3cr3t
-```
-
+## Cleanup Instructions
 To shut down the Polaris server, run the following commands:
 
 ```shell
