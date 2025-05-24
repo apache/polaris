@@ -2223,7 +2223,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getConfiguration(
                 callContext.getPolarisCallContext(),
                 FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
               .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
@@ -2291,7 +2293,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getConfiguration(
                 callContext.getPolarisCallContext(),
                 FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
               .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")

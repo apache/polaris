@@ -294,7 +294,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.add-trailing-slash-to-location")
           .description(
               "When set, the base location for a table or namespace will have `/` appended to it")
-          .defaultValue(false)
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
