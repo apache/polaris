@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth;
 
 import com.auth0.jwt.algorithms.Algorithm;
-import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -32,10 +31,9 @@ public class JWTRSAKeyPair extends JWTBroker {
   public JWTRSAKeyPair(
       PolarisMetaStoreManager metaStoreManager,
       int maxTokenGenerationInSeconds,
-      Path publicKeyFile,
-      Path privateKeyFile) {
+      KeyProvider keyProvider) {
     super(metaStoreManager, maxTokenGenerationInSeconds);
-    keyProvider = new LocalRSAKeyProvider(publicKeyFile, privateKeyFile);
+    this.keyProvider = keyProvider;
   }
 
   @Override
