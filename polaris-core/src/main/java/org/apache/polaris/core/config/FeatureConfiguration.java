@@ -288,12 +288,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> REQUIRE_TRAILING_SLASHES =
+  public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
       PolarisConfiguration.<Boolean>builder()
-          .key("REQUIRE_TRAILING_SLASHES")
-          .catalogConfig("polaris.config.require-trailing-slashes")
+          .key("ADD_TRAILING_SLASH_TO_LOCATION")
+          .catalogConfig("polaris.config.add-trailing-slash-to-location")
           .description(
-              "When set, the base location for a table or namespace is requries to end with `/`")
+              "When set, the base location for a table or namespace will have `/` appended to it")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
