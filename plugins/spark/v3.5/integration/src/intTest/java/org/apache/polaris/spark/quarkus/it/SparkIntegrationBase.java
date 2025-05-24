@@ -65,6 +65,7 @@ public abstract class SparkIntegrationBase {
   protected ManagementApi managementApi;
   protected String catalogName;
   protected String sparkToken;
+  protected String s3Scheme = "s3";
 
   protected URI warehouseDir;
 
@@ -96,9 +97,9 @@ public abstract class SparkIntegrationBase {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of(s3Scheme + "://my-old-bucket/path/to/data"))
             .build();
-    CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
+    CatalogProperties props = new CatalogProperties(s3Scheme + "://my-bucket/path/to/data");
     props.putAll(
         Map.of(
             "table-default.s3.endpoint",

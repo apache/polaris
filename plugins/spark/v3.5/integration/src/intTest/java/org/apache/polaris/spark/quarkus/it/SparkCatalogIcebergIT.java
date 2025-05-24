@@ -21,31 +21,47 @@ package org.apache.polaris.spark.quarkus.it;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.apache.spark.sql.SparkSession;
 
-@QuarkusIntegrationTest
-public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
-  /** Initialize the spark catalog to use the iceberg spark catalog. */
-  @Override
-  protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
-    return builder
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        .config(
-            String.format("spark.sql.catalog.%s", catalogName),
-            "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.warehouse.dir", warehouseDir.toString())
-        .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalogName),
-            endpoints.catalogApiEndpoint().toString())
-        .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
-        .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
-        .config(
-            String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+public class SparkCatalogIcebergIT {
+
+  abstract static class BaseTest extends SparkCatalogBaseIT {
+    /** Initialize the spark catalog to use the iceberg spark catalog. */
+    @Override
+    protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
+      return builder
+          .config(
+              "spark.sql.extensions",
+              "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+          .config(
+              String.format("spark.sql.catalog.%s", catalogName),
+              "org.apache.iceberg.spark.SparkCatalog")
+          .config("spark.sql.warehouse.dir", warehouseDir.toString())
+          .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
+          .config(
+              String.format("spark.sql.catalog.%s.uri", catalogName),
+              endpoints.catalogApiEndpoint().toString())
+          .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
+          .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
+          .config(
+              String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
+          .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
+          .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
+          .config(
+              String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
+          .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+    }
+  }
+
+  @QuarkusIntegrationTest
+  static class S3ATest extends BaseTest {
+    public S3ATest() {
+      s3Scheme = "s3a";
+    }
+  }
+
+  @QuarkusIntegrationTest
+  static class S3Test extends BaseTest {
+    public S3Test() {
+      s3Scheme = "s3";
+    }
   }
 }

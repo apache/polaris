@@ -62,6 +62,7 @@ public abstract class PolarisSparkIntegrationTestBase {
   protected String sparkToken;
   protected String catalogName;
   protected String externalCatalogName;
+  protected String s3Scheme = "s3";
 
   protected URI warehouseDir;
 
@@ -95,9 +96,9 @@ public abstract class PolarisSparkIntegrationTestBase {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of(s3Scheme + "://my-old-bucket/path/to/data"))
             .build();
-    CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
+    CatalogProperties props = new CatalogProperties(s3Scheme + "://my-bucket/path/to/data");
     props.putAll(
         Map.of(
             "table-default.s3.endpoint",
@@ -128,7 +129,7 @@ public abstract class PolarisSparkIntegrationTestBase {
 
     managementApi.createCatalog(catalog);
 
-    CatalogProperties externalProps = new CatalogProperties("s3://my-bucket/path/to/data");
+    CatalogProperties externalProps = new CatalogProperties(s3Scheme + "://my-bucket/path/to/data");
     externalProps.putAll(
         Map.of(
             "table-default.s3.endpoint",

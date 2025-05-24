@@ -18,11 +18,15 @@
  */
 package org.apache.polaris.service.storage;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.net.URISyntaxException;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class StorageLocationTest {
 
@@ -76,5 +80,13 @@ public class StorageLocationTest {
               StorageLocation.of(specialCharsLocalStorage);
             })
         .hasCauseInstanceOf(URISyntaxException.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"s3,s3a", "s3a,s3"})
+  public void testPrefixValidationIgnoresScheme(String parentScheme, String childScheme) {
+    StorageLocation loc1 = StorageLocation.of(childScheme + "://bucket/schema1/table1");
+    StorageLocation loc2 = StorageLocation.of(parentScheme + "://bucket/schema1");
+    assertTrue(loc1.isChildOf(loc2));
   }
 }
