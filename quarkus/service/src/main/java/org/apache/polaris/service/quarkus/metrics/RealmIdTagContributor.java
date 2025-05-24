@@ -33,12 +33,16 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   private static final Tags UNFINISHED_RESOLUTION_TAGS = Tags.of(TAG_REALM, "???");
 
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
   @Inject RealmContextResolver realmContextResolver;
 
   @Override
   public Tags contribute(Context context) {
-    // FIXME retrieve the realm context from context.requestContextLocalData() when this PR is in:
-    // https://github.com/quarkusio/quarkus/pull/47887
+    // FIXME retrieve the realm context from context.requestContextLocalData()
+    // after upgrading to Quarkus 3.24
+    if (!metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+      return Tags.empty();
+    }
     HttpServerRequest request = context.request();
     try {
       return realmContextResolver
