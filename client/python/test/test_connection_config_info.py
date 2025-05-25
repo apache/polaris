@@ -57,7 +57,9 @@ class TestConnectionConfigInfo(unittest.TestCase):
                 connection_type = 'ICEBERG_REST',
                 uri = '',
                 authentication_parameters = polaris.management.models.authentication_parameters.AuthenticationParameters(
-                    authentication_type = 'OAUTH', )
+                    authentication_type = 'OAUTH', ),
+                service_identity = polaris.management.models.service_identity_info.ServiceIdentityInfo(
+                    identity_type = 'AWS_IAM', )
             )
         else:
             return ConnectionConfigInfo(

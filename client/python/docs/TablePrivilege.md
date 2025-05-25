@@ -39,6 +39,10 @@
 
 * `TABLE_FULL_METADATA` (value: `'TABLE_FULL_METADATA'`)
 
+* `TABLE_ATTACH_POLICY` (value: `'TABLE_ATTACH_POLICY'`)
+
+* `TABLE_DETACH_POLICY` (value: `'TABLE_DETACH_POLICY'`)
+
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
 
