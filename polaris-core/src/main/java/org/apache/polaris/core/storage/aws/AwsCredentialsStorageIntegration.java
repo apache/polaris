@@ -236,7 +236,7 @@ public class AwsCredentialsStorageIntegration
                 getArnPrefixFor(roleARN)
                     + StorageUtil.getBucket(
                         URI.create(
-                            awsStorageConfigurationInfo.getAllowedLocations().iterator().next()))
+                            awsStorageConfigurationInfo.getAllowedLocations().getFirst()))
                     + "/*")
             .addCondition(
                 IamConditionOperator.STRING_EQUALS,
