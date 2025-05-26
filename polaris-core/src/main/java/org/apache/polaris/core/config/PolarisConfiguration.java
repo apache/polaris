@@ -162,8 +162,11 @@ public abstract class PolarisConfiguration<T> {
       return this;
     }
 
-    /** Used to support backwards compatability when config properties get renamed. */
-    public Builder<T> legacyCatalogConfig(String catalogConfig) {
+    /**
+     * This method is to be used to support backwards compatability when config properties get
+     * renamed. It should not be used for current (or canonical) configuration names.
+     */
+    public Builder<T> catalogConfigUnsafe(String catalogConfig) {
       if (catalogConfig.startsWith(SAFE_CATALOG_CONFIG_PREFIX)) {
         throw new IllegalArgumentException(
             "Unsafe catalog configs are not expected to start with " + SAFE_CATALOG_CONFIG_PREFIX);

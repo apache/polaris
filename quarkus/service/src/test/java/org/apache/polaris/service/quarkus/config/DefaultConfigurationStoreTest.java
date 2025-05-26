@@ -192,7 +192,7 @@ public class DefaultConfigurationStoreTest {
     FeatureConfiguration<Boolean> unsafeConfig =
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_unsafe", prefix))
-            .legacyCatalogConfig(String.format("%s.unsafe", prefix))
+            .catalogConfigUnsafe(String.format("%s.unsafe", prefix))
             .defaultValue(true)
             .description(prefix)
             .buildFeatureConfiguration();
@@ -201,7 +201,7 @@ public class DefaultConfigurationStoreTest {
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_both", prefix))
             .catalogConfig(String.format("polaris.config.%s.both", prefix))
-            .legacyCatalogConfig(String.format("%s.both", prefix))
+            .catalogConfigUnsafe(String.format("%s.both", prefix))
             .defaultValue(true)
             .description(prefix)
             .buildFeatureConfiguration();
