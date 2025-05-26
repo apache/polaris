@@ -106,6 +106,16 @@ public class CatalogHandlerUtils {
   private static final String INITIAL_PAGE_TOKEN = "";
   private static final String CONFLICT_RESOLUTION_ACTION =
       "polaris.conflict-resolution.by-operation-type.replace";
+  private static final Field LAST_SEQUENCE_NUMBER_FIELD;
+
+  static {
+    try {
+      LAST_SEQUENCE_NUMBER_FIELD = TableMetadata.class.getDeclaredField("lastSequenceNumber");
+      LAST_SEQUENCE_NUMBER_FIELD.setAccessible(true);
+    } catch (NoSuchFieldException e) {
+      throw new RuntimeException("Unable to access field", e);
+    }
+  }
 
   private final RealmContext realmContext;
   private final PolarisConfigurationStore configurationStore;
@@ -494,24 +504,9 @@ public class CatalogHandlerUtils {
                   // remove, as otherwise the remove will drop the reference.
                   // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
                   // just something good to do, and not leave for Remove Orphans.
-                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
                   // Ref rolled back update correctly to snapshot to be committed parent now.
-                  newBase = metadataBuilder.build();
-                  // move the lastSequenceNumber back, to apply snapshot properly on the
-                  // current-metadata Seq number are considered increasing monotonically
-                  // snapshot over snapshot, the client generates the manifest list and hence
-                  // the sequence number can't be changed for a snapshot the only possible option
-                  // then is to change the sequenceNumber tracked by metadata.json
-                  Class<?> clazz = newBase.getClass();
-                  try {
-                    Field field = clazz.getDeclaredField("lastSequenceNumber");
-                    field.setAccessible(true);
-                    // this should point to the sequence number that current tip of the
-                    // branch belongs to, as the new commit will be applied on top of this.
-                    field.set(newBase, newBase.currentSnapshot().sequenceNumber());
-                  } catch (NoSuchFieldException | IllegalAccessException ex) {
-                    throw new RuntimeException(ex);
-                  }
+                  metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
+                  newBase = setAppropriateLastSeqNumber(metadataBuilder.build());
                 }
                 // double check if the requirements passes now.
                 try {
@@ -565,12 +560,12 @@ public class CatalogHandlerUtils {
         continue;
       }
       idsToRetain.add(ref.getValue().snapshotId());
-      // check all other branches
-      if (snapshotRef.isBranch()) {
-        for (Snapshot ancestor :
-            SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
-          idsToRetain.add(ancestor.snapshotId());
-        }
+      // Always check the ancestry for both branch and tags
+      // mostly for case where a branch was created and then was dropped
+      // then a tag was created and then rollback happened post that tag
+      // was dropped and branch was re-created on it.
+      for (Snapshot ancestor : SnapshotUtil.ancestorsOf(snapshotRef.snapshotId(), base::snapshot)) {
+        idsToRetain.add(ancestor.snapshotId());
       }
     }
 
@@ -611,6 +606,22 @@ public class CatalogHandlerUtils {
 
     // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
     return total != 1 ? null : setSnapshotRefUpdate;
+  }
+
+  private TableMetadata setAppropriateLastSeqNumber(TableMetadata newBase) {
+    // move the lastSequenceNumber back, to apply snapshot properly on the
+    // current-metadata Seq number are considered increasing monotonically
+    // snapshot over snapshot, the client generates the manifest list and hence
+    // the sequence number can't be changed for a snapshot the only possible option
+    // then is to change the sequenceNumber tracked by metadata.json
+    try {
+      // this should point to the sequence number that current tip of the
+      // branch belongs to, as the new commit will be applied on top of this.
+      LAST_SEQUENCE_NUMBER_FIELD.set(newBase, newBase.currentSnapshot().sequenceNumber());
+    } catch (IllegalAccessException ex) {
+      throw new RuntimeException(ex);
+    }
+    return newBase;
   }
 
   private BaseView asBaseView(View view) {

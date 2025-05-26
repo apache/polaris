@@ -138,7 +138,6 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
@@ -637,10 +636,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     try {
       // Now call IRC server to commit delete operation.
-      PolarisConfigurationStore pc =
-          new DefaultConfigurationStore(
-              Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
-      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+      PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
+      PolarisConfigurationStore mockedPc = Mockito.spy(pc);
+      when(mockedPc.getConfiguration(
+              null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
+          .thenReturn(true);
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
       CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
       when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
       when(mockCatalogHandleUtils.maxCommitRetries()).thenReturn(5);
@@ -748,10 +749,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     // commit FILE_C
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
-    PolarisConfigurationStore pc =
-        new DefaultConfigurationStore(
-            Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
-    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
+    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
+    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
+        .thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
     CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
     when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
     Assertions.assertThatThrownBy(
@@ -828,10 +830,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .commit();
     // now add more files to main branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
-    PolarisConfigurationStore pc =
-        new DefaultConfigurationStore(
-            Map.of("polaris.config.rollback.compaction.on-conflicts.enabled", true));
-    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, pc);
+    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
+    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
+    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
+        .thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
     CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
     when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
     Assertions.assertThatThrownBy(
