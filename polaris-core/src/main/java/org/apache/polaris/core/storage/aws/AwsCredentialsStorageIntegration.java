@@ -182,7 +182,7 @@ public class AwsCredentialsStorageIntegration
                 "kms:EncryptionContext:aws:s3:arn",
                 getArnPrefixFor(roleARN)
                     + StorageUtil.getBucket(
-                        URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
+                        URI.create(awsStorageConfigurationInfo.getAllowedLocations().getFirst()))
                     + "/*")
             .build());
     return policyBuilder.build();
