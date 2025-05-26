@@ -133,7 +133,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(4)
+                            .hasSize(5)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -208,7 +208,28 @@ class AwsCredentialsStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:GenerateDataKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:DescribeKey")),
+                                            IamStatement::actions)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.conditions())
+                                                    .containsExactlyInAnyOrder(
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_EQUALS,
+                                                            "aws:PrincipalArn",
+                                                            roleARN),
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_LIKE,
+                                                            "kms:EncryptionContext:aws:s3:arn",
+                                                            s3Arn(awsPartition, bucket, null)
+                                                                + "/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -250,7 +271,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -296,7 +317,28 @@ class AwsCredentialsStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:GenerateDataKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:DescribeKey")),
+                                            IamStatement::actions)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.conditions())
+                                                    .containsExactlyInAnyOrder(
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_EQUALS,
+                                                            "aws:PrincipalArn",
+                                                            roleARN),
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_LIKE,
+                                                            "kms:EncryptionContext:aws:s3:arn",
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -343,7 +385,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -387,7 +429,28 @@ class AwsCredentialsStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:GenerateDataKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:DescribeKey")),
+                                            IamStatement::actions)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.conditions())
+                                                    .containsExactlyInAnyOrder(
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_EQUALS,
+                                                            "aws:PrincipalArn",
+                                                            roleARN),
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_LIKE,
+                                                            "kms:EncryptionContext:aws:s3:arn",
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -429,7 +492,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(3)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -447,7 +510,28 @@ class AwsCredentialsStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
                                                 IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:GenerateDataKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:DescribeKey")),
+                                            IamStatement::actions)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.conditions())
+                                                    .containsExactlyInAnyOrder(
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_EQUALS,
+                                                            "aws:PrincipalArn",
+                                                            roleARN),
+                                                        IamCondition.create(
+                                                            IamConditionOperator.STRING_LIKE,
+                                                            "kms:EncryptionContext:aws:s3:arn",
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "/*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
