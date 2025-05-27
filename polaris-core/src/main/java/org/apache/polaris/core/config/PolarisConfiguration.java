@@ -163,9 +163,10 @@ public abstract class PolarisConfiguration<T> {
     }
 
     /**
-     * This method is to be used to support backwards compatability when config properties get
-     * renamed. It should not be used for current (or canonical) configuration names.
+     * Used to support backwards compatability before there were reserved properties. Usage of this
+     * method should be removed over time.
      */
+    @Deprecated
     public Builder<T> catalogConfigUnsafe(String catalogConfig) {
       if (catalogConfig.startsWith(SAFE_CATALOG_CONFIG_PREFIX)) {
         throw new IllegalArgumentException(
