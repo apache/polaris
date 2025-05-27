@@ -417,8 +417,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
       Assertions.assertThat(res.readEntity(String.class))
-          .contains(
-              String.format("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE));
+          .contains("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE);
     }
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
@@ -474,8 +473,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
       Assertions.assertThat(res.readEntity(String.class))
-          .contains(
-              String.format("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE));
+          .contains("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE);
     }
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
