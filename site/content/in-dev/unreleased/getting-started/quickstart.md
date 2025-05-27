@@ -45,11 +45,14 @@ To start using Polaris in Docker and launch Polaris, which is packaged with a Po
 
 ```shell
 export ASSETS_PATH=$(pwd)/getting-started/assets/
+export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/POLARIS
+export QUARKUS_DATASOURCE_USERNAME=postgres
+export QUARKUS_DATASOURCE_PASSWORD=postgres
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
 docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml \
-  -f getting-started/eclipselink/docker-compose-bootstrap-db.yml \
-  -f getting-started/eclipselink/docker-compose.yml up
+  -f getting-started/jdbc/docker-compose-bootstrap-db.yml \
+  -f getting-started/jdbc/docker-compose.yml up -d
 ```
 
 You should see output for some time as Polaris, Spark, and Trino build and start up. Eventually, you won’t see any more logs and see some logs relating to Spark, resembling the following:
