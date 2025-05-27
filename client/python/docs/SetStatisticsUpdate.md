@@ -20,12 +20,13 @@
 -->
 # SetStatisticsUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
-**snapshot_id** | **int** |  | 
+**action** | **str** |  | [optional] 
+**snapshot_id** | **int** | This optional field is **DEPRECATED for REMOVAL** since it contains redundant information. Clients should use the &#x60;statistics.snapshot-id&#x60; field instead. | [optional] 
 **statistics** | [**StatisticsFile**](StatisticsFile.md) |  | 
 
 ## Example

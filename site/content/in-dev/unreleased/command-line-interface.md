@@ -138,7 +138,6 @@ options:
       --multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
-      --remote-url  (For external catalogs) The remote URL to use
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
     Positional arguments:
       catalog

@@ -20,6 +20,7 @@
 -->
 # UpdateNamespacePropertiesRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes

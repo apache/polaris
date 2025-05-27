@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,9 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -44,12 +46,19 @@ class CatalogRole(BaseModel):
     """
     CatalogRole
     """ # noqa: E501
-    name: StrictStr = Field(description="The name of the role")
+    name: Annotated[str, Field(min_length=1, strict=True, max_length=256)] = Field(description="The name of the role")
     properties: Optional[Dict[str, StrictStr]] = None
     create_timestamp: Optional[StrictInt] = Field(default=None, alias="createTimestamp")
     last_update_timestamp: Optional[StrictInt] = Field(default=None, alias="lastUpdateTimestamp")
     entity_version: Optional[StrictInt] = Field(default=None, description="The version of the catalog role object used to determine if the catalog role metadata has changed", alias="entityVersion")
     __properties: ClassVar[List[str]] = ["name", "properties", "createTimestamp", "lastUpdateTimestamp", "entityVersion"]
+
+    @field_validator('name')
+    def name_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if not re.match(r"^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$", value):
+            raise ValueError(r"must validate the regular expression /^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$/")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

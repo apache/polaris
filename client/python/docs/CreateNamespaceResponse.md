@@ -20,6 +20,7 @@
 -->
 # CreateNamespaceResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes

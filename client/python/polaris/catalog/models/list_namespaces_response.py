@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -87,11 +88,6 @@ class ListNamespacesResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if next_page_token (nullable) is None
-        # and model_fields_set contains the field
-        if self.next_page_token is None and "next_page_token" in self.model_fields_set:
-            _dict['next-page-token'] = None
-
         return _dict
 
     @classmethod

@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, Field, StrictInt, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.table_requirement import TableRequirement
 from typing import Optional, Set
 from typing_extensions import Self
@@ -45,16 +46,9 @@ class AssertDefaultSortOrderId(TableRequirement):
     """
     The table's default sort order id must match the requirement's `default-sort-order-id`
     """ # noqa: E501
-    type: StrictStr
+    type: Optional[StrictStr] = None
     default_sort_order_id: StrictInt = Field(alias="default-sort-order-id")
     __properties: ClassVar[List[str]] = ["type"]
-
-    @field_validator('type')
-    def type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['assert-default-sort-order-id']):
-            raise ValueError("must be one of enum values ('assert-default-sort-order-id')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

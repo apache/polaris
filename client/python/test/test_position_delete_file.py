@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestPositionDeleteFile(unittest.TestCase):
 
     def make_instance(self, include_optional) -> PositionDeleteFile:
         """Test PositionDeleteFile
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `PositionDeleteFile`
@@ -53,11 +54,13 @@ class TestPositionDeleteFile(unittest.TestCase):
         model = PositionDeleteFile()
         if include_optional:
             return PositionDeleteFile(
-                content = 'position-deletes'
+                content = '',
+                content_offset = 56,
+                content_size_in_bytes = 56
             )
         else:
             return PositionDeleteFile(
-                content = 'position-deletes',
+                content = '',
         )
         """
 

@@ -20,11 +20,12 @@
 -->
 # RemovePropertiesUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **removals** | **List[str]** |  | 
 
 ## Example

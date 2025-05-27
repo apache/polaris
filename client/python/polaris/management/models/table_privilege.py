@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -48,7 +49,6 @@ class TablePrivilege(str, Enum):
     TABLE_DROP = 'TABLE_DROP'
     TABLE_LIST = 'TABLE_LIST'
     TABLE_READ_PROPERTIES = 'TABLE_READ_PROPERTIES'
-    VIEW_READ_PROPERTIES = 'VIEW_READ_PROPERTIES'
     TABLE_WRITE_PROPERTIES = 'TABLE_WRITE_PROPERTIES'
     TABLE_READ_DATA = 'TABLE_READ_DATA'
     TABLE_WRITE_DATA = 'TABLE_WRITE_DATA'

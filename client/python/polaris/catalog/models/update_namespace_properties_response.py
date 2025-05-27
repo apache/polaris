@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -88,11 +89,6 @@ class UpdateNamespacePropertiesResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if missing (nullable) is None
-        # and model_fields_set contains the field
-        if self.missing is None and "missing" in self.model_fields_set:
-            _dict['missing'] = None
-
         return _dict
 
     @classmethod
