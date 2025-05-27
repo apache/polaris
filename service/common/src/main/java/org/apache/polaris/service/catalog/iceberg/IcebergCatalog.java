@@ -262,14 +262,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
-
-    callContext.closeables().addCloseable(this);
-    this.closeableGroup = new CloseableGroup();
-    closeableGroup.addCloseable(metricsReporter());
-    closeableGroup.setSuppressCloseFailure(true);
-
-    tableDefaultProperties =
-        PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
