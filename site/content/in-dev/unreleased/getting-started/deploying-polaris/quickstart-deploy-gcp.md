@@ -46,7 +46,7 @@ To shut down the Polaris server, run the following commands:
 
 ```shell
 export ASSETS_PATH=$(pwd)/getting-started/assets/
-docker compose -f getting-started/eclipselink/docker-compose.yml down
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml down
 ```
 
 To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../configuring-polaris-for-production" %}}) page.
