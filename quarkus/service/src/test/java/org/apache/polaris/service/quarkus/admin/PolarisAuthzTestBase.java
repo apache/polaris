@@ -35,6 +35,7 @@ import java.time.Clock;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -219,7 +220,9 @@ public abstract class PolarisAuthzTestBase {
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
+            Mockito::mock,
+            Optional.empty(),
+            () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 

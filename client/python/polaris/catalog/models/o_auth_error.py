@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -42,7 +43,7 @@ from typing_extensions import Self
 
 class OAuthError(BaseModel):
     """
-    OAuthError
+    The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this spec, see description of the endpoint.
     """ # noqa: E501
     error: StrictStr
     error_description: Optional[StrictStr] = None

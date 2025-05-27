@@ -20,6 +20,7 @@
 -->
 # TableMetadata
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -43,8 +44,8 @@ Name | Type | Description | Notes
 **last_sequence_number** | **int** |  | [optional] 
 **snapshot_log** | [**List[SnapshotLogInner]**](SnapshotLogInner.md) |  | [optional] 
 **metadata_log** | [**List[MetadataLogInner]**](MetadataLogInner.md) |  | [optional] 
-**statistics_files** | [**List[StatisticsFile]**](StatisticsFile.md) |  | [optional] 
-**partition_statistics_files** | [**List[PartitionStatisticsFile]**](PartitionStatisticsFile.md) |  | [optional] 
+**statistics** | [**List[StatisticsFile]**](StatisticsFile.md) |  | [optional] 
+**partition_statistics** | [**List[PartitionStatisticsFile]**](PartitionStatisticsFile.md) |  | [optional] 
 
 ## Example
 

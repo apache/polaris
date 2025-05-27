@@ -99,7 +99,6 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -221,49 +220,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
+  private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
-
-  /**
-   * A subclass of IcebergCatalog that adds FileIO management capabilities. This allows the file IO
-   * logic to be encapsulated in a dedicated class.
-   */
-  public static class IcebergFileIOCatalog extends IcebergCatalog {
-
-    public IcebergFileIOCatalog(
-        PolarisEntityManager entityManager,
-        PolarisMetaStoreManager metaStoreManager,
-        CallContext callContext,
-        PolarisResolutionManifestCatalogView resolvedEntityView,
-        SecurityContext securityContext,
-        TaskExecutor taskExecutor,
-        FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener) {
-      super(
-          entityManager,
-          metaStoreManager,
-          callContext,
-          resolvedEntityView,
-          securityContext,
-          taskExecutor,
-          fileIOFactory,
-          polarisEventListener);
-    }
-
-    @Override
-    public synchronized FileIO getIo() {
-      if (catalogFileIO == null) {
-        catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
-        if (closeableGroup != null) {
-          closeableGroup.addCloseable(catalogFileIO);
-        }
-      }
-
-      return catalogFileIO;
-    }
-  }
 
   @BeforeAll
   public static void setUpMocks() {
@@ -410,7 +371,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog icebergCatalog =
-        new IcebergFileIOCatalog(
+        new IcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -419,6 +380,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             taskExecutor,
             fileIOFactory,
             polarisEventListener);
+    fileIO = new InMemoryFileIO();
+    icebergCatalog.setCatalogFileIo(fileIO);
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
@@ -630,7 +593,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     // Now also check that despite creating the metadata file, the validation call still doesn't
     // create any namespaces or tables.
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -766,8 +728,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
-
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -809,8 +769,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(230950845L);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -859,7 +817,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
-    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(tableMetadataLocation));
+    TableMetadataParser.write(tableMetadata, fileIO.newOutputFile(tableMetadataLocation));
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "my_table");
@@ -919,7 +877,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
-    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(tableMetadataLocation));
+    TableMetadataParser.write(tableMetadata, fileIO.newOutputFile(tableMetadataLocation));
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "my_table");
@@ -968,7 +926,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
     IcebergCatalog catalog = catalog();
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -999,7 +956,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
-    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(maliciousMetadataFile));
+    TableMetadataParser.write(tableMetadata, fileIO.newOutputFile(maliciousMetadataFile));
 
     NotificationRequest updateRequest = new NotificationRequest();
     updateRequest.setNotificationType(NotificationType.UPDATE);
@@ -1042,7 +999,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog catalog =
-        new IcebergFileIOCatalog(
+        new IcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1067,8 +1024,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(230950845L);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         metadataLocation,
@@ -1108,8 +1063,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
+    InMemoryFileIO localFileIO = new InMemoryFileIO();
     IcebergCatalog catalog =
-        new IcebergFileIOCatalog(
+        new IcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1125,8 +1081,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "http://maliciousdomain.com/metadata.json";
@@ -1204,8 +1158,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
-
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -1255,8 +1207,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(230950845L);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1309,8 +1259,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
-
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -1346,8 +1294,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(timestamp);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1419,8 +1365,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(230950845L);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // Though the metadata JSON file itself is in an allowed location, make it internally specify
     // a forbidden table location.
@@ -1498,8 +1442,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
-
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -1549,8 +1491,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     update.setTableUuid(UUID.randomUUID().toString());
     update.setTimestamp(230950845L);
     request.setPayload(update);
-
-    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -2068,9 +2008,5 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
-  }
-
-  private static InMemoryFileIO getInMemoryIo(IcebergCatalog catalog) {
-    return (InMemoryFileIO) ((ExceptionMappingFileIO) catalog.getIo()).getInnerIo();
   }
 }

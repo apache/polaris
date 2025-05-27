@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
@@ -105,7 +106,7 @@ public class StorageConfigurationTest {
       staticMock.when(StsClient::builder).thenReturn(mockBuilder);
 
       StorageConfiguration config = configWithAwsCredentialsAndGcpToken();
-      Supplier<StsClient> supplier = config.stsClientSupplier();
+      Supplier<StsClient> supplier = config.stsClientSupplier(true);
       StsClient client1 = supplier.get();
       StsClient client2 = supplier.get();
 
@@ -117,6 +118,16 @@ public class StorageConfigurationTest {
       assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
           .isEqualTo(TEST_SECRET_KEY);
     }
+  }
+
+  @Test
+  public void testStaticStsCredentials() {
+    StorageConfiguration config = configWithAwsCredentialsAndGcpToken();
+    AwsCredentialsProvider credentialsProvider = config.stsCredentials();
+    assertThat(credentialsProvider).isInstanceOf(StaticCredentialsProvider.class);
+    assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
+    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
+        .isEqualTo(TEST_SECRET_KEY);
   }
 
   @Test

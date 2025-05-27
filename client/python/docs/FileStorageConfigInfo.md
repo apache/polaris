@@ -20,7 +20,7 @@
 -->
 # FileStorageConfigInfo
 
-gcp storage configuration info
+file storage configuration info
 
 ## Properties
 

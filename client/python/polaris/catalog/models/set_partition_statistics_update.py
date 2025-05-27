@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.base_update import BaseUpdate
 from polaris.catalog.models.partition_statistics_file import PartitionStatisticsFile
 from typing import Optional, Set
@@ -46,16 +47,9 @@ class SetPartitionStatisticsUpdate(BaseUpdate):
     """
     SetPartitionStatisticsUpdate
     """ # noqa: E501
-    action: StrictStr
+    action: Optional[StrictStr] = None
     partition_statistics: PartitionStatisticsFile = Field(alias="partition-statistics")
     __properties: ClassVar[List[str]] = ["action"]
-
-    @field_validator('action')
-    def action_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['set-partition-statistics']):
-            raise ValueError("must be one of enum values ('set-partition-statistics')")
-        return value
 
     model_config = ConfigDict(
         populate_by_name=True,

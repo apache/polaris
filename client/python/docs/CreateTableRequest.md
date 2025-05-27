@@ -20,6 +20,7 @@
 -->
 # CreateTableRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes

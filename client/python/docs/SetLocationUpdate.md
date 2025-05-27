@@ -20,11 +20,12 @@
 -->
 # SetLocationUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **location** | **str** |  | 
 
 ## Example

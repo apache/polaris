@@ -19,7 +19,6 @@
 package org.apache.polaris.service.types;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -84,9 +83,9 @@ public enum NotificationType {
       return Optional.empty();
     }
 
-    for (NotificationType NotificationType : NotificationType.values()) {
-      if (name.toUpperCase(Locale.ROOT).equals(NotificationType.name())) {
-        return Optional.of(NotificationType);
+    for (NotificationType notificationType : NotificationType.values()) {
+      if (name.equalsIgnoreCase(notificationType.name())) {
+        return Optional.of(notificationType);
       }
     }
     return Optional.empty();
