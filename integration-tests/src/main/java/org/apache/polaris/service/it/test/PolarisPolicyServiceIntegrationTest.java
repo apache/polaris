@@ -72,7 +72,14 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.apache.polaris.service.types.*;
+import org.apache.polaris.service.types.ApplicablePolicy;
+import org.apache.polaris.service.types.AttachPolicyRequest;
+import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.DetachPolicyRequest;
+import org.apache.polaris.service.types.Policy;
+import org.apache.polaris.service.types.PolicyAttachmentTarget;
+import org.apache.polaris.service.types.PolicyIdentifier;
+import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -107,7 +114,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final String INVALID_TABLE = "INVALID_TABLE";
   private static final String INVALID_POLICY = "INVALID_POLICY";
   private static final String INVALID_NAMESPACE_MSG =
-          String.format("Namespace does not exist: %s", INVALID_NAMESPACE);
+      String.format("Namespace does not exist: %s", INVALID_NAMESPACE);
 
   private static URI s3BucketBase;
   private static String principalRoleName;
