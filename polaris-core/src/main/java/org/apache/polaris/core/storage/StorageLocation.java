@@ -40,12 +40,12 @@ public class StorageLocation {
   protected StorageLocation(@Nonnull String location) {
     if (location == null) {
       this.location = null;
-    } else if (location.startsWith("file:/") && !location.startsWith(LOCAL_PATH_PREFIX)) {
+    } else if (location.startsWith("file:/")) {
       this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
     } else if (location.startsWith("/")) {
       this.location = URI.create(location.replaceFirst("/+", LOCAL_PATH_PREFIX)).toString();
     } else {
-      this.location = URI.create(location).toString();
+      this.location = location;
     }
   }
 
