@@ -96,17 +96,18 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final String CATALOG_ROLE_1 = "catalogrole1";
   private static final String CATALOG_ROLE_2 = "catalogrole2";
   private static final String EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT = "{\"enable\":true}";
-  private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
-  private static final String INVALID_TABLE = "INVALID_TABLE";
-  private static final String INVALID_POLICY = "INVALID_POLICY";
-  private static final String INVALID_NAMESPACE_MSG =
-      String.format("Namespace does not exist: %s", INVALID_NAMESPACE);
   private static final Namespace NS1 = Namespace.of("NS1");
   private static final Namespace NS2 = Namespace.of("NS2");
   private static final PolicyIdentifier NS1_P1 = new PolicyIdentifier(NS1, "P1");
   private static final PolicyIdentifier NS1_P2 = new PolicyIdentifier(NS1, "P2");
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
+
+  private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
+  private static final String INVALID_TABLE = "INVALID_TABLE";
+  private static final String INVALID_POLICY = "INVALID_POLICY";
+  private static final String INVALID_NAMESPACE_MSG =
+          String.format("Namespace does not exist: %s", INVALID_NAMESPACE);
 
   private static URI s3BucketBase;
   private static String principalRoleName;
