@@ -16,24 +16,17 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 
-# Linux Quarkus fast-jar run script for Apache Polaris
+set -euo pipefail
 
-set -e
+# Get the directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/../server"
 
-script_dir="$(dirname "$0")"
+# Get the Java command
+JAVA_CMD="${JAVA_HOME:+${JAVA_HOME%/}/bin/java}"
+JAVA_CMD="${JAVA_CMD:-$(command -v java)}"
+[ -x "$JAVA_CMD" ] || { echo "Java not found – set JAVA_HOME or add java to PATH." >&2; exit 1; }
 
-if [ -z "$JAVA_HOME" ] ; then
-  JAVACMD="`\\unset -f command; \\command -v java`"
-else
-  JAVACMD="$JAVA_HOME/bin/java"
-fi
-
-if [ ! -x "$JAVACMD" ] ; then
-  echo "The JAVA_HOME environment variable is not defined correctly," >&2
-  echo "this environment variable is needed to run this program." >&2
-  exit 1
-fi
-
-exec "${JAVACMD}" -jar "${script_dir}/quarkus-run.jar" $@
+# Launch Quarkus
+exec "$JAVA_CMD" ${POLARIS_JAVA_OPTS:-} -jar quarkus-run.jar
