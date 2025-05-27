@@ -1819,6 +1819,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
   }
 
+  /** {@inheritDoc} */
   @Override
   public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long catalogId, String location) {

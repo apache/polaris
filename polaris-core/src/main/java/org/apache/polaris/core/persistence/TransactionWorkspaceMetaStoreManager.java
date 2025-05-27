@@ -386,6 +386,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     return null;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long catalogId, String location) {

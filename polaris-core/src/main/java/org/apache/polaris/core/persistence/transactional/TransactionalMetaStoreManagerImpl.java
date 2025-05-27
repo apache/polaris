@@ -2319,6 +2319,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 entityId));
   }
 
+  /** {@inheritDoc} */
   @Override
   public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long catalogId, String location) {

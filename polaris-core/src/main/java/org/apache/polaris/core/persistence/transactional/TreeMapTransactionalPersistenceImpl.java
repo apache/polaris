@@ -665,6 +665,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 
+  /** {@inheritDoc} */
   @Override
   public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long parentId, String location) {

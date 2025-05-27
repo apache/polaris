@@ -575,15 +575,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   public Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, long parentId, String location) {
     if (this.version < 2) {
       return Optional.empty();
     }
-    // TODO fix parent ID
-    Map<String, Object> params =
-        Map.of("parent_id", parentId, "location", location, "realm_id", realmId);
     String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
