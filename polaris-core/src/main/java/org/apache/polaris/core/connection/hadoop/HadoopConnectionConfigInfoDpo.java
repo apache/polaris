@@ -24,12 +24,15 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -44,8 +47,10 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
+          ServiceIdentityInfoDpo serviceIdentityInfo,
       @JsonProperty(value = "warehouse", required = false) @Nullable String remoteCatalogName) {
-    super(ConnectionType.HADOOP.getCode(), uri, authenticationParameters);
+    super(ConnectionType.HADOOP.getCode(), uri, authenticationParameters, serviceIdentityInfo);
     this.warehouse = remoteCatalogName;
   }
 
@@ -65,14 +70,23 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
-    properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
+    properties.putAll(
+        getAuthenticationParameters()
+            .asIcebergCatalogProperties(secretsManager, credentialManager));
     return properties;
+  }
+
+  @Override
+  public ConnectionConfigInfoDpo withServiceIdentity(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+    return new HadoopConnectionConfigInfoDpo(
+        getUri(), getAuthenticationParameters(), serviceIdentityInfo, getWarehouse());
   }
 
   @Override
@@ -83,6 +97,10 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
         .setWarehouse(getWarehouse())
         .setAuthenticationParameters(
             getAuthenticationParameters().asAuthenticationParametersModel())
+        .setServiceIdentity(
+            Optional.ofNullable(getServiceIdentity())
+                .map(ServiceIdentityInfoDpo::asServiceIdentityInfoModel)
+                .orElse(null))
         .build();
   }
 }

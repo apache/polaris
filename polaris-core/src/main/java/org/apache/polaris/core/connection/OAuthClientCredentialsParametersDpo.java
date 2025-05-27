@@ -35,6 +35,7 @@ import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
@@ -86,7 +87,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
     return clientSecretReference;
   }
 
-  public @Nonnull List<String> getScopes() {
+  public @Nullable List<String> getScopes() {
     return scopes;
   }
 
@@ -104,7 +105,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     if (getTokenUri() != null) {
       properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());
@@ -115,7 +116,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public AuthenticationParameters asAuthenticationParametersModel() {
+  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
     return OAuthClientCredentialsParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())

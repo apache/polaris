@@ -24,12 +24,15 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -45,9 +48,12 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
+          ServiceIdentityInfoDpo serviceIdentityInfo,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName) {
-    super(ConnectionType.ICEBERG_REST.getCode(), uri, authenticationParameters);
+    super(
+        ConnectionType.ICEBERG_REST.getCode(), uri, authenticationParameters, serviceIdentityInfo);
     this.remoteCatalogName = remoteCatalogName;
   }
 
@@ -57,14 +63,25 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
+    properties.putAll(
+        getAuthenticationParameters()
+            .asIcebergCatalogProperties(secretsManager, credentialManager));
+    credentialManager
+        .getConnectionCredentials(getServiceIdentity(), getAuthenticationParameters())
+        .forEach((key, value) -> properties.put(key.getPropertyName(), value));
     return properties;
+  }
+
+  @Override
+  public ConnectionConfigInfoDpo withServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo) {
+    return new IcebergRestConnectionConfigInfoDpo(
+        getUri(), getAuthenticationParameters(), serviceIdentityInfo, getRemoteCatalogName());
   }
 
   @Override
@@ -75,6 +92,10 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
         .setRemoteCatalogName(getRemoteCatalogName())
         .setAuthenticationParameters(
             getAuthenticationParameters().asAuthenticationParametersModel())
+        .setServiceIdentity(
+            Optional.ofNullable(getServiceIdentity())
+                .map(ServiceIdentityInfoDpo::asServiceIdentityInfoModel)
+                .orElse(null))
         .build();
   }
 
@@ -85,6 +106,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
         .add("uri", getUri())
         .add("remoteCatalogName", getRemoteCatalogName())
         .add("authenticationParameters", getAuthenticationParameters().toString())
+        .add("serviceIdentity", getServiceIdentity())
         .toString();
   }
 }
