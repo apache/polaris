@@ -222,15 +222,15 @@ public class QueryGenerator {
     StringBuilder pathBuilder = new StringBuilder();
     for (String component : components) {
       pathBuilder.append(component).append("/");
-      locationClauseBuilder.append(String.format(" OR location = '%s' ", pathBuilder));
+      locationClauseBuilder.append(String.format(" OR location = '%s'", pathBuilder));
     }
-    locationClauseBuilder.append(String.format(" OR location LIKE '%s%%' ", location));
+    locationClauseBuilder.append(String.format(" OR location LIKE '%s%%'", location));
     String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
 
     // TODO harden against realmId in this method and others
     return query
         + String.format(
-            " FROM POLARIS_SCHEMA.entities WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2 %s)",
+            " FROM POLARIS_SCHEMA.entities WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2%s)",
             realmId, parentId, locationClauseBuilder);
   }
 
