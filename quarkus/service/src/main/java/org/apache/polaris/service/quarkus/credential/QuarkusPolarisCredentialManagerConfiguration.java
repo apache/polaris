@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.quarkus.identity;
+package org.apache.polaris.service.quarkus.credential;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;

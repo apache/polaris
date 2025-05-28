@@ -24,6 +24,7 @@ import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.secrets.ServiceSecretReference;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -38,7 +39,16 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
 
   public ResolvedAwsIamServiceIdentity(
       String iamArn, String accessKeyId, String secretAccessKey, String sessionToken) {
-    super(ServiceIdentityType.AWS_IAM);
+    this(null, iamArn, accessKeyId, secretAccessKey, sessionToken);
+  }
+
+  public ResolvedAwsIamServiceIdentity(
+      ServiceSecretReference serviceSecretReference,
+      String iamArn,
+      String accessKeyId,
+      String secretAccessKey,
+      String sessionToken) {
+    super(ServiceIdentityType.AWS_IAM, serviceSecretReference);
     this.iamArn = iamArn;
     this.accessKeyId = accessKeyId;
     this.secretAccessKey = secretAccessKey;

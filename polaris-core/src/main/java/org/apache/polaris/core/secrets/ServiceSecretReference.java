@@ -47,7 +47,7 @@ public class ServiceSecretReference extends SecretReference {
     super(urn, referencePayload);
     // TODO: Add better/standardized parsing and validation of URN syntax
     Preconditions.checkArgument(
-        urn.startsWith("urn:polaris-service-secret:") && urn.split(":").length >= 5,
+        urn.startsWith("urn:polaris-service-secret:") && urn.split(":").length >= 4,
         "Invalid secret URN '%s'; must be of the form "
             + "'urn:polaris-service-secret:<secret-manager-type>:<type-specific-identifier>'",
         urn);

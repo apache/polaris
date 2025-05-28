@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.identity;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.secrets.ServiceSecretReference;
 @Identifier("default")
 public class DefaultServiceIdentityRegistryFactory implements ServiceIdentityRegistryFactory {
   private static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
+  private static final String DEFAULT_REALM_NSS = "system:default";
   private static final String IDENTITY_INFO_REFERENCE_URN_FORMAT =
       "urn:polaris-service-secret:default-identity-registry:%s:%s";
 
@@ -108,6 +110,11 @@ public class DefaultServiceIdentityRegistryFactory implements ServiceIdentityReg
     return getServiceIdentityRegistryForRealm(realmContext);
   }
 
+  @VisibleForTesting
+  public Map<String, DefaultServiceIdentityRegistry> getRealmServiceIdentityRegistries() {
+    return realmServiceIdentityRegistries;
+  }
+
   protected DefaultServiceIdentityRegistry getServiceIdentityRegistryForRealm(
       RealmContext realmContext) {
     return getServiceIdentityRegistryForRealm(realmContext.getRealmIdentifier());
@@ -123,6 +130,8 @@ public class DefaultServiceIdentityRegistryFactory implements ServiceIdentityReg
       String realm, ServiceIdentityType type) {
     // urn:polaris-service-secret:default-identity-registry:<realm>:<type>
     return new ServiceSecretReference(
-        IDENTITY_INFO_REFERENCE_URN_FORMAT.formatted(realm, type.name()), Map.of());
+        IDENTITY_INFO_REFERENCE_URN_FORMAT.formatted(
+            realm.equals(DEFAULT_REALM_KEY) ? DEFAULT_REALM_NSS : realm, type.name()),
+        Map.of());
   }
 }

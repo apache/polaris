@@ -19,6 +19,7 @@
 
 package org.apache.polaris.core.identity.registry;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,5 +61,10 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
         referenceToResolvedServiceIdentity.get(
             serviceIdentityInfo.getIdentityInfoReference().getUrn());
     return resolvedServiceIdentity;
+  }
+
+  @VisibleForTesting
+  public EnumMap<ServiceIdentityType, ResolvedServiceIdentity> getResolvedServiceIdentities() {
+    return resolvedServiceIdentities;
   }
 }
