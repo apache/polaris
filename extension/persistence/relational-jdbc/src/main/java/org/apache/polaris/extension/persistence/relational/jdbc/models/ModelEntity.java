@@ -18,17 +18,14 @@
  */
 package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
-import com.google.common.collect.ImmutableMap;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
@@ -358,7 +355,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
 
     if (model.location != null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE || entityType == PolarisEntityType.NAMESPACE) {
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE
+          || entityType == PolarisEntityType.NAMESPACE) {
         HashMap<String, String> properties = new HashMap<>(entity.getPropertiesAsMap());
         properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
         entity.setPropertiesAsMap(properties);
