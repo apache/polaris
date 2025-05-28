@@ -30,7 +30,7 @@ dependencies {
   implementation(project(":polaris-api-catalog-service"))
 
   implementation(project(":polaris-service-common"))
-  implementation(project(":polaris-quarkus-defaults"))
+  implementation(project(":polaris-defaults"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -40,7 +40,7 @@ dependencies {
   implementation(platform(libs.opentelemetry.bom))
 
   implementation(platform(libs.quarkus.bom))
-  implementation(project(":polaris-quarkus-common"))
+  implementation(project(":polaris-common"))
   implementation("io.quarkus:quarkus-logging-json")
   implementation("io.quarkus:quarkus-rest-jackson")
   implementation("io.quarkus:quarkus-reactive-routes")
@@ -124,7 +124,7 @@ dependencies {
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(project(":polaris-quarkus-test-commons"))
+  testImplementation(project(":polaris-test-commons"))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")

@@ -79,7 +79,7 @@ aws s3api create-bucket --bucket $S3_BUCKET_NAME --region $CURRENT_REGION --crea
 
 export STORAGE_LOCATION="s3://$S3_BUCKET_NAME/quickstart_catalog/"
 
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew clean :polaris-server:assemble :polaris-admin:assemble \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

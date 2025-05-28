@@ -54,10 +54,10 @@ Apache Polaris is organized into the following modules:
 - Service modules:
   - `polaris-service-common` - The main components of the Polaris server
 - Quarkus runtime modules:
-  - `polaris-quarkus-service` - The Quarkus-specific components of the Polaris server
-  - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
-  - `polaris-quarkus-server` - The Polaris server runtime
-  - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
+  - `polaris-service` - The runtime specific components of the Polaris server
+  - `polaris-defaults` - The runtime specific configuration defaults
+  - `polaris-server` - The Polaris server runtime
+  - `polaris-admin-tool` - The Polaris admin & maintenance tool
 - Persistence modules:
   - `polaris-jpa-model` - The JPA entity definitions
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
@@ -89,8 +89,8 @@ select * from db1.table1;
 - To build the image locally:
   ```bash
   ./gradlew \
-    :polaris-quarkus-server:assemble \
-    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    :polaris-server:assemble \
+    :polaris-server:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true
   ```
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.

@@ -32,10 +32,10 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-service"))
 
   testImplementation(project(":polaris-tests"))
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation(testFixtures(project(":polaris-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")

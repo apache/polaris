@@ -47,7 +47,7 @@ echo "GCS Bucket Name: $GCS_BUCKET_NAME"
 gcloud storage buckets create "gs://$GCS_BUCKET_NAME" --location=$CURRENT_REGION
 export STORAGE_LOCATION="gs://$GCS_BUCKET_NAME/quickstart_catalog/"
 
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew clean :polaris-server:assemble :polaris-admin:assemble \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

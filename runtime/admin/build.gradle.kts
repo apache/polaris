@@ -42,10 +42,10 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
-  implementation(project(":polaris-quarkus-common"))
+  implementation(project(":polaris-common"))
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
-  testImplementation(project(":polaris-quarkus-test-commons"))
+  testImplementation(project(":polaris-test-commons"))
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
