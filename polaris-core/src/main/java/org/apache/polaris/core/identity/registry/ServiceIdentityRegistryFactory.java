@@ -17,19 +17,10 @@
  * under the License.
  */
 
-package org.apache.polaris.core.identity;
+package org.apache.polaris.core.identity.registry;
 
-import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.context.RealmContext;
 
-public interface ServiceIdentityRegistry {
-  ServiceIdentityInfoDpo assignServiceIdentity(ServiceIdentityType serviceIdentityType);
-
-  /**
-   * Resolves the service identity based on the provided service identity information.
-   *
-   * @param serviceIdentityInfo The service identity information to resolve.
-   * @return The resolved service identity.
-   */
-  ResolvedServiceIdentity resolveServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo);
+public interface ServiceIdentityRegistryFactory {
+  ServiceIdentityRegistry getOrCreateServiceIdentityRegistry(RealmContext realmContext);
 }

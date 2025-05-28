@@ -17,19 +17,16 @@
  * under the License.
  */
 
-package org.apache.polaris.service.quarkus.identity;
+package org.apache.polaris.core.credentials;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
+import org.apache.polaris.core.context.RealmContext;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.service-identity.registry")
-public interface QuarkusServiceIdentityRegistryConfiguration {
-
-  /**
-   * The type of the ServiceIdentityRegistryFactory to use. This is the {@link
-   * ServiceIdentityRegistryFactory} identifier.
-   */
-  String type();
+/**
+ * Factory for creating {@link PolarisCredentialManager} instances.
+ *
+ * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext} and
+ * is responsible for managing the credentials for the user in that realm.
+ */
+public interface PolarisCredentialManagerFactory {
+  PolarisCredentialManager getOrCreatePolarisCredentialManager(RealmContext realmContext);
 }

@@ -17,19 +17,20 @@
  * under the License.
  */
 
-package org.apache.polaris.service.quarkus.identity;
+package org.apache.polaris.core.identity.registry;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
+import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.service-identity.registry")
-public interface QuarkusServiceIdentityRegistryConfiguration {
+public interface ServiceIdentityRegistry {
+  ServiceIdentityInfoDpo assignServiceIdentity(ServiceIdentityType serviceIdentityType);
 
   /**
-   * The type of the ServiceIdentityRegistryFactory to use. This is the {@link
-   * ServiceIdentityRegistryFactory} identifier.
+   * Resolves the service identity based on the provided service identity information.
+   *
+   * @param serviceIdentityInfo The service identity information to resolve.
+   * @return The resolved service identity.
    */
-  String type();
+  ResolvedServiceIdentity resolveServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo);
 }

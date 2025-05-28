@@ -28,6 +28,7 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -69,6 +70,12 @@ public class QuarkusProducers {
         return null;
       }
     };
+  }
+
+  @Produces
+  public EntityMutationEngine entityMutationEngine() {
+    // An entity mutation engine is not required when running the admin tool.
+    return entity -> entity;
   }
 
   @Produces

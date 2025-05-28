@@ -17,10 +17,16 @@
  * under the License.
  */
 
-package org.apache.polaris.core.identity;
+package org.apache.polaris.core.credentials;
 
-import org.apache.polaris.core.context.RealmContext;
+import java.util.EnumMap;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
+import org.apache.polaris.core.credentials.connection.PolarisConnectionCredsVendor;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 
-public interface ServiceIdentityRegistryFactory {
-  ServiceIdentityRegistry getOrCreateServiceIdentityRegistry(RealmContext realmContext);
+public interface PolarisCredentialManager extends PolarisConnectionCredsVendor {
+  @Override
+  EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+      ServiceIdentityInfoDpo serviceIdentity, AuthenticationParametersDpo authenticationParameters);
 }

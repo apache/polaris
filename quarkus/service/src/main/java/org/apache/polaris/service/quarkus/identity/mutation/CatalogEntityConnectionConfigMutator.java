@@ -26,8 +26,8 @@ import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.identity.ServiceIdentityRegistry;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.service.identity.mutation.EntityMutator;
 
 @RequestScoped

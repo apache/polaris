@@ -21,15 +21,14 @@ package org.apache.polaris.service.quarkus.identity;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 
 @StaticInitSafe
-@ConfigMapping(prefix = "polaris.service-identity.registry")
-public interface QuarkusServiceIdentityRegistryConfiguration {
+@ConfigMapping(prefix = "polaris.credential-manager")
+public interface QuarkusPolarisCredentialManagerConfiguration {
 
   /**
-   * The type of the ServiceIdentityRegistryFactory to use. This is the {@link
-   * ServiceIdentityRegistryFactory} identifier.
+   * The type of the PolarisCredentialManagerFactory to use. This is the {@link
+   * org.apache.polaris.core.credentials.PolarisCredentialManagerFactory} identifier.
    */
   String type();
 }

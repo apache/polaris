@@ -17,19 +17,13 @@
  * under the License.
  */
 
-package org.apache.polaris.service.quarkus.identity;
+package org.apache.polaris.core.credentials.connection;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
+import java.util.EnumMap;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.service-identity.registry")
-public interface QuarkusServiceIdentityRegistryConfiguration {
-
-  /**
-   * The type of the ServiceIdentityRegistryFactory to use. This is the {@link
-   * ServiceIdentityRegistryFactory} identifier.
-   */
-  String type();
+public interface PolarisConnectionCredsVendor {
+  EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+      ServiceIdentityInfoDpo serviceIdentity, AuthenticationParametersDpo authenticationParameters);
 }

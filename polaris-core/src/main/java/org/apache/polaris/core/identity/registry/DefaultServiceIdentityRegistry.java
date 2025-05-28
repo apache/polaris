@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.polaris.core.identity;
+package org.apache.polaris.core.identity.registry;
 
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 

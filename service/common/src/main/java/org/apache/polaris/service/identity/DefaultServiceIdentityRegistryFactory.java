@@ -26,10 +26,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.identity.DefaultServiceIdentityRegistry;
-import org.apache.polaris.core.identity.ServiceIdentityRegistry;
-import org.apache.polaris.core.identity.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.registry.DefaultServiceIdentityRegistry;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 
