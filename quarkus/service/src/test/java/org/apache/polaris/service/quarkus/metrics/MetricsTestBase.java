@@ -16,20 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus;
+package org.apache.polaris.service.quarkus.metrics;
 
 import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
-import org.apache.polaris.service.quarkus.TimedApplicationEventListenerTest.Profile;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestHelper;
 import org.apache.polaris.service.quarkus.test.TestEnvironment;
@@ -46,27 +42,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestEnvironmentExtension.class)
-@TestProfile(Profile.class)
-public class TimedApplicationEventListenerTest {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
-    }
-  }
+public abstract class MetricsTestBase {
 
   private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";
-  private static final String METRIC_NAME = "polaris_principals_getPrincipal_seconds";
+  private static final String API_METRIC_NAME = "polaris_principals_getPrincipal_seconds";
+  private static final String HTTP_METRIC_NAME = "http_server_requests_seconds";
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry registry;
+  @Inject QuarkusMetricsConfiguration metricsConfiguration;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -88,19 +75,45 @@ public class TimedApplicationEventListenerTest {
     sendSuccessfulRequest();
     Map<String, MetricFamily> allMetrics =
         TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
-    assertThat(allMetrics).containsKey(METRIC_NAME);
-    assertThat(allMetrics.get(METRIC_NAME).getMetrics())
+    assertThat(allMetrics).containsKey(API_METRIC_NAME);
+    assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
             metric -> {
               assertThat(metric.getLabels())
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", fixture.realm),
+                      Map.entry(
+                          "realm_id",
+                          metricsConfiguration.realmIdTag().enableInApiMetrics()
+                              ? fixture.realm
+                              : ""),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "none"),
                       Map.entry("method", "getPrincipal"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
+            });
+    assertThat(allMetrics).containsKey(HTTP_METRIC_NAME);
+    assertThat(allMetrics.get(HTTP_METRIC_NAME).getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("method", "GET"),
+                      Map.entry("outcome", "SUCCESS"),
+                      Map.entry("status", "200"),
+                      Map.entry("uri", "/api/management/v1/principals/{principalName}"));
+              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+                assertThat(metric.getLabels()).containsEntry("realm_id", fixture.realm);
+              } else {
+                assertThat(metric.getLabels()).doesNotContainKey("realm_id");
+              }
               assertThat(metric)
                   .asInstanceOf(type(Summary.class))
                   .extracting(Summary::getSampleCount)
@@ -114,19 +127,44 @@ public class TimedApplicationEventListenerTest {
     sendFailingRequest();
     Map<String, MetricFamily> allMetrics =
         TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
-    assertThat(allMetrics).containsKey(METRIC_NAME);
-    assertThat(allMetrics.get(METRIC_NAME).getMetrics())
+    assertThat(allMetrics).containsKey(API_METRIC_NAME);
+    assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
             metric -> {
               assertThat(metric.getLabels())
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", fixture.realm),
+                      Map.entry(
+                          "realm_id",
+                          metricsConfiguration.realmIdTag().enableInApiMetrics()
+                              ? fixture.realm
+                              : ""),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "NotFoundException"),
                       Map.entry("method", "getPrincipal"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
+            });
+    assertThat(allMetrics.get(HTTP_METRIC_NAME).getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("method", "GET"),
+                      Map.entry("outcome", "CLIENT_ERROR"),
+                      Map.entry("status", "404"),
+                      Map.entry("uri", "/api/management/v1/principals/{principalName}"));
+              if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
+                assertThat(metric.getLabels()).containsEntry("realm_id", fixture.realm);
+              } else {
+                assertThat(metric.getLabels()).doesNotContainKey("realm_id");
+              }
               assertThat(metric)
                   .asInstanceOf(type(Summary.class))
                   .extracting(Summary::getSampleCount)

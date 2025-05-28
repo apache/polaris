@@ -47,6 +47,25 @@ polaris.metrics.tags.region=us-west-2
 Note that by default Polaris adds one tag: `application=Polaris`. You can override this tag by
 setting the `polaris.metrics.tags.application=<new-value>` property.
 
+### Realm ID Tag
+
+Polaris can add the realm ID as a tag to all API and HTTP request metrics. This is disabled by 
+default to prevent high cardinality issues, but can be enabled by setting the following properties:
+
+```properties
+polaris.metrics.realm-id-tag.enable-in-api-metrics=true
+polaris.metrics.realm-id-tag.enable-in-http-metrics=true
+```
+
+You should be particularly careful when enabling the realm ID tag in HTTP request metrics, as these
+metrics typically have a much higher cardinality than API request metrics.
+
+In order to prevent the number of tags from growing indefinitely and causing performance issues or
+crashing the server, the number of unique realm IDs in HTTP request metrics is limited to 100 by 
+default. If the number of unique realm IDs exceeds this value, a warning will be logged and no more
+HTTP request metrics will be recorded. This threshold can be changed by setting the 
+`polaris.metrics.realm-id-tag.http-metrics-max-cardinality` property.
+
 ## Traces
 
 Traces are published using [OpenTelemetry]. 
