@@ -29,6 +29,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.mutation.NoOpEntityMutationEngine;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
@@ -71,6 +72,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             basePersistence,
             diagServices,
             new PolarisConfigurationStore() {},
+            new NoOpEntityMutationEngine(),
             timeSource.withZone(ZoneId.systemDefault())));
   }
 

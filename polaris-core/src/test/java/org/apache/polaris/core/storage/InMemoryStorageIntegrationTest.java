@@ -31,6 +31,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.mutation.NoOpEntityMutationEngine;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,7 @@ class InMemoryStorageIntegrationTest {
                 return (T) config.get(configName);
               }
             },
+            new NoOpEntityMutationEngine(),
             Clock.systemUTC());
     CallContext.setCurrentContext(polarisCallContext);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
