@@ -66,7 +66,6 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
@@ -120,3 +119,5 @@ sourceSets {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("processResources") { dependsOn("openApiGenerate") }
+
+tasks.named("openApiGenerate") { outputs.cacheIf { false } }

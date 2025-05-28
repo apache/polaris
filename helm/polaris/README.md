@@ -46,32 +46,26 @@ A Helm chart for Apache Polaris (incubating).
 
 ## Installation
 
-### Optional
+### Prerequisites
 
-When using a custom `persistence.xml`, a Kubernetes Secret must be created for it. Below is a sample command:
+When using the (deprecated) EclipseLink-backed metastore, a custom `persistence.xml` is required,
+and a Kubernetes Secret must be created for it. Below is a sample command:
+
 ```bash
 kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
-```
-
-### Running the unit tests
-
-Helm unit tests do not require a Kubernetes cluster. To run the unit tests from the Polaris repo
-root:
-
-```bash
-helm unittest helm/polaris
 ```
 
 ### Running locally with a Kind cluster
 
 The below instructions assume Kind and Helm are installed.
 
-Simply run the `run.sh` script from the Polaris repo root, making sure to specify the
-`--eclipse-link-deps` option:
+Simply run the `run.sh` script from the Polaris repo root:
 
 ```bash
 ./run.sh
 ```
+
+If using the EclipseLink-backed metastore, make sure to specify the `--eclipse-link-deps` option.
 
 This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
 images with support for Postgres and load them into the Kind cluster. (It will also create an
@@ -100,26 +94,23 @@ The below instructions assume a local Kubernetes cluster is running and Helm is 
 
 #### Common setup
 
-Create and populate the target namespace:
+Create the target namespace:
 
 ```bash
 kubectl create namespace polaris
-kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
-
-kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
-The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
-different configurations.
-
-You can also run `ct` (chart-testing):
-
-```bash
-ct lint --charts helm/polaris
-ct install --namespace polaris --debug --charts ./helm/polaris
-```
+Create all the required resources in the `polaris` namespace. This usually includes a Postgres
+database and a Kubernetes Secret for the `persistence.xml` file. The Polaris chart does not create
+these resources automatically, as they are not required for all Polaris deployments. The chart will
+fail if these resources are not created beforehand.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
+
+> [!WARNING]
+> The examples below use values files located in the `helm/polaris/ci` directory.
+> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
+> For production deployments, create your own values files based on the provided examples.
 
 #### Non-persistent backend
 
@@ -129,6 +120,16 @@ Install the chart with a non-persistent backend. From Polaris repo root:
 helm upgrade --install --namespace polaris \
   --debug --values helm/polaris/ci/simple-values.yaml \
    polaris helm/polaris
+```
+
+Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
+above, then you need to run `helm upgrade` as follows:
+
+```bash
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/simple-values.yaml \
+  --set=image.repository=localhost:5001/apache/polaris \
+  polaris helm/polaris
 ```
 
 #### Persistent backend
@@ -184,6 +185,69 @@ kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl delete namespace polaris
 ```
 
+## Development & Testing
+
+This section is intended for developers who want to run the Polaris Helm chart tests.
+
+### Prerequisites
+
+The following tools are required to run the tests:
+
+* [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
+* [Chart Testing](https://github.com/helm/chart-testing)
+
+Quick installation instructions for these tools:
+
+```bash
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+brew install chart-testing
+```
+
+The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
+contains the required resources. To deploy them, run the following command:
+
+```bash
+kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+```
+
+The `helm/polaris/ci` contains a number of values files that will be used to install the chart with
+different configurations.
+
+### Running the unit tests
+
+Helm unit tests do not require a Kubernetes cluster. To run the unit tests, execute Helm Unit from
+the Polaris repo root:
+
+```bash
+helm unittest helm/polaris
+```
+
+You can also lint the chart using the Chart Testing tool, with the following command:
+
+```bash
+ct lint --charts helm/polaris
+```
+
+### Running the integration tests
+
+Integration tests require a Kubernetes cluster. See installation instructions above for setting up
+a local cluster.
+
+Integration tests are run with the Chart Testing tool:
+
+```bash
+ct install --namespace polaris --debug --charts ./helm/polaris
+```
+
+Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
+above, then you need to run `ct install` as follows:
+
+```bash
+ct install --namespace polaris --debug --charts ./helm/polaris \
+  --helm-extra-set-args "--set=image.repository=localhost:5001/apache/polaris"
+```
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -219,8 +283,7 @@ kubectl delete namespace polaris
 | extraServices | list | `[]` | Additional service definitions. All service definitions always select all Polaris pods. Use this if you need to expose specific ports with different configurations, e.g. expose polaris-http with an alternate LoadBalancer service instead of ClusterIP. |
 | extraVolumeMounts | list | `[]` | Extra volume mounts to add to the polaris container. See https://kubernetes.io/docs/concepts/storage/volumes/. |
 | extraVolumes | list | `[]` | Extra volumes to add to the polaris pod. See https://kubernetes.io/docs/concepts/storage/volumes/. |
-| features | object | `{"defaults":{},"realmOverrides":{}}` | Polaris features configuration. |
-| features.defaults | object | `{}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. |
+| features | object | `{"realmOverrides":{}}` | Polaris features configuration. |
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |

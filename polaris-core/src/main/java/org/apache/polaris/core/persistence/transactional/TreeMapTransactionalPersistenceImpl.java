@@ -26,6 +26,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -38,7 +39,11 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -301,29 +306,30 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
-  }
-
-  @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
+    return this.listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+  }
+
+  @Override
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
         entityFilter,
         entity ->
             new EntityNameLookupRecord(
@@ -332,31 +338,36 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 entity.getParentId(),
                 entity.getName(),
                 entity.getTypeCode(),
-                entity.getSubTypeCode()));
+                entity.getSubTypeCode()),
+        pageToken);
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
-    return this.store
-        .getSliceEntitiesActive()
-        .readRange(this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
-        .stream()
-        .map(
-            nameRecord ->
-                this.lookupEntityInCurrentTxn(
-                    callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-        .filter(entityFilter)
-        .limit(limit)
-        .map(transformer)
-        .collect(Collectors.toList());
+    Stream<PolarisBaseEntity> data =
+        this.store
+            .getSliceEntitiesActive()
+            .readRange(
+                this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
+            .stream()
+            .map(
+                nameRecord ->
+                    this.lookupEntityInCurrentTxn(
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
+            .filter(entityFilter);
+    if (pageToken instanceof HasPageSize) {
+      data = data.limit(((HasPageSize) pageToken).getPageSize());
+    }
+
+    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -578,20 +589,30 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
-    // build composite prefix key and delete policy mapping records on the indexed side of each
-    // mapping table
-    String prefix = this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId());
-    this.store.getSlicePolicyMappingRecords().deleteRange(prefix);
-    this.store.getSlicePolicyMappingRecordsByPolicy().deleteRange(prefix);
-
-    // also delete the other side. We need to delete these mapping one at a time versus doing a
-    // range delete
-    mappingOnTarget.forEach(
-        record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
-    mappingOnPolicy.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
+    if (entity.getType() == PolarisEntityType.POLICY) {
+      PolicyEntity policyEntity = PolicyEntity.of(entity);
+      this.store
+          .getSlicePolicyMappingRecordsByPolicy()
+          .deleteRange(
+              this.store.buildPrefixKeyComposite(
+                  policyEntity.getPolicyTypeCode(),
+                  policyEntity.getCatalogId(),
+                  policyEntity.getId()));
+      // also delete the other side. We need to delete these mapping one at a time versus doing a
+      // range delete
+      mappingOnPolicy.forEach(record -> this.store.getSlicePolicyMappingRecords().delete(record));
+    } else {
+      this.store
+          .getSlicePolicyMappingRecords()
+          .deleteRange(this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId()));
+      // also delete the other side. We need to delete these mapping one at a time versus doing a
+      // range delete
+      mappingOnTarget.forEach(
+          record -> this.store.getSlicePolicyMappingRecordsByPolicy().delete(record));
+    }
   }
 
   /** {@inheritDoc} */
@@ -634,9 +655,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
-        .readRange(this.store.buildPrefixKeyComposite(policyCatalogId, policyId));
+        .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 }

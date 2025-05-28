@@ -51,6 +51,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -766,7 +767,8 @@ public class PolarisTestMetaStoreManager {
                     this.polarisCallContext,
                     path,
                     PolarisEntityType.NAMESPACE,
-                    PolarisEntitySubType.NULL_SUBTYPE)
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    PageToken.readEverything())
                 .getEntities();
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
@@ -776,7 +778,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.TABLE_LIKE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
@@ -786,7 +789,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.CATALOG_ROLE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
@@ -1555,7 +1559,12 @@ public class PolarisTestMetaStoreManager {
     // list the entities under the specified path
     List<EntityNameLookupRecord> result =
         polarisMetaStoreManager
-            .listEntities(this.polarisCallContext, path, entityType, entitySubType)
+            .listEntities(
+                this.polarisCallContext,
+                path,
+                entityType,
+                entitySubType,
+                PageToken.readEverything())
             .getEntities();
     Assertions.assertThat(result).isNotNull();
 
@@ -1872,7 +1881,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -1898,7 +1908,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL_ROLE,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -2636,7 +2647,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -2876,7 +2888,8 @@ public class PolarisTestMetaStoreManager {
 
     BasePersistence ms = polarisCallContext.getMetaStore();
     Assertions.assertThat(
-            ms.loadAllTargetsOnPolicy(polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId()))
+            ms.loadAllTargetsOnPolicy(
+                polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
         .isEmpty();
 
     attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P2);

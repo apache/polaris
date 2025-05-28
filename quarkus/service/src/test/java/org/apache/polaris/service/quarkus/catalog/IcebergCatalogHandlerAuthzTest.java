@@ -68,8 +68,8 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -80,20 +80,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(IcebergCatalogHandlerAuthzTest.Profile.class)
+@TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  public static class Profile extends PolarisAuthzTestBase.Profile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
-          "true");
-    }
-  }
 
   private IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
@@ -115,7 +103,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties,
+        catalogHandlerUtils);
   }
 
   /**
@@ -254,7 +244,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
-            polarisAuthorizer);
+            polarisAuthorizer,
+            reservedProperties,
+            catalogHandlerUtils);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -287,7 +279,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             callContextCatalogFactory,
             CATALOG_NAME,
-            polarisAuthorizer);
+            polarisAuthorizer,
+            reservedProperties,
+            catalogHandlerUtils);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1808,7 +1802,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             userSecretsManagerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {})) {
+                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {}),
+            polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,

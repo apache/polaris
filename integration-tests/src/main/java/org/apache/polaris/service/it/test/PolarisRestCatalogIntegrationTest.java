@@ -19,13 +19,13 @@
 package org.apache.polaris.service.it.test;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -97,6 +97,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
@@ -230,6 +231,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     for (int i = 0; i < properties.length; i += 2) {
       catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
     }
+    catalogPropsBuilder.addProperty(
+        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
     if (!s3BucketBase.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
@@ -1409,7 +1412,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThatCode(() -> catalogApi.loadTable(currentCatalogName, tableIdentifier, "not-real"))
           .isInstanceOf(RESTException.class)
           .hasMessageContaining("Unrecognized snapshots")
-          .hasMessageContaining("code=" + BAD_REQUEST.getStatusCode());
+          .hasMessageContaining("code=" + Response.Status.BAD_REQUEST.getStatusCode());
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
@@ -1449,5 +1452,110 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
+  }
+
+  @Test
+  public void testCreateGenericTableWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
+
+    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    try (Response res =
+        genericTableApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
+                Map.of("cat", currentCatalogName, "ns", ns))
+            .post(
+                Entity.json(
+                    new CreateGenericTableRequest(
+                        tableIdentifier.name(),
+                        "format",
+                        "doc",
+                        Map.of("polaris.reserved", "true"))))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains("reserved prefix");
+    }
+
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testCreateNamespaceWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    assertThatCode(
+            () -> {
+              restCatalog.createNamespace(namespace, ImmutableMap.of("polaris.reserved", "true"));
+            })
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .hasMessageContaining("reserved prefix");
+  }
+
+  @Test
+  public void testUpdateNamespaceWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
+    restCatalog.setProperties(namespace, ImmutableMap.of("c", "d"));
+    Assertions.assertThatCode(
+            () -> {
+              restCatalog.setProperties(namespace, ImmutableMap.of("polaris.reserved", "true"));
+            })
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testRemoveReservedPropertyFromNamespace() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
+    restCatalog.removeProperties(namespace, Sets.newHashSet("a"));
+    Assertions.assertThatCode(
+            () -> {
+              restCatalog.removeProperties(namespace, Sets.newHashSet("polaris.reserved"));
+            })
+        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testCreateTableWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
+    Assertions.assertThatCode(
+            () -> {
+              restCatalog.createTable(
+                  identifier,
+                  SCHEMA,
+                  PartitionSpec.unpartitioned(),
+                  ImmutableMap.of("polaris.reserved", ""));
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testUpdateTableWithReservedProperty() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
+    restCatalog.createTable(identifier, SCHEMA);
+    Assertions.assertThatCode(
+            () -> {
+              var txn =
+                  restCatalog.newReplaceTableTransaction(
+                      identifier,
+                      SCHEMA,
+                      PartitionSpec.unpartitioned(),
+                      ImmutableMap.of("polaris.reserved", ""),
+                      false);
+              txn.commitTransaction();
+            })
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("reserved prefix");
+    genericTableApi.purge(currentCatalogName, namespace);
   }
 }

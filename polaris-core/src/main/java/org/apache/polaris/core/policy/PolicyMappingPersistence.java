@@ -22,7 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 /**
  * Interface for interacting with the Polaris persistence backend for Policy Mapping operations.
@@ -73,7 +73,7 @@ public interface PolicyMappingPersistence {
    */
   default void deleteAllEntityPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     throw new UnsupportedOperationException("Not Implemented");
@@ -141,11 +141,15 @@ public interface PolicyMappingPersistence {
    * @param callCtx call context
    * @param policyCatalogId catalog id of the policy entity, NULL_ID if the entity is top-level
    * @param policyId id of the policy entity
+   * @param policyTypeCode type code of the policy entity
    * @return the list of policy mapping records for the specified policy entity
    */
   @Nonnull
   default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 }

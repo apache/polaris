@@ -20,11 +20,12 @@
 -->
 # CommitTableRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**identifier** | [**TableIdentifier**](TableIdentifier.md) |  | [optional] 
+**identifier** | [**TableIdentifier**](TableIdentifier.md) | Table identifier to update; must be present for CommitTransactionRequest | [optional] 
 **requirements** | [**List[TableRequirement]**](TableRequirement.md) |  | 
 **updates** | [**List[TableUpdate]**](TableUpdate.md) |  | 
 

@@ -37,6 +37,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -52,6 +53,9 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -419,29 +423,30 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
-  }
-
-  @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
+    return this.listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+  }
+
+  @Override
+  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
         entityFilter,
         entity ->
             new EntityNameLookupRecord(
@@ -450,27 +455,33 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
                 entity.getParentId(),
                 entity.getName(),
                 entity.getTypeCode(),
-                entity.getSubTypeCode()));
+                entity.getSubTypeCode()),
+        pageToken);
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
-    return this.store
-        .lookupFullEntitiesActive(localSession.get(), catalogId, parentId, entityType)
-        .stream()
-        .map(ModelEntity::toEntity)
-        .filter(entityFilter)
-        .limit(limit)
-        .map(transformer)
-        .collect(Collectors.toList());
+    Stream<PolarisBaseEntity> data =
+        this.store
+            .lookupFullEntitiesActive(
+                localSession.get(), catalogId, parentId, entityType, pageToken)
+            .stream()
+            .map(ModelEntity::toEntity)
+            .filter(entityFilter);
+
+    if (pageToken instanceof HasPageSize hasPageSize) {
+      data = data.limit(hasPageSize.getPageSize());
+    }
+
+    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -692,7 +703,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     this.store.deleteAllEntityPolicyMappingRecords(localSession.get(), entity);
@@ -749,8 +760,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Nonnull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
-    return this.store.loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId).stream()
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
+    return this.store
+        .loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId, policyTypeCode)
+        .stream()
         .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
         .toList();
   }

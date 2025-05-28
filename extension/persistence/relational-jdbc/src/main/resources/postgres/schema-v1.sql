@@ -79,7 +79,6 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
-
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,

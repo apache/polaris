@@ -35,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
@@ -124,10 +125,19 @@ public class BatchFileCleanupTaskHandlerTest {
               snapshot.sequenceNumber(),
               "/metadata/" + UUID.randomUUID() + ".stats",
               fileIO);
+      PartitionStatisticsFile partitionStatisticsFile1 =
+          TaskTestUtils.writePartitionStatsFile(
+              snapshot.snapshotId(),
+              "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+              fileIO);
       String firstMetadataFile = "v1-295495059.metadata.json";
       TableMetadata firstMetadata =
           TaskTestUtils.writeTableMetadata(
-              fileIO, firstMetadataFile, List.of(statisticsFile1), snapshot);
+              fileIO,
+              firstMetadataFile,
+              List.of(statisticsFile1),
+              List.of(partitionStatisticsFile1),
+              snapshot);
       assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
 
       ManifestFile manifestFile3 =
@@ -148,6 +158,11 @@ public class BatchFileCleanupTaskHandlerTest {
               snapshot2.sequenceNumber(),
               "/metadata/" + UUID.randomUUID() + ".stats",
               fileIO);
+      PartitionStatisticsFile partitionStatisticsFile2 =
+          TaskTestUtils.writePartitionStatsFile(
+              snapshot2.snapshotId(),
+              "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+              fileIO);
       String secondMetadataFile = "v1-295495060.metadata.json";
       TableMetadata secondMetadata =
           TaskTestUtils.writeTableMetadata(
@@ -156,18 +171,19 @@ public class BatchFileCleanupTaskHandlerTest {
               firstMetadata,
               firstMetadataFile,
               List.of(statisticsFile2),
+              List.of(partitionStatisticsFile2),
               snapshot2);
       assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
       assertThat(TaskUtils.exists(secondMetadataFile, fileIO)).isTrue();
 
       List<String> cleanupFiles =
-          Stream.concat(
-                  secondMetadata.previousFiles().stream()
-                      .map(TableMetadata.MetadataLogEntry::file)
-                      .filter(file -> TaskUtils.exists(file, fileIO)),
-                  secondMetadata.statisticsFiles().stream()
-                      .map(StatisticsFile::path)
-                      .filter(file -> TaskUtils.exists(file, fileIO)))
+          Stream.of(
+                  secondMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                  secondMetadata.statisticsFiles().stream().map(StatisticsFile::path),
+                  secondMetadata.partitionStatisticsFiles().stream()
+                      .map(PartitionStatisticsFile::path))
+              .flatMap(s -> s)
+              .filter(file -> TaskUtils.exists(file, fileIO))
               .toList();
 
       TaskEntity task =
@@ -183,12 +199,9 @@ public class BatchFileCleanupTaskHandlerTest {
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
 
-      assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO))
-          .rejects(firstMetadataFile);
-      assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO))
-          .rejects(statisticsFile1.path());
-      assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO))
-          .rejects(statisticsFile2.path());
+      for (String cleanupFile : cleanupFiles) {
+        assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO)).rejects(cleanupFile);
+      }
     }
   }
 

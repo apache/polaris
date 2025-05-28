@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
@@ -120,13 +120,13 @@ public class AzureCredentialStorageIntegrationTest {
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/polaris-test/",
                 service));
-    Map<PolarisCredentialProperty, String> credsMap =
+    Map<StorageAccessProperty, String> credsMap =
         subscopedCredsForOperations(
             /* allowedReadLoc= */ allowedLoc,
             /* allowedWriteLoc= */ new ArrayList<>(),
             allowListAction);
     Assertions.assertThat(credsMap).hasSize(2);
-    String sasToken = credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN);
+    String sasToken = credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN);
     Assertions.assertThat(sasToken).isNotNull();
     String serviceEndpoint =
         String.format("https://icebergdfsstorageacct.%s.core.windows.net", service);
@@ -191,7 +191,7 @@ public class AzureCredentialStorageIntegrationTest {
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
-    Map<PolarisCredentialProperty, String> credsMap =
+    Map<StorageAccessProperty, String> credsMap =
         subscopedCredsForOperations(
             /* allowedReadLoc= */ allowedLoc,
             /* allowedWriteLoc= */ new ArrayList<>(),
@@ -199,7 +199,7 @@ public class AzureCredentialStorageIntegrationTest {
 
     BlobClient blobClient =
         createBlobClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             "https://icebergdfsstorageacct.dfs.core.windows.net",
             "container",
             allowedPrefix);
@@ -230,7 +230,7 @@ public class AzureCredentialStorageIntegrationTest {
     // read fail because container is blocked
     BlobClient blobClientReadFail =
         createBlobClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             String.format("https://icebergdfsstorageacct.%s.core.windows.net", service),
             "regtest",
             blockedPrefix);
@@ -261,7 +261,7 @@ public class AzureCredentialStorageIntegrationTest {
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
-    Map<PolarisCredentialProperty, String> credsMap =
+    Map<StorageAccessProperty, String> credsMap =
         subscopedCredsForOperations(
             /* allowedReadLoc= */ new ArrayList<>(),
             /* allowedWriteLoc= */ allowedLoc,
@@ -270,13 +270,13 @@ public class AzureCredentialStorageIntegrationTest {
         String.format("https://icebergdfsstorageacct.%s.core.windows.net", service);
     BlobClient blobClient =
         createBlobClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             serviceEndpoint,
             "container",
             allowedPrefix + "metadata/00000-65ffa17b-fe64-4c38-bcb9-06f9bd12aa2a.metadata.json");
     DataLakeFileClient fileClient =
         createDatalakeFileClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             serviceEndpoint,
             "container",
             "polaris-test/scopedcreds/metadata",
@@ -311,13 +311,13 @@ public class AzureCredentialStorageIntegrationTest {
     String blockedContainer = "regtest";
     BlobClient blobClientWriteFail =
         createBlobClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             serviceEndpoint,
             blockedContainer,
             blockedPrefix);
     DataLakeFileClient fileClientFail =
         createDatalakeFileClient(
-            credsMap.get(PolarisCredentialProperty.AZURE_SAS_TOKEN),
+            credsMap.get(StorageAccessProperty.AZURE_SAS_TOKEN),
             serviceEndpoint,
             blockedContainer,
             "polaris-test/scopedcreds/metadata",
@@ -338,7 +338,7 @@ public class AzureCredentialStorageIntegrationTest {
     }
   }
 
-  private Map<PolarisCredentialProperty, String> subscopedCredsForOperations(
+  private Map<StorageAccessProperty, String> subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction) {
     List<String> allowedLoc = new ArrayList<>();
     allowedLoc.addAll(allowedReadLoc);
@@ -347,7 +347,7 @@ public class AzureCredentialStorageIntegrationTest {
         new AzureStorageConfigurationInfo(allowedLoc, tenantId);
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
-    EnumMap<PolarisCredentialProperty, String> credsMap =
+    EnumMap<StorageAccessProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
             new PolarisDefaultDiagServiceImpl(),
             azureConfig,

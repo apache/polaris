@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.22-1.1744796716
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.22-1.1747241886
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris
 LABEL org.opencontainers.image.description="Apache Polaris (incubating)"
@@ -41,6 +41,9 @@ COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
 COPY --chown=polaris:polaris build/quarkus-app/*.jar /deployments/
 COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
 COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=polaris:polaris distribution/LICENSE /deployments/
+COPY --chown=polaris:polaris distribution/NOTICE /deployments/
+COPY --chown=polaris:polaris distribution/DISCLAIMER /deployments/
 
 EXPOSE 8181
 EXPOSE 8182

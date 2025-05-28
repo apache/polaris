@@ -20,10 +20,12 @@ package org.apache.polaris.service.quarkus.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,7 @@ import java.util.UUID;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
@@ -40,6 +43,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -51,6 +56,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
@@ -66,7 +72,10 @@ import org.slf4j.LoggerFactory;
 
 @QuarkusTest
 class TableCleanupTaskHandlerTest {
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisDiagnostics diagServices;
+
   private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -90,7 +99,14 @@ class TableCleanupTaskHandlerTest {
 
   @BeforeEach
   void setup() {
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            diagServices,
+            configurationStore,
+            Clock.systemDefaultZone());
+
     callContext = CallContext.of(realmContext, polarisCallContext);
   }
 
@@ -141,7 +157,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 2)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(2))
                 .getEntities())
         .hasSize(2)
         .satisfiesExactlyInAnyOrder(
@@ -221,7 +237,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(2);
   }
@@ -282,10 +298,10 @@ class TableCleanupTaskHandlerTest {
     assertThat(
             metaStoreManagerFactory
                 .getOrCreateMetaStoreManager(realmContext)
-                .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(4)
-        .satisfiesExactly(
+        .satisfiesExactlyInAnyOrder(
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
@@ -402,7 +418,7 @@ class TableCleanupTaskHandlerTest {
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "test", 5)
+            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
             .getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =
@@ -506,10 +522,19 @@ class TableCleanupTaskHandlerTest {
             snapshot.sequenceNumber(),
             "/metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
+    PartitionStatisticsFile partitionStatisticsFile1 =
+        TaskTestUtils.writePartitionStatsFile(
+            snapshot.snapshotId(),
+            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            fileIO);
     String firstMetadataFile = "v1-295495059.metadata.json";
     TableMetadata firstMetadata =
         TaskTestUtils.writeTableMetadata(
-            fileIO, firstMetadataFile, List.of(statisticsFile1), snapshot);
+            fileIO,
+            firstMetadataFile,
+            List.of(statisticsFile1),
+            List.of(partitionStatisticsFile1),
+            snapshot);
     assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
 
     ManifestFile manifestFile3 =
@@ -530,6 +555,11 @@ class TableCleanupTaskHandlerTest {
             snapshot2.sequenceNumber(),
             "/metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
+    PartitionStatisticsFile partitionStatisticsFile2 =
+        TaskTestUtils.writePartitionStatsFile(
+            snapshot2.snapshotId(),
+            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            fileIO);
     String secondMetadataFile = "v1-295495060.metadata.json";
     TaskTestUtils.writeTableMetadata(
         fileIO,
@@ -537,6 +567,7 @@ class TableCleanupTaskHandlerTest {
         firstMetadata,
         firstMetadataFile,
         List.of(statisticsFile2),
+        List.of(partitionStatisticsFile2),
         snapshot2);
     assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
     assertThat(TaskUtils.exists(secondMetadataFile, fileIO)).isTrue();
@@ -561,7 +592,7 @@ class TableCleanupTaskHandlerTest {
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
             .getOrCreateMetaStoreManager(callContext.getRealmContext())
-            .loadTasks(callContext.getPolarisCallContext(), "test", 6)
+            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(6))
             .getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =
@@ -596,7 +627,9 @@ class TableCleanupTaskHandlerTest {
                                 snapshot.manifestListLocation(),
                                 snapshot2.manifestListLocation(),
                                 statisticsFile1.path(),
-                                statisticsFile2.path())),
+                                statisticsFile2.path(),
+                                partitionStatisticsFile1.path(),
+                                partitionStatisticsFile2.path())),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));

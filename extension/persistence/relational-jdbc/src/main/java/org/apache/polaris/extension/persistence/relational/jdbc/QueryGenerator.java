@@ -20,12 +20,15 @@ package org.apache.polaris.extension.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -34,9 +37,9 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrin
 
 public class QueryGenerator {
 
-  public static String generateSelectQuery(
-      @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
-    return generateSelectQuery(entityClass, generateWhereClause(whereClause));
+  public static <T> String generateSelectQuery(
+      @Nonnull Converter<T> entity, @Nonnull Map<String, Object> whereClause) {
+    return generateSelectQuery(entity, generateWhereClause(whereClause));
   }
 
   public static String generateDeleteQueryForEntityGrantRecords(
@@ -61,23 +64,20 @@ public class QueryGenerator {
   }
 
   public static String generateDeleteQueryForEntityPolicyMappingRecords(
-      @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
-    String targetCondition =
-        String.format(
-            "target_id = %s AND target_catalog_id = %s", entity.getId(), entity.getCatalogId());
-    String sourceCondition =
-        String.format(
-            "policy_id = %s AND policy_catalog_id = %s", entity.getId(), entity.getCatalogId());
+      @Nonnull PolarisBaseEntity entity, @Nonnull String realmId) {
+    Map<String, Object> queryParams = new HashMap<>();
+    if (entity.getType() == PolarisEntityType.POLICY) {
+      PolicyEntity policyEntity = PolicyEntity.of(entity);
+      queryParams.put("policy_type_code", policyEntity.getPolicyTypeCode());
+      queryParams.put("policy_catalog_id", policyEntity.getCatalogId());
+      queryParams.put("policy_id", policyEntity.getId());
+    } else {
+      queryParams.put("target_catalog_id", entity.getCatalogId());
+      queryParams.put("target_id", entity.getId());
+    }
+    queryParams.put("realm_id", realmId);
 
-    String whereClause =
-        " WHERE ("
-            + targetCondition
-            + " OR "
-            + sourceCondition
-            + ") AND realm_id = '"
-            + realmId
-            + "'";
-    return generateDeleteQuery(ModelPolicyMappingRecord.class, whereClause);
+    return generateDeleteQuery(ModelPolicyMappingRecord.class, queryParams);
   }
 
   public static String generateSelectQueryWithEntityIds(
@@ -96,7 +96,7 @@ public class QueryGenerator {
     condition.append(")");
     condition.append(" AND realm_id = '").append(realmId).append("'");
 
-    return generateSelectQuery(ModelEntity.class, " WHERE " + condition);
+    return generateSelectQuery(new ModelEntity(), " WHERE " + condition);
   }
 
   public static <T> String generateInsertQuery(
@@ -158,24 +158,16 @@ public class QueryGenerator {
 
   @VisibleForTesting
   public static <T> String generateSelectQuery(
-      @Nonnull Class<?> entityClass, @Nonnull String filter) {
-    String tableName = getTableName(entityClass);
-    try {
-      Converter<T> entity = (Converter<T>) entityClass.getDeclaredConstructor().newInstance();
-      Map<String, Object> objectMap = entity.toMap();
-      String columns = String.join(", ", objectMap.keySet());
-      StringBuilder query =
-          new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
-      if (!filter.isEmpty()) {
-        query.append(filter);
-      }
-      return query.toString();
-    } catch (InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException e) {
-      throw new RuntimeException("Failed to create instance of " + entityClass.getName(), e);
+      @Nonnull Converter<T> entity, @Nonnull String filter) {
+    String tableName = getTableName(entity.getClass());
+    Map<String, Object> objectMap = entity.toMap();
+    String columns = String.join(", ", objectMap.keySet());
+    StringBuilder query =
+        new StringBuilder("SELECT ").append(columns).append(" FROM ").append(tableName);
+    if (!filter.isEmpty()) {
+      query.append(filter);
     }
+    return query.toString();
   }
 
   @VisibleForTesting

@@ -20,6 +20,7 @@
 -->
 # BlobMetadata
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -28,7 +29,7 @@ Name | Type | Description | Notes
 **snapshot_id** | **int** |  | 
 **sequence_number** | **int** |  | 
 **fields** | **List[int]** |  | 
-**properties** | **object** |  | [optional] 
+**properties** | **Dict[str, str]** |  | [optional] 
 
 ## Example
 

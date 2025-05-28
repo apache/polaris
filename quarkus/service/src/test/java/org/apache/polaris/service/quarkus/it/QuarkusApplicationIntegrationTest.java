@@ -26,8 +26,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import io.smallrye.common.annotation.Identifier;
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
@@ -39,7 +37,6 @@ import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
@@ -50,20 +47,27 @@ import org.junit.jupiter.api.Test;
 public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {
 
   public static class Profile implements QuarkusTestProfile {
-
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "quarkus.http.limits.max-body-size", "1000000",
-          "polaris.realm-context.realms", "POLARIS,OTHER",
-          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
-          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true");
+          "quarkus.http.limits.max-body-size",
+          "1000000",
+          "polaris.realm-context.realms",
+          "POLARIS,OTHER",
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
+          "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
+          "true",
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.readiness.ignore-severe-issues",
+          "true");
     }
   }
-
-  @Inject
-  @Identifier("rsa-key-pair")
-  TokenBrokerFactory tokenBrokerFactory;
 
   @Test
   public void testIcebergRestApiRefreshExpiredToken(

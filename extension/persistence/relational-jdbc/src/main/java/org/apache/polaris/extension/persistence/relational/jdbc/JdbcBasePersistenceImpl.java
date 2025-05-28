@@ -49,6 +49,9 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -93,11 +96,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
-      datasourceOperations.runWithinTransaction(
-          statement -> {
-            persistEntity(callCtx, entity, originalEntity, statement);
-            return true;
-          });
+      persistEntity(callCtx, entity, originalEntity, datasourceOperations::executeUpdate);
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);
     }
@@ -115,7 +114,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-
               // first, check if the entity has already been created, in which case we will simply
               // return it.
               PolarisBaseEntity entityFound =
@@ -127,7 +125,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 // already been updated after the creation.
                 continue;
               }
-              persistEntity(callCtx, entity, originalEntity, statement);
+              persistEntity(callCtx, entity, originalEntity, statement::executeUpdate);
             }
             return true;
           });
@@ -143,12 +141,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       PolarisBaseEntity originalEntity,
-      Statement statement)
+      QueryAction queryAction)
       throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity);
     if (originalEntity == null) {
       try {
-        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
+        queryAction.apply(generateInsertQuery(modelEntity, realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isConstraintViolation(e)) {
           PolarisBaseEntity existingEntity =
@@ -176,7 +174,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "realm_id",
               realmId);
       try {
-        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
+        int rowsUpdated = queryAction.apply(generateUpdateQuery(modelEntity, params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
               "Entity '%s' id '%s' concurrently modified; expected version %s",
@@ -271,7 +269,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     return getPolarisBaseEntity(query);
   }
 
@@ -294,16 +292,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             name,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     return getPolarisBaseEntity(query);
   }
 
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(String query) {
     try {
-      List<PolarisBaseEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
         return null;
       } else if (results.size() > 1) {
@@ -327,8 +323,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     String query = generateSelectQueryWithEntityIds(realmId, entityIds);
     try {
-      return datasourceOperations.executeSelect(
-          query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
+      return datasourceOperations.executeSelect(query, new ModelEntity());
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -359,49 +354,51 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public List<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        Integer.MAX_VALUE,
-        entity -> true,
-        EntityNameLookupRecord::new);
-  }
-
-  @Nonnull
-  @Override
-  public List<EntityNameLookupRecord> listEntities(
+  public Page<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
     return listEntities(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
-        entityFilter,
-        EntityNameLookupRecord::new);
+        entity -> true,
+        EntityNameLookupRecord::new,
+        pageToken);
   }
 
   @Nonnull
   @Override
-  public <T> List<T> listEntities(
+  public Page<EntityNameLookupRecord> listEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
+    return listEntities(
+        callCtx,
+        catalogId,
+        parentId,
+        entityType,
+        entityFilter,
+        EntityNameLookupRecord::new,
+        pageToken);
+  }
+
+  @Nonnull
+  @Override
+  public <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -415,14 +412,24 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
-    String query = QueryGenerator.generateSelectQuery(ModelEntity.class, params);
+    String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
     try {
-      List<PolarisBaseEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, ModelEntity::toEntity, entityFilter, limit);
-      return results == null
-          ? Collections.emptyList()
-          : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
+      List<PolarisBaseEntity> results = new ArrayList<>();
+      datasourceOperations.executeSelectOverStream(
+          query,
+          new ModelEntity(),
+          stream -> {
+            var data = stream.filter(entityFilter);
+            if (pageToken instanceof HasPageSize hasPageSize) {
+              data = data.limit(hasPageSize.getPageSize());
+            }
+            data.forEach(results::add);
+          });
+      List<T> resultsOrEmpty =
+          results == null
+              ? Collections.emptyList()
+              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
+      return Page.fromItems(resultsOrEmpty);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -435,7 +442,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
-    String query = QueryGenerator.generateSelectQuery(ModelEntity.class, params);
+    String query = QueryGenerator.generateSelectQuery(new ModelEntity(), params);
     PolarisBaseEntity b = getPolarisBaseEntity(query);
     return b == null ? 0 : b.getGrantRecordsVersion();
   }
@@ -462,15 +469,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             privilegeCode,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
-      List<PolarisGrantRecord> results =
-          datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelGrantRecord());
       if (results.size() > 1) {
         throw new IllegalStateException(
             String.format(
@@ -497,15 +498,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             securableId,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
-      List<PolarisGrantRecord> results =
-          datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelGrantRecord());
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -523,15 +518,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     Map<String, Object> params =
         Map.of(
             "grantee_catalog_id", granteeCatalogId, "grantee_id", granteeId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelGrantRecord.class, params);
+    String query = generateSelectQuery(new ModelGrantRecord(), params);
     try {
-      List<PolarisGrantRecord> results =
-          datasourceOperations.executeSelect(
-              query,
-              ModelGrantRecord.class,
-              ModelGrantRecord::toGrantRecord,
-              null,
-              Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelGrantRecord());
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -555,11 +544,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (optionalEntityType != null) {
       params.put("type_code", optionalEntityType.getCode());
     }
-    String query = generateSelectQuery(ModelEntity.class, params);
+    String query = generateSelectQuery(new ModelEntity(), params);
     try {
-      List<ModelEntity> results =
-          datasourceOperations.executeSelect(
-              query, ModelEntity.class, Function.identity(), null, Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -574,15 +561,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public PolarisPrincipalSecrets loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPrincipalAuthenticationData.class, params);
+    String query = generateSelectQuery(new ModelPrincipalAuthenticationData(), params);
     try {
-      List<PolarisPrincipalSecrets> results =
-          datasourceOperations.executeSelect(
-              query,
-              ModelPrincipalAuthenticationData.class,
-              ModelPrincipalAuthenticationData::toPrincipalAuthenticationData,
-              null,
-              Integer.MAX_VALUE);
+      var results =
+          datasourceOperations.executeSelect(query, new ModelPrincipalAuthenticationData());
       return results == null || results.isEmpty() ? null : results.getFirst();
     } catch (SQLException e) {
       LOGGER.error(
@@ -798,7 +780,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteAllEntityPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     try {
@@ -833,7 +815,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             policyCatalogId,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     List<PolarisPolicyMappingRecord> results = fetchPolicyMappingRecords(query);
     Preconditions.checkState(results.size() <= 1, "More than one policy mapping records found");
     return results.size() == 1 ? results.getFirst() : null;
@@ -856,7 +838,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             policyTypeCode,
             "realm_id",
             realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
@@ -866,29 +848,34 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     Map<String, Object> params =
         Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
   @Nonnull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
     Map<String, Object> params =
-        Map.of("policy_catalog_id", policyCatalogId, "policy_id", policyId, "realm_id", realmId);
-    String query = generateSelectQuery(ModelPolicyMappingRecord.class, params);
+        Map.of(
+            "policy_type_code",
+            policyTypeCode,
+            "policy_catalog_id",
+            policyCatalogId,
+            "policy_id",
+            policyId,
+            "realm_id",
+            realmId);
+    String query = generateSelectQuery(new ModelPolicyMappingRecord(), params);
     return fetchPolicyMappingRecords(query);
   }
 
   private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(String query) {
     try {
-      List<PolarisPolicyMappingRecord> results =
-          datasourceOperations.executeSelect(
-              query,
-              ModelPolicyMappingRecord.class,
-              ModelPolicyMappingRecord::toPolicyMappingRecord,
-              null,
-              Integer.MAX_VALUE);
+      var results = datasourceOperations.executeSelect(query, new ModelPolicyMappingRecord());
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -922,5 +909,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(callContext, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+  }
+
+  @FunctionalInterface
+  private interface QueryAction {
+    Integer apply(String query) throws SQLException;
   }
 }

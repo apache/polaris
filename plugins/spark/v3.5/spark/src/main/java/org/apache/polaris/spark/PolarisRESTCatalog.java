@@ -42,13 +42,14 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
+import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 
 /**
@@ -163,17 +164,17 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
     do {
       queryParams.put("pageToken", pageToken);
-      ListTablesResponse response =
+      ListGenericTablesRESTResponse response =
           restClient
               .withAuthSession(this.catalogAuth)
               .get(
                   pathGenerator.genericTables(ns),
                   queryParams,
-                  ListTablesResponse.class,
+                  ListGenericTablesRESTResponse.class,
                   Map.of(),
                   ErrorHandlers.namespaceErrorHandler());
-      pageToken = response.nextPageToken();
-      tables.addAll(response.identifiers());
+      pageToken = response.getNextPageToken();
+      tables.addAll(response.getIdentifiers());
     } while (pageToken != null);
 
     return tables.build();
@@ -202,7 +203,13 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
       TableIdentifier identifier, String format, String doc, Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest(identifier.name(), format, doc, props);
+        new CreateGenericTableRESTRequest(
+            CreateGenericTableRequest.builder()
+                .setName(identifier.name())
+                .setFormat(format)
+                .setDoc(doc)
+                .setProperties(props)
+                .build());
 
     LoadGenericTableRESTResponse response =
         restClient

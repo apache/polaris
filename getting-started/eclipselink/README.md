@@ -37,7 +37,12 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml up
+    export ASSETS_PATH=$(pwd)/getting-started/assets/
+    export CLIENT_ID=root
+    export CLIENT_SECRET=s3cr3t
+    docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml \
+       -f getting-started/eclipselink/docker-compose-bootstrap-db.yml \
+       -f getting-started/eclipselink/docker-compose.yml up
     ```
 
 3. Using spark-sql: attach to the running spark-sql container:

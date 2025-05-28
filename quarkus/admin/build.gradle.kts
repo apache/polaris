@@ -17,31 +17,21 @@
  * under the License.
  */
 
-import io.quarkus.gradle.tasks.QuarkusBuild
-import publishing.GenerateDigest
-
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
   id("polaris-quarkus")
   // id("polaris-license-report")
-  id("distribution")
 }
-
-val runScript by configurations.creating { description = "Used to reference the run.sh script" }
-
-val distributionZip by
-  configurations.creating { description = "Used to reference the distribution zip" }
-
-val distributionTar by
-  configurations.creating { description = "Used to reference the distribution tarball" }
 
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly(project(":polaris-relational-jdbc"))
@@ -52,6 +42,7 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
+  implementation(project(":polaris-quarkus-common"))
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
   testImplementation(project(":polaris-quarkus-test-commons"))
@@ -66,8 +57,6 @@ dependencies {
 
   testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
-
-  runScript(project(":polaris-quarkus-run-script", "runScript"))
 }
 
 quarkus {
@@ -87,75 +76,27 @@ quarkus {
   )
 }
 
-distributions {
-  main {
-    contents {
-      from(runScript)
-      from(project.layout.buildDirectory.dir("quarkus-app"))
-      from("distribution/NOTICE")
-      from("distribution/LICENSE")
-    }
-  }
-}
-
-val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
-
-val distTar =
-  tasks.named<Tar>("distTar") {
-    dependsOn(quarkusBuild)
-    // Trigger resolution (and build) of the run-script artifact
-    inputs.files(runScript)
-    compression = Compression.GZIP
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
   }
 
-val distZip =
-  tasks.named<Zip>("distZip") {
-    dependsOn(quarkusBuild)
-    // Trigger resolution (and build) of the run-script artifact
-    inputs.files(runScript)
-  }
-
-val digestDistTar =
-  tasks.register<GenerateDigest>("digestDistTar") {
-    description = "Generate the distribution tar digest"
-    mustRunAfter(distTar)
-    file.set { distTar.get().archiveFile.get().asFile }
-  }
-
-val digestDistZip =
-  tasks.register<GenerateDigest>("digestDistZip") {
-    description = "Generate the distribution zip digest"
-    mustRunAfter(distZip)
-    file.set { distZip.get().archiveFile.get().asFile }
-  }
-
-distTar.configure { finalizedBy(digestDistTar) }
-
-distZip.configure { finalizedBy(digestDistZip) }
-
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-  signing {
-    sign(distTar.get())
-    sign(distZip.get())
-  }
-}
-
-// Expose runnable jar via quarkusRunner configuration for integration-tests that require the
-// server.
+// Register the quarkus app directory as an artifact
 artifacts {
-  add(distributionTar.name, provider { distTar.get().archiveFile }) { builtBy(distTar) }
-  add(distributionTar.name, provider { digestDistTar.get().outputFile }) { builtBy(digestDistTar) }
-  add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
-  add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
+  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
 
-afterEvaluate {
-  publishing {
-    publications {
-      named<MavenPublication>("maven") {
-        artifact(distTar.get().archiveFile) { builtBy(distTar) }
-        artifact(distZip.get().archiveFile) { builtBy(distZip) }
-      }
-    }
+// Configuration to expose LICENSE and NOTICE files
+val distributionDocs by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
   }
+
+// Add LICENSE and NOTICE as artifacts
+artifacts {
+  add("distributionDocs", file("distribution/LICENSE"))
+  add("distributionDocs", file("distribution/NOTICE"))
 }

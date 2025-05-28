@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.logging;
 
-import static org.apache.polaris.service.context.RealmContextFilter.REALM_CONTEXT_KEY;
+import static org.apache.polaris.service.quarkus.context.RealmContextFilter.REALM_CONTEXT_KEY;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;

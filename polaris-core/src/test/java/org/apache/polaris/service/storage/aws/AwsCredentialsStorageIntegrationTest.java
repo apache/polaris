@@ -26,8 +26,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
@@ -80,7 +80,7 @@ class AwsCredentialsStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
-    EnumMap<PolarisCredentialProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
@@ -95,11 +95,11 @@ class AwsCredentialsStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"));
     assertThat(credentials)
         .isNotEmpty()
-        .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
-        .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
         .containsEntry(
-            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -245,7 +245,7 @@ class AwsCredentialsStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        EnumMap<PolarisCredentialProperty, String> credentials =
+        EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     Mockito.mock(PolarisDiagnostics.class),
@@ -260,11 +260,11 @@ class AwsCredentialsStorageIntegrationTest {
                     Set.of(s3Path(bucket, firstPath)));
         assertThat(credentials)
             .isNotEmpty()
-            .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
-            .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-            .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+            .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
+            .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
+            .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
             .containsEntry(
-                PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                 String.valueOf(EXPIRE_TIME.toEpochMilli()));
         break;
       default:
@@ -346,7 +346,7 @@ class AwsCredentialsStorageIntegrationTest {
             });
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
-    EnumMap<PolarisCredentialProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
@@ -361,11 +361,11 @@ class AwsCredentialsStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
         .isNotEmpty()
-        .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
-        .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
         .containsEntry(
-            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -441,7 +441,7 @@ class AwsCredentialsStorageIntegrationTest {
             });
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
-    EnumMap<PolarisCredentialProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
@@ -456,11 +456,11 @@ class AwsCredentialsStorageIntegrationTest {
                 Set.of());
     assertThat(credentials)
         .isNotEmpty()
-        .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
-        .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
         .containsEntry(
-            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -506,7 +506,7 @@ class AwsCredentialsStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    EnumMap<PolarisCredentialProperty, String> credentials =
+    EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
@@ -521,11 +521,11 @@ class AwsCredentialsStorageIntegrationTest {
                 Set.of());
     assertThat(credentials)
         .isNotEmpty()
-        .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
-        .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
         .containsEntry(
-            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -563,7 +563,7 @@ class AwsCredentialsStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        EnumMap<PolarisCredentialProperty, String> credentials =
+        EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     Mockito.mock(PolarisDiagnostics.class),
@@ -578,7 +578,7 @@ class AwsCredentialsStorageIntegrationTest {
                     Set.of());
         assertThat(credentials)
             .isNotEmpty()
-            .containsEntry(PolarisCredentialProperty.CLIENT_REGION, clientRegion);
+            .containsEntry(StorageAccessProperty.CLIENT_REGION, clientRegion);
         break;
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
@@ -601,7 +601,7 @@ class AwsCredentialsStorageIntegrationTest {
             });
     switch (awsPartition) {
       case AWS_PARTITION:
-        EnumMap<PolarisCredentialProperty, String> credentials =
+        EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     Mockito.mock(PolarisDiagnostics.class),
@@ -614,9 +614,7 @@ class AwsCredentialsStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of());
-        assertThat(credentials)
-            .isNotEmpty()
-            .doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
+        assertThat(credentials).isNotEmpty().doesNotContainKey(StorageAccessProperty.CLIENT_REGION);
         break;
       case "aws-cn":
       case "aws-us-gov":

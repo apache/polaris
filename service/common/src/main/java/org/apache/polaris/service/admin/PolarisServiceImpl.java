@@ -23,6 +23,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -37,11 +38,13 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
@@ -74,6 +77,8 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +94,7 @@ public class PolarisServiceImpl
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
+  private final ReservedProperties reservedProperties;
 
   @Inject
   public PolarisServiceImpl(
@@ -96,12 +102,14 @@ public class PolarisServiceImpl
       MetaStoreManagerFactory metaStoreManagerFactory,
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
-      CallContext callContext) {
+      CallContext callContext,
+      ReservedProperties reservedProperties) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
+    this.reservedProperties = reservedProperties;
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
   }
@@ -126,7 +134,8 @@ public class PolarisServiceImpl
         metaStoreManager,
         userSecretsManager,
         securityContext,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   /** From PolarisCatalogsApiService */
@@ -136,6 +145,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
+    validateConnectionConfigInfo(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
@@ -155,6 +165,30 @@ public class PolarisServiceImpl
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
+    }
+  }
+
+  private void validateConnectionConfigInfo(Catalog catalog) {
+    if (catalog.getType() == Catalog.TypeEnum.EXTERNAL) {
+      if (catalog instanceof ExternalCatalog externalCatalog) {
+        if (externalCatalog.getConnectionConfigInfo() != null) {
+          String connectionType =
+              externalCatalog.getConnectionConfigInfo().getConnectionType().name();
+          List<String> supportedConnectionTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+                  .stream()
+                  .map(s -> s.toUpperCase(Locale.ROOT))
+                  .toList();
+          if (!supportedConnectionTypes.contains(connectionType)) {
+            throw new IllegalStateException("Unsupported connection type: " + connectionType);
+          }
+        }
+      }
     }
   }
 
@@ -208,7 +242,13 @@ public class PolarisServiceImpl
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    PrincipalEntity principal = PrincipalEntity.fromPrincipal(request.getPrincipal());
+    PrincipalEntity principal =
+        new PrincipalEntity.Builder()
+            .setName(request.getPrincipal().getName())
+            .setClientId(request.getPrincipal().getClientId())
+            .setProperties(
+                reservedProperties.removeReservedProperties(request.getPrincipal().getProperties()))
+            .build();
     if (Boolean.TRUE.equals(request.getCredentialRotationRequired())) {
       principal =
           new PrincipalEntity.Builder(principal).setCredentialRotationRequiredState().build();
@@ -276,11 +316,15 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    PrincipalRoleEntity entity =
+        new PrincipalRoleEntity.Builder()
+            .setName(request.getPrincipalRole().getName())
+            .setProperties(
+                reservedProperties.removeReservedProperties(
+                    request.getPrincipalRole().getProperties()))
+            .build();
     PrincipalRole newPrincipalRole =
-        new PrincipalRoleEntity(
-                adminService.createPrincipalRole(
-                    PrincipalRoleEntity.fromPrincipalRole(request.getPrincipalRole())))
-            .asPrincipalRole();
+        new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -337,11 +381,15 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    CatalogRoleEntity entity =
+        new CatalogRoleEntity.Builder()
+            .setName(request.getCatalogRole().getName())
+            .setProperties(
+                reservedProperties.removeReservedProperties(
+                    request.getCatalogRole().getProperties()))
+            .build();
     CatalogRole newCatalogRole =
-        new CatalogRoleEntity(
-                adminService.createCatalogRole(
-                    catalogName, CatalogRoleEntity.fromCatalogRole(request.getCatalogRole())))
-            .asCatalogRole();
+        new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -575,6 +623,19 @@ public class PolarisServiceImpl
           adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
           break;
         }
+      case PolicyGrant policyGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          String policyName = policyGrant.getPolicyName();
+          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
+          adminService.grantPrivilegeOnPolicyToRole(
+              catalogName,
+              catalogRoleName,
+              new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
+              privilege);
+          break;
+        }
       default:
         LOGGER
             .atWarn()
@@ -649,6 +710,19 @@ public class PolarisServiceImpl
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           adminService.revokePrivilegeOnCatalogFromRole(catalogName, catalogRoleName, privilege);
+          break;
+        }
+      case PolicyGrant policyGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          String policyName = policyGrant.getPolicyName();
+          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
+          adminService.revokePrivilegeOnPolicyFromRole(
+              catalogName,
+              catalogRoleName,
+              new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
+              privilege);
           break;
         }
       default:

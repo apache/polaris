@@ -31,8 +31,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -46,57 +47,65 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClient stsClient;
+  private final Optional<AwsCredentialsProvider> credentialsProvider;
 
   public AwsCredentialsStorageIntegration(StsClient stsClient) {
+    this(stsClient, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      StsClient stsClient, Optional<AwsCredentialsProvider> credentialsProvider) {
     super(AwsCredentialsStorageIntegration.class.getName());
     this.stsClient = stsClient;
+    this.credentialsProvider = credentialsProvider;
   }
 
   /** {@inheritDoc} */
   @Override
-  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    AssumeRoleResponse response =
-        stsClient.assumeRole(
-            AssumeRoleRequest.builder()
-                .externalId(storageConfig.getExternalId())
-                .roleArn(storageConfig.getRoleARN())
-                .roleSessionName("PolarisAwsCredentialsStorageIntegration")
-                .policy(
-                    policyString(
-                            storageConfig.getRoleARN(),
-                            allowListOperation,
-                            allowedReadLocations,
-                            allowedWriteLocations)
-                        .toJson())
-                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
-                .build());
-    EnumMap<PolarisCredentialProperty, String> credentialMap =
-        new EnumMap<>(PolarisCredentialProperty.class);
-    credentialMap.put(PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());
+    AssumeRoleRequest.Builder request =
+        AssumeRoleRequest.builder()
+            .externalId(storageConfig.getExternalId())
+            .roleArn(storageConfig.getRoleARN())
+            .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+            .policy(
+                policyString(
+                        storageConfig.getRoleARN(),
+                        allowListOperation,
+                        allowedReadLocations,
+                        allowedWriteLocations)
+                    .toJson())
+            .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
+    credentialsProvider.ifPresent(
+        cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+    AssumeRoleResponse response = stsClient.assumeRole(request.build());
+    EnumMap<StorageAccessProperty, String> credentialMap =
+        new EnumMap<>(StorageAccessProperty.class);
+    credentialMap.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
     credentialMap.put(
-        PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-    credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
+        StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
+    credentialMap.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
             i -> {
               credentialMap.put(
-                  PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                  StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
               credentialMap.put(
-                  PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                   String.valueOf(i.toEpochMilli()));
             });
 
     if (storageConfig.getRegion() != null) {
-      credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
+      credentialMap.put(StorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
     }
 
     if (storageConfig.getAwsPartition().equals("aws-us-gov")
-        && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
+        && credentialMap.get(StorageAccessProperty.CLIENT_REGION) == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));

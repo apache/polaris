@@ -25,34 +25,47 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration;
-import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 
 @ApplicationScoped
 @Identifier("rsa-key-pair")
 public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final TokenBrokerConfiguration tokenBrokerConfiguration;
-  private final RSAKeyPairConfiguration keyPairConfiguration;
+  private final AuthenticationConfiguration authenticationConfiguration;
+
+  private final ConcurrentMap<String, JWTRSAKeyPair> tokenBrokers = new ConcurrentHashMap<>();
 
   @Inject
   public JWTRSAKeyPairFactory(
       MetaStoreManagerFactory metaStoreManagerFactory,
       AuthenticationConfiguration authenticationConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.tokenBrokerConfiguration = authenticationConfiguration.tokenBroker();
-    this.keyPairConfiguration =
-        tokenBrokerConfiguration.rsaKeyPair().orElseGet(this::generateKeyPair);
+    this.authenticationConfiguration = authenticationConfiguration;
   }
 
   @Override
   public TokenBroker apply(RealmContext realmContext) {
+    return tokenBrokers.computeIfAbsent(
+        realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
+  }
+
+  private JWTRSAKeyPair createTokenBroker(RealmContext realmContext) {
+    AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
+    Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
+    RSAKeyPairConfiguration keyPairConfiguration =
+        config.tokenBroker().rsaKeyPair().orElseGet(this::generateKeyPair);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     return new JWTRSAKeyPair(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        (int) tokenBrokerConfiguration.maxTokenGeneration().toSeconds(),
+        metaStoreManager,
+        (int) maxTokenGeneration.toSeconds(),
         keyPairConfiguration.publicKeyFile(),
         keyPairConfiguration.privateKeyFile());
   }

@@ -23,6 +23,7 @@ import groovy.util.Node
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.component.ModuleComponentSelector
+import org.gradle.api.provider.Provider
 import org.gradle.api.publish.maven.MavenPom
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.internal.extensions.stdlib.capitalized
@@ -73,7 +74,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
         task.doFirst {
           mavenPom.run {
-            val asfName = e.asfProjectName.get()
+            val asfName = e.asfProjectId.get()
             val projectPeople = fetchProjectPeople(asfName)
 
             organization {
@@ -98,21 +99,35 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               }
             }
 
+            val githubRepoName: Provider<String> = e.githubRepositoryName.orElse(asfName)
+            val codeRepo: Provider<String> =
+              e.overrideScm.orElse(
+                githubRepoName
+                  .map { r -> "https://github.com/apache/$r" }
+                  .orElse(projectPeople.repository)
+              )
+
             scm {
-              val codeRepo: String = projectPeople.repository
-              connection.set("scm:git:$codeRepo")
-              developerConnection.set("scm:git:$codeRepo")
-              url.set("$codeRepo/tree/main")
+              val codeRepoString: String = codeRepo.get()
+              connection.set("scm:git:$codeRepoString")
+              developerConnection.set("scm:git:$codeRepoString")
+              url.set("$codeRepoString/tree/main")
               val version = project.version.toString()
               if (!version.endsWith("-SNAPSHOT")) {
-                tag.set("apache-polaris-$version")
+                val tagPrefix: String =
+                  e.overrideTagPrefix.orElse("apache-${projectPeople.apacheId}").get()
+                tag.set("$tagPrefix-$version")
               }
             }
-            issueManagement { url.set(projectPeople.bugDatabase) }
+            issueManagement {
+              val issuesUrl: Provider<String> =
+                codeRepo.map { r -> "$r/issues" }.orElse(projectPeople.bugDatabase)
+              url.set(e.overrideIssueManagement.orElse(issuesUrl))
+            }
 
-            name.set(e.overrideName.orElse(projectPeople.name))
+            name.set(e.overrideName.orElse("Apache ${projectPeople.name}"))
             description.set(e.overrideDescription.orElse(projectPeople.description))
-            url.set(projectPeople.website)
+            url.set(e.overrideProjectUrl.orElse(projectPeople.website))
             inceptionYear.set(projectPeople.inceptionYear.toString())
 
             developers {
@@ -127,7 +142,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               }
             }
 
-            addContributorsToPom(mavenPom, asfName, "Apache ${projectPeople.name}")
+            addContributorsToPom(mavenPom, githubRepoName.get(), "Apache ${projectPeople.name}")
           }
         }
       }

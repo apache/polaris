@@ -33,8 +33,12 @@ import java.util.Optional;
 public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
 
   protected BehaviorChangeConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
-    super(key, description, defaultValue, catalogConfig);
+      String key,
+      String description,
+      T defaultValue,
+      Optional<String> catalogConfig,
+      Optional<String> catalogConfigUnsafe) {
+    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =

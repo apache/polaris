@@ -19,7 +19,6 @@
 
 import io.quarkus.gradle.tasks.QuarkusBuild
 import io.quarkus.gradle.tasks.QuarkusRun
-import publishing.GenerateDigest
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -27,19 +26,17 @@ plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-quarkus")
   // id("polaris-license-report")
-  id("distribution")
 }
 
 val quarkusRunner by
   configurations.creating { description = "Used to reference the generated runner-jar" }
 
-val runScript by configurations.creating { description = "Used to reference the run.sh script" }
-
-val distributionZip by
-  configurations.creating { description = "Used to reference the distribution zip" }
-
-val distributionTar by
-  configurations.creating { description = "Used to reference the distribution tarball" }
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -56,8 +53,6 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  runScript(project(":polaris-quarkus-run-script", "runScript"))
 }
 
 quarkus {
@@ -81,60 +76,16 @@ tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
   jvmArgs =
-    listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret", "-Dquarkus.console.color=true")
-}
-
-distributions {
-  main {
-    contents {
-      from(runScript)
-      from(project.layout.buildDirectory.dir("quarkus-app"))
-      from("distribution/NOTICE")
-      from("distribution/LICENSE")
-      exclude("lib/main/io.quarkus.quarkus-container-image*")
-    }
-  }
+    listOf(
+      "-Dpolaris.bootstrap.credentials=POLARIS,root,secret",
+      "-Dquarkus.console.color=true",
+      "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
+      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
+      "-Dpolaris.readiness.ignore-severe-issues=true",
+    )
 }
 
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
-
-val distTar =
-  tasks.named<Tar>("distTar") {
-    dependsOn(quarkusBuild)
-    inputs.files(runScript)
-    compression = Compression.GZIP
-  }
-
-val distZip =
-  tasks.named<Zip>("distZip") {
-    dependsOn(quarkusBuild)
-    inputs.files(runScript)
-  }
-
-val digestDistTar =
-  tasks.register<GenerateDigest>("digestDistTar") {
-    description = "Generate the distribution tar digest"
-    mustRunAfter(distTar)
-    file.set { distTar.get().archiveFile.get().asFile }
-  }
-
-val digestDistZip =
-  tasks.register<GenerateDigest>("digestDistZip") {
-    description = "Generate the distribution zip digest"
-    mustRunAfter(distZip)
-    file.set { distZip.get().archiveFile.get().asFile }
-  }
-
-distTar.configure { finalizedBy(digestDistTar) }
-
-distZip.configure { finalizedBy(digestDistZip) }
-
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-  signing {
-    sign(distTar.get())
-    sign(distZip.get())
-  }
-}
 
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
@@ -142,19 +93,5 @@ artifacts {
   add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add(distributionTar.name, provider { distTar.get().archiveFile }) { builtBy(distTar) }
-  add(distributionTar.name, provider { digestDistTar.get().outputFile }) { builtBy(digestDistTar) }
-  add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
-  add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
-}
-
-afterEvaluate {
-  publishing {
-    publications {
-      named<MavenPublication>("maven") {
-        artifact(distTar.get().archiveFile) { builtBy(distTar) }
-        artifact(distZip.get().archiveFile) { builtBy(distZip) }
-      }
-    }
-  }
+  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }

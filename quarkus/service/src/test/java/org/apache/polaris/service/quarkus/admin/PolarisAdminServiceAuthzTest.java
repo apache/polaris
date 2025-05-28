@@ -55,7 +55,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         metaStoreManager,
         userSecretsManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
-        polarisAuthorizer);
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   private void doTestSufficientPrivileges(
@@ -1846,6 +1847,65 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                     CATALOG_NAME,
                     CATALOG_ROLE2,
                     VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnPolicyToRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnPolicyToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    POLICY_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnPolicyToRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnPolicyToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    POLICY_NS1_1,
                     PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         (privilege) ->
             adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),

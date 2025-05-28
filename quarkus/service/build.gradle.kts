@@ -40,6 +40,7 @@ dependencies {
   implementation(platform(libs.opentelemetry.bom))
 
   implementation(platform(libs.quarkus.bom))
+  implementation(project(":polaris-quarkus-common"))
   implementation("io.quarkus:quarkus-logging-json")
   implementation("io.quarkus:quarkus-rest-jackson")
   implementation("io.quarkus:quarkus-reactive-routes")
@@ -47,6 +48,7 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-health")
   implementation("io.quarkus:quarkus-micrometer")
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
+  implementation("io.quarkus:quarkus-oidc")
   implementation("io.quarkus:quarkus-opentelemetry")
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
@@ -67,8 +69,6 @@ dependencies {
   implementation(libs.hadoop.client.runtime)
 
   implementation(libs.auth0.jwt)
-
-  implementation(libs.bouncycastle.bcprov)
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
@@ -146,7 +146,11 @@ tasks.withType(Test::class.java).configureEach {
   systemProperty("java.security.manager", "allow")
 }
 
-tasks.named<Test>("test").configure { maxParallelForks = 4 }
+tasks.named<Test>("test").configure {
+  maxParallelForks = 4
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
+}
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1

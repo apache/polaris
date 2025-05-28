@@ -18,9 +18,13 @@
  */
 package org.apache.polaris.service.it.test;
 
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
@@ -31,10 +35,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -44,9 +50,16 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantResource;
+import org.apache.polaris.core.admin.model.GrantResources;
+import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.PolicyGrant;
+import org.apache.polaris.core.admin.model.PolicyPrivilege;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.TableGrant;
+import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -60,10 +73,15 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.ApplicablePolicy;
+import org.apache.polaris.service.types.AttachPolicyRequest;
+import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,6 +90,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisPolicyServiceIntegrationTest {
@@ -80,6 +100,8 @@ public class PolarisPolicyServiceIntegrationTest {
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
           .orElse("arn:aws:iam::123456789012:role/my-role");
 
+  private static final String CATALOG_ROLE_1 = "catalogrole1";
+  private static final String CATALOG_ROLE_2 = "catalogrole2";
   private static final String EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT = "{\"enable\":true}";
   private static final Namespace NS1 = Namespace.of("NS1");
   private static final Namespace NS2 = Namespace.of("NS2");
@@ -87,6 +109,13 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final PolicyIdentifier NS1_P2 = new PolicyIdentifier(NS1, "P2");
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
+
+  private static final String NS1_NAME = RESTUtil.encodeNamespace(NS1);
+  private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
+  private static final String INVALID_POLICY = "INVALID_POLICY";
+  private static final String INVALID_TABLE = "INVALID_TABLE";
+  private static final String INVALID_NAMESPACE_MSG =
+      "Namespace does not exist: " + INVALID_NAMESPACE;
 
   private static URI s3BucketBase;
   private static String principalRoleName;
@@ -219,9 +248,9 @@ public class PolarisPolicyServiceIntegrationTest {
             extraPropertiesBuilder.build());
     CatalogGrant catalogGrant =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
-    managementApi.createCatalogRole(currentCatalogName, "catalogrole1");
-    managementApi.addGrant(currentCatalogName, "catalogrole1", catalogGrant);
-    CatalogRole catalogRole = managementApi.getCatalogRole(currentCatalogName, "catalogrole1");
+    managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_1);
+    managementApi.addGrant(currentCatalogName, CATALOG_ROLE_1, catalogGrant);
+    CatalogRole catalogRole = managementApi.getCatalogRole(currentCatalogName, CATALOG_ROLE_1);
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, currentCatalogName, catalogRole);
 
@@ -260,6 +289,195 @@ public class PolarisPolicyServiceIntegrationTest {
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        " invalid",
+        "invalid ",
+        " invalid ",
+        "",
+        "policy name",
+        "policy@name",
+        "policy#name",
+        "policy$name",
+        "policy!name",
+        "policy name with space",
+        "policy.name",
+        "policy,name",
+        "policy~name",
+        "policy`name",
+        "policy;name",
+        "policy:name",
+        "policy<>name",
+        "policy[]name",
+        "policy{}name",
+        "policy|name",
+        "policy\\name",
+        "policy/name",
+        "policy*name",
+        "policy^name",
+        "policy%name",
+      })
+  public void testCreatePolicyWithInvalidName(String policyName) {
+    restCatalog.createNamespace(NS1);
+    PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, policyName);
+
+    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    CreatePolicyRequest request =
+        CreatePolicyRequest.builder()
+            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
+            .setName(policyIdentifier.getName())
+            .setDescription("test policy")
+            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", ns))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains(
+              "{\"error\":{\"message\":\"Invalid value: createPolicy.arg2.name: must match \\\"^[A-Za-z0-9\\\\-_]+$\\\"\",\"type\":\"ResteasyReactiveViolationException\",\"code\":400}}");
+    }
+  }
+
+  @Test
+  public void testCreatePolicyWithNonExistingNamespace() {
+    CreatePolicyRequest request =
+        CreatePolicyRequest.builder()
+            .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
+            .setName(currentCatalogName)
+            .setDescription("test policy")
+            .setContent(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT)
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", INVALID_NAMESPACE))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_NAMESPACE_MSG);
+    }
+  }
+
+  @Test
+  public void testAttachPolicyToNonExistingNamespace() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    Namespace invalidNamespace = Namespace.of(INVALID_NAMESPACE);
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
+
+    AttachPolicyRequest request =
+        AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.getName()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_NAMESPACE_MSG);
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testAttachPolicyToNonExistingTable() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    TableIdentifier invalidTable = TableIdentifier.of(NS1, INVALID_TABLE);
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE,
+            List.of(invalidTable.toString().split("\\.")));
+
+    AttachPolicyRequest request =
+        AttachPolicyRequest.builder().setTarget(invalidTarget).setParameters(Map.of()).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.getName()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE);
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testDetachPolicyFromNonExistingNamespace() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    Namespace invalidNamespace = Namespace.of(INVALID_NAMESPACE);
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.NAMESPACE, List.of(invalidNamespace.levels()));
+
+    DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(invalidTarget).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.getName()))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_NAMESPACE_MSG);
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testDetachPolicyFromNonExistingTable() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    TableIdentifier invalidTable = TableIdentifier.of(NS1, INVALID_TABLE);
+    var invalidTarget =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE,
+            List.of(invalidTable.toString().split("\\.")));
+
+    DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(invalidTarget).build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy-name}/mappings",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy-name", NS1_P1.getName()))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("Table or view does not exist: " + NS1_NAME + "." + INVALID_TABLE);
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
   @Test
   public void testDropPolicy() {
     restCatalog.createNamespace(NS1);
@@ -284,6 +502,24 @@ public class PolarisPolicyServiceIntegrationTest {
     // The policy mapping record should be dropped
     Assertions.assertThat(policyApi.getApplicablePolicies(currentCatalogName, null, null, null))
         .hasSize(0);
+  }
+
+  @Test
+  public void testDropNonExistingPolicy() {
+    restCatalog.createNamespace(NS1);
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", INVALID_POLICY))
+            .delete()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains(
+              "Policy does not exist: class PolicyIdentifier",
+              "namespace: " + NS1_NAME,
+              "name: " + INVALID_POLICY);
+    }
   }
 
   @Test
@@ -312,6 +548,29 @@ public class PolarisPolicyServiceIntegrationTest {
     Assertions.assertThat(updatedPolicy.getVersion()).isEqualTo(1);
 
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testUpdateNonExistingPolicy() {
+    restCatalog.createNamespace(NS1);
+    UpdatePolicyRequest request =
+        UpdatePolicyRequest.builder()
+            .setContent("{\"enable\":false}")
+            .setDescription("updated test policy")
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", INVALID_POLICY))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains(
+              "Policy does not exist: class PolicyIdentifier",
+              "namespace: " + NS1_NAME,
+              "name: " + INVALID_POLICY);
+    }
   }
 
   @Test
@@ -345,6 +604,74 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testListPoliciesOnNonExistingNamespace() {
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", currentCatalogName, "ns", INVALID_NAMESPACE))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_NAMESPACE_MSG);
+    }
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNonExistingNamespace() {
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/applicable-policies",
+                Map.of("cat", currentCatalogName),
+                Map.of("namespace", INVALID_NAMESPACE))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_NAMESPACE_MSG);
+    }
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnNonExistingTable() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/applicable-policies",
+                Map.of("cat", currentCatalogName),
+                Map.of("namespace", NS1_NAME, "target-name", INVALID_TABLE))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("Table does not exist: " + NS1_NAME + "." + INVALID_TABLE);
+    }
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
+  public void testLoadNonExistingPolicy() {
+    restCatalog.createNamespace(NS1);
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", INVALID_POLICY))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains(
+              "Policy does not exist: class PolicyIdentifier",
+              "namespace: " + NS1_NAME,
+              "name: " + INVALID_POLICY);
+    }
+  }
+
+  @Test
   public void testPolicyMapping() {
     restCatalog.createNamespace(NS1);
     restCatalog.createNamespace(NS2);
@@ -372,7 +699,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
     restCatalog
         .buildTable(
-            NS2_T1, new Schema(Types.NestedField.of(1, true, "string", Types.StringType.get())))
+            NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
         .create();
 
     PolicyAttachmentTarget catalogTarget =
@@ -425,6 +752,176 @@ public class PolarisPolicyServiceIntegrationTest {
     policyApi.dropPolicy(currentCatalogName, NS1_P3);
 
     restCatalog.dropTable(NS2_T1);
+  }
+
+  @Test
+  public void testGrantsOnPolicy() {
+    restCatalog.createNamespace(NS1);
+    try {
+      policyApi.createPolicy(
+          currentCatalogName,
+          NS1_P1,
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      Stream<PolicyGrant> policyGrants =
+          Arrays.stream(PolicyPrivilege.values())
+              .map(
+                  p ->
+                      new PolicyGrant(
+                          Arrays.asList(NS1.levels()),
+                          NS1_P1.getName(),
+                          p,
+                          GrantResource.TypeEnum.POLICY));
+      policyGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((PolicyGrant) gr).getPrivilege())
+          .containsExactlyInAnyOrder(PolicyPrivilege.values());
+
+      PolicyGrant policyReadGrant =
+          new PolicyGrant(
+              Arrays.asList(NS1.levels()),
+              NS1_P1.getName(),
+              PolicyPrivilege.POLICY_READ,
+              GrantResource.TypeEnum.POLICY);
+      managementApi.revokeGrant(currentCatalogName, CATALOG_ROLE_2, policyReadGrant);
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((PolicyGrant) gr).getPrivilege())
+          .doesNotContain(PolicyPrivilege.POLICY_READ);
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGrantsOnNonExistingPolicy() {
+    restCatalog.createNamespace(NS1);
+
+    try {
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      Stream<PolicyGrant> policyGrants =
+          Arrays.stream(PolicyPrivilege.values())
+              .map(
+                  p ->
+                      new PolicyGrant(
+                          Arrays.asList(NS1.levels()),
+                          NS1_P1.getName(),
+                          p,
+                          GrantResource.TypeEnum.POLICY));
+      policyGrants.forEach(
+          g -> {
+            try (Response response =
+                managementApi
+                    .request(
+                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                        Map.of("cat", currentCatalogName, "role", "catalogrole2"))
+                    .put(Entity.json(g))) {
+
+              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+            }
+          });
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGrantsOnNamespace() {
+    restCatalog.createNamespace(NS1);
+    try {
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      List<NamespacePrivilege> policyPrivilegesOnNamespace =
+          List.of(
+              NamespacePrivilege.POLICY_LIST,
+              NamespacePrivilege.POLICY_CREATE,
+              NamespacePrivilege.POLICY_DROP,
+              NamespacePrivilege.POLICY_WRITE,
+              NamespacePrivilege.POLICY_READ,
+              NamespacePrivilege.POLICY_FULL_METADATA,
+              NamespacePrivilege.NAMESPACE_ATTACH_POLICY,
+              NamespacePrivilege.NAMESPACE_DETACH_POLICY);
+      Stream<NamespaceGrant> namespaceGrants =
+          policyPrivilegesOnNamespace.stream()
+              .map(
+                  p ->
+                      new NamespaceGrant(
+                          Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
+      namespaceGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((NamespaceGrant) gr).getPrivilege())
+          .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnNamespace);
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
+    }
+  }
+
+  @Test
+  public void testGrantsOnCatalog() {
+    managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+    List<CatalogPrivilege> policyPrivilegesOnCatalog =
+        List.of(
+            CatalogPrivilege.POLICY_LIST,
+            CatalogPrivilege.POLICY_CREATE,
+            CatalogPrivilege.POLICY_DROP,
+            CatalogPrivilege.POLICY_WRITE,
+            CatalogPrivilege.POLICY_READ,
+            CatalogPrivilege.POLICY_FULL_METADATA,
+            CatalogPrivilege.CATALOG_ATTACH_POLICY,
+            CatalogPrivilege.CATALOG_DETACH_POLICY);
+    Stream<CatalogGrant> catalogGrants =
+        policyPrivilegesOnCatalog.stream()
+            .map(p -> new CatalogGrant(p, GrantResource.TypeEnum.CATALOG));
+    catalogGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+    Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+        .extracting(GrantResources::getGrants)
+        .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+        .map(gr -> ((CatalogGrant) gr).getPrivilege())
+        .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnCatalog);
+  }
+
+  @Test
+  public void testGrantsOnTable() {
+    restCatalog.createNamespace(NS2);
+    try {
+      managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
+      restCatalog
+          .buildTable(
+              NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
+          .create();
+
+      List<TablePrivilege> policyPrivilegesOnTable =
+          List.of(TablePrivilege.TABLE_ATTACH_POLICY, TablePrivilege.TABLE_DETACH_POLICY);
+
+      Stream<TableGrant> tableGrants =
+          policyPrivilegesOnTable.stream()
+              .map(
+                  p ->
+                      new TableGrant(
+                          Arrays.asList(NS2.levels()),
+                          NS2_T1.name(),
+                          p,
+                          GrantResource.TypeEnum.TABLE));
+      tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
+
+      Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
+          .extracting(GrantResources::getGrants)
+          .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
+          .map(gr -> ((TableGrant) gr).getPrivilege())
+          .containsExactlyInAnyOrderElementsOf(policyPrivilegesOnTable);
+    } finally {
+      policyApi.purge(currentCatalogName, NS2);
+    }
   }
 
   private static ApplicablePolicy policyToApplicablePolicy(
