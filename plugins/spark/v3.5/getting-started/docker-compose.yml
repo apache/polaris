@@ -30,6 +30,9 @@ services:
       POLARIS_BOOTSTRAP_CREDENTIALS: default-realm,root,s3cr3t
       polaris.realm-context.realms: default-realm
       quarkus.otel.sdk.disabled: "true"
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.readiness.ignore-severe-issues: "true"
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
       interval: 10s
