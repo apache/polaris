@@ -71,6 +71,8 @@ public class EntityIdPageToken extends PageToken implements HasPageSize {
         } else if (parts[0].equals(EntityIdPageToken.PREFIX)) {
           int resolvedPageSize = pageSize.orElse(Integer.parseInt(parts[2]));
           return new EntityIdPageToken(Long.parseLong(parts[1]), resolvedPageSize);
+        } else if (parts[0].equals(LimitPageToken.PREFIX)) {
+          return new LimitPageToken(pageRequest.getPageSize().get());
         } else {
           throw new IllegalArgumentException("Unrecognized page token: " + pageTokenString);
         }

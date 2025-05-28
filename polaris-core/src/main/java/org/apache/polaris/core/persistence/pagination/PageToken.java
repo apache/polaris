@@ -45,11 +45,6 @@ public abstract class PageToken {
     return build(token, null);
   }
 
-  /** Build a new PageToken from a limit */
-  public static PageToken fromLimit(Integer pageSize) {
-    return build(null, pageSize);
-  }
-
   /** Build a {@link PageToken} from the input string and page size */
   public static PageToken build(String token, Integer pageSize) {
     if (token == null || token.isEmpty()) {

@@ -33,7 +33,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageRequest;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
 /**
@@ -415,7 +414,4 @@ public interface BasePersistence extends PolicyMappingPersistence {
   default BasePersistence detach() {
     return this;
   }
-
-  /** Construct a {@link PageToken} from a {@link PageRequest} */
-  PageToken buildPageToken(PageRequest pageRequest);
 }

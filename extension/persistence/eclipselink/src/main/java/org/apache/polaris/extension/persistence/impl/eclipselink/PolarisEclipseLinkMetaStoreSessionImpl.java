@@ -783,8 +783,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     }
   }
 
-  @Override
-  public PageToken buildPageToken(PageRequest pageRequest) {
+  private PageToken buildPageToken(PageRequest pageRequest) {
     return EntityIdPageToken.fromPageRequest(pageRequest);
   }
 }

@@ -924,8 +924,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     Integer apply(String query) throws SQLException;
   }
 
-  @Override
-  public PageToken buildPageToken(PageRequest pageRequest) {
+  private PageToken buildPageToken(PageRequest pageRequest) {
     return EntityIdPageToken.fromPageRequest(pageRequest);
   }
 }

@@ -38,7 +38,7 @@ public class PageRequest {
   }
 
   public static PageRequest fromLimit(Integer pageSize) {
-    return new PageRequest(null, pageSize);
+    return new PageRequest(LimitPageToken.PREFIX, pageSize);
   }
 
   public boolean isPaginationRequested() {

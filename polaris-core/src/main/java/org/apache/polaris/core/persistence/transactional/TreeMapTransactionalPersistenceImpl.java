@@ -676,8 +676,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 
-  @Override
-  public PageToken buildPageToken(PageRequest pageRequest) {
+  private PageToken buildPageToken(PageRequest pageRequest) {
     return EntityIdPageToken.fromPageRequest(pageRequest);
   }
 }
