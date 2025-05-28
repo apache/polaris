@@ -76,7 +76,13 @@ tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
   jvmArgs =
-    listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret", "-Dquarkus.console.color=true")
+    listOf(
+      "-Dpolaris.bootstrap.credentials=POLARIS,root,secret",
+      "-Dquarkus.console.color=true",
+      "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
+      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\", \"S3\",\"GCS\",\"AZURE\"]",
+      "-Dpolaris.readiness.ignore-severe-issues=true",
+    )
 }
 
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
