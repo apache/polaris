@@ -26,10 +26,10 @@ This example requires `jq` to be installed on your machine.
 
     ```shell
     ./gradlew \
-       :polaris-quarkus-server:assemble \
-       :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-       :polaris-quarkus-admin:assemble \
-       :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+       :polaris-server:assemble \
+       :polaris-server:quarkusAppPartsBuild --rerun \
+       :polaris-admin:assemble \
+       :polaris-admin:quarkusAppPartsBuild --rerun \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true
     ```

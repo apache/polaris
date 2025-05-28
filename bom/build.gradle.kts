@@ -45,13 +45,13 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
     api(project(":polaris-jpa-model"))
 
-    api(project(":polaris-quarkus-admin"))
-    api(project(":polaris-quarkus-common"))
-    api(project(":polaris-quarkus-test-commons"))
-    api(project(":polaris-quarkus-defaults"))
-    api(project(":polaris-quarkus-server"))
-    api(project(":polaris-quarkus-service"))
-    api(project(":polaris-quarkus-spark-tests"))
+    api(project(":polaris-admin"))
+    api(project(":polaris-common"))
+    api(project(":polaris-test-commons"))
+    api(project(":polaris-defaults"))
+    api(project(":polaris-server"))
+    api(project(":polaris-service"))
+    api(project(":polaris-spark-tests"))
 
     api(project(":polaris-tests"))
   }
