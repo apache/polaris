@@ -135,17 +135,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
-      if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
+      if (!metaStoreManagerMap.containsKey(realm)) {
         initializeForRealm(realmContext, rootCredentialsSet, true);
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-
-        if (rootCredentialsSet.credentials().containsKey(realm)) {
-          LOGGER.info("Bootstrapped realm {} using preset credentials.", realm);
-        }
-
-        results.put(realmContext.getRealmIdentifier(), secretsResult);
+                realmContext, metaStoreManagerMap.get(realm));
+        results.put(realm, secretsResult);
       }
     }
 
