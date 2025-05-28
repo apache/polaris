@@ -473,6 +473,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     ms.persistStorageIntegrationIfNeededInCurrentTxn(callCtx, catalog, integration);
 
+    if (callCtx.getEntityMutationEngine() != null) {
+      catalog = callCtx.getEntityMutationEngine().applyMutations(catalog);
+    }
+
     // now create and persist new catalog entity
     this.persistNewEntity(callCtx, ms, catalog);
 

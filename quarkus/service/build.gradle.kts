@@ -99,6 +99,7 @@ dependencies {
   }
 
   testImplementation(project(":polaris-api-management-model"))
+  testImplementation(testFixtures(project(":polaris-core")))
   testImplementation(testFixtures(project(":polaris-service-common")))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
