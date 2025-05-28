@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class SetSnapshotRefUpdate(BaseUpdate):
     """
     SetSnapshotRefUpdate
     """ # noqa: E501
-    action: StrictStr
+    action: Optional[StrictStr] = None
     ref_name: StrictStr = Field(alias="ref-name")
     type: StrictStr
     snapshot_id: StrictInt = Field(alias="snapshot-id")
@@ -53,13 +54,6 @@ class SetSnapshotRefUpdate(BaseUpdate):
     max_snapshot_age_ms: Optional[StrictInt] = Field(default=None, alias="max-snapshot-age-ms")
     min_snapshots_to_keep: Optional[StrictInt] = Field(default=None, alias="min-snapshots-to-keep")
     __properties: ClassVar[List[str]] = ["action", "type", "snapshot-id", "max-ref-age-ms", "max-snapshot-age-ms", "min-snapshots-to-keep"]
-
-    @field_validator('action')
-    def action_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['set-snapshot-ref']):
-            raise ValueError("must be one of enum values ('set-snapshot-ref')")
-        return value
 
     @field_validator('type')
     def type_validate_enum(cls, value):

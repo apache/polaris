@@ -20,6 +20,7 @@
 -->
 # CatalogRoles
 
+
 ## Properties
 
 Name | Type | Description | Notes

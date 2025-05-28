@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -43,7 +44,7 @@ from typing_extensions import Self
 
 class OAuthTokenResponse(BaseModel):
     """
-    OAuthTokenResponse
+    The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this spec, see description of the endpoint.
     """ # noqa: E501
     access_token: StrictStr = Field(description="The access token, for client credentials or token exchange")
     token_type: StrictStr = Field(description="Access token type for client credentials or token exchange  See https://datatracker.ietf.org/doc/html/rfc6749#section-7.1")

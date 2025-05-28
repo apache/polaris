@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 # flake8: noqa
@@ -48,6 +49,7 @@ from polaris.catalog.models.assert_ref_snapshot_id import AssertRefSnapshotId
 from polaris.catalog.models.assert_table_uuid import AssertTableUUID
 from polaris.catalog.models.assert_view_uuid import AssertViewUUID
 from polaris.catalog.models.assign_uuid_update import AssignUUIDUpdate
+from polaris.catalog.models.async_planning_result import AsyncPlanningResult
 from polaris.catalog.models.base_update import BaseUpdate
 from polaris.catalog.models.blob_metadata import BlobMetadata
 from polaris.catalog.models.catalog_config import CatalogConfig
@@ -56,6 +58,8 @@ from polaris.catalog.models.commit_table_request import CommitTableRequest
 from polaris.catalog.models.commit_table_response import CommitTableResponse
 from polaris.catalog.models.commit_transaction_request import CommitTransactionRequest
 from polaris.catalog.models.commit_view_request import CommitViewRequest
+from polaris.catalog.models.completed_planning_result import CompletedPlanningResult
+from polaris.catalog.models.completed_planning_with_id_result import CompletedPlanningWithIDResult
 from polaris.catalog.models.content_file import ContentFile
 from polaris.catalog.models.count_map import CountMap
 from polaris.catalog.models.counter_result import CounterResult
@@ -64,16 +68,26 @@ from polaris.catalog.models.create_namespace_response import CreateNamespaceResp
 from polaris.catalog.models.create_table_request import CreateTableRequest
 from polaris.catalog.models.create_view_request import CreateViewRequest
 from polaris.catalog.models.data_file import DataFile
+from polaris.catalog.models.delete_file import DeleteFile
+from polaris.catalog.models.empty_planning_result import EmptyPlanningResult
+from polaris.catalog.models.enable_row_lineage_update import EnableRowLineageUpdate
 from polaris.catalog.models.equality_delete_file import EqualityDeleteFile
 from polaris.catalog.models.error_model import ErrorModel
 from polaris.catalog.models.expression import Expression
+from polaris.catalog.models.failed_planning_result import FailedPlanningResult
+from polaris.catalog.models.false_expression import FalseExpression
+from polaris.catalog.models.fetch_planning_result import FetchPlanningResult
+from polaris.catalog.models.fetch_scan_tasks_request import FetchScanTasksRequest
+from polaris.catalog.models.fetch_scan_tasks_result import FetchScanTasksResult
 from polaris.catalog.models.file_format import FileFormat
+from polaris.catalog.models.file_scan_task import FileScanTask
 from polaris.catalog.models.get_namespace_response import GetNamespaceResponse
 from polaris.catalog.models.iceberg_error_response import IcebergErrorResponse
 from polaris.catalog.models.list_namespaces_response import ListNamespacesResponse
 from polaris.catalog.models.list_tables_response import ListTablesResponse
 from polaris.catalog.models.list_type import ListType
 from polaris.catalog.models.literal_expression import LiteralExpression
+from polaris.catalog.models.load_credentials_response import LoadCredentialsResponse
 from polaris.catalog.models.load_table_result import LoadTableResult
 from polaris.catalog.models.load_view_result import LoadViewResult
 from polaris.catalog.models.map_type import MapType
@@ -81,17 +95,19 @@ from polaris.catalog.models.metadata_log_inner import MetadataLogInner
 from polaris.catalog.models.metric_result import MetricResult
 from polaris.catalog.models.model_schema import ModelSchema
 from polaris.catalog.models.not_expression import NotExpression
-from polaris.catalog.models.notification_request import NotificationRequest
-from polaris.catalog.models.notification_type import NotificationType
 from polaris.catalog.models.null_order import NullOrder
 from polaris.catalog.models.o_auth_error import OAuthError
 from polaris.catalog.models.o_auth_token_response import OAuthTokenResponse
 from polaris.catalog.models.partition_field import PartitionField
 from polaris.catalog.models.partition_spec import PartitionSpec
 from polaris.catalog.models.partition_statistics_file import PartitionStatisticsFile
+from polaris.catalog.models.plan_status import PlanStatus
+from polaris.catalog.models.plan_table_scan_request import PlanTableScanRequest
+from polaris.catalog.models.plan_table_scan_result import PlanTableScanResult
 from polaris.catalog.models.position_delete_file import PositionDeleteFile
 from polaris.catalog.models.primitive_type_value import PrimitiveTypeValue
 from polaris.catalog.models.register_table_request import RegisterTableRequest
+from polaris.catalog.models.remove_partition_specs_update import RemovePartitionSpecsUpdate
 from polaris.catalog.models.remove_partition_statistics_update import RemovePartitionStatisticsUpdate
 from polaris.catalog.models.remove_properties_update import RemovePropertiesUpdate
 from polaris.catalog.models.remove_snapshot_ref_update import RemoveSnapshotRefUpdate
@@ -101,6 +117,7 @@ from polaris.catalog.models.rename_table_request import RenameTableRequest
 from polaris.catalog.models.report_metrics_request import ReportMetricsRequest
 from polaris.catalog.models.sql_view_representation import SQLViewRepresentation
 from polaris.catalog.models.scan_report import ScanReport
+from polaris.catalog.models.scan_tasks import ScanTasks
 from polaris.catalog.models.set_current_schema_update import SetCurrentSchemaUpdate
 from polaris.catalog.models.set_current_view_version_update import SetCurrentViewVersionUpdate
 from polaris.catalog.models.set_default_sort_order_update import SetDefaultSortOrderUpdate
@@ -119,17 +136,18 @@ from polaris.catalog.models.sort_direction import SortDirection
 from polaris.catalog.models.sort_field import SortField
 from polaris.catalog.models.sort_order import SortOrder
 from polaris.catalog.models.statistics_file import StatisticsFile
+from polaris.catalog.models.storage_credential import StorageCredential
 from polaris.catalog.models.struct_field import StructField
 from polaris.catalog.models.struct_type import StructType
 from polaris.catalog.models.table_identifier import TableIdentifier
 from polaris.catalog.models.table_metadata import TableMetadata
 from polaris.catalog.models.table_requirement import TableRequirement
 from polaris.catalog.models.table_update import TableUpdate
-from polaris.catalog.models.table_update_notification import TableUpdateNotification
 from polaris.catalog.models.term import Term
 from polaris.catalog.models.timer_result import TimerResult
 from polaris.catalog.models.token_type import TokenType
 from polaris.catalog.models.transform_term import TransformTerm
+from polaris.catalog.models.true_expression import TrueExpression
 from polaris.catalog.models.type import Type
 from polaris.catalog.models.unary_expression import UnaryExpression
 from polaris.catalog.models.update_namespace_properties_request import UpdateNamespacePropertiesRequest

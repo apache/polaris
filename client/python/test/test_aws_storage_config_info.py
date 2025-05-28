@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -45,7 +46,7 @@ class TestAwsStorageConfigInfo(unittest.TestCase):
 
     def make_instance(self, include_optional) -> AwsStorageConfigInfo:
         """Test AwsStorageConfigInfo
-            include_option is a boolean, when False only required
+            include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
         # uncomment below to create an instance of `AwsStorageConfigInfo`
@@ -55,7 +56,8 @@ class TestAwsStorageConfigInfo(unittest.TestCase):
             return AwsStorageConfigInfo(
                 role_arn = 'arn:aws:iam::123456789001:principal/abc1-b-self1234',
                 external_id = '',
-                user_arn = 'arn:aws:iam::123456789001:user/abc1-b-self1234'
+                user_arn = 'arn:aws:iam::123456789001:user/abc1-b-self1234',
+                region = 'us-east-2'
             )
         else:
             return AwsStorageConfigInfo(

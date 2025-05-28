@@ -83,7 +83,9 @@ class NamespacesCommand(Command):
                 create_namespace_request=request)
         elif self.namespaces_subcommand == Subcommands.LIST:
             if self.parent is not None:
-                result = catalog_api.list_namespaces(prefix=self.catalog, parent=UNIT_SEPARATOR.join(self.parent))
+                result = catalog_api.list_namespaces(
+                    prefix=self.catalog,
+                    parent=UNIT_SEPARATOR.join(self.parent))
             else:
                 result = catalog_api.list_namespaces(prefix=self.catalog)
             for namespace in result.namespaces:
@@ -92,7 +94,7 @@ class NamespacesCommand(Command):
             catalog_api.drop_namespace(prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace))
         elif self.namespaces_subcommand == Subcommands.GET:
             print(catalog_api.load_namespace_metadata(
-                      prefix=self.catalog,
-                      namespace=UNIT_SEPARATOR.join(self.namespace)).to_json())
+                prefix=self.catalog,
+                namespace=UNIT_SEPARATOR.join(self.namespace)).to_json())
         else:
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")

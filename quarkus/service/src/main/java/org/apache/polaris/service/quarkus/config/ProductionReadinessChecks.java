@@ -151,7 +151,7 @@ public class ProductionReadinessChecks {
                   if (config
                       .tokenBroker()
                       .symmetricKey()
-                      .map(SymmetricKeyConfiguration::secret)
+                      .flatMap(SymmetricKeyConfiguration::secret)
                       .isPresent()) {
                     errors.add(
                         Error.of(

@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -42,6 +43,13 @@ class TestIcebergCatalogAPI(unittest.TestCase):
         self.api = IcebergCatalogAPI()
 
     def tearDown(self) -> None:
+        pass
+
+    def test_cancel_planning(self) -> None:
+        """Test case for cancel_planning
+
+        Cancels scan planning for a plan-id
+        """
         pass
 
     def test_commit_transaction(self) -> None:
@@ -93,6 +101,20 @@ class TestIcebergCatalogAPI(unittest.TestCase):
         """
         pass
 
+    def test_fetch_planning_result(self) -> None:
+        """Test case for fetch_planning_result
+
+        Fetches the result of scan planning for a plan-id
+        """
+        pass
+
+    def test_fetch_scan_tasks(self) -> None:
+        """Test case for fetch_scan_tasks
+
+        Fetches result tasks for a plan task
+        """
+        pass
+
     def test_list_namespaces(self) -> None:
         """Test case for list_namespaces
 
@@ -111,6 +133,13 @@ class TestIcebergCatalogAPI(unittest.TestCase):
         """Test case for list_views
 
         List all view identifiers underneath a given namespace
+        """
+        pass
+
+    def test_load_credentials(self) -> None:
+        """Test case for load_credentials
+
+        Load vended credentials for a table from the catalog
         """
         pass
 
@@ -139,6 +168,13 @@ class TestIcebergCatalogAPI(unittest.TestCase):
         """Test case for namespace_exists
 
         Check if a namespace exists
+        """
+        pass
+
+    def test_plan_table_scan(self) -> None:
+        """Test case for plan_table_scan
+
+        Submit a scan for planning
         """
         pass
 
@@ -174,13 +210,6 @@ class TestIcebergCatalogAPI(unittest.TestCase):
         """Test case for report_metrics
 
         Send a metrics report to this endpoint to be processed by the backend
-        """
-        pass
-
-    def test_send_notification(self) -> None:
-        """Test case for send_notification
-
-        Sends a notification to the table
         """
         pass
 

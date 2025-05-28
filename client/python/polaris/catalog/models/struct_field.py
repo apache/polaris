@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,8 +36,9 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from polaris.catalog.models.primitive_type_value import PrimitiveTypeValue
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -49,7 +51,9 @@ class StructField(BaseModel):
     type: Type
     required: StrictBool
     doc: Optional[StrictStr] = None
-    __properties: ClassVar[List[str]] = ["id", "name", "type", "required", "doc"]
+    initial_default: Optional[PrimitiveTypeValue] = Field(default=None, alias="initial-default")
+    write_default: Optional[PrimitiveTypeValue] = Field(default=None, alias="write-default")
+    __properties: ClassVar[List[str]] = ["id", "name", "type", "required", "doc", "initial-default", "write-default"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -93,6 +97,12 @@ class StructField(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of type
         if self.type:
             _dict['type'] = self.type.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of initial_default
+        if self.initial_default:
+            _dict['initial-default'] = self.initial_default.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of write_default
+        if self.write_default:
+            _dict['write-default'] = self.write_default.to_dict()
         return _dict
 
     @classmethod
@@ -109,7 +119,9 @@ class StructField(BaseModel):
             "name": obj.get("name"),
             "type": Type.from_dict(obj["type"]) if obj.get("type") is not None else None,
             "required": obj.get("required"),
-            "doc": obj.get("doc")
+            "doc": obj.get("doc"),
+            "initial-default": PrimitiveTypeValue.from_dict(obj["initial-default"]) if obj.get("initial-default") is not None else None,
+            "write-default": PrimitiveTypeValue.from_dict(obj["write-default"]) if obj.get("write-default") is not None else None
         })
         return _obj
 

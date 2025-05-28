@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -35,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -45,7 +46,7 @@ class PrincipalWithCredentialsCredentials(BaseModel):
     PrincipalWithCredentialsCredentials
     """ # noqa: E501
     client_id: Optional[StrictStr] = Field(default=None, alias="clientId")
-    client_secret: Optional[StrictStr] = Field(default=None, alias="clientSecret")
+    client_secret: Optional[SecretStr] = Field(default=None, alias="clientSecret")
     __properties: ClassVar[List[str]] = ["clientId", "clientSecret"]
 
     model_config = ConfigDict(

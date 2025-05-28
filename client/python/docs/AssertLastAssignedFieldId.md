@@ -26,7 +26,7 @@ The table's last assigned column id must match the requirement's `last-assigned-
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**type** | **str** |  | 
+**type** | **str** |  | [optional] 
 **last_assigned_field_id** | **int** |  | 
 
 ## Example

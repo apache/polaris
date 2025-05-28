@@ -32,7 +32,7 @@ services:
     volumes:
       # Bind local conf file to a convenient location in the container
       - type: bind
-        source: ../assets/postgres/postgresql.conf
+        source: ${ASSETS_PATH}/postgres/postgresql.conf
         target: /etc/postgresql/postgresql.conf
     command:
       - "postgres"

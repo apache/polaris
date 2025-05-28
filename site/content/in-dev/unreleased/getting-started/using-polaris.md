@@ -21,12 +21,16 @@ Title: Using Polaris
 type: docs
 weight: 400
 ---
+
 ## Setup
-Define your `CLIENT_ID` & `CLIENT_SECRET` and export them for future use.
+
+Ensure your `CLIENT_ID` & `CLIENT_SECRET` variables are already defined, as they were required for starting the Polaris server earlier.
+
 ```shell
 export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
+
 ## Defining a Catalog
 
 In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
@@ -167,7 +171,6 @@ bin/spark-sql \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
-
 Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
 Finally, note that we include the `iceberg-aws-bundle` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
@@ -176,7 +179,9 @@ Finally, note that we include the `iceberg-aws-bundle` package here. If your tab
 
 Refresh the Docker container with the user's credentials:
 ```shell
-docker compose -f getting-started/eclipselink/docker-compose.yml up -d
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop spark-sql
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f spark-sql
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps spark-sql
 ```
 
 Attach to the running spark-sql container:
@@ -237,14 +242,15 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 Refresh the Docker container with the user's credentials:
 
 ```shell
-docker compose -f getting-started/eclipselink/docker-compose.yml down trino
-docker compose -f getting-started/eclipselink/docker-compose.yml up -d
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop trino
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f trino
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps trino
 ```
 
 Attach to the running Trino container:
 
 ```shell
-docker exec -it eclipselink-trino-1 trino
+docker exec -it $(docker ps -q --filter name=trino) trino
 ```
 
 You may not see Trino's prompt immediately, type ENTER to see it. A few commands that you can try:
@@ -303,7 +309,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
 ```shell
-docker compose -f getting-started/eclipselink/docker-compose-postgres.yml -f getting-started/eclipselink/docker-compose-bootstrap-db.yml -f getting-started/eclipselink/docker-compose.yml down
+docker compose -p polaris -f getting-started/assets/postgres/docker-compose-postgres.yml -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml down
 ```
 
 

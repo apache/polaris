@@ -1016,52 +1016,55 @@ components:
       description: aws storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
-      properties:
-        roleArn:
-          type: string
-          description: the aws role arn that grants privileges on the S3 buckets
-          example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"
-        externalId:
-          type: string
-          description: an optional external id used to establish a trust relationship with AWS in the trust policy
-        userArn:
-          type: string
-          description: the aws user arn used to assume the aws role
-          example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
-        region:
-          type: string
-          description: the aws region where data is stored
-          example: "us-east-2"
-      required:
-        - roleArn
+        - type: object
+          properties:
+            roleArn:
+              type: string
+              description: the aws role arn that grants privileges on the S3 buckets
+              example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"
+            externalId:
+              type: string
+              description: an optional external id used to establish a trust relationship with AWS in the trust policy
+            userArn:
+              type: string
+              description: the aws user arn used to assume the aws role
+              example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
+            region:
+              type: string
+              description: the aws region where data is stored
+              example: "us-east-2"
+          required:
+            - roleArn
 
     AzureStorageConfigInfo:
       type: object
       description: azure storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
-      properties:
-        tenantId:
-          type: string
-          description: the tenant id that the storage accounts belong to
-        multiTenantAppName:
-          type: string
-          description: the name of the azure client application
-        consentUrl:
-          type: string
-          description: URL to the Azure permissions request page
-      required:
-        - tenantId
+        - type: object
+          properties:
+            tenantId:
+              type: string
+              description: the tenant id that the storage accounts belong to
+            multiTenantAppName:
+              type: string
+              description: the name of the azure client application
+            consentUrl:
+              type: string
+              description: URL to the Azure permissions request page
+          required:
+            - tenantId
 
     GcpStorageConfigInfo:
       type: object
       description: gcp storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
-      properties:
-        gcsServiceAccount:
-          type: string
-          description: a Google cloud storage service account
+        - type: object
+          properties:
+            gcsServiceAccount:
+              type: string
+              description: a Google cloud storage service account
 
     FileStorageConfigInfo:
       type: object

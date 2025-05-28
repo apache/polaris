@@ -28,6 +28,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **overrides** | **Dict[str, str]** | Properties that should be used to override client configuration; applied after defaults and client configuration. | 
 **defaults** | **Dict[str, str]** | Properties that should be used as default configuration; applied before client configuration. | 
+**endpoints** | **List[str]** | A list of endpoints that the server supports. The format of each endpoint must be \&quot;&lt;HTTP verb&gt; &lt;resource path from OpenAPI REST spec&gt;\&quot;. The HTTP verb and the resource path must be separated by a space character. | [optional] 
 
 ## Example
 

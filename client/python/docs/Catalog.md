@@ -20,7 +20,7 @@
 -->
 # Catalog
 
-A catalog object. A catalog may be internal or external. Internal catalogs are managed entirely by an external catalog interface. Third party catalogs may be other Iceberg REST implementations or other services with their own proprietary APIs
+A catalog object. A catalog may be internal or external. External catalogs are managed entirely by an external catalog interface. Third party catalogs may be other Iceberg REST implementations or other services with their own proprietary APIs
 
 ## Properties
 

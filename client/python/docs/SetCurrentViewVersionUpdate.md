@@ -20,11 +20,12 @@
 -->
 # SetCurrentViewVersionUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**action** | **str** |  | 
+**action** | **str** |  | [optional] 
 **view_version_id** | **int** | The view version id to set as current, or -1 to set last added view version id | 
 
 ## Example

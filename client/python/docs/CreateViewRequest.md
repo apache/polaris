@@ -20,6 +20,7 @@
 -->
 # CreateViewRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -27,7 +28,7 @@ Name | Type | Description | Notes
 **name** | **str** |  | 
 **location** | **str** |  | [optional] 
 **var_schema** | [**ModelSchema**](ModelSchema.md) |  | 
-**view_version** | [**ViewVersion**](ViewVersion.md) |  | 
+**view_version** | [**ViewVersion**](ViewVersion.md) | The view version to create, will replace the schema-id sent within the view-version with the id assigned to the provided schema | 
 **properties** | **Dict[str, str]** |  | 
 
 ## Example

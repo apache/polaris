@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -57,7 +58,7 @@ class ContentFile(BaseModel):
     file_path: StrictStr = Field(alias="file-path")
     file_format: FileFormat = Field(alias="file-format")
     spec_id: StrictInt = Field(alias="spec-id")
-    partition: Optional[List[PrimitiveTypeValue]] = Field(default=None, description="A list of partition field values ordered based on the fields of the partition spec specified by the `spec-id`")
+    partition: List[PrimitiveTypeValue] = Field(description="A list of partition field values ordered based on the fields of the partition spec specified by the `spec-id`")
     file_size_in_bytes: StrictInt = Field(description="Total file size in bytes", alias="file-size-in-bytes")
     record_count: StrictInt = Field(description="Number of records in the file", alias="record-count")
     key_metadata: Optional[StrictStr] = Field(default=None, description="Encryption key metadata blob", alias="key-metadata")

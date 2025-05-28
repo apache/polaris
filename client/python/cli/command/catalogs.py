@@ -44,7 +44,6 @@ class CatalogsCommand(Command):
 
     catalogs_subcommand: str
     catalog_type: str
-    remote_url: str
     default_base_location: str
     storage_type: str
     allowed_locations: List[str]
@@ -147,7 +146,6 @@ class CatalogsCommand(Command):
                         type=self.catalog_type.upper(),
                         name=self.catalog_name,
                         storage_config_info=config,
-                        remote_url=self.remote_url,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
                             additional_properties=self.properties
