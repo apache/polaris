@@ -828,7 +828,89 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .createBranch("non-main")
         .setCurrentSnapshot(t.currentSnapshot().snapshotId())
         .commit();
-    // now add more files to main branch
+    // now add more files to non-main branch
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
+    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
+    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
+    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
+        .thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
+    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
+    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
+    Assertions.assertThatThrownBy(
+            () ->
+                mockCatalogHandleUtils.commit(
+                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("Requirement failed: branch main has changed");
+
+    table.refresh();
+
+    // Assert only 3 snapshots
+    Snapshot currentSnapshot = table.snapshot(table.refs().get("main").snapshotId());
+    int totalSnapshots = 1;
+    while (currentSnapshot.parentId() != null) {
+      currentSnapshot = table.snapshot(currentSnapshot.parentId());
+      totalSnapshots += 1;
+    }
+    assertThat(totalSnapshots).isEqualTo(2);
+    this.assertFiles(catalog.loadTable(TABLE), FILE_B);
+  }
+
+  @Test
+  public void testConcurrentWritesWithRollbackWithConcurrentWritesToDifferentBranches() {
+    IcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    this.assertNoFiles(table);
+
+    // commit FILE_A to main branch
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    this.assertFiles(catalog.loadTable(TABLE), FILE_A);
+    table.refresh();
+
+    Table t = catalog.loadTable(TABLE);
+    // add another branch B
+    t.manageSnapshots()
+        .createBranch("non-main")
+        .setCurrentSnapshot(t.currentSnapshot().snapshotId())
+        .commit();
+
+    long lastSnapshotId = table.currentSnapshot().snapshotId();
+
+    // Apply the deletes based on FILE_A
+    // this should conflict when we try to commit without the change.
+    RowDelta originalRowDelta =
+        table
+            .newRowDelta()
+            .addDeletes(FILE_A_DELETES)
+            .validateFromSnapshot(lastSnapshotId)
+            .validateDataFilesExist(List.of(FILE_A.location()));
+    // Make client ready with updates, don't reach out to IRC server yet
+    Snapshot s = originalRowDelta.apply();
+    TableOperations ops = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    TableMetadata base = ops.current();
+    TableMetadata.Builder update = TableMetadata.buildFrom(base);
+    update.setBranchSnapshot(s, "main");
+    TableMetadata updatedMetadata = update.build();
+    List<MetadataUpdate> updates = updatedMetadata.changes();
+    List<UpdateRequirement> requirements = UpdateRequirements.forUpdateTable(base, updates);
+    UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
+
+    // replace FILE_A with FILE_B on main branch
+    catalog
+        .loadTable(TABLE)
+        .newRewrite()
+        .addFile(FILE_B)
+        .deleteFile(FILE_A)
+        .set("polaris.conflict-resolution.by-operation-type.replace", "rollback")
+        .commit();
+
+    // now add more files to non-main branch, this will make sequence number non monotonic for main
+    // branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
     PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
     PolarisConfigurationStore mockedPc = Mockito.spy(pc);

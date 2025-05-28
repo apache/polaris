@@ -478,14 +478,19 @@ public class CatalogHandlerUtils {
 
                   // snapshot-id the client expects the table current_snapshot_id
                   long expectedCurrentSnapshotId = assertRefSnapshotId.snapshotId();
-                  // table current_snapshot_id.
-                  long currentSnapshotId = base.currentSnapshot().snapshotId();
+
+                  MetadataUpdate.AddSnapshot snapshotToBeAdded = findAddSnapshotUpdate(request);
+                  if (snapshotToBeAdded == null) {
+                    // Re-throw if, there's no snapshot data to be added.
+                    throw new ValidationFailureException(e);
+                  }
+
                   List<MetadataUpdate> metadataUpdates =
                       generateUpdatesToRemoveNoopSnapshot(
                           base,
-                          currentSnapshotId,
                           expectedCurrentSnapshotId,
-                          setSnapshotRef.name());
+                          setSnapshotRef.name(),
+                          snapshotToBeAdded.snapshot().sequenceNumber());
 
                   if (metadataUpdates == null || metadataUpdates.isEmpty()) {
                     // Nothing can be done as this implies that there were not all
@@ -493,7 +498,6 @@ public class CatalogHandlerUtils {
                     // currentSnapshotId. hence re-throw the exception caught.
                     throw new ValidationFailureException(e);
                   }
-
                   // Set back the ref we wanted to set, back to the snapshot-id
                   // the client is expecting the table to be at.
                   metadataBuilder.setBranchSnapshot(
@@ -548,9 +552,9 @@ public class CatalogHandlerUtils {
 
   private List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
       TableMetadata base,
-      long currentSnapshotId,
       long expectedCurrentSnapshotId,
-      String updateRefName) {
+      String updateRefName,
+      long newSnapshotSeqNumber) {
     // find the all the snapshots we want to retain which are not the part of current branch.
     Set<Long> idsToRetain = Sets.newHashSet();
     for (Map.Entry<String, SnapshotRef> ref : base.refs().entrySet()) {
@@ -570,9 +574,14 @@ public class CatalogHandlerUtils {
     }
 
     List<MetadataUpdate> updateToRemoveSnapshot = new ArrayList<>();
-    Long snapshotId = currentSnapshotId;
+    Long snapshotId = base.ref(updateRefName).snapshotId(); // current tip of the given branch
+    // ensure this branch has the latest sequence number.
+    long expectedSequenceNumber = base.lastSequenceNumber();
     while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
       Snapshot snap = base.snapshot(snapshotId);
+      if (expectedSequenceNumber != snap.sequenceNumber()) {
+        break;
+      }
       if (!isRollbackSnapshot(snap) || idsToRetain.contains(snapshotId)) {
         // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
         // reference either by branch or a tag.
@@ -580,6 +589,8 @@ public class CatalogHandlerUtils {
       }
       updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
       snapshotId = snap.parentId();
+      // we need continuous sequence number to correctly rollback
+      expectedSequenceNumber--;
     }
 
     boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
@@ -606,6 +617,21 @@ public class CatalogHandlerUtils {
 
     // if > 1 assertion for refs, then it's not safe to rollback, make this Noop.
     return total != 1 ? null : setSnapshotRefUpdate;
+  }
+
+  private MetadataUpdate.AddSnapshot findAddSnapshotUpdate(UpdateTableRequest request) {
+    int total = 0;
+    MetadataUpdate.AddSnapshot addSnapshot = null;
+    // find the SetRefName snapshot update
+    for (MetadataUpdate update : request.updates()) {
+      if (update instanceof MetadataUpdate.AddSnapshot) {
+        total++;
+        addSnapshot = (MetadataUpdate.AddSnapshot) update;
+      }
+    }
+
+    // if > 1 assertion for addSnapshot, then it's not safe to rollback, make this Noop.
+    return total != 1 ? null : addSnapshot;
   }
 
   private TableMetadata setAppropriateLastSeqNumber(TableMetadata newBase) {
