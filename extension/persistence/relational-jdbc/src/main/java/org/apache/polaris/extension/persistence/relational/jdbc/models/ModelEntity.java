@@ -358,16 +358,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
 
     if (model.location != null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
-        entity = new IcebergTableLikeEntity(entity);
-        entity.setPropertiesAsMap(
-            ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
-      }
-
-      if (entityType == PolarisEntityType.NAMESPACE) {
-        entity = new NamespaceEntity(entity);
-        entity.setPropertiesAsMap(
-            ImmutableMap.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location));
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE || entityType == PolarisEntityType.NAMESPACE) {
+        HashMap<String, String> properties = new HashMap<>(entity.getPropertiesAsMap());
+        properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
+        entity.setPropertiesAsMap(properties);
       }
     }
 
