@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,14 @@ public class EclipseLinkProductionReadinessChecks {
       LoggerFactory.getLogger(EclipseLinkProductionReadinessChecks.class);
 
   @Produces
-  public ProductionReadinessCheck checkJdbcUrl(EclipseLinkConfiguration eclipseLinkConfiguration) {
+  public ProductionReadinessCheck checkJdbcUrl(
+      EclipseLinkConfiguration eclipseLinkConfiguration,
+      @ConfigProperty(name = "polaris.persistence.type") String persistenceType) {
+    // This check should only be applicable when persistence uses EclipseLink.
+    if (!("eclipse-link".equalsIgnoreCase(persistenceType))) {
+      return ProductionReadinessCheck.OK;
+    }
+
     try {
       var confFile = eclipseLinkConfiguration.configurationFile().map(Path::toString).orElse(null);
       var persistenceUnitName =
