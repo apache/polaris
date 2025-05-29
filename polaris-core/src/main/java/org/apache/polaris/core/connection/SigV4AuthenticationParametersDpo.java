@@ -23,12 +23,14 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.EnumMap;
 import java.util.Map;
 import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -96,10 +98,13 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     if (getSigningName() != null) {
       builder.put(AwsProperties.REST_SIGNING_NAME, getSigningName());
     }
-    // TODO: Add a connection credential provider to get the tmp aws credentials for SigV4 auth
-    //    builder.put(AwsProperties.REST_ACCESS_KEY_ID, "access_key_id");
-    //    builder.put(AwsProperties.REST_SECRET_ACCESS_KEY, "secret_access_key");
-    //    builder.put(AwsProperties.REST_SESSION_TOKEN, "session_token");
+
+    EnumMap<ConnectionCredentialProperty, String> connectionCredentialProperties =
+        credentialManager.getConnectionCredentials(null, this);
+    if (connectionCredentialProperties != null) {
+      connectionCredentialProperties.forEach(
+          (key, value) -> builder.put(key.getPropertyName(), value));
+    }
     return builder.build();
   }
 

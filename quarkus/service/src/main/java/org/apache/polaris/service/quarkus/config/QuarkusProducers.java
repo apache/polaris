@@ -74,6 +74,7 @@ import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolve
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
 import org.apache.polaris.service.quarkus.context.RealmContextFilter;
+import org.apache.polaris.service.quarkus.credential.QuarkusPolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConfiguration;
 import org.apache.polaris.service.quarkus.identity.QuarkusRealmServiceIdentityConfiguration;
 import org.apache.polaris.service.quarkus.identity.QuarkusServiceIdentityConfiguration;
@@ -199,7 +200,7 @@ public class QuarkusProducers {
 
   @Produces
   public PolarisCredentialManagerFactory credentialManagerFactory(
-      QuarkusServiceIdentityRegistryConfiguration config,
+      QuarkusPolarisCredentialManagerConfiguration config,
       @Any Instance<PolarisCredentialManagerFactory> credentialManagerFactories) {
     return credentialManagerFactories.select(Identifier.Literal.of(config.type())).get();
   }

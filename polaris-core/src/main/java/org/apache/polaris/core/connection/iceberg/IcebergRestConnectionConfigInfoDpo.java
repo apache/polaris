@@ -71,10 +71,11 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     }
     properties.putAll(
         getAuthenticationParameters()
-            .asIcebergCatalogProperties(secretsManager, credentialManager));
-    credentialManager
-        .getConnectionCredentials(getServiceIdentity(), getAuthenticationParameters())
-        .forEach((key, value) -> properties.put(key.getPropertyName(), value));
+            .asIcebergCatalogProperties(
+                secretsManager,
+                (serviceIdentity, authenticationParameters) ->
+                    credentialManager.getConnectionCredentials(
+                        getServiceIdentity(), authenticationParameters)));
     return properties;
   }
 
