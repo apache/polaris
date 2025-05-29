@@ -61,12 +61,12 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.jpa.models.ModelEntity;
-import org.apache.polaris.jpa.models.ModelEntityActive;
-import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
-import org.apache.polaris.jpa.models.ModelGrantRecord;
-import org.apache.polaris.jpa.models.ModelPolicyMappingRecord;
-import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntity;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityActive;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityChangeTracking;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelGrantRecord;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPolicyMappingRecord;
+import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

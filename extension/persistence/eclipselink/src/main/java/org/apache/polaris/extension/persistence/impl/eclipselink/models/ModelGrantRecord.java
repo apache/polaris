@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.jpa.models;
+package org.apache.polaris.extension.persistence.impl.eclipselink.models;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
