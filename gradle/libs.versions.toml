@@ -35,7 +35,7 @@ swagger = "1.6.14"
 assertj-core = { module = "org.assertj:assertj-core", version = "3.26.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.4.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.28.15" }
-azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.27" }
+azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.35" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.78.1" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.1.8" }
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.1" }
