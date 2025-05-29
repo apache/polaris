@@ -29,6 +29,7 @@ Name | Type | Description | Notes
 **connection_type** | **str** | The type of remote catalog service represented by this connection | 
 **uri** | **str** | URI to the remote catalog service | [optional] 
 **authentication_parameters** | [**AuthenticationParameters**](AuthenticationParameters.md) |  | [optional] 
+**service_identity** | [**ServiceIdentityInfo**](ServiceIdentityInfo.md) |  | [optional] 
 
 ## Example
 

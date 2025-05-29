@@ -53,6 +53,8 @@ class TablePrivilege(str, Enum):
     TABLE_READ_DATA = 'TABLE_READ_DATA'
     TABLE_WRITE_DATA = 'TABLE_WRITE_DATA'
     TABLE_FULL_METADATA = 'TABLE_FULL_METADATA'
+    TABLE_ATTACH_POLICY = 'TABLE_ATTACH_POLICY'
+    TABLE_DETACH_POLICY = 'TABLE_DETACH_POLICY'
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:
