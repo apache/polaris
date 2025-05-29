@@ -78,9 +78,8 @@ distributions {
 
             from("README.md")
             from("DISCLAIMER")
-
-            // TODO: combine the LICENSE and NOTICE in a follow-up PR
-            from(adminDocs)
+            from("LICENSE")
+            from("NOTICE")
         }
     }
 }
