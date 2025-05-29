@@ -67,7 +67,7 @@ micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.13.6" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.11.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.38.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
-prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.0" }
+prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.8" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "3.11.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.9.0" }
