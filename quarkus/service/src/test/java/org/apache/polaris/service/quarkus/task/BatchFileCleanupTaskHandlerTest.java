@@ -48,8 +48,6 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -80,12 +78,6 @@ public class BatchFileCleanupTaskHandlerTest {
             return fileIO;
           }
         });
-  }
-
-  private void addTaskLocation(TaskEntity task) {
-    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
-    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
-    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
   }
 
   @Test
@@ -195,7 +187,7 @@ public class BatchFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
 
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
 
@@ -246,7 +238,7 @@ public class BatchFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
 
-      addTaskLocation(task);
+      task = TaskTestUtils.addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
@@ -315,9 +307,9 @@ public class BatchFileCleanupTaskHandlerTest {
           CompletableFuture.runAsync(
               () -> {
                 CallContext.setCurrentContext(callCtx);
-                addTaskLocation(task);
-                assertThatPredicate(handler::canHandleTask).accepts(task);
-                handler.handleTask(task, callCtx); // this will schedule the batch deletion
+                TaskEntity updatedTask = TaskTestUtils.addTaskLocation(task);
+                assertThatPredicate(handler::canHandleTask).accepts(updatedTask);
+                handler.handleTask(updatedTask, callCtx); // this will schedule the batch deletion
               });
 
       // Wait for all async tasks to finish

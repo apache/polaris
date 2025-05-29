@@ -24,7 +24,9 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
@@ -51,6 +53,9 @@ import org.apache.iceberg.puffin.Blob;
 import org.apache.iceberg.puffin.Puffin;
 import org.apache.iceberg.puffin.PuffinWriter;
 import org.apache.iceberg.types.Types;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.TaskEntity;
 
 public class TaskTestUtils {
   static ManifestFile manifestFile(
@@ -196,5 +201,14 @@ public class TaskTestUtils {
         .path(statsLocation)
         .fileSizeInBytes(42L)
         .build();
+  }
+
+  public static TaskEntity addTaskLocation(TaskEntity task) {
+    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
+    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    return TaskEntity.of(
+        new PolarisBaseEntity.Builder(task)
+            .internalPropertiesAsMap(internalPropertiesAsMap)
+            .build());
   }
 }
