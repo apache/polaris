@@ -19,7 +19,7 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.extension.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
 public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -33,8 +33,8 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
-import org.apache.polaris.extension.persistence.relational.jdbc.DatasourceOperations.Operation;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

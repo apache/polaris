@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 
 /**
  * Used to wrap a ResultSet and to build a stream from the data it contains. This data structure

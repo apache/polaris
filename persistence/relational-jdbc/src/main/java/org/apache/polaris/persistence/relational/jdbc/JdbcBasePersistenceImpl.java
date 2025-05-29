@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
-import static org.apache.polaris.extension.persistence.relational.jdbc.QueryGenerator.*;
+import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.*;
 
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
@@ -57,10 +57,10 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEntity;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
