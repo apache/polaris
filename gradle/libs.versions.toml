@@ -92,7 +92,7 @@ spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
-testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.0" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
