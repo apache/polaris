@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -39,7 +39,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
-import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

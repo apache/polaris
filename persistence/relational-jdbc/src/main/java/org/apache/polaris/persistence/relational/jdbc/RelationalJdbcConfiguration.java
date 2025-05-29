@@ -16,25 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.relational.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
-import java.security.SecureRandom;
+import java.util.Optional;
 
-public class IdGenerator {
-  private static final IdGenerator idGenerator = new IdGenerator();
+public interface RelationalJdbcConfiguration {
+  // max retries before giving up
+  Optional<Integer> maxRetries();
 
-  public static IdGenerator getIdGenerator() {
-    return idGenerator;
-  }
+  // max retry duration
+  Optional<Long> maxDurationInMs();
 
-  private final SecureRandom secureRandom = new SecureRandom();
-  private static final long LONG_MAX_ID = 0x7fffffffffffffffL;
-
-  private IdGenerator() {}
-
-  public long nextId() {
-    // Make sure this is a positive number.
-    // conflicting ids don't get accepted and is enforced by table constraints.
-    return secureRandom.nextLong() & LONG_MAX_ID;
-  }
+  // initial delay
+  Optional<Long> initialDelayInMs();
 }
