@@ -595,6 +595,7 @@ public class CatalogHandlerUtils {
   }
 
   private LoadViewResponse viewResponse(View view, Set<String> authenticatedPrincipals) {
+    boolean isModified = false;
     ViewMetadata metadata = asBaseView(view).operations().current();
     ViewVersion version = metadata.currentVersion();
     List<ViewRepresentation> representations = version.representations();
@@ -602,6 +603,9 @@ public class CatalogHandlerUtils {
     for (ViewRepresentation viewRepresentation : representations) {
       if (viewRepresentation instanceof SQLViewRepresentation sqlView) {
         String modifiedSQL = rewriteIdentityFunctions(sqlView.sql(), authenticatedPrincipals);
+        if (!modifiedSQL.equals(sqlView.sql())) {
+          isModified = true;
+        }
         identityResolved.add(
             ImmutableSQLViewRepresentation.builder()
                 .sql(modifiedSQL)
@@ -619,8 +623,10 @@ public class CatalogHandlerUtils {
     try {
       Field f = clazz.getDeclaredField("versions");
       f.setAccessible(true);
-      // TODO: handle more than view versions.
-      f.set(metadata, List.of(resolvedViewVersion));
+      // TODO: handle more than 1 view versions.
+      if (isModified) {
+        f.set(metadata, List.of(resolvedViewVersion));
+      }
     } catch (NoSuchFieldException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }

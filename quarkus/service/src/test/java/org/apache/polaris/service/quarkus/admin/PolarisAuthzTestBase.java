@@ -175,7 +175,9 @@ public abstract class PolarisAuthzTestBase {
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
   protected static final String VIEW_QUERY_DYNAMIC =
-      String.format("SELECT * from ns1.layer1_table where is_principal_role('%s') OR IS_MEMBER()", PRINCIPAL_ROLE1);
+      String.format(
+          "SELECT * from ns1.layer1_table where is_principal_role('%s') OR IS_MEMBER()",
+          PRINCIPAL_ROLE1);
 
   public static final Schema SCHEMA =
       new Schema(
