@@ -87,16 +87,3 @@ val distributionElements by
 artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
-
-// Configuration to expose LICENSE and NOTICE files
-val distributionDocs by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
-
-// Add LICENSE and NOTICE as artifacts
-artifacts {
-  add("distributionDocs", file("distribution/LICENSE"))
-  add("distributionDocs", file("distribution/NOTICE"))
-}
