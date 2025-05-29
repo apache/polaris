@@ -73,6 +73,7 @@ junit-bom = { module = "org.junit:junit-bom", version = "5.12.2" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
+microprofile-config-api = {module = "org.eclipse.microprofile.config:microprofile-config-api", version = "3.0.3"}
 mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.18.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.50.0" }

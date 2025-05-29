@@ -34,6 +34,7 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
 
   implementation(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.microprofile.config.api) // @ConfigMapping
 
   testImplementation(libs.mockito.junit.jupiter)
 

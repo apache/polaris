@@ -20,28 +20,34 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class EclipseLinkProductionReadinessChecks {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(EclipseLinkProductionReadinessChecks.class);
 
   @Produces
-  public ProductionReadinessCheck checkJdbcUrl(
-      EclipseLinkConfiguration eclipseLinkConfiguration,
-      @ConfigProperty(name = "polaris.persistence.type") String persistenceType) {
+  public ProductionReadinessCheck checkEclipseLink(
+      @ConfigProperty(name = "polaris.persistence.type") String persistenceType,
+      @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories,
+      EclipseLinkConfiguration eclipseLinkConfiguration) {
     // This check should only be applicable when persistence uses EclipseLink.
-    if (!("eclipse-link".equalsIgnoreCase(persistenceType))) {
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        metaStoreManagerFactories.select(Identifier.Literal.of(persistenceType)).get();
+    if (!(metaStoreManagerFactory instanceof EclipseLinkPolarisMetaStoreManagerFactory)) {
       return ProductionReadinessCheck.OK;
     }
 
