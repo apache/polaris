@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.1-python3
+FROM docker.io/apache/spark:3.5.6-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
