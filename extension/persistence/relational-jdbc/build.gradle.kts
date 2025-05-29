@@ -34,10 +34,8 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
 
   implementation(libs.smallrye.common.annotation) // @Identifier
-  compileOnly(libs.microprofile.config.api) // @ConfigMapping
 
   testImplementation(libs.mockito.junit.jupiter)
-
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 }
