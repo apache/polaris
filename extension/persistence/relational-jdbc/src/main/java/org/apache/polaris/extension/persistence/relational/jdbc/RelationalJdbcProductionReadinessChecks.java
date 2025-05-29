@@ -19,10 +19,7 @@
 
 package org.apache.polaris.extension.persistence.relational.jdbc;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.util.Optional;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
@@ -34,11 +31,9 @@ public class RelationalJdbcProductionReadinessChecks {
   @Produces
   public ProductionReadinessCheck checkRelationalJdbc(
       @ConfigProperty(name = "quarkus.datasource.jdbc.url") Optional<String> jdbcUrl,
-      @ConfigProperty(name = "polaris.persistence.type") String persistenceType,
-      @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     // This check should only be applicable when persistence uses RelationalJdbc.
-    if (!(metaStoreManagerFactories.select(Identifier.Literal.of(persistenceType)).get()
-        instanceof JdbcMetaStoreManagerFactory)) {
+    if (!(metaStoreManagerFactory instanceof JdbcMetaStoreManagerFactory)) {
       return ProductionReadinessCheck.OK;
     }
 
