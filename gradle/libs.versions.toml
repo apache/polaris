@@ -36,7 +36,7 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
-antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
+antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.13.2" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.50" }
