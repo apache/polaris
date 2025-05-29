@@ -16,10 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.quarkus.common.config.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import java.util.Optional;
 
-@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface RelationalJdbcConfiguration {
+  // max retries before giving up
+  Optional<Integer> maxRetries();
+
+  // max retry duration
+  Optional<Long> maxDurationInMs();
+
+  // initial delay
+  Optional<Long> initialDelayInMs();
+}

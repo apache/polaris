@@ -16,10 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.quarkus.common.config.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import java.security.SecureRandom;
 
-@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public class IdGenerator {
+  private static final IdGenerator idGenerator = new IdGenerator();
+
+  public static IdGenerator getIdGenerator() {
+    return idGenerator;
+  }
+
+  private final SecureRandom secureRandom = new SecureRandom();
+  private static final long LONG_MAX_ID = 0x7fffffffffffffffL;
+
+  private IdGenerator() {}
+
+  public long nextId() {
+    // Make sure this is a positive number.
+    // conflicting ids don't get accepted and is enforced by table constraints.
+    return secureRandom.nextLong() & LONG_MAX_ID;
+  }
+}

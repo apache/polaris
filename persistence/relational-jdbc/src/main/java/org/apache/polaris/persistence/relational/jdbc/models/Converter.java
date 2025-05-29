@@ -16,10 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.quarkus.common.config.jdbc;
+package org.apache.polaris.persistence.relational.jdbc.models;
 
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
 
-@ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface Converter<T> {
+  /**
+   * Converts a ResultSet to model.
+   *
+   * @param rs : ResultSet from JDBC.
+   * @return the corresponding business entity
+   * @throws SQLException : Exception while fetching from ResultSet.
+   */
+  T fromResultSet(ResultSet rs) throws SQLException;
+
+  /**
+   * Convert a model into a Map with keys as snake case names, where as values as values of member
+   * of model obj.
+   */
+  Map<String, Object> toMap();
+}
