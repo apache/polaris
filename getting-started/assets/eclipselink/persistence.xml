@@ -23,14 +23,14 @@
 
   <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>org.apache.polaris.jpa.models.ModelEntity</class>
-    <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
-    <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
-    <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
-    <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
-    <class>org.apache.polaris.jpa.models.ModelPolicyMappingRecord</class>
-    <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
-    <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntity</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityActive</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityChangeTracking</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityDropped</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPolicyMappingRecord</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPrincipalSecrets</class>
+    <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://postgres:5432/{realm}"/>
