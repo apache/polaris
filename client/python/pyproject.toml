@@ -17,74 +17,38 @@
 # under the License.
 #
 
-[tool.poetry]
-name = "polaris.catalog"
+[project]
+name = "polaris"
 version = "1.0.0"
-description = "Apache Iceberg REST Catalog API"
-authors = ["OpenAPI Generator Community <team@openapitools.org>"]
-license = "Apache 2.0"
+description = "Apache Polaris Management Service"
+authors = [
+    {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
+]
 readme = "README.md"
-repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
-keywords = ["OpenAPI", "OpenAPI-Generator", "Apache Iceberg REST Catalog API"]
-include = ["polaris.catalog/py.typed"]
+requires-python = ">=3.9,<4.0"
+license = "Apache-2.0"
+keywords = ["Polaris", "Polaris Management Service"]
+dynamic = ["classifiers"]
+dependencies = [
+    "urllib3>=1.25.3,<2.0",
+    "python-dateutil>=2.8.2",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.7.1",
+    "boto3==1.38.24",
+]
 
-[tool.poetry.dependencies]
-python = "^3.7"
+[project.urls]
+homepage = "https://polaris.apache.org/"
+repository = "https://github.com/apache/polaris/"
 
-urllib3 = ">= 1.25.3"
-python-dateutil = ">=2.8.2"
-pydantic = ">=2"
-typing-extensions = ">=4.7.1"
+[tool.poetry]
+requires-poetry = ">=2.1"
+packages = [{ include = "polaris" }]
 
-[tool.poetry.dev-dependencies]
-pytest = ">=7.2.1"
-tox = ">=3.9.0"
+[tool.poetry.group.test.dependencies]
 flake8 = ">=4.0.0"
-types-python-dateutil = ">=2.8.19.14"
-mypy = "1.4.1"
-
+pytest = ">=7.2.1"
 
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.pylint.'MESSAGES CONTROL']
-extension-pkg-whitelist = "pydantic"
-
-[tool.mypy]
-files = [
-  "polaris.catalog",
-  #"test",  # auto-generated tests
-  "tests", # hand-written tests
-]
-# TODO: enable "strict" once all these individual checks are passing
-# strict = true
-
-# List from: https://mypy.readthedocs.io/en/stable/existing_code.html#introduce-stricter-options
-warn_unused_configs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-
-## Getting these passing should be easy
-strict_equality = true
-strict_concatenate = true
-
-## Strongly recommend enabling this one as soon as you can
-check_untyped_defs = true
-
-## These shouldn't be too much additional work, but may be tricky to
-## get passing if you use a lot of untyped libraries
-disallow_subclassing_any = true
-disallow_untyped_decorators = true
-disallow_any_generics = true
-
-### These next few are various gradations of forcing use of type annotations
-#disallow_untyped_calls = true
-#disallow_incomplete_defs = true
-#disallow_untyped_defs = true
-#
-### This one isn't too hard to get passing, but return on investment is lower
-#no_implicit_reexport = true
-#
-### This one can be tricky to get passing if you use a lot of untyped libraries
-#warn_return_any = true
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
