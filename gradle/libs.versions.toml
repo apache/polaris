@@ -24,7 +24,7 @@ quarkus = "3.21.4"
 immutables = "2.10.1"
 picocli = "4.7.7"
 scala212 = "2.12.19"
-spark35 = "3.5.5"
+spark35 = "3.5.6"
 slf4j = "2.0.17"
 swagger = "1.6.16"
 
