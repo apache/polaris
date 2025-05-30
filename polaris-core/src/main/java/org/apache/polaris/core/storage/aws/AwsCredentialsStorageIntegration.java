@@ -64,7 +64,7 @@ public class AwsCredentialsStorageIntegration
                 .roleSessionName("PolarisAwsCredentialsStorageIntegration")
                 .policy(
                     policyString(
-                            storageConfig.getRoleARN(),
+                            storageConfig,
                             allowListOperation,
                             allowedReadLocations,
                             allowedWriteLocations)
@@ -86,9 +86,11 @@ public class AwsCredentialsStorageIntegration
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
-  // TODO - add KMS key access
   private IamPolicy policyString(
-      String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
+      AwsStorageConfigurationInfo awsStorageConfigurationInfo,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -98,7 +100,8 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = getArnPrefixFor(roleArn);
+    String roleARN = awsStorageConfigurationInfo.getRoleARN();
+    String arnPrefix = getArnPrefixFor(roleARN);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -161,7 +164,28 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+    policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
+
+    policyBuilder.addStatement(
+        IamStatement.builder()
+            .effect(IamEffect.ALLOW)
+            .addAction("kms:GenerateDataKey")
+            .addAction("kms:Decrypt")
+            .addAction("kms:DescribeKey")
+            .addResource("*")
+            .addCondition(
+                IamConditionOperator.STRING_EQUALS,
+                "aws:PrincipalArn",
+                awsStorageConfigurationInfo.getRoleARN())
+            .addCondition(
+                IamConditionOperator.STRING_LIKE,
+                "kms:EncryptionContext:aws:s3:arn",
+                getArnPrefixFor(roleARN)
+                    + StorageUtil.getBucket(
+                        URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
+                    + "*")
+            .build());
+    return policyBuilder.build();
   }
 
   private String getArnPrefixFor(String roleArn) {
