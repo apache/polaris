@@ -31,34 +31,22 @@
 """  # noqa: E501
 
 
-from __future__ import annotations
-import json
-from enum import Enum
-from typing_extensions import Self
+import unittest
 
+from polaris.management.models.policy_privilege import PolicyPrivilege
 
-class TablePrivilege(str, Enum):
-    """
-    TablePrivilege
-    """
+class TestPolicyPrivilege(unittest.TestCase):
+    """PolicyPrivilege unit test stubs"""
 
-    """
-    allowed enum values
-    """
-    CATALOG_MANAGE_ACCESS = 'CATALOG_MANAGE_ACCESS'
-    TABLE_DROP = 'TABLE_DROP'
-    TABLE_LIST = 'TABLE_LIST'
-    TABLE_READ_PROPERTIES = 'TABLE_READ_PROPERTIES'
-    TABLE_WRITE_PROPERTIES = 'TABLE_WRITE_PROPERTIES'
-    TABLE_READ_DATA = 'TABLE_READ_DATA'
-    TABLE_WRITE_DATA = 'TABLE_WRITE_DATA'
-    TABLE_FULL_METADATA = 'TABLE_FULL_METADATA'
-    TABLE_ATTACH_POLICY = 'TABLE_ATTACH_POLICY'
-    TABLE_DETACH_POLICY = 'TABLE_DETACH_POLICY'
+    def setUp(self):
+        pass
 
-    @classmethod
-    def from_json(cls, json_str: str) -> Self:
-        """Create an instance of TablePrivilege from a JSON string"""
-        return cls(json.loads(json_str))
+    def tearDown(self):
+        pass
 
+    def testPolicyPrivilege(self):
+        """Test PolicyPrivilege"""
+        # inst = PolicyPrivilege()
 
+if __name__ == '__main__':
+    unittest.main()

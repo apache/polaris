@@ -33,10 +33,10 @@
 
 import unittest
 
-from polaris.management.models.external_catalog import ExternalCatalog
+from polaris.management.models.service_identity_info import ServiceIdentityInfo
 
-class TestExternalCatalog(unittest.TestCase):
-    """ExternalCatalog unit test stubs"""
+class TestServiceIdentityInfo(unittest.TestCase):
+    """ServiceIdentityInfo unit test stubs"""
 
     def setUp(self):
         pass
@@ -44,31 +44,26 @@ class TestExternalCatalog(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ExternalCatalog:
-        """Test ExternalCatalog
+    def make_instance(self, include_optional) -> ServiceIdentityInfo:
+        """Test ServiceIdentityInfo
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ExternalCatalog`
+        # uncomment below to create an instance of `ServiceIdentityInfo`
         """
-        model = ExternalCatalog()
+        model = ServiceIdentityInfo()
         if include_optional:
-            return ExternalCatalog(
-                connection_config_info = polaris.management.models.connection_config_info.ConnectionConfigInfo(
-                    connection_type = 'ICEBERG_REST', 
-                    uri = '', 
-                    authentication_parameters = polaris.management.models.authentication_parameters.AuthenticationParameters(
-                        authentication_type = 'OAUTH', ), 
-                    service_identity = polaris.management.models.service_identity_info.ServiceIdentityInfo(
-                        identity_type = 'AWS_IAM', ), )
+            return ServiceIdentityInfo(
+                identity_type = 'AWS_IAM'
             )
         else:
-            return ExternalCatalog(
+            return ServiceIdentityInfo(
+                identity_type = 'AWS_IAM',
         )
         """
 
-    def testExternalCatalog(self):
-        """Test ExternalCatalog"""
+    def testServiceIdentityInfo(self):
+        """Test ServiceIdentityInfo"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

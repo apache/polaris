@@ -18,32 +18,33 @@
  under the License.
 
 -->
-# AuthenticationParameters
+# PolicyGrant
 
-Authentication-specific information for a connection
 
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**authentication_type** | **str** | The type of authentication to use when connecting to the remote rest service | 
+**namespace** | **List[str]** |  | 
+**policy_name** | **str** |  | 
+**privilege** | [**PolicyPrivilege**](PolicyPrivilege.md) |  | 
 
 ## Example
 
 ```python
-from polaris.management.models.authentication_parameters import AuthenticationParameters
+from polaris.management.models.policy_grant import PolicyGrant
 
 # TODO update the JSON string below
 json = "{}"
-# create an instance of AuthenticationParameters from a JSON string
-authentication_parameters_instance = AuthenticationParameters.from_json(json)
+# create an instance of PolicyGrant from a JSON string
+policy_grant_instance = PolicyGrant.from_json(json)
 # print the JSON string representation of the object
-print(AuthenticationParameters.to_json())
+print(PolicyGrant.to_json())
 
 # convert the object into a dict
-authentication_parameters_dict = authentication_parameters_instance.to_dict()
-# create an instance of AuthenticationParameters from a dict
-authentication_parameters_from_dict = AuthenticationParameters.from_dict(authentication_parameters_dict)
+policy_grant_dict = policy_grant_instance.to_dict()
+# create an instance of PolicyGrant from a dict
+policy_grant_from_dict = PolicyGrant.from_dict(policy_grant_dict)
 ```
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

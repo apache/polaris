@@ -73,6 +73,22 @@
 
 * `VIEW_FULL_METADATA` (value: `'VIEW_FULL_METADATA'`)
 
+* `POLICY_CREATE` (value: `'POLICY_CREATE'`)
+
+* `POLICY_WRITE` (value: `'POLICY_WRITE'`)
+
+* `POLICY_READ` (value: `'POLICY_READ'`)
+
+* `POLICY_DROP` (value: `'POLICY_DROP'`)
+
+* `POLICY_LIST` (value: `'POLICY_LIST'`)
+
+* `POLICY_FULL_METADATA` (value: `'POLICY_FULL_METADATA'`)
+
+* `CATALOG_ATTACH_POLICY` (value: `'CATALOG_ATTACH_POLICY'`)
+
+* `CATALOG_DETACH_POLICY` (value: `'CATALOG_DETACH_POLICY'`)
+
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
 

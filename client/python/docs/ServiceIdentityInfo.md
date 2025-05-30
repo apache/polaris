@@ -18,32 +18,32 @@
  under the License.
 
 -->
-# AuthenticationParameters
+# ServiceIdentityInfo
 
-Authentication-specific information for a connection
+Identity metadata for the Polaris service used to access external resources.
 
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**authentication_type** | **str** | The type of authentication to use when connecting to the remote rest service | 
+**identity_type** | **str** | The type of identity used to access external resources | 
 
 ## Example
 
 ```python
-from polaris.management.models.authentication_parameters import AuthenticationParameters
+from polaris.management.models.service_identity_info import ServiceIdentityInfo
 
 # TODO update the JSON string below
 json = "{}"
-# create an instance of AuthenticationParameters from a JSON string
-authentication_parameters_instance = AuthenticationParameters.from_json(json)
+# create an instance of ServiceIdentityInfo from a JSON string
+service_identity_info_instance = ServiceIdentityInfo.from_json(json)
 # print the JSON string representation of the object
-print(AuthenticationParameters.to_json())
+print(ServiceIdentityInfo.to_json())
 
 # convert the object into a dict
-authentication_parameters_dict = authentication_parameters_instance.to_dict()
-# create an instance of AuthenticationParameters from a dict
-authentication_parameters_from_dict = AuthenticationParameters.from_dict(authentication_parameters_dict)
+service_identity_info_dict = service_identity_info_instance.to_dict()
+# create an instance of ServiceIdentityInfo from a dict
+service_identity_info_from_dict = ServiceIdentityInfo.from_dict(service_identity_info_dict)
 ```
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

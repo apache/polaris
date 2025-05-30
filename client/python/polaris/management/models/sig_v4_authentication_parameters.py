@@ -36,30 +36,22 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
+from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
+from polaris.management.models.authentication_parameters import AuthenticationParameters
 from typing import Optional, Set
 from typing_extensions import Self
 
-class PrincipalRole(BaseModel):
+class SigV4AuthenticationParameters(AuthenticationParameters):
     """
-    PrincipalRole
+    AWS Signature Version 4 authentication
     """ # noqa: E501
-    name: Annotated[str, Field(min_length=1, strict=True, max_length=256)] = Field(description="The name of the role")
-    federated: Optional[StrictBool] = Field(default=False, description="Whether the principal role is a federated role (that is, managed by an external identity provider)")
-    properties: Optional[Dict[str, StrictStr]] = None
-    create_timestamp: Optional[StrictInt] = Field(default=None, alias="createTimestamp")
-    last_update_timestamp: Optional[StrictInt] = Field(default=None, alias="lastUpdateTimestamp")
-    entity_version: Optional[StrictInt] = Field(default=None, description="The version of the principal role object used to determine if the principal role metadata has changed", alias="entityVersion")
-    __properties: ClassVar[List[str]] = ["name", "federated", "properties", "createTimestamp", "lastUpdateTimestamp", "entityVersion"]
-
-    @field_validator('name')
-    def name_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not re.match(r"^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$", value):
-            raise ValueError(r"must validate the regular expression /^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$/")
-        return value
+    role_arn: StrictStr = Field(description="The aws IAM role arn assumed by polaris userArn when signing requests", alias="roleArn")
+    role_session_name: Optional[StrictStr] = Field(default=None, description="The role session name to be used by the SigV4 protocol for signing requests", alias="roleSessionName")
+    external_id: Optional[StrictStr] = Field(default=None, description="An optional external id used to establish a trust relationship with AWS in the trust policy", alias="externalId")
+    signing_region: StrictStr = Field(description="Region to be used by the SigV4 protocol for signing requests", alias="signingRegion")
+    signing_name: Optional[StrictStr] = Field(default=None, description="The service name to be used by the SigV4 protocol for signing requests, the default signing name is \"execute-api\" is if not provided", alias="signingName")
+    __properties: ClassVar[List[str]] = ["authenticationType"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -79,7 +71,7 @@ class PrincipalRole(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of PrincipalRole from a JSON string"""
+        """Create an instance of SigV4AuthenticationParameters from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -104,7 +96,7 @@ class PrincipalRole(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of PrincipalRole from a dict"""
+        """Create an instance of SigV4AuthenticationParameters from a dict"""
         if obj is None:
             return None
 
@@ -112,12 +104,7 @@ class PrincipalRole(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "name": obj.get("name"),
-            "federated": obj.get("federated") if obj.get("federated") is not None else False,
-            "properties": obj.get("properties"),
-            "createTimestamp": obj.get("createTimestamp"),
-            "lastUpdateTimestamp": obj.get("lastUpdateTimestamp"),
-            "entityVersion": obj.get("entityVersion")
+            "authenticationType": obj.get("authenticationType")
         })
         return _obj
 

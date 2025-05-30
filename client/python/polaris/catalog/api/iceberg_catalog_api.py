@@ -4875,6 +4875,9 @@ class IcebergCatalogAPI:
     @validate_call
     def load_table(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
@@ -4895,6 +4898,12 @@ class IcebergCatalogAPI:
 
         Load a table from the catalog.  The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.  The response also contains the table's full metadata, matching the table metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key \"token\" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
         :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
@@ -4924,6 +4933,9 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._load_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             if_none_match=if_none_match,
             snapshots=snapshots,
@@ -4958,6 +4970,9 @@ class IcebergCatalogAPI:
     @validate_call
     def load_table_with_http_info(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
@@ -4978,6 +4993,12 @@ class IcebergCatalogAPI:
 
         Load a table from the catalog.  The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.  The response also contains the table's full metadata, matching the table metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key \"token\" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
         :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
@@ -5007,6 +5028,9 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._load_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             if_none_match=if_none_match,
             snapshots=snapshots,
@@ -5041,6 +5065,9 @@ class IcebergCatalogAPI:
     @validate_call
     def load_table_without_preload_content(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
+        table: Annotated[StrictStr, Field(description="A table name")],
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         if_none_match: Annotated[Optional[StrictStr], Field(description="An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.")] = None,
         snapshots: Annotated[Optional[StrictStr], Field(description="The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags. Default if no param is provided is `all`.")] = None,
@@ -5061,6 +5088,12 @@ class IcebergCatalogAPI:
 
         Load a table from the catalog.  The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.  The response also contains the table's full metadata, matching the table metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key \"token\" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
+        :param table: A table name (required)
+        :type table: str
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
         :type x_iceberg_access_delegation: str
         :param if_none_match: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
@@ -5090,6 +5123,9 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._load_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
+            table=table,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             if_none_match=if_none_match,
             snapshots=snapshots,
@@ -5119,6 +5155,9 @@ class IcebergCatalogAPI:
 
     def _load_table_serialize(
         self,
+        prefix,
+        namespace,
+        table,
         x_iceberg_access_delegation,
         if_none_match,
         snapshots,
@@ -5141,6 +5180,12 @@ class IcebergCatalogAPI:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
+        if table is not None:
+            _path_params['table'] = table
         # process the query parameters
         if snapshots is not None:
             

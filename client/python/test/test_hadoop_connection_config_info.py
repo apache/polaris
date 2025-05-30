@@ -33,10 +33,10 @@
 
 import unittest
 
-from polaris.management.models.external_catalog import ExternalCatalog
+from polaris.management.models.hadoop_connection_config_info import HadoopConnectionConfigInfo
 
-class TestExternalCatalog(unittest.TestCase):
-    """ExternalCatalog unit test stubs"""
+class TestHadoopConnectionConfigInfo(unittest.TestCase):
+    """HadoopConnectionConfigInfo unit test stubs"""
 
     def setUp(self):
         pass
@@ -44,31 +44,25 @@ class TestExternalCatalog(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ExternalCatalog:
-        """Test ExternalCatalog
+    def make_instance(self, include_optional) -> HadoopConnectionConfigInfo:
+        """Test HadoopConnectionConfigInfo
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ExternalCatalog`
+        # uncomment below to create an instance of `HadoopConnectionConfigInfo`
         """
-        model = ExternalCatalog()
+        model = HadoopConnectionConfigInfo()
         if include_optional:
-            return ExternalCatalog(
-                connection_config_info = polaris.management.models.connection_config_info.ConnectionConfigInfo(
-                    connection_type = 'ICEBERG_REST', 
-                    uri = '', 
-                    authentication_parameters = polaris.management.models.authentication_parameters.AuthenticationParameters(
-                        authentication_type = 'OAUTH', ), 
-                    service_identity = polaris.management.models.service_identity_info.ServiceIdentityInfo(
-                        identity_type = 'AWS_IAM', ), )
+            return HadoopConnectionConfigInfo(
+                warehouse = ''
             )
         else:
-            return ExternalCatalog(
+            return HadoopConnectionConfigInfo(
         )
         """
 
-    def testExternalCatalog(self):
-        """Test ExternalCatalog"""
+    def testHadoopConnectionConfigInfo(self):
+        """Test HadoopConnectionConfigInfo"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

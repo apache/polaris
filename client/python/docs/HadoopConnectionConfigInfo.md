@@ -18,32 +18,32 @@
  under the License.
 
 -->
-# AuthenticationParameters
+# HadoopConnectionConfigInfo
 
-Authentication-specific information for a connection
+Configuration necessary for connecting to a Hadoop Catalog
 
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**authentication_type** | **str** | The type of authentication to use when connecting to the remote rest service | 
+**warehouse** | **str** | The file path to where this catalog should store tables | [optional] 
 
 ## Example
 
 ```python
-from polaris.management.models.authentication_parameters import AuthenticationParameters
+from polaris.management.models.hadoop_connection_config_info import HadoopConnectionConfigInfo
 
 # TODO update the JSON string below
 json = "{}"
-# create an instance of AuthenticationParameters from a JSON string
-authentication_parameters_instance = AuthenticationParameters.from_json(json)
+# create an instance of HadoopConnectionConfigInfo from a JSON string
+hadoop_connection_config_info_instance = HadoopConnectionConfigInfo.from_json(json)
 # print the JSON string representation of the object
-print(AuthenticationParameters.to_json())
+print(HadoopConnectionConfigInfo.to_json())
 
 # convert the object into a dict
-authentication_parameters_dict = authentication_parameters_instance.to_dict()
-# create an instance of AuthenticationParameters from a dict
-authentication_parameters_from_dict = AuthenticationParameters.from_dict(authentication_parameters_dict)
+hadoop_connection_config_info_dict = hadoop_connection_config_info_instance.to_dict()
+# create an instance of HadoopConnectionConfigInfo from a dict
+hadoop_connection_config_info_from_dict = HadoopConnectionConfigInfo.from_dict(hadoop_connection_config_info_dict)
 ```
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -18,30 +18,26 @@
  under the License.
 
 -->
-# TablePrivilege
+# PolicyPrivilege
 
 
 ## Enum
 
 * `CATALOG_MANAGE_ACCESS` (value: `'CATALOG_MANAGE_ACCESS'`)
 
-* `TABLE_DROP` (value: `'TABLE_DROP'`)
+* `POLICY_READ` (value: `'POLICY_READ'`)
 
-* `TABLE_LIST` (value: `'TABLE_LIST'`)
+* `POLICY_DROP` (value: `'POLICY_DROP'`)
 
-* `TABLE_READ_PROPERTIES` (value: `'TABLE_READ_PROPERTIES'`)
+* `POLICY_WRITE` (value: `'POLICY_WRITE'`)
 
-* `TABLE_WRITE_PROPERTIES` (value: `'TABLE_WRITE_PROPERTIES'`)
+* `POLICY_LIST` (value: `'POLICY_LIST'`)
 
-* `TABLE_READ_DATA` (value: `'TABLE_READ_DATA'`)
+* `POLICY_FULL_METADATA` (value: `'POLICY_FULL_METADATA'`)
 
-* `TABLE_WRITE_DATA` (value: `'TABLE_WRITE_DATA'`)
+* `POLICY_ATTACH` (value: `'POLICY_ATTACH'`)
 
-* `TABLE_FULL_METADATA` (value: `'TABLE_FULL_METADATA'`)
-
-* `TABLE_ATTACH_POLICY` (value: `'TABLE_ATTACH_POLICY'`)
-
-* `TABLE_DETACH_POLICY` (value: `'TABLE_DETACH_POLICY'`)
+* `POLICY_DETACH` (value: `'POLICY_DETACH'`)
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -33,10 +33,10 @@
 
 import unittest
 
-from polaris.management.models.external_catalog import ExternalCatalog
+from polaris.management.models.sig_v4_authentication_parameters import SigV4AuthenticationParameters
 
-class TestExternalCatalog(unittest.TestCase):
-    """ExternalCatalog unit test stubs"""
+class TestSigV4AuthenticationParameters(unittest.TestCase):
+    """SigV4AuthenticationParameters unit test stubs"""
 
     def setUp(self):
         pass
@@ -44,31 +44,31 @@ class TestExternalCatalog(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ExternalCatalog:
-        """Test ExternalCatalog
+    def make_instance(self, include_optional) -> SigV4AuthenticationParameters:
+        """Test SigV4AuthenticationParameters
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ExternalCatalog`
+        # uncomment below to create an instance of `SigV4AuthenticationParameters`
         """
-        model = ExternalCatalog()
+        model = SigV4AuthenticationParameters()
         if include_optional:
-            return ExternalCatalog(
-                connection_config_info = polaris.management.models.connection_config_info.ConnectionConfigInfo(
-                    connection_type = 'ICEBERG_REST', 
-                    uri = '', 
-                    authentication_parameters = polaris.management.models.authentication_parameters.AuthenticationParameters(
-                        authentication_type = 'OAUTH', ), 
-                    service_identity = polaris.management.models.service_identity_info.ServiceIdentityInfo(
-                        identity_type = 'AWS_IAM', ), )
+            return SigV4AuthenticationParameters(
+                role_arn = 'arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access',
+                role_session_name = 'polaris-remote-catalog-access',
+                external_id = 'external-id-1234',
+                signing_region = 'us-west-2',
+                signing_name = 'glue'
             )
         else:
-            return ExternalCatalog(
+            return SigV4AuthenticationParameters(
+                role_arn = 'arn:aws:iam::123456789001:role/role-that-has-remote-catalog-access',
+                signing_region = 'us-west-2',
         )
         """
 
-    def testExternalCatalog(self):
-        """Test ExternalCatalog"""
+    def testSigV4AuthenticationParameters(self):
+        """Test SigV4AuthenticationParameters"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

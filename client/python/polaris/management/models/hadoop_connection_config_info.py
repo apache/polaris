@@ -36,30 +36,20 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
+from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
+from polaris.management.models.authentication_parameters import AuthenticationParameters
+from polaris.management.models.connection_config_info import ConnectionConfigInfo
+from polaris.management.models.service_identity_info import ServiceIdentityInfo
 from typing import Optional, Set
 from typing_extensions import Self
 
-class PrincipalRole(BaseModel):
+class HadoopConnectionConfigInfo(ConnectionConfigInfo):
     """
-    PrincipalRole
+    Configuration necessary for connecting to a Hadoop Catalog
     """ # noqa: E501
-    name: Annotated[str, Field(min_length=1, strict=True, max_length=256)] = Field(description="The name of the role")
-    federated: Optional[StrictBool] = Field(default=False, description="Whether the principal role is a federated role (that is, managed by an external identity provider)")
-    properties: Optional[Dict[str, StrictStr]] = None
-    create_timestamp: Optional[StrictInt] = Field(default=None, alias="createTimestamp")
-    last_update_timestamp: Optional[StrictInt] = Field(default=None, alias="lastUpdateTimestamp")
-    entity_version: Optional[StrictInt] = Field(default=None, description="The version of the principal role object used to determine if the principal role metadata has changed", alias="entityVersion")
-    __properties: ClassVar[List[str]] = ["name", "federated", "properties", "createTimestamp", "lastUpdateTimestamp", "entityVersion"]
-
-    @field_validator('name')
-    def name_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not re.match(r"^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$", value):
-            raise ValueError(r"must validate the regular expression /^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$/")
-        return value
+    warehouse: Optional[StrictStr] = Field(default=None, description="The file path to where this catalog should store tables")
+    __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters", "serviceIdentity"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -79,7 +69,7 @@ class PrincipalRole(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of PrincipalRole from a JSON string"""
+        """Create an instance of HadoopConnectionConfigInfo from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -100,11 +90,17 @@ class PrincipalRole(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of authentication_parameters
+        if self.authentication_parameters:
+            _dict['authenticationParameters'] = self.authentication_parameters.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of service_identity
+        if self.service_identity:
+            _dict['serviceIdentity'] = self.service_identity.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of PrincipalRole from a dict"""
+        """Create an instance of HadoopConnectionConfigInfo from a dict"""
         if obj is None:
             return None
 
@@ -112,12 +108,10 @@ class PrincipalRole(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "name": obj.get("name"),
-            "federated": obj.get("federated") if obj.get("federated") is not None else False,
-            "properties": obj.get("properties"),
-            "createTimestamp": obj.get("createTimestamp"),
-            "lastUpdateTimestamp": obj.get("lastUpdateTimestamp"),
-            "entityVersion": obj.get("entityVersion")
+            "connectionType": obj.get("connectionType"),
+            "uri": obj.get("uri"),
+            "authenticationParameters": AuthenticationParameters.from_dict(obj["authenticationParameters"]) if obj.get("authenticationParameters") is not None else None,
+            "serviceIdentity": ServiceIdentityInfo.from_dict(obj["serviceIdentity"]) if obj.get("serviceIdentity") is not None else None
         })
         return _obj
 
