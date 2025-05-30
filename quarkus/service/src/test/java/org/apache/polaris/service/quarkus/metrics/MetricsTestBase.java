@@ -25,7 +25,9 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestHelper;
 import org.apache.polaris.service.quarkus.test.TestEnvironment;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestEnvironmentExtension.class)
@@ -69,12 +72,26 @@ public abstract class MetricsTestBase {
     registry.clear();
   }
 
+  private Map<String, MetricFamily> fetchMetrics(String endpoint) {
+    AtomicReference<Map<String, MetricFamily>> value = new AtomicReference<>();
+    Awaitility.await()
+        .atMost(Duration.ofMinutes(2))
+        .untilAsserted(
+            () -> {
+              value.set(
+                  TestMetricsUtil.fetchMetrics(
+                      fixture.client, testEnv.baseManagementUri(), endpoint));
+              assertThat(value.get()).containsKey(API_METRIC_NAME);
+              assertThat(value.get()).containsKey(HTTP_METRIC_NAME);
+            });
+    return value.get();
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
   public void testMetricsEmittedOnSuccessfulRequest(String endpoint) {
     sendSuccessfulRequest();
-    Map<String, MetricFamily> allMetrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
+    Map<String, MetricFamily> allMetrics = fetchMetrics(endpoint);
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
@@ -125,8 +142,7 @@ public abstract class MetricsTestBase {
   @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
   public void testMetricsEmittedOnFailedRequest(String endpoint) {
     sendFailingRequest();
-    Map<String, MetricFamily> allMetrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
+    Map<String, MetricFamily> allMetrics = fetchMetrics(endpoint);
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
