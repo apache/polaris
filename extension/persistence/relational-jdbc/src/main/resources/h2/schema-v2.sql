@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS entities (
     properties TEXT NOT NULL DEFAULT '{}',
     internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
-    LOCATION TEXT,
+    location TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );

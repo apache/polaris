@@ -76,6 +76,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final String realmId;
   private final int version;
 
+  // The max number of components a location can have before the optimized sibling check is not used
+  private static final int MAX_LOCATION_COMPONENTS = 40;
+
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
@@ -582,6 +585,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     if (this.version < 2) {
       return Optional.empty();
     }
+    if (location.chars().filter(ch -> ch == '/').count() > MAX_LOCATION_COMPONENTS) {
+      return Optional.empty();
+    }
+
     String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());

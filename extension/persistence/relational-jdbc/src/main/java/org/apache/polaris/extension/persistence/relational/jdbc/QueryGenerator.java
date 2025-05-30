@@ -230,8 +230,8 @@ public class QueryGenerator {
     // TODO harden against realmId in this method and others
     return query
         + String.format(
-            " FROM POLARIS_SCHEMA.entities WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2%s)",
-            realmId, parentId, locationClauseBuilder);
+            " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2%s)",
+            getTableName(ModelEntity.class), realmId, parentId, locationClauseBuilder);
   }
 
   @VisibleForTesting

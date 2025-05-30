@@ -357,9 +357,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     if (model.location != null) {
       if (subType == PolarisEntitySubType.ICEBERG_TABLE
           || entityType == PolarisEntityType.NAMESPACE) {
-        HashMap<String, String> properties = new HashMap<>(entity.getPropertiesAsMap());
-        properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
-        entity.setPropertiesAsMap(properties);
+        entity.addProperty(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
       }
     }
 
