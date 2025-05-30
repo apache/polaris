@@ -34,6 +34,7 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
+  implementation("com.github.jsqlparser:jsqlparser:4.6")
 
   implementation(libs.hadoop.common) {
     exclude("org.slf4j", "slf4j-reload4j")
