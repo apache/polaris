@@ -1165,7 +1165,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
     :param reader_catalog_client:
     :return:
     """
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                              catalog_name=snowflake_catalog.name,
                              polaris_url=polaris_catalog_url) as spark:
         spark.sql(f'USE {snowflake_catalog.name}')
@@ -1214,7 +1214,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
         assert '404' in str(e)
 
 
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                              catalog_name=snowflake_catalog.name,
                              polaris_url=polaris_catalog_url) as spark:
         spark.sql(f'USE {snowflake_catalog.name}')
