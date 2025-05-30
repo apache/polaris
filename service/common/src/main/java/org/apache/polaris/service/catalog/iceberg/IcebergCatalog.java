@@ -214,27 +214,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean tableExists(TableIdentifier identifier) {
-    try {
-      loadTableIgnoreMetadata(identifier);
-      return true;
-    } catch (NoSuchTableException e) {
-      return false;
-    }
-  }
-
-  public Table loadTableIgnoreMetadata(TableIdentifier identifier) {
-    Table result;
     if (isValidIdentifier(identifier)) {
-      TableOperations ops = newTableOps(identifier);
-      if (ops.current() == null) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        result = new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
-      }
-    } else {
-      throw new NoSuchTableException("Invalid table identifier: %s", identifier);
+        return newTableOps(identifier).current() != null;
     }
-    return result;
+    return false;
   }
 
   @Override
