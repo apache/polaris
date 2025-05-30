@@ -24,6 +24,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.enterprise.context.control.RequestContextController;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.Map;
@@ -74,11 +75,13 @@ public class DefaultConfigurationStoreTest {
   }
 
   private PolarisCallContext polarisContext;
+  private RealmContext realmContext;
 
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
   @Inject FeaturesConfiguration featuresConfiguration;
+  @Inject RequestContextController contextController;
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -87,8 +90,8 @@ public class DefaultConfigurationStoreTest {
             .formatted(
                 testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
                 System.nanoTime());
-    RealmContext realmContext = () -> realmName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    // RealmContext realmContext = () -> realmName;
+    realmContext = () -> realmName;
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -98,7 +101,22 @@ public class DefaultConfigurationStoreTest {
   }
 
   @Test
+  public void testGetConfigurationWithNoRealmContext() {
+    Object value = configurationStore.getConfiguration(polarisContext, "missingKeyWithoutDefault");
+    assertThat(value).isNull();
+    Object defaultValue =
+        configurationStore.getConfiguration(
+            polarisContext, "missingKeyWithDefault", "defaultValue");
+    assertThat(defaultValue).isEqualTo("defaultValue");
+
+    // the falseByDefaultKey is set to false for all realms in Profile.getConfigOverrides
+    assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
+        .isFalse();
+  }
+
+  @Test
   public void testGetConfiguration() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     Object value = configurationStore.getConfiguration(polarisContext, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
@@ -139,6 +157,7 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testInjectedConfigurationStore() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     // the default value for trueByDefaultKey is `true`
     boolean featureDefaultValue =
         configurationStore.getConfiguration(polarisContext, trueByDefaultKey);
@@ -159,6 +178,7 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testInjectedFeaturesConfiguration() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     assertThat(featuresConfiguration).isInstanceOf(QuarkusResolvedFeaturesConfiguration.class);
 
     assertThat(featuresConfiguration.defaults())
@@ -179,6 +199,7 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testRegisterAndUseFeatureConfigurations() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     String prefix = "testRegisterAndUseFeatureConfigurations";
 
     FeatureConfiguration<Boolean> safeConfig =
