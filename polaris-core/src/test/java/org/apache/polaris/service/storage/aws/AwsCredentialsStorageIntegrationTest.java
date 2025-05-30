@@ -228,7 +228,8 @@ class AwsCredentialsStorageIntegrationTest {
                                                         IamCondition.create(
                                                             IamConditionOperator.STRING_LIKE,
                                                             "kms:EncryptionContext:aws:s3:arn",
-                                                            s3Arn(awsPartition, bucket, null)+"*"))));
+                                                            s3Arn(awsPartition, bucket, null)
+                                                                + "*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -336,7 +337,8 @@ class AwsCredentialsStorageIntegrationTest {
                                                         IamCondition.create(
                                                             IamConditionOperator.STRING_LIKE,
                                                             "kms:EncryptionContext:aws:s3:arn",
-                                                            s3Arn(AWS_PARTITION, bucket, null)+"*"))));
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -447,7 +449,8 @@ class AwsCredentialsStorageIntegrationTest {
                                                         IamCondition.create(
                                                             IamConditionOperator.STRING_LIKE,
                                                             "kms:EncryptionContext:aws:s3:arn",
-                                                            s3Arn(AWS_PARTITION, bucket, null)+"*"))));
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
@@ -527,7 +530,8 @@ class AwsCredentialsStorageIntegrationTest {
                                                         IamCondition.create(
                                                             IamConditionOperator.STRING_LIKE,
                                                             "kms:EncryptionContext:aws:s3:arn",
-                                                            s3Arn(AWS_PARTITION, bucket, null)+"*"))));
+                                                            s3Arn(AWS_PARTITION, bucket, null)
+                                                                + "*"))));
                       });
               return ASSUME_ROLE_RESPONSE;
             });
