@@ -202,13 +202,11 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     String customLocationChild =
         Paths.get(tempDir.toUri().toString(), "custom-location/child").toString();
 
-    if (requiresNamespaceCreate()) {
-      catalog()
-          .createNamespace(
-              identifier.namespace(),
-              ImmutableMap.of(
-                  IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, location));
-    }
+    catalog()
+        .createNamespace(
+            identifier.namespace(),
+            ImmutableMap.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, location));
 
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
 
