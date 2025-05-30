@@ -68,10 +68,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
         return getDefaultConfiguration(configName);
       }
     } catch (Exception e) {
-      LOGGER.debug(
-          "Exception encountered when lookup value for configuration {} with exception {}",
-          configName,
-          e);
+      LOGGER.debug("Exception encountered when lookup value for configuration {}", configName, e);
       // fall back to the default behavior
       return getDefaultConfiguration(configName);
     }
