@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import org.apache.tools.ant.filters.ReplaceTokens
 import publishing.GenerateDigest
 
 plugins {
@@ -41,15 +40,9 @@ val serverDistribution by configurations.creating {
     isCanBeResolved = true
 }
 
-val adminDocs by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
 dependencies {
     adminDistribution(project(":polaris-quarkus-admin", "distributionElements"))
     serverDistribution(project(":polaris-quarkus-server", "distributionElements"))
-    adminDocs(project(":polaris-quarkus-admin", "distributionDocs"))
 }
 
 distributions {
