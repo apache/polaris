@@ -18,7 +18,12 @@
  */
 package org.apache.polaris.service.persistence.pagination;
 
+import java.util.List;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.pagination.DonePageToken;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
@@ -46,5 +51,54 @@ public class PageTokenTest {
     Assertions.assertThat(token).isNotInstanceOf(HasPageSize.class);
 
     Assertions.assertThat(PageToken.readEverything()).isEqualTo(PageToken.readEverything());
+
+    Assertions.assertThat(PageToken.readEverything().buildNextPage(List.of()).pageToken)
+        .isInstanceOf(DonePageToken.class);
+  }
+
+  @Test
+  void testEntityIdPageToken() {
+    EntityIdPageToken token = new EntityIdPageToken(2);
+
+    Assertions.assertThat(token).isInstanceOf(EntityIdPageToken.class);
+    Assertions.assertThat(token.getId()).isEqualTo(-1L);
+
+    // EntityIdPageToken can only build a new page from certain types that have an Entity ID
+    List<String> badData = List.of("some", "data");
+    Assertions.assertThatThrownBy(() -> token.buildNextPage(badData))
+        .isInstanceOf(IllegalStateException.class);
+
+    List<PolarisBaseEntity> data =
+        List.of(
+            new PolarisBaseEntity(
+                0, 101, PolarisEntityType.NULL_TYPE, PolarisEntitySubType.ANY_SUBTYPE, 0, "101"),
+            new PolarisBaseEntity(
+                0, 102, PolarisEntityType.NULL_TYPE, PolarisEntitySubType.ANY_SUBTYPE, 0, "102"));
+    var page = token.buildNextPage(data);
+
+    Assertions.assertThat(page.pageToken).isNotNull();
+    Assertions.assertThat(page.pageToken).isInstanceOf(EntityIdPageToken.class);
+    Assertions.assertThat(((EntityIdPageToken) page.pageToken).getPageSize()).isEqualTo(2);
+    Assertions.assertThat(((EntityIdPageToken) page.pageToken).getId()).isEqualTo(102);
+    Assertions.assertThat(page.items).isEqualTo(data);
+
+    Assertions.assertThat(PageToken.fromString(page.pageToken.toTokenString()))
+        .isEqualTo(page.pageToken);
+  }
+
+  @Test
+  void testInvalidPageTokens() {
+    Assertions.assertThatCode(() -> PageToken.fromString("not-real"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unrecognized page token");
+
+    PageToken goodToken = new EntityIdPageToken(100);
+    Assertions.assertThatCode(() -> PageToken.fromString(goodToken.toTokenString() + "???"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid token format");
+
+    Assertions.assertThatCode(() -> PageToken.fromString(EntityIdPageToken.PREFIX + "/1"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid token format");
   }
 }

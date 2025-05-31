@@ -38,7 +38,7 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -359,10 +359,10 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     return runInReadTransaction(
         callCtx,
-        () -> this.listEntitiesInCurrentTxn(callCtx, catalogId, parentId, entityType, pageToken));
+        () -> this.listEntitiesInCurrentTxn(callCtx, catalogId, parentId, entityType, pageRequest));
   }
 
   /** {@inheritDoc} */
@@ -374,12 +374,12 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     return runInReadTransaction(
         callCtx,
         () ->
             this.listEntitiesInCurrentTxn(
-                callCtx, catalogId, parentId, entityType, entityFilter, pageToken));
+                callCtx, catalogId, parentId, entityType, entityFilter, pageRequest));
   }
 
   /** {@inheritDoc} */
@@ -392,12 +392,12 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     return runInReadTransaction(
         callCtx,
         () ->
             this.listEntitiesInCurrentTxn(
-                callCtx, catalogId, parentId, entityType, entityFilter, transformer, pageToken));
+                callCtx, catalogId, parentId, entityType, entityFilter, transformer, pageRequest));
   }
 
   /** {@inheritDoc} */

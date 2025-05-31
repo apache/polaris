@@ -19,6 +19,8 @@
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
@@ -38,5 +40,10 @@ public class Page<T> {
    */
   public static <T> Page<T> fromItems(List<T> items) {
     return new Page<>(new DonePageToken(), items);
+  }
+
+  public Page<T> filter(Predicate<T> predicate) {
+    return new Page<>(
+        this.pageToken, this.items.stream().filter(predicate).collect(Collectors.toList()));
   }
 }
