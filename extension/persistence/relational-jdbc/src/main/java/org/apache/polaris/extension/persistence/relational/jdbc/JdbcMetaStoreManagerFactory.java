@@ -106,7 +106,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                   realmContext.getRealmIdentifier())));
 
     // Ensure the supplier caches the first time
-    sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    var unused = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
