@@ -60,7 +60,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   prometheus:
-    image: docker.io/prom/prometheus:v3.4.0
+    image: docker.io/prom/prometheus:v3.4.1
     ports:
       - "9093:9090"
     depends_on:
