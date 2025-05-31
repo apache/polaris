@@ -120,7 +120,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
               fileIO,
               tableEntity,
               metaStoreManager,
-              polarisCallContext);
+              polarisCallContext,
+              callContext.getRealmContext().getRealmIdentifier());
 
       List<TaskEntity> taskEntities =
           Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks).toList();
@@ -206,11 +207,12 @@ public class TableCleanupTaskHandler implements TaskHandler {
       FileIO fileIO,
       IcebergTableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext) {
+      PolarisCallContext polarisCallContext,
+      String realm) {
     int batchSize =
         polarisCallContext
             .getConfigurationStore()
-            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
+            .getConfiguration(realm, BATCH_SIZE_CONFIG_KEY, 10);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {

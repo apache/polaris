@@ -43,7 +43,14 @@ public interface PolarisConfigurationStore {
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
+   *
+   * @deprecated this function is going to be deprecated, please use the following
+   *             function to get the configuration value in a more robust way:
+   *             getConfiguration(String realm, String configName)
+   *             This function can not be called outside of active request scope, such as
+   *             background tasks (TaskExecutor).
    */
+  @Deprecated
   default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
     return null;
   }
@@ -57,11 +64,47 @@ public interface PolarisConfigurationStore {
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
    * @param <T> the type of the configuration value
+   *
+   * @deprecated this function is going to be deprecated, please use the following
+   *             function to get the configuration value in a more robust way:
+   *             getConfiguration(String realm, String configName, @Nonnull T defaultValue)
+   *             This function can not be called outside of active request scope, such as
+   *             background tasks (TaskExecutor).
    */
+  @Deprecated
   default <T> @Nonnull T getConfiguration(
       PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
     T configValue = getConfiguration(ctx, configName);
+    return configValue != null ? configValue : defaultValue;
+  }
+
+  /**
+   * Retrieve the current value for a configuration key for a given realm. May be null if not set.
+   *
+   * @param realm the realm identifier
+   * @param configName the name of the configuration key to check
+   * @return the current value set for the configuration key for the given realm, or null if not set
+   * @param <T> the type of the configuration value
+   */
+  default <T>  @Nullable T getConfiguration(String realm, String configName) {
+    return null;
+  }
+
+  /**
+   * Retrieve the current value for a configuration key for the given realm. If not set,
+   * return the non-null default value.
+   *
+   * @param realm the realm identifier
+   * @param configName the name of the configuration key to check
+   * @param defaultValue the default value if the configuration key has no value
+   * @return the current value or the supplied default value
+   * @param <T> the type of the configuration value
+   */
+  default <T> @Nonnull T getConfiguration(
+      String realm, String configName, @Nonnull T defaultValue) {
+    Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
+    T configValue = getConfiguration(realm, configName);
     return configValue != null ? configValue : defaultValue;
   }
 
