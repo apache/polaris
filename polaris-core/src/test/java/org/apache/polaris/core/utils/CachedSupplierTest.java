@@ -19,46 +19,52 @@
 
 package org.apache.polaris.core.utils;
 
+import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.function.Supplier;
-
 public class CachedSupplierTest {
-    private String realmName = "test";
-    private int timesCalled = 0;
-    private final RealmContext realmContext = new RealmContext() {
+  private String realmName = "test";
+  private int timesCalled = 0;
+  private final RealmContext realmContext =
+      new RealmContext() {
         @Override
         public String getRealmIdentifier() {
-            if (++timesCalled == 1) {
-                return realmName;
-            }
-            throw new IllegalStateException();
+          if (++timesCalled == 1) {
+            return realmName;
+          }
+          throw new IllegalStateException();
         }
-    };
+      };
 
-    private static class ContainerRealmIdentifier {
-        private String realmIdentifier;
+  private static class ContainerRealmIdentifier {
+    private String realmIdentifier;
 
-        public ContainerRealmIdentifier(RealmContext realmContext) {
-            this.realmIdentifier = realmContext.getRealmIdentifier();
-        }
-
-        public String getRealmIdentifier() {
-            return realmIdentifier;
-        }
+    public ContainerRealmIdentifier(RealmContext realmContext) {
+      this.realmIdentifier = realmContext.getRealmIdentifier();
     }
 
-    @Test
-    public void testCachedSupplier() {
-        Supplier<ContainerRealmIdentifier> realmIdentifierSupplier = () -> new ContainerRealmIdentifier(realmContext);
-        Assertions.assertThat(realmName.equals(realmIdentifierSupplier.get().getRealmIdentifier())).isTrue(); // This will work
-        Assertions.assertThatThrownBy(() -> realmIdentifierSupplier.get().getRealmIdentifier()).isInstanceOf(IllegalStateException.class);
-
-        timesCalled = 0;
-        CachedSupplier<ContainerRealmIdentifier> cachedSupplier = new CachedSupplier<>(() -> new ContainerRealmIdentifier(realmContext));
-        Assertions.assertThat(realmName.equals(cachedSupplier.get().getRealmIdentifier())).isTrue(); // This will work
-        Assertions.assertThat(realmName.equals(cachedSupplier.get().getRealmIdentifier())).isTrue(); // This will work
+    public String getRealmIdentifier() {
+      return realmIdentifier;
     }
+  }
+
+  @Test
+  public void testCachedSupplier() {
+    Supplier<ContainerRealmIdentifier> realmIdentifierSupplier =
+        () -> new ContainerRealmIdentifier(realmContext);
+    Assertions.assertThat(realmName.equals(realmIdentifierSupplier.get().getRealmIdentifier()))
+        .isTrue(); // This will work
+    Assertions.assertThatThrownBy(() -> realmIdentifierSupplier.get().getRealmIdentifier())
+        .isInstanceOf(IllegalStateException.class);
+
+    timesCalled = 0;
+    CachedSupplier<ContainerRealmIdentifier> cachedSupplier =
+        new CachedSupplier<>(() -> new ContainerRealmIdentifier(realmContext));
+    Assertions.assertThat(realmName.equals(cachedSupplier.get().getRealmIdentifier()))
+        .isTrue(); // This will work
+    Assertions.assertThat(realmName.equals(cachedSupplier.get().getRealmIdentifier()))
+        .isTrue(); // This will work
+  }
 }

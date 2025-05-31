@@ -102,7 +102,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         new CachedSupplier<>(
-          () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics)));
+            () ->
+                createMetaStoreSession(
+                    backingStore, realmContext, rootCredentialsSet, diagnostics)));
     // Ensure the supplier caches the first time
     var unused = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
 

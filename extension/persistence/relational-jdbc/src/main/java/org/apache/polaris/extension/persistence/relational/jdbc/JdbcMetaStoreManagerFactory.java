@@ -98,12 +98,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
-        new CachedSupplier<>(() ->
-              new JdbcBasePersistenceImpl(
-                  databaseOperations,
-                  secretsGenerator(realmContext, rootCredentialsSet),
-                  storageIntegrationProvider,
-                  realmContext.getRealmIdentifier())));
+        new CachedSupplier<>(
+            () ->
+                new JdbcBasePersistenceImpl(
+                    databaseOperations,
+                    secretsGenerator(realmContext, rootCredentialsSet),
+                    storageIntegrationProvider,
+                    realmContext.getRealmIdentifier())));
 
     // Ensure the supplier caches the first time
     var unused = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
@@ -312,4 +313,3 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
   }
 }
-
