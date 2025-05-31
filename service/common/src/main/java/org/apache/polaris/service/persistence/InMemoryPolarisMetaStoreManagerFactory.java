@@ -32,7 +32,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.bootstrap.RootCredentials;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -104,28 +103,6 @@ public class InMemoryPolarisMetaStoreManagerFactory
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
     Map<String, PrincipalSecretsResult> results = super.bootstrapRealms(realms, rootCredentialsSet);
     bootstrappedRealms.addAll(results.keySet());
-
-    Map<String, RootCredentials> presetCredentials = rootCredentialsSet.credentials();
-    for (String realmId : realms) {
-      if (presetCredentials.containsKey(realmId)) {
-        // Credentials provided in the runtime env... no need to print
-        continue;
-      }
-
-      PrincipalSecretsResult principalSecrets = results.get(realmId);
-      if (principalSecrets == null) {
-        continue; // already bootstrapped (possible benign race)
-      }
-
-      String msg =
-          String.format(
-              "realm: %1s root principal credentials: %2s:%3s",
-              realmId,
-              principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
-              principalSecrets.getPrincipalSecrets().getMainSecret());
-      System.out.println(msg);
-    }
-
     return results;
   }
 }

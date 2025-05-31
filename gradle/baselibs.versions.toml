@@ -23,4 +23,4 @@ idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle
 license-report = { module = "com.github.jk1:gradle-license-report", version = "2.9" }
 nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version = "2.0.0" }
 shadow = { module = "com.gradleup.shadow:shadow-gradle-plugin", version = "8.3.6" }
-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version = "7.0.3" }
+spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version = "7.0.4" }

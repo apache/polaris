@@ -363,7 +363,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: api-common Version: 2.48.0
+Group: com.google.api Name: api-common Version: 2.49.0
 Project URL: https://github.com/googleapis/api-common-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc.
@@ -395,9 +395,9 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: gax Version: 2.65.0
-Group: com.google.api Name: gax-grpc Version: 2.65.0
-Group: com.google.api Name: gax-httpjson Version: 2.65.0
+Group: com.google.api Name: gax Version: 2.66.0
+Group: com.google.api Name: gax-grpc Version: 2.66.0
+Group: com.google.api Name: gax-httpjson Version: 2.66.0
 Project URL: https://github.com/googleapis/gax-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc. All rights reserved.
@@ -430,30 +430,30 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.52.2
-Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.52.2
+Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.52.3
+Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.52.3
 Group: com.google.api.grpc Name: proto-google-cloud-monitoring-v3 Version: 3.52.0
-Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.52.2
+Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.52.3
 Project URL: https://github.com/googleapis/java-storage
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
 Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.53.0
-Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.51.0
+Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.52.0
 Project URL: https://github.com/googleapis/sdk-platform-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250424-2.0.0
+Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250509-2.0.0
 Project URL: http://www.google.com
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.auth Name: google-auth-library-credentials Version: 1.34.0
-Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.34.0
+Group: com.google.auth Name: google-auth-library-credentials Version: 1.35.0
+Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.35.0
 Project URL: https://github.com/googleapis/google-auth-library-java
 License: BSD 3-Clause
 | Copyright 2014, Google Inc. All rights reserved.
@@ -493,11 +493,11 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.cloud Name: google-cloud-core Version: 2.55.0
-Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.55.0
-Group: com.google.cloud Name: google-cloud-core-http Version: 2.55.0
+Group: com.google.cloud Name: google-cloud-core Version: 2.56.0
+Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.56.0
+Group: com.google.cloud Name: google-cloud-core-http Version: 2.56.0
 Group: com.google.cloud Name: google-cloud-monitoring Version: 3.52.0
-Group: com.google.cloud Name: google-cloud-storage Version: 2.52.2
+Group: com.google.cloud Name: google-cloud-storage Version: 2.52.3
 Project URL: https://github.com/googleapis/google-cloud-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -822,23 +822,23 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.5
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.5
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.6
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.6
 Project URL: https://github.com/reactor/reactor-netty
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.5
+Group: io.projectreactor Name: reactor-core Version: 3.7.6
 Project URL: https://github.com/reactor/reactor-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.swagger Name: swagger-annotations Version: 1.6.15
-Group: io.swagger Name: swagger-core Version: 1.6.15
-Group: io.swagger Name: swagger-jaxrs Version: 1.6.15
-Group: io.swagger Name: swagger-models Version: 1.6.15
+Group: io.swagger Name: swagger-annotations Version: 1.6.16
+Group: io.swagger Name: swagger-core Version: 1.6.16
+Group: io.swagger Name: swagger-jaxrs Version: 1.6.16
+Group: io.swagger Name: swagger-models Version: 1.6.16
 Project URL: https://github.com/swagger-api/swagger-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1367,37 +1367,37 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.31.40
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.40
-Group: software.amazon.awssdk Name: arns Version: 2.31.40
-Group: software.amazon.awssdk Name: auth Version: 2.31.40
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.40
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.40
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.40
-Group: software.amazon.awssdk Name: checksums Version: 2.31.40
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.40
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.40
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.40
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.40
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.40
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.40
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.40
-Group: software.amazon.awssdk Name: profiles Version: 2.31.40
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.40
-Group: software.amazon.awssdk Name: regions Version: 2.31.40
-Group: software.amazon.awssdk Name: retries Version: 2.31.40
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.40
-Group: software.amazon.awssdk Name: s3 Version: 2.31.40
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.40
-Group: software.amazon.awssdk Name: sts Version: 2.31.40
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.40
-Group: software.amazon.awssdk Name: utils Version: 2.31.40
+Group: software.amazon.awssdk Name: annotations Version: 2.31.50
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.50
+Group: software.amazon.awssdk Name: arns Version: 2.31.50
+Group: software.amazon.awssdk Name: auth Version: 2.31.50
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.50
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.50
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.50
+Group: software.amazon.awssdk Name: checksums Version: 2.31.50
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.50
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.50
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.50
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.50
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.50
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.50
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.50
+Group: software.amazon.awssdk Name: profiles Version: 2.31.50
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.50
+Group: software.amazon.awssdk Name: regions Version: 2.31.50
+Group: software.amazon.awssdk Name: retries Version: 2.31.50
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.50
+Group: software.amazon.awssdk Name: s3 Version: 2.31.50
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.50
+Group: software.amazon.awssdk Name: sts Version: 2.31.50
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.50
+Group: software.amazon.awssdk Name: utils Version: 2.31.50
 Project URL: https://aws.amazon.com/sdkforjava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 

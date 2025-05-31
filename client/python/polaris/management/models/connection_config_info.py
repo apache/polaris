@@ -40,11 +40,13 @@ from importlib import import_module
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional, Union
 from polaris.management.models.authentication_parameters import AuthenticationParameters
+from polaris.management.models.service_identity_info import ServiceIdentityInfo
 from typing import Optional, Set
 from typing_extensions import Self
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from polaris.management.models.hadoop_connection_config_info import HadoopConnectionConfigInfo
     from polaris.management.models.iceberg_rest_connection_config_info import IcebergRestConnectionConfigInfo
 
 class ConnectionConfigInfo(BaseModel):
@@ -54,13 +56,14 @@ class ConnectionConfigInfo(BaseModel):
     connection_type: StrictStr = Field(description="The type of remote catalog service represented by this connection", alias="connectionType")
     uri: Optional[StrictStr] = Field(default=None, description="URI to the remote catalog service")
     authentication_parameters: Optional[AuthenticationParameters] = Field(default=None, alias="authenticationParameters")
-    __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters"]
+    service_identity: Optional[ServiceIdentityInfo] = Field(default=None, alias="serviceIdentity")
+    __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters", "serviceIdentity"]
 
     @field_validator('connection_type')
     def connection_type_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['ICEBERG_REST']):
-            raise ValueError("must be one of enum values ('ICEBERG_REST')")
+        if value not in set(['ICEBERG_REST', 'HADOOP']):
+            raise ValueError("must be one of enum values ('ICEBERG_REST', 'HADOOP')")
         return value
 
     model_config = ConfigDict(
@@ -75,7 +78,7 @@ class ConnectionConfigInfo(BaseModel):
 
     # discriminator mappings
     __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'ICEBERG_REST': 'IcebergRestConnectionConfigInfo'
+        'HADOOP': 'HadoopConnectionConfigInfo','ICEBERG_REST': 'IcebergRestConnectionConfigInfo'
     }
 
     @classmethod
@@ -97,7 +100,7 @@ class ConnectionConfigInfo(BaseModel):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[IcebergRestConnectionConfigInfo]]:
+    def from_json(cls, json_str: str) -> Optional[Union[HadoopConnectionConfigInfo, IcebergRestConnectionConfigInfo]]:
         """Create an instance of ConnectionConfigInfo from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
@@ -122,13 +125,18 @@ class ConnectionConfigInfo(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of authentication_parameters
         if self.authentication_parameters:
             _dict['authenticationParameters'] = self.authentication_parameters.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of service_identity
+        if self.service_identity:
+            _dict['serviceIdentity'] = self.service_identity.to_dict()
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[IcebergRestConnectionConfigInfo]]:
+    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[HadoopConnectionConfigInfo, IcebergRestConnectionConfigInfo]]:
         """Create an instance of ConnectionConfigInfo from a dict"""
         # look up the object type based on discriminator mapping
         object_type = cls.get_discriminator_value(obj)
+        if object_type ==  'HadoopConnectionConfigInfo':
+            return import_module("polaris.management.models.hadoop_connection_config_info").HadoopConnectionConfigInfo.from_dict(obj)
         if object_type ==  'IcebergRestConnectionConfigInfo':
             return import_module("polaris.management.models.iceberg_rest_connection_config_info").IcebergRestConnectionConfigInfo.from_dict(obj)
 

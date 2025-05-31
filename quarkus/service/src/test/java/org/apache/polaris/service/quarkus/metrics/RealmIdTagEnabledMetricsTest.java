@@ -16,27 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.jpa.models;
+package org.apache.polaris.service.quarkus.metrics;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 
-/** Used to manage unique IDs in Polaris */
-@Entity
-@Table(name = "POLARIS_SEQUENCE")
-public class ModelSequenceId {
-  @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
-  private Long id;
+@QuarkusTest
+@TestProfile(RealmIdTagEnabledMetricsTest.Profile.class)
+public class RealmIdTagEnabledMetricsTest extends MetricsTestBase {
 
-  public void setId(Long id) {
-    this.id = id;
-  }
+  public static class Profile implements QuarkusTestProfile {
 
-  public Long getId() {
-    return id;
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.metrics.tags.environment",
+          "prod",
+          "polaris.realm-context.type",
+          "test",
+          "polaris.metrics.realm-id-tag.enable-in-api-metrics",
+          "true",
+          "polaris.metrics.realm-id-tag.enable-in-http-metrics",
+          "true");
+    }
   }
 }

@@ -108,16 +108,19 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
+  protected DatabaseType getDatabaseType() throws SQLException {
+    try (Connection connection = dataSource.get().getConnection()) {
+      String productName = connection.getMetaData().getDatabaseProductName();
+      return DatabaseType.fromDisplayName(productName);
+    }
+  }
+
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
     DatasourceOperations databaseOperations =
         new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
-        DatabaseType databaseType;
-        try (Connection connection = dataSource.get().getConnection()) {
-          String productName = connection.getMetaData().getDatabaseProductName();
-          databaseType = DatabaseType.fromDisplayName(productName);
-        }
+        DatabaseType databaseType = getDatabaseType();
         databaseOperations.executeScript(
             String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
       } catch (SQLException e) {
@@ -135,17 +138,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
-      if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
+      if (!metaStoreManagerMap.containsKey(realm)) {
         initializeForRealm(realmContext, rootCredentialsSet, true);
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-
-        if (rootCredentialsSet.credentials().containsKey(realm)) {
-          LOGGER.info("Bootstrapped realm {} using preset credentials.", realm);
-        }
-
-        results.put(realmContext.getRealmIdentifier(), secretsResult);
+                realmContext, metaStoreManagerMap.get(realm));
+        results.put(realm, secretsResult);
       }
     }
 

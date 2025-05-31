@@ -57,6 +57,7 @@ class TestPrincipalRoles(unittest.TestCase):
                 roles = [
                     polaris.management.models.principal_role.PrincipalRole(
                         name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H'qT\\{<?'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
+                        federated = True, 
                         properties = {
                             'key' : ''
                             }, 
@@ -70,6 +71,7 @@ class TestPrincipalRoles(unittest.TestCase):
                 roles = [
                     polaris.management.models.principal_role.PrincipalRole(
                         name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H'qT\\{<?'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
+                        federated = True, 
                         properties = {
                             'key' : ''
                             }, 

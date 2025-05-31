@@ -36,7 +36,6 @@ dependencies {
   implementation(libs.smallrye.common.annotation) // @Identifier
 
   testImplementation(libs.mockito.junit.jupiter)
-
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 }

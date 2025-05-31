@@ -26,17 +26,24 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class EclipseLinkProductionReadinessChecks {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(EclipseLinkProductionReadinessChecks.class);
 
   @Produces
-  public ProductionReadinessCheck checkJdbcUrl(EclipseLinkConfiguration eclipseLinkConfiguration) {
+  public ProductionReadinessCheck checkEclipseLink(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      EclipseLinkConfiguration eclipseLinkConfiguration) {
+    // This check should only be applicable when persistence uses EclipseLink.
+    if (!(metaStoreManagerFactory instanceof EclipseLinkPolarisMetaStoreManagerFactory)) {
+      return ProductionReadinessCheck.OK;
+    }
+
     try {
       var confFile = eclipseLinkConfiguration.configurationFile().map(Path::toString).orElse(null);
       var persistenceUnitName =

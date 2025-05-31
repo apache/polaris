@@ -16,17 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.extension.persistence.impl.eclipselink.models;
 
-plugins {
-  id("polaris-server")
-  `java-library`
-}
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
-dependencies {
-  implementation(project(":polaris-core"))
-  implementation(libs.eclipselink)
+/** Used to manage unique IDs in Polaris */
+@Entity
+@Table(name = "POLARIS_SEQUENCE")
+public class ModelSequenceId {
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private Long id;
 
-  compileOnly(libs.jakarta.validation.api)
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.persistence.api)
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public Long getId() {
+    return id;
+  }
 }

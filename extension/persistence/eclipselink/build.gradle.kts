@@ -30,7 +30,6 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  implementation(project(":polaris-jpa-model"))
 
   implementation(libs.eclipselink)
 
