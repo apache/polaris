@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -61,6 +62,7 @@ import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelEnti
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.extension.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +74,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final int version;
+
+  // The max number of components a location can have before the optimized sibling check is not used
+  private static final int MAX_LOCATION_COMPONENTS = 40;
 
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
@@ -82,6 +88,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.version = loadVersion();
   }
 
   @Override
@@ -553,6 +560,51 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           String.format(
               "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
           e);
+    }
+  }
+
+  private int loadVersion() {
+    String query = generateVersionQuery();
+    try {
+      List<SchemaVersion> schemaVersion =
+          datasourceOperations.executeSelect(query, new SchemaVersion());
+      if (schemaVersion == null || schemaVersion.size() != 1) {
+        throw new RuntimeException("Failed to retrieve schema version");
+      }
+      return schemaVersion.getFirst().getValue();
+    } catch (SQLException e) {
+      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to retrieve schema version", e);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long parentId, String location) {
+    if (this.version < 2) {
+      return Optional.empty();
+    }
+    if (location.chars().filter(ch -> ch == '/').count() > MAX_LOCATION_COMPONENTS) {
+      return Optional.empty();
+    }
+
+    String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
+    try {
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
+      if (results.isEmpty()) {
+        return Optional.of(Optional.empty());
+      } else {
+        return Optional.of(Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocation()));
+      }
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to retrieve location overlap for location {} due to {}",
+          location,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to retrieve location overlap for location: %s", location), e);
     }
   }
 

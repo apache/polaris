@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
@@ -390,6 +391,20 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
+   * location
+   *
+   * @param callContext the polaris call context
+   * @param catalogId the catalog to look for duplicates inside
+   * @param location the location to check for overlaps against
+   * @return Optional.of(Optional.of ( location)) if the parent entity has children,
+   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   *     this operation
+   */
+  Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long catalogId, String location);
 
   /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via

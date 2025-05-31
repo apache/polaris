@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -383,6 +384,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "refreshResolvedEntity");
     return null;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long catalogId, String location) {
+    callContext
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "hasOverlappingSiblings");
+    return Optional.empty();
   }
 
   @Override

@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -1816,6 +1817,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // return the result
     return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long catalogId, String location) {
+    BasePersistence ms = callContext.getMetaStore();
+    return ms.hasOverlappingSiblings(callContext, catalogId, location);
   }
 
   @Override

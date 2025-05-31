@@ -122,7 +122,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       try {
         DatabaseType databaseType = getDatabaseType();
         databaseOperations.executeScript(
-            String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
+            String.format("%s/schema-v2.sql", databaseType.getDisplayName()));
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);

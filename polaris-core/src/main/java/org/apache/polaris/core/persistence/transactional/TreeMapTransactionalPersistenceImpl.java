@@ -22,6 +22,7 @@ import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -662,5 +663,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long parentId, String location) {
+    return Optional.empty();
   }
 }

@@ -32,6 +32,7 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -777,5 +778,12 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     if (session != null) {
       session.getTransaction().rollback();
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, long parentId, String location) {
+    return Optional.empty();
   }
 }

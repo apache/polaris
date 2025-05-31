@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
@@ -72,6 +73,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   // current version for that entity, will be monotonically incremented
   private int grantRecordsVersion;
+
+  // location for the entity, when applicable
+  private String location;
 
   public long getId() {
     return id;
@@ -133,6 +137,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return grantRecordsVersion;
   }
 
+  public String getLocation() {
+    return location;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -158,6 +166,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+            .location(r.getString("location"))
             .build();
 
     return toEntity(modelEntity);
@@ -181,6 +190,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("properties", this.getProperties());
     map.put("internal_properties", this.getInternalProperties());
     map.put("grant_records_version", this.getGrantRecordsVersion());
+    map.put("location", this.getLocation());
     return map;
   }
 
@@ -266,29 +276,48 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
+    public Builder location(String location) {
+      entity.location = location;
+      return this;
+    }
+
     public ModelEntity build() {
       return entity;
     }
   }
 
   public static ModelEntity fromEntity(PolarisBaseEntity entity) {
-    return ModelEntity.builder()
-        .catalogId(entity.getCatalogId())
-        .id(entity.getId())
-        .parentId(entity.getParentId())
-        .typeCode(entity.getTypeCode())
-        .name(entity.getName())
-        .entityVersion(entity.getEntityVersion())
-        .subTypeCode(entity.getSubTypeCode())
-        .createTimestamp(entity.getCreateTimestamp())
-        .dropTimestamp(entity.getDropTimestamp())
-        .purgeTimestamp(entity.getPurgeTimestamp())
-        .toPurgeTimestamp(entity.getToPurgeTimestamp())
-        .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
-        .properties(entity.getProperties())
-        .internalProperties(entity.getInternalProperties())
-        .grantRecordsVersion(entity.getGrantRecordsVersion())
-        .build();
+    var builder =
+        ModelEntity.builder()
+            .catalogId(entity.getCatalogId())
+            .id(entity.getId())
+            .parentId(entity.getParentId())
+            .typeCode(entity.getTypeCode())
+            .name(entity.getName())
+            .entityVersion(entity.getEntityVersion())
+            .subTypeCode(entity.getSubTypeCode())
+            .createTimestamp(entity.getCreateTimestamp())
+            .dropTimestamp(entity.getDropTimestamp())
+            .purgeTimestamp(entity.getPurgeTimestamp())
+            .toPurgeTimestamp(entity.getToPurgeTimestamp())
+            .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
+            .properties(entity.getProperties())
+            .internalProperties(entity.getInternalProperties())
+            .grantRecordsVersion(entity.getGrantRecordsVersion());
+
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        builder.location(
+            entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
+      }
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      builder.location(
+          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
+    }
+
+    return builder.build();
   }
 
   public static PolarisBaseEntity toEntity(ModelEntity model) {
@@ -324,6 +353,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setProperties(model.getProperties());
     entity.setInternalProperties(model.getInternalProperties());
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
+
+    if (model.location != null) {
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE
+          || entityType == PolarisEntityType.NAMESPACE) {
+        entity.addProperty(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
+      }
+    }
+
     return entity;
   }
 }

@@ -96,6 +96,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
@@ -508,6 +509,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> metadata,
       PolarisResolvedPathWrapper resolvedParent) {
     String baseLocation = resolveNamespaceLocation(namespace, metadata);
+
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash && !baseLocation.endsWith("/")) {
+      baseLocation += "/";
+    }
+
     NamespaceEntity entity =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
@@ -1053,6 +1067,38 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   private void validateNoLocationOverlap(
       String location, List<PolarisEntity> parentPath, String name) {
+
+    // if the entity path has more than just the catalog, check for tables as well as other
+    // namespaces
+    Optional<NamespaceEntity> parentNamespace =
+        parentPath.size() > 1
+            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
+            : Optional.empty();
+
+    // Attempt to directly query for siblings
+    boolean useOptimizedSiblingCheck =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (useOptimizedSiblingCheck) {
+      long parentId = parentNamespace.map(PolarisEntityCore::getId).orElseGet(() -> catalogId);
+      Optional<Optional<String>> directSiblingCheckResult =
+          getMetaStoreManager()
+              .hasOverlappingSiblings(callContext.getPolarisCallContext(), parentId, location);
+      if (directSiblingCheckResult.isPresent()) {
+        if (directSiblingCheckResult.get().isPresent()) {
+          throw new org.apache.iceberg.exceptions.ForbiddenException(
+              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
+              location, directSiblingCheckResult.get().get());
+        } else {
+          return;
+        }
+      }
+    }
+
+    // Fall through by listing everything:
     ListEntitiesResult siblingNamespacesResult =
         getMetaStoreManager()
             .listEntities(
@@ -1065,13 +1111,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           "Unable to resolve siblings entities to validate location - could not list namespaces");
     }
-
-    // if the entity path has more than just the catalog, check for tables as well as other
-    // namespaces
-    Optional<NamespaceEntity> parentNamespace =
-        parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
-            : Optional.empty();
 
     List<TableIdentifier> siblingTables =
         parentNamespace
@@ -2168,26 +2207,48 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private void createTableLike(
       TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
+    IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .build();
+    }
+
     // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = IcebergTableLikeEntity.of(entity).getMetadataLocation();
+    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
     validateLocationForTableLike(identifier, metadataLocation, resolvedParent);
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    if (entity.getParentId() <= 0) {
+    if (icebergTableLikeEntity.getParentId() <= 0) {
       // TODO: Validate catalogPath size is at least 1 for catalog entity?
-      entity =
-          new PolarisEntity.Builder(entity)
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
               .setParentId(resolvedParent.getRawLeafEntity().getId())
               .build();
     }
-    entity =
-        new PolarisEntity.Builder(entity).setCreateTimestamp(System.currentTimeMillis()).build();
+    icebergTableLikeEntity =
+        new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
 
     EntityResult res =
         getMetaStoreManager()
             .createEntityIfNotExists(
-                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
@@ -2215,16 +2276,36 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format("Failed to fetch resolved TableIdentifier '%s'", identifier));
     }
+    IcebergTableLikeEntity icebergTableLikeEntity = new IcebergTableLikeEntity(entity);
+
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .build();
+    }
 
     // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = IcebergTableLikeEntity.of(entity).getMetadataLocation();
+    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
     validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     EntityResult res =
         getMetaStoreManager()
             .updateEntityPropertiesIfNotChanged(
-                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:

@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 1)
-    ON CONFLICT (version_key) DO UPDATE
-                            SET version_value = EXCLUDED.version_value;
+VALUES ('version', 2)
+ON CONFLICT (version_key) DO UPDATE
+SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -46,12 +46,16 @@ CREATE TABLE IF NOT EXISTS entities (
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
     grant_records_version INT NOT NULL,
+    location TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_locations
+    ON entities USING btree (realm_id, parent_id, location)
+    WHERE location IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
 
