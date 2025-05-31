@@ -163,8 +163,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
           "catalog-override-key4");
 
   private static final String[] DEFAULT_CATALOG_PROPERTIES = {
-    "allow.unstructured.table.location", "true",
-    "allow.external.table.location", "true"
+    "polaris.config.allow.unstructured.table.location", "true",
+    "polaris.config.allow.external.table.location", "true"
   };
 
   @Retention(RetentionPolicy.RUNTIME)
@@ -172,8 +172,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
 
     String[] properties() default {
-      "allow.unstructured.table.location", "true",
-      "allow.external.table.location", "true"
+      "polaris.config.allow.unstructured.table.location", "true",
+      "polaris.config.allow.external.table.location", "true"
     };
   }
 

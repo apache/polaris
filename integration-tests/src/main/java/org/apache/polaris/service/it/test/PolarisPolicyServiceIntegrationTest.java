@@ -133,8 +133,8 @@ public class PolarisPolicyServiceIntegrationTest {
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
 
   private static final String[] DEFAULT_CATALOG_PROPERTIES = {
-    "allow.unstructured.table.location", "true",
-    "allow.external.table.location", "true"
+    "polaris.config.allow.unstructured.table.location", "true",
+    "polaris.config.allow.external.table.location", "true"
   };
 
   @Retention(RetentionPolicy.RUNTIME)
@@ -142,8 +142,8 @@ public class PolarisPolicyServiceIntegrationTest {
     Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
 
     String[] properties() default {
-      "allow.unstructured.table.location", "true",
-      "allow.external.table.location", "true"
+      "polaris.config.allow.unstructured.table.location", "true",
+      "polaris.config.allow.external.table.location", "true"
     };
   }
 
