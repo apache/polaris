@@ -52,6 +52,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.utils.CachedSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,12 +98,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
-        () ->
-            new JdbcBasePersistenceImpl(
-                databaseOperations,
-                secretsGenerator(realmContext, rootCredentialsSet),
-                storageIntegrationProvider,
-                realmContext.getRealmIdentifier()));
+        new CachedSupplier<>(() ->
+              new JdbcBasePersistenceImpl(
+                  databaseOperations,
+                  secretsGenerator(realmContext, rootCredentialsSet),
+                  storageIntegrationProvider,
+                  realmContext.getRealmIdentifier())));
+
+    // Ensure the supplier caches the first time
+    sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
@@ -308,3 +312,4 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
   }
 }
+
