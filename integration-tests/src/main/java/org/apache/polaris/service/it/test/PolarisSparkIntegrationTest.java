@@ -134,6 +134,33 @@ public class PolarisSparkIntegrationTest extends PolarisSparkIntegrationTestBase
   }
 
   @Test
+  public void testPurgeTable() {
+    onSpark("CREATE NAMESPACE ns1");
+    onSpark("USE ns1");
+    onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
+    onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c'), (5, 'e')");
+
+    LoadTableResponse tableResponse = loadTable(catalogName, "ns1", "tb1");
+    String filePath = tableResponse.metadataLocation().replaceFirst("^s3://my-bucket/", "");
+    assertThat(fileExists(filePath)).isTrue();
+
+    // Drop table with purge
+    // dropTable(catalogName, "ns1", "tb1", true);
+    onSpark("DROP TABLE tb1 purge");
+    // verify the metadata file is eventually purged
+    int attempt = 0;
+    while (fileExists(filePath) && attempt < 5) {
+      try {
+        Thread.sleep(1000);
+        attempt += 1;
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    assertThat(fileExists(filePath)).isFalse();
+  }
+
+  @Test
   public void testCreateView() {
     long namespaceCount = onSpark("SHOW NAMESPACES").count();
     assertThat(namespaceCount).isEqualTo(0L);

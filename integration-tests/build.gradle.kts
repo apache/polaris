@@ -51,6 +51,9 @@ dependencies {
   implementation("org.testcontainers:testcontainers")
   implementation(libs.s3mock.testcontainers)
 
+  implementation(platform(libs.awssdk.bom))
+  implementation("software.amazon.awssdk:s3")
+
   implementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
   implementation("org.apache.spark:spark-sql_2.12:3.5.6") {
