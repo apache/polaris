@@ -24,7 +24,6 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.enterprise.context.control.RequestContextController;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.Map;
@@ -81,7 +80,6 @@ public class DefaultConfigurationStoreTest {
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
   @Inject FeaturesConfiguration featuresConfiguration;
-  @Inject RequestContextController contextController;
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -90,7 +88,6 @@ public class DefaultConfigurationStoreTest {
             .formatted(
                 testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
                 System.nanoTime());
-    // RealmContext realmContext = () -> realmName;
     realmContext = () -> realmName;
     polarisContext =
         new PolarisCallContext(
@@ -102,16 +99,9 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testGetConfigurationWithNoRealmContext() {
-    Object value = configurationStore.getConfiguration(polarisContext, "missingKeyWithoutDefault");
-    assertThat(value).isNull();
-    Object defaultValue =
-        configurationStore.getConfiguration(
-            polarisContext, "missingKeyWithDefault", "defaultValue");
-    assertThat(defaultValue).isEqualTo("defaultValue");
-
-    // the falseByDefaultKey is set to false for all realms in Profile.getConfigOverrides
-    assertThat((Boolean) configurationStore.getConfiguration(polarisContext, falseByDefaultKey))
-        .isFalse();
+    Assertions.assertThatThrownBy(
+            () -> configurationStore.getConfiguration(polarisContext, "missingKeyWithoutDefault"))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -153,6 +143,22 @@ public class DefaultConfigurationStoreTest {
     // realmTwo
     assertThat((Boolean) configurationStore.getConfiguration(polarisContext, trueByDefaultKey))
         .isFalse();
+  }
+
+  @Test
+  void testGetConfigurationWithRealm() {
+    // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
+    // realmOne.
+    assertThat((Boolean) configurationStore.getConfiguration(realmOne, falseByDefaultKey)).isTrue();
+    // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
+    assertThat((Boolean) configurationStore.getConfiguration(realmOne, trueByDefaultKey)).isTrue();
+
+    // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwo, falseByDefaultKey))
+        .isFalse();
+    // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
+    // realmTwo
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwo, trueByDefaultKey)).isFalse();
   }
 
   @Test

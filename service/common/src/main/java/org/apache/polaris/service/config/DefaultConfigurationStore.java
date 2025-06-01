@@ -50,7 +50,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   }
 
   @Override
-  public <T>  @Nullable T getConfiguration(String realm, String configName) {
+  public <T> @Nullable T getConfiguration(String realm, String configName) {
     LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
     @SuppressWarnings("unchecked")
     T confgValue =
