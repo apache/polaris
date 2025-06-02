@@ -103,7 +103,7 @@ public record TestServices(
     }
 
     @Override
-    public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
+    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
       @SuppressWarnings("unchecked")
       T confgValue = (T) defaults.get(configName);
       return confgValue;
@@ -211,7 +211,7 @@ public record TestServices(
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getPolarisCallContext(), configurationStore);
+          new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
 
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(

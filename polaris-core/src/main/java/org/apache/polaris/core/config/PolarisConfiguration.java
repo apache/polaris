@@ -226,7 +226,7 @@ public abstract class PolarisConfiguration<T> {
     return callContext
         .getPolarisCallContext()
         .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configuration);
+        .getConfiguration(callContext.getRealmContext(), configuration);
   }
 
   public static <T> Builder<T> builder() {

@@ -166,7 +166,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getPolarisCallContext()
                       .getConfigurationStore()
                       .getConfiguration(
-                          CallContext.getCurrentContext().getPolarisCallContext(),
+                          CallContext.getCurrentContext().getRealmContext(),
                           catalog,
                           FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape

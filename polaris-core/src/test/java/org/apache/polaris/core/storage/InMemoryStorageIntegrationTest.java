@@ -30,6 +30,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -100,7 +101,7 @@ class InMemoryStorageIntegrationTest {
             new PolarisConfigurationStore() {
               @SuppressWarnings("unchecked")
               @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+              public <T> @Nullable T getConfiguration(RealmContext ctx, String configName) {
                 return (T) config.get(configName);
               }
             },

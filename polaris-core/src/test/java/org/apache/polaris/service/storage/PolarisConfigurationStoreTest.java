@@ -23,18 +23,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /** Unit test for the default behaviors of the PolarisConfigurationStore interface. */
 public class PolarisConfigurationStoreTest {
+  private final RealmContext testRealmContext = () -> "testRealm";
+
   @Test
   public void testConfigsCanBeCastedFromString() {
     List<PolarisConfiguration<?>> configs =
@@ -52,7 +53,7 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> @Nullable T getConfiguration(RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
                 return (T) String.valueOf(c.defaultValue);
@@ -68,9 +69,8 @@ public class PolarisConfigurationStoreTest {
 
     // Ensure that we can fetch all the configs and that the value is what we expect, which
     // is the config's default value based on how we've implemented PolarisConfigurationStore above.
-    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertEquals(c.defaultValue, store.getConfiguration(polarisCallContext, c));
+      Assertions.assertEquals(c.defaultValue, store.getConfiguration(testRealmContext, c));
     }
   }
 
@@ -84,15 +84,14 @@ public class PolarisConfigurationStoreTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> T getConfiguration(RealmContext ctx, String configName) {
             return (T) "abc123";
           }
         };
 
-    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     for (PolarisConfiguration<?> c : configs) {
       Assertions.assertThrows(
-          NumberFormatException.class, () -> store.getConfiguration(polarisCallContext, c));
+          NumberFormatException.class, () -> store.getConfiguration(testRealmContext, c));
     }
   }
 
@@ -106,18 +105,18 @@ public class PolarisConfigurationStoreTest {
 
   private static class PolarisConfigurationConsumer {
 
-    private final PolarisCallContext polarisCallContext;
+    private final RealmContext realmContext;
     private final PolarisConfigurationStore configurationStore;
 
     public PolarisConfigurationConsumer(
-        PolarisCallContext polarisCallContext, PolarisConfigurationStore configurationStore) {
-      this.polarisCallContext = polarisCallContext;
+        RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+      this.realmContext = realmContext;
       this.configurationStore = configurationStore;
     }
 
     public <T> T consumeConfiguration(
         PolarisConfiguration<Boolean> config, Supplier<T> code, T defaultVal) {
-      if (configurationStore.getConfiguration(polarisCallContext, config)) {
+      if (configurationStore.getConfiguration(realmContext, config)) {
         return code.get();
       }
       return defaultVal;
@@ -127,7 +126,7 @@ public class PolarisConfigurationStoreTest {
   @Test
   public void testBehaviorAndFeatureConfigs() {
     PolarisConfigurationConsumer consumer =
-        new PolarisConfigurationConsumer(null, new PolarisConfigurationStore() {});
+        new PolarisConfigurationConsumer(testRealmContext, new PolarisConfigurationStore() {});
 
     FeatureConfiguration<Boolean> featureConfig =
         PolarisConfiguration.<Boolean>builder()
@@ -164,22 +163,25 @@ public class PolarisConfigurationStoreTest {
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
           @Override
-          public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> @Nullable T getConfiguration(RealmContext realmContext, String configName) {
             //noinspection unchecked
             return (T) Map.of("key2", "config-value2").get(configName);
           }
         };
 
-    PolarisCallContext ctx = null;
     CatalogEntity entity =
         new CatalogEntity.Builder()
             .addProperty("polaris.config.catalog-key3", "entity-new3")
             .addProperty("legacy-key4", "entity-legacy4")
             .build();
 
-    Assertions.assertEquals("test-default1", store.getConfiguration(ctx, entity, cfg.apply(1)));
-    Assertions.assertEquals("config-value2", store.getConfiguration(ctx, entity, cfg.apply(2)));
-    Assertions.assertEquals("entity-new3", store.getConfiguration(ctx, entity, cfg.apply(3)));
-    Assertions.assertEquals("entity-legacy4", store.getConfiguration(ctx, entity, cfg.apply(4)));
+    Assertions.assertEquals(
+        "test-default1", store.getConfiguration(testRealmContext, entity, cfg.apply(1)));
+    Assertions.assertEquals(
+        "config-value2", store.getConfiguration(testRealmContext, entity, cfg.apply(2)));
+    Assertions.assertEquals(
+        "entity-new3", store.getConfiguration(testRealmContext, entity, cfg.apply(3)));
+    Assertions.assertEquals(
+        "entity-legacy4", store.getConfiguration(testRealmContext, entity, cfg.apply(4)));
   }
 }

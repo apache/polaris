@@ -82,9 +82,9 @@ import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewRepresentation;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 
 /**
  * CODE_COPIED_TO_POLARIS Copied from CatalogHandler in Iceberg 1.8.0 Contains a collection of
@@ -95,13 +95,13 @@ public class CatalogHandlerUtils {
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
 
-  private final PolarisCallContext polarisCallContext;
+  private final RealmContext realmContext;
   private final PolarisConfigurationStore configurationStore;
 
   @Inject
   public CatalogHandlerUtils(
-      PolarisCallContext polarisCallContext, PolarisConfigurationStore configurationStore) {
-    this.polarisCallContext = polarisCallContext;
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    this.realmContext = realmContext;
     this.configurationStore = configurationStore;
   }
 
@@ -609,6 +609,6 @@ public class CatalogHandlerUtils {
 
   private int maxCommitRetries() {
     return configurationStore.getConfiguration(
-        polarisCallContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
+        realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
   }
 }
