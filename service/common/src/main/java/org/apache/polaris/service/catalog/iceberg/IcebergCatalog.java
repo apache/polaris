@@ -215,7 +215,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean tableExists(TableIdentifier identifier) {
     if (isValidIdentifier(identifier)) {
-        return newTableOps(identifier).current() != null;
+      return newTableOps(identifier).current() != null;
     }
     return false;
   }
