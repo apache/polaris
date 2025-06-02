@@ -1040,6 +1040,8 @@ class IcebergCatalogAPI:
     @validate_call
     def create_table(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         create_table_request: CreateTableRequest,
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         _request_timeout: Union[
@@ -1059,6 +1061,10 @@ class IcebergCatalogAPI:
 
         Create a table or start a create transaction, like atomic CTAS.  If `stage-create` is false, the table is created immediately.  If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param create_table_request: (required)
         :type create_table_request: CreateTableRequest
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
@@ -1086,6 +1092,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._create_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
             create_table_request=create_table_request,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             _request_auth=_request_auth,
@@ -1119,6 +1127,8 @@ class IcebergCatalogAPI:
     @validate_call
     def create_table_with_http_info(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         create_table_request: CreateTableRequest,
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         _request_timeout: Union[
@@ -1138,6 +1148,10 @@ class IcebergCatalogAPI:
 
         Create a table or start a create transaction, like atomic CTAS.  If `stage-create` is false, the table is created immediately.  If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param create_table_request: (required)
         :type create_table_request: CreateTableRequest
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
@@ -1165,6 +1179,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._create_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
             create_table_request=create_table_request,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             _request_auth=_request_auth,
@@ -1198,6 +1214,8 @@ class IcebergCatalogAPI:
     @validate_call
     def create_table_without_preload_content(
         self,
+        prefix: Annotated[StrictStr, Field(description="An optional prefix in the path")],
+        namespace: Annotated[StrictStr, Field(description="A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.")],
         create_table_request: CreateTableRequest,
         x_iceberg_access_delegation: Annotated[Optional[StrictStr], Field(description="Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. ")] = None,
         _request_timeout: Union[
@@ -1217,6 +1235,10 @@ class IcebergCatalogAPI:
 
         Create a table or start a create transaction, like atomic CTAS.  If `stage-create` is false, the table is created immediately.  If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
 
+        :param prefix: An optional prefix in the path (required)
+        :type prefix: str
+        :param namespace: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte. (required)
+        :type namespace: str
         :param create_table_request: (required)
         :type create_table_request: CreateTableRequest
         :param x_iceberg_access_delegation: Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module. 
@@ -1244,6 +1266,8 @@ class IcebergCatalogAPI:
         """ # noqa: E501
 
         _param = self._create_table_serialize(
+            prefix=prefix,
+            namespace=namespace,
             create_table_request=create_table_request,
             x_iceberg_access_delegation=x_iceberg_access_delegation,
             _request_auth=_request_auth,
@@ -1272,6 +1296,8 @@ class IcebergCatalogAPI:
 
     def _create_table_serialize(
         self,
+        prefix,
+        namespace,
         create_table_request,
         x_iceberg_access_delegation,
         _request_auth,
@@ -1293,6 +1319,10 @@ class IcebergCatalogAPI:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
+        if prefix is not None:
+            _path_params['prefix'] = prefix
+        if namespace is not None:
+            _path_params['namespace'] = namespace
         # process the query parameters
         # process the header parameters
         if x_iceberg_access_delegation is not None:

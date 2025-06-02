@@ -440,6 +440,8 @@ paths:
         If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
       operationId: createTable
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/data-access'
       requestBody:
         required: true
