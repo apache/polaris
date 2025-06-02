@@ -561,11 +561,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   public void testCreateTableWithMetadataConflictingName() {
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
-    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
-    catalogProps.put(
-        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
-    managementApi.updateCatalog(catalog, catalogProps);
-
     restCatalog.createNamespace(Namespace.of("ns1"));
     TableIdentifier tableIdentifier = TableIdentifier.of("ns1", "history");
     restCatalog.buildTable(tableIdentifier, SCHEMA).withProperty("stage-create", "true").create();
