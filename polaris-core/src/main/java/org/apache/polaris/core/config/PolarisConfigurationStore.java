@@ -133,23 +133,21 @@ public interface PolarisConfigurationStore {
   }
 
   /**
-   * Retrieve the current value for a configuration. TODO: update the function to take RealmContext
-   * instead of PolarisCallContext. Github issue https://github.com/apache/polaris/issues/1775
+   * Retrieve the current value for a configuration.
    *
    * @param ctx the current call context
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
+  default <T> @Nonnull T getConfiguration(RealmContext ctx, PolarisConfiguration<T> config) {
     T result = getConfiguration(ctx, config.key, config.defaultValue);
     return tryCast(config, result);
   }
 
   /**
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
-   * present. TODO: update the function to take RealmContext instead of PolarisCallContext Github
-   * issue https://github.com/apache/polaris/issues/1775
+   * present.
    *
    * @param ctx the current call context
    * @param catalogEntity the catalog to check for an override
@@ -158,9 +156,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      PolarisCallContext ctx,
-      @Nonnull CatalogEntity catalogEntity,
-      PolarisConfiguration<T> config) {
+      RealmContext ctx, @Nonnull CatalogEntity catalogEntity, PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
       Map<String, String> propertiesMap = catalogEntity.getPropertiesAsMap();
       String propertyValue = null;

@@ -238,14 +238,13 @@ public class DefaultConfigurationStoreTest {
 
     CatalogEntity catalog = new CatalogEntity.Builder().build();
 
-    Assertions.assertThat(configurationStore.getConfiguration(polarisContext, catalog, safeConfig))
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, safeConfig))
         .isTrue();
 
-    Assertions.assertThat(
-            configurationStore.getConfiguration(polarisContext, catalog, unsafeConfig))
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, unsafeConfig))
         .isTrue();
 
-    Assertions.assertThat(configurationStore.getConfiguration(polarisContext, catalog, bothConfig))
+    Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, bothConfig))
         .isTrue();
   }
 }
