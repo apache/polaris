@@ -174,6 +174,7 @@ public abstract class PolarisAuthzTestBase {
   // Two views under ns1a
   protected static final TableIdentifier VIEW_NS1A_1 = TableIdentifier.of(NS1A, "view1");
   protected static final TableIdentifier VIEW_NS1A_2 = TableIdentifier.of(NS1A, "view2");
+  protected static final TableIdentifier VIEW_NS1A_3_DYNAMIC = TableIdentifier.of(NS1A, "view3");
 
   // One view under ns1b with same name as one under ns1a
   protected static final TableIdentifier VIEW_NS1B_1 = TableIdentifier.of(NS1B, "view1");
@@ -182,6 +183,11 @@ public abstract class PolarisAuthzTestBase {
   protected static final TableIdentifier VIEW_NS2_1 = TableIdentifier.of(NS2, "view1");
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
+
+  protected static final String VIEW_QUERY_DYNAMIC =
+      String.format(
+          "SELECT * from ns1.layer1_table where is_principal_role('%s') OR IS_MEMBER()",
+          PRINCIPAL_ROLE1);
 
   public static final Schema SCHEMA =
       new Schema(
@@ -357,6 +363,12 @@ public abstract class PolarisAuthzTestBase {
         .withSchema(SCHEMA)
         .withDefaultNamespace(NS1)
         .withQuery("spark", VIEW_QUERY)
+        .create();
+    baseCatalog
+        .buildView(VIEW_NS1A_3_DYNAMIC)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS1)
+        .withQuery("spark", VIEW_QUERY_DYNAMIC)
         .create();
     baseCatalog
         .buildView(VIEW_NS1B_1)
