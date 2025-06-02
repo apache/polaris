@@ -27,7 +27,6 @@ import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -178,13 +177,7 @@ public record TestServices(
                   configurationStore,
                   Mockito.mock(Clock.class));
             }
-
-            @Override
-            public Map<String, Object> contextVariables() {
-              return new HashMap<>();
-            }
           };
-      CallContext.setCurrentContext(callContext);
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =

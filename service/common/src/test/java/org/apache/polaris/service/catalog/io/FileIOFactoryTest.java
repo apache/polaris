@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -153,11 +152,6 @@ public class FileIOFactoryTest {
                 testServices.polarisDiagnostics(),
                 testServices.configurationStore(),
                 Mockito.mock(Clock.class));
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return new HashMap<>();
           }
         };
   }

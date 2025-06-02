@@ -255,7 +255,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           CatalogProperties.FILE_IO_IMPL);
     }
 
-    callContext.closeables().addCloseable(this);
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);

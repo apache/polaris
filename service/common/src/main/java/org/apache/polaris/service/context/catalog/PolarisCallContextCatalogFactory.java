@@ -99,8 +99,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             fileIOFactory,
             polarisEventListener);
 
-    context.contextVariables().put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, catalogInstance);
-
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getDefaultBaseLocation();

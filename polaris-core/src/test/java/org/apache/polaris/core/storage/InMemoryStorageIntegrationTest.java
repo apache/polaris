@@ -105,43 +105,41 @@ class InMemoryStorageIntegrationTest {
               }
             },
             Clock.systemUTC());
-    try (CallContext ignored =
-        CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext))) {
-      Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-          storage.validateAccessToLocations(
-              new FileStorageConfigurationInfo(List.of("file://", "*")),
-              Set.of(PolarisStorageActions.READ),
-              Set.of(
-                  "s3://bucket/path/to/warehouse/namespace/table",
-                  "file:///etc/passwd",
-                  "a/relative/subdirectory"));
-      Assertions.assertThat(result)
-          .hasSize(3)
-          .hasEntrySatisfying(
-              "s3://bucket/path/to/warehouse/namespace/table",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "file:///etc/passwd",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "a/relative/subdirectory",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
-    }
+    CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext));
+    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
+        storage.validateAccessToLocations(
+            new FileStorageConfigurationInfo(List.of("file://", "*")),
+            Set.of(PolarisStorageActions.READ),
+            Set.of(
+                "s3://bucket/path/to/warehouse/namespace/table",
+                "file:///etc/passwd",
+                "a/relative/subdirectory"));
+    Assertions.assertThat(result)
+        .hasSize(3)
+        .hasEntrySatisfying(
+            "s3://bucket/path/to/warehouse/namespace/table",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "file:///etc/passwd",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "a/relative/subdirectory",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
   }
 
   @Test
