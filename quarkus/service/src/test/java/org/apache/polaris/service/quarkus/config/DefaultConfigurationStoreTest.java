@@ -149,16 +149,19 @@ public class DefaultConfigurationStoreTest {
   void testGetConfigurationWithRealm() {
     // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
     // realmOne.
-    assertThat((Boolean) configurationStore.getConfiguration(realmOne, falseByDefaultKey)).isTrue();
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, falseByDefaultKey))
+        .isTrue();
     // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
-    assertThat((Boolean) configurationStore.getConfiguration(realmOne, trueByDefaultKey)).isTrue();
+    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, trueByDefaultKey))
+        .isTrue();
 
     // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwo, falseByDefaultKey))
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey))
         .isFalse();
     // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
     // realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwo, trueByDefaultKey)).isFalse();
+    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, trueByDefaultKey))
+        .isFalse();
   }
 
   @Test

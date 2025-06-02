@@ -50,7 +50,8 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   }
 
   @Override
-  public <T> @Nullable T getConfiguration(String realm, String configName) {
+  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+    String realm = realmContext.getRealmIdentifier();
     LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
     @SuppressWarnings("unchecked")
     T confgValue =
@@ -64,8 +65,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
     if (realmContextInstance.isResolvable()) {
       RealmContext realmContext = realmContextInstance.get();
-      String realm = realmContext.getRealmIdentifier();
-      return getConfiguration(realm, configName);
+      return getConfiguration(realmContext, configName);
     } else {
       LOGGER.debug(
           "No RealmContext is injected when lookup value for configuration {} ", configName);

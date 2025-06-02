@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +46,9 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    *     <p>This function needs to be used with caution, it can not be called outside of active
    *     request scope, such as background tasks (TaskExecutor). Please use the function
-   *     getConfiguration(String realm, String configName) to get the configuration value in a more
-   *     robust way. TODO: Remove this function and replace the usage with the function takes realm
+   *     getConfiguration(RealmContext realmContext, String configName) to get the configuration
+   *     value in a more robust way. TODO: Remove this function and replace the usage with the
+   *     function takes realm.
    */
   default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
     return null;
@@ -63,9 +65,9 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    *     <p>This function needs to be used with caution, it can not be called outside of active
    *     request scope, such as background tasks (TaskExecutor). Please use the function
-   *     getConfiguration(String realm, String configName, @Nonnull T defaultValue) to get the
+   *     getConfiguration(RealmContext realmContext, String configName, T defaultValue) to get the
    *     configuration value in a more robust way. TODO: Remove this function and replace the usage
-   *     with the function takes realm
+   *     with the function takes realm.
    */
   default <T> @Nonnull T getConfiguration(
       PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
@@ -77,12 +79,12 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration key for a given realm. May be null if not set.
    *
-   * @param realm the realm identifier
+   * @param realmContext the realm context
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key for the given realm, or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nullable T getConfiguration(String realm, String configName) {
+  default <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
     return null;
   }
 
@@ -90,16 +92,16 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration key for the given realm. If not set, return the
    * non-null default value.
    *
-   * @param realm the realm identifier
+   * @param realmContext the realm context
    * @param configName the name of the configuration key to check
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      String realm, String configName, @Nonnull T defaultValue) {
+      RealmContext realmContext, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
-    T configValue = getConfiguration(realm, configName);
+    T configValue = getConfiguration(realmContext, configName);
     return configValue != null ? configValue : defaultValue;
   }
 
