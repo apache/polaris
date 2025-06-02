@@ -43,7 +43,8 @@ public interface PolarisConfigurationStore {
    * <p>This function will be deprecated, it can not be called outside of active request scope, such
    * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
    * realmContext, String configName) to get the configuration value in a more robust way. TODO:
-   * Remove this function and replace the usage with the function takes realm.
+   * Remove this function and replace the usage with the function takes realm. Github issue
+   * https://github.com/apache/polaris/issues/1775
    *
    * @param ctx the current call context
    * @param configName the name of the configuration key to check
@@ -63,6 +64,7 @@ public interface PolarisConfigurationStore {
    * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
    * realmContext, String configName, T defaultValue) to get the configuration value in a more
    * robust way. TODO: Remove this function and replace the usage with the function takes realm.
+   * Github issue https://github.com/apache/polaris/issues/1775
    *
    * @param ctx the current call context
    * @param configName the name of the configuration key to check
@@ -132,7 +134,7 @@ public interface PolarisConfigurationStore {
 
   /**
    * Retrieve the current value for a configuration. TODO: update the function to take RealmContext
-   * instead of PolarisCallContext
+   * instead of PolarisCallContext. Github issue https://github.com/apache/polaris/issues/1775
    *
    * @param ctx the current call context
    * @param config the configuration to load
@@ -146,7 +148,8 @@ public interface PolarisConfigurationStore {
 
   /**
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
-   * present. TODO: update the function to take RealmContext instead of PolarisCallContext
+   * present. TODO: update the function to take RealmContext instead of PolarisCallContext Github
+   * issue https://github.com/apache/polaris/issues/1775
    *
    * @param ctx the current call context
    * @param catalogEntity the catalog to check for an override
