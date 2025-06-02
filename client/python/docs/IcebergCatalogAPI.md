@@ -328,7 +328,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_table**
-> LoadTableResult create_table(create_table_request, x_iceberg_access_delegation=x_iceberg_access_delegation)
+> LoadTableResult create_table(prefix, namespace, create_table_request, x_iceberg_access_delegation=x_iceberg_access_delegation)
 
 Create a table in the given namespace
 
@@ -368,12 +368,14 @@ configuration = polaris.catalog.Configuration(
 with polaris.catalog.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = polaris.catalog.IcebergCatalogAPI(api_client)
+    prefix = 'prefix_example' # str | An optional prefix in the path
+    namespace = 'accounting' # str | A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
     create_table_request = polaris.catalog.CreateTableRequest() # CreateTableRequest | 
     x_iceberg_access_delegation = 'vended-credentials,remote-signing' # str | Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.  The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module.  (optional)
 
     try:
         # Create a table in the given namespace
-        api_response = api_instance.create_table(create_table_request, x_iceberg_access_delegation=x_iceberg_access_delegation)
+        api_response = api_instance.create_table(prefix, namespace, create_table_request, x_iceberg_access_delegation=x_iceberg_access_delegation)
         print("The response of IcebergCatalogAPI->create_table:\n")
         pprint(api_response)
     except Exception as e:
@@ -387,6 +389,8 @@ with polaris.catalog.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **prefix** | **str**| An optional prefix in the path | 
+ **namespace** | **str**| A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (&#x60;0x1F&#x60;) byte. | 
  **create_table_request** | [**CreateTableRequest**](CreateTableRequest.md)|  | 
  **x_iceberg_access_delegation** | **str**| Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.  Specific properties and handling for &#x60;vended-credentials&#x60; is documented in the &#x60;LoadTableResult&#x60; schema section of this spec document.  The protocol and specification for &#x60;remote-signing&#x60; is documented in  the &#x60;s3-signer-open-api.yaml&#x60; OpenApi spec in the &#x60;aws&#x60; module.  | [optional] 
 
