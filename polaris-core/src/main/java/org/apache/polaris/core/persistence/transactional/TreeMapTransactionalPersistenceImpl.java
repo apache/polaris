@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -39,8 +40,10 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.pagination.EntityIdPageToken;
 import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageRequest;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
@@ -311,9 +314,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageRequest);
   }
 
   @Override
@@ -323,7 +326,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
@@ -339,7 +342,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 entity.getName(),
                 entity.getTypeCode(),
                 entity.getSubTypeCode()),
-        pageToken);
+        pageRequest);
   }
 
   @Override
@@ -350,7 +353,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
+      @Nonnull PageRequest pageRequest) {
     // full range scan under the parent for that type
     Stream<PolarisBaseEntity> data =
         this.store
@@ -361,13 +364,22 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .map(
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-            .filter(entityFilter);
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
+
+    PageToken pageToken = buildPageToken(pageRequest);
+    if (pageToken instanceof EntityIdPageToken) {
+      data =
+          data.sorted(Comparator.comparingLong(PolarisEntityCore::getId))
+              .filter(e -> e.getId() > ((EntityIdPageToken) pageToken).getId());
+    }
+
+    data = data.filter(entityFilter);
+
     if (pageToken instanceof HasPageSize) {
       data = data.limit(((HasPageSize) pageToken).getPageSize());
     }
 
-    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
+    return pageToken.buildNextPage(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -662,5 +674,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
+  }
+
+  private PageToken buildPageToken(PageRequest pageRequest) {
+    return EntityIdPageToken.fromPageRequest(pageRequest);
   }
 }

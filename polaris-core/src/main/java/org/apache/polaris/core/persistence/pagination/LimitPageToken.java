@@ -16,17 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.core.persistence.pagination;
 
 import java.util.List;
 
-/**
- * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
- * represent a `limit`. When updated, it returns {@link DonePageToken}. As such it should never be
- * user-facing and doesn't truly paginate.
- */
 public class LimitPageToken extends PageToken implements HasPageSize {
-
   public static final String PREFIX = "limit";
 
   private final int pageSize;
@@ -42,7 +37,7 @@ public class LimitPageToken extends PageToken implements HasPageSize {
 
   @Override
   public String toTokenString() {
-    return String.format("%s/%d", PREFIX, pageSize);
+    return null;
   }
 
   @Override
