@@ -40,16 +40,17 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
    *
+   * <p>This function will be deprecated, it can not be called outside of active request scope, such
+   * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
+   * realmContext, String configName) to get the configuration value in a more robust way. TODO:
+   * Remove this function and replace the usage with the function takes realm.
+   *
    * @param ctx the current call context
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
-   *     <p>This function needs to be used with caution, it can not be called outside of active
-   *     request scope, such as background tasks (TaskExecutor). Please use the function
-   *     getConfiguration(RealmContext realmContext, String configName) to get the configuration
-   *     value in a more robust way. TODO: Remove this function and replace the usage with the
-   *     function takes realm.
    */
+  @Deprecated
   default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
     return null;
   }
@@ -58,17 +59,17 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration key. If not set, return the non-null default
    * value.
    *
+   * <p>This function will be deprecated, it can not be called outside of active request scope, such
+   * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
+   * realmContext, String configName, T defaultValue) to get the configuration value in a more
+   * robust way. TODO: Remove this function and replace the usage with the function takes realm.
+   *
    * @param ctx the current call context
    * @param configName the name of the configuration key to check
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
-   * @param <T> the type of the configuration value
-   *     <p>This function needs to be used with caution, it can not be called outside of active
-   *     request scope, such as background tasks (TaskExecutor). Please use the function
-   *     getConfiguration(RealmContext realmContext, String configName, T defaultValue) to get the
-   *     configuration value in a more robust way. TODO: Remove this function and replace the usage
-   *     with the function takes realm.
    */
+  @Deprecated
   default <T> @Nonnull T getConfiguration(
       PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
@@ -130,7 +131,8 @@ public interface PolarisConfigurationStore {
   }
 
   /**
-   * Retrieve the current value for a configuration.
+   * Retrieve the current value for a configuration. TODO: update the function to take RealmContext
+   * instead of PolarisCallContext
    *
    * @param ctx the current call context
    * @param config the configuration to load
@@ -144,7 +146,7 @@ public interface PolarisConfigurationStore {
 
   /**
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
-   * present.
+   * present. TODO: update the function to take RealmContext instead of PolarisCallContext
    *
    * @param ctx the current call context
    * @param catalogEntity the catalog to check for an override
