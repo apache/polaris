@@ -20,12 +20,15 @@ package org.apache.polaris.service.storage;
 
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -143,5 +146,40 @@ public class PolarisConfigurationStoreTest {
     consumer.consumeConfiguration(behaviorChangeConfig, () -> 21, 22);
 
     consumer.consumeConfiguration(featureConfig, () -> 42, 43);
+  }
+
+  @Test
+  public void testEntityOverrides() {
+    @SuppressWarnings("deprecation")
+    Function<Integer, FeatureConfiguration<String>> cfg =
+        i ->
+            PolarisConfiguration.<String>builder()
+                .key("key" + i)
+                .catalogConfig("polaris.config.catalog-key" + i)
+                .catalogConfigUnsafe("legacy-key" + i)
+                .description("")
+                .defaultValue("test-default" + i)
+                .buildFeatureConfiguration();
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @Override
+          public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+            //noinspection unchecked
+            return (T) Map.of("key2", "config-value2").get(configName);
+          }
+        };
+
+    PolarisCallContext ctx = null;
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .addProperty("polaris.config.catalog-key3", "entity-new3")
+            .addProperty("legacy-key4", "entity-legacy4")
+            .build();
+
+    Assertions.assertEquals("test-default1", store.getConfiguration(ctx, entity, cfg.apply(1)));
+    Assertions.assertEquals("config-value2", store.getConfiguration(ctx, entity, cfg.apply(2)));
+    Assertions.assertEquals("entity-new3", store.getConfiguration(ctx, entity, cfg.apply(3)));
+    Assertions.assertEquals("entity-legacy4", store.getConfiguration(ctx, entity, cfg.apply(4)));
   }
 }
