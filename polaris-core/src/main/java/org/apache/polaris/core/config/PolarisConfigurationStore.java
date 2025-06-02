@@ -46,7 +46,7 @@ public interface PolarisConfigurationStore {
    *     <p>This function needs to be used with caution, it can not be called outside of active
    *     request scope, such as background tasks (TaskExecutor). Please use the function
    *     getConfiguration(String realm, String configName) to get the configuration value in a more
-   *     robust way.
+   *     robust way. TODO: Remove this function and replace the usage with the function takes realm
    */
   default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
     return null;
@@ -64,7 +64,8 @@ public interface PolarisConfigurationStore {
    *     <p>This function needs to be used with caution, it can not be called outside of active
    *     request scope, such as background tasks (TaskExecutor). Please use the function
    *     getConfiguration(String realm, String configName, @Nonnull T defaultValue) to get the
-   *     configuration value in a more robust way.
+   *     configuration value in a more robust way. TODO: Remove this function and replace the usage
+   *     with the function takes realm
    */
   default <T> @Nonnull T getConfiguration(
       PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
