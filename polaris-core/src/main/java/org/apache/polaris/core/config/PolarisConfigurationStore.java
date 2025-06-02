@@ -135,13 +135,14 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration.
    *
-   * @param ctx the current call context
+   * @param realmContext the current realm context
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull T getConfiguration(RealmContext ctx, PolarisConfiguration<T> config) {
-    T result = getConfiguration(ctx, config.key, config.defaultValue);
+  default <T> @Nonnull T getConfiguration(
+      RealmContext realmContext, PolarisConfiguration<T> config) {
+    T result = getConfiguration(realmContext, config.key, config.defaultValue);
     return tryCast(config, result);
   }
 
@@ -149,14 +150,16 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
    * present.
    *
-   * @param ctx the current call context
+   * @param realmContext the current realm context
    * @param catalogEntity the catalog to check for an override
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext ctx, @Nonnull CatalogEntity catalogEntity, PolarisConfiguration<T> config) {
+      RealmContext realmContext,
+      @Nonnull CatalogEntity catalogEntity,
+      PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
       Map<String, String> propertiesMap = catalogEntity.getPropertiesAsMap();
       String propertyValue = null;
@@ -178,6 +181,6 @@ public interface PolarisConfigurationStore {
         return tryCast(config, propertyValue);
       }
     }
-    return getConfiguration(ctx, config);
+    return getConfiguration(realmContext, config);
   }
 }

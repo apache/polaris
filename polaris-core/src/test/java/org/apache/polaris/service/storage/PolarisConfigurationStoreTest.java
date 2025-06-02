@@ -176,12 +176,12 @@ public class PolarisConfigurationStoreTest {
             .build();
 
     Assertions.assertEquals(
-        "test-default1", store.getConfiguration(() -> "testRealm", entity, cfg.apply(1)));
+        "test-default1", store.getConfiguration(testRealmContext, entity, cfg.apply(1)));
     Assertions.assertEquals(
-        "config-value2", store.getConfiguration(() -> "testRealm", entity, cfg.apply(2)));
+        "config-value2", store.getConfiguration(testRealmContext, entity, cfg.apply(2)));
     Assertions.assertEquals(
-        "entity-new3", store.getConfiguration(() -> "testRealm", entity, cfg.apply(3)));
+        "entity-new3", store.getConfiguration(testRealmContext, entity, cfg.apply(3)));
     Assertions.assertEquals(
-        "entity-legacy4", store.getConfiguration(() -> "testRealm", entity, cfg.apply(4)));
+        "entity-legacy4", store.getConfiguration(testRealmContext, entity, cfg.apply(4)));
   }
 }
