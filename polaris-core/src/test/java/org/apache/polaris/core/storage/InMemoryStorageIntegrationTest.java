@@ -102,7 +102,8 @@ class InMemoryStorageIntegrationTest {
             new PolarisConfigurationStore() {
               @SuppressWarnings("unchecked")
               @Override
-              public <T> @Nullable T getConfiguration(RealmContext ctx, String configName) {
+              public <T> @Nullable T getConfiguration(
+                  @Nonnull RealmContext ctx, String configName) {
                 return (T) config.get(configName);
               }
             },

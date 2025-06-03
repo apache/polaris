@@ -72,12 +72,9 @@ public class DefaultConfigurationStoreTest {
     }
   }
 
-  private PolarisCallContext polarisContext;
   private RealmContext realmContext;
 
-  @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagServices;
   @Inject FeaturesConfiguration featuresConfiguration;
 
   @BeforeEach
@@ -88,13 +85,6 @@ public class DefaultConfigurationStoreTest {
                 testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("test"),
                 System.nanoTime());
     realmContext = () -> realmName;
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
   }
 
   @Test
@@ -156,16 +146,16 @@ public class DefaultConfigurationStoreTest {
   @Test
   public void testInjectedConfigurationStore() {
     // the default value for trueByDefaultKey is `true`
-    boolean featureDefaultValue =
+    Boolean featureDefaultValue =
         configurationStore.getConfiguration(realmContext, trueByDefaultKey);
     assertThat(featureDefaultValue).isTrue();
 
     // the value for falseByDefaultKey is `false`, and no realm override for realmTwo
-    boolean realmTwoValue = configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey);
+    Boolean realmTwoValue = configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey);
     assertThat(realmTwoValue).isFalse();
 
     // Now, realmOne override falseByDefaultKey to `True`
-    boolean realmOneValue = configurationStore.getConfiguration(realmOneContext, falseByDefaultKey);
+    Boolean realmOneValue = configurationStore.getConfiguration(realmOneContext, falseByDefaultKey);
     assertThat(realmOneValue).isTrue();
 
     assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);

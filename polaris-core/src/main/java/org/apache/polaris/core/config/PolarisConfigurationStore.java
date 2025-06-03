@@ -59,7 +59,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext, String configName, @Nonnull T defaultValue) {
+      @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
     T configValue = getConfiguration(realmContext, configName);
     return configValue != null ? configValue : defaultValue;
@@ -98,7 +98,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext, PolarisConfiguration<T> config) {
+      @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
     T result = getConfiguration(realmContext, config.key, config.defaultValue);
     return tryCast(config, result);
   }
@@ -114,7 +114,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext,
+      @Nonnull RealmContext realmContext,
       @Nonnull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {

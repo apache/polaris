@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,7 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(RealmContext ctx, String configName) {
+          public <T> @Nullable T getConfiguration(@Nonnull RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
                 return (T) String.valueOf(c.defaultValue);
@@ -84,7 +85,7 @@ public class PolarisConfigurationStoreTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(RealmContext ctx, String configName) {
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
             return (T) "abc123";
           }
         };
