@@ -18,15 +18,15 @@
 #
 
 [tool.poetry]
-name = "polaris.catalog"
+name = "polaris"
 version = "1.0.0"
-description = "Apache Iceberg REST Catalog API"
+description = "Apache Polaris"
 authors = ["OpenAPI Generator Community <team@openapitools.org>"]
 license = "Apache 2.0"
 readme = "README.md"
-repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
-keywords = ["OpenAPI", "OpenAPI-Generator", "Apache Iceberg REST Catalog API"]
-include = ["polaris.catalog/py.typed"]
+repository = "https://github.com/apache/polaris"
+keywords = ["OpenAPI", "OpenAPI-Generator", "Apache Iceberg REST Catalog API", "Apache Polaris"]
+include = ["polaris/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -55,6 +55,7 @@ extension-pkg-whitelist = "pydantic"
 [tool.mypy]
 files = [
   "polaris.catalog",
+  "polaris.management",
   #"test",  # auto-generated tests
   "tests", # hand-written tests
 ]
@@ -93,6 +94,7 @@ disallow_any_generics = true
 [[tool.mypy.overrides]]
 module = [
   "polaris.catalog.configuration",
+  "polaris.management.configuration",
 ]
 warn_unused_ignores = true
 strict_equality = true
