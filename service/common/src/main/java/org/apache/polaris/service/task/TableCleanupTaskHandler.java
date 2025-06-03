@@ -230,7 +230,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
                   .withData(
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                          tableEntity.getTableIdentifier(), metadataBatch))
+                          tableEntity.getTableIdentifier(),
+                          metadataBatch,
+                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
             });
