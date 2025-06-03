@@ -126,7 +126,10 @@ EXCLUDE_PATHS=(
   "./polaris/management/api/__pycache__/"
   "./.github/workflows/python.yml"
   "./.gitlab-ci.yml"
-  "./gpyproject.toml"
+  "./pyproject.toml"
+  "./requirements.txt"
+  "./test-requirements.txt"
+  "./setup.py"
 )
 
 EXCLUDE_EXTENSIONS=(

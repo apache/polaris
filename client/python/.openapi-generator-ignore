@@ -44,3 +44,8 @@
 .github/workflows/python.yml
 .gitlab-ci.yml
 pyproject.toml
+requirements.txt
+test-requirements.txt
+setup.py
+
+
