@@ -38,7 +38,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -256,14 +255,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             PolarisEntityType.PRINCIPAL,
             PolarisEntitySubType.NULL_SUBTYPE,
             PolarisEntityConstants.getRootPrincipalName());
-    PolarisPrincipalSecrets secrets =
-        metaStoreManager
-            .loadPrincipalSecrets(
-                polarisContext,
-                PolarisEntity.of(rootPrincipalLookup.getEntity())
-                    .getInternalPropertiesAsMap()
-                    .get(PolarisEntityConstants.getClientIdPropertyName()))
-            .getPrincipalSecrets();
+    PrincipalSecretsResult secrets =
+        metaStoreManager.loadPrincipalSecrets(
+            polarisContext,
+            PolarisEntity.of(rootPrincipalLookup.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getClientIdPropertyName()));
     return secrets;
   }
 
