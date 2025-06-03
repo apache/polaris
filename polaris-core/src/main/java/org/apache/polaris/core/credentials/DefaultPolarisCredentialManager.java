@@ -19,6 +19,7 @@
 
 package org.apache.polaris.core.credentials;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.EnumMap;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -29,6 +30,7 @@ import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.annotations.NotNull;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -58,7 +60,7 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
             (ResolvedAwsIamServiceIdentity) resolvedServiceIdentity;
         SigV4AuthenticationParametersDpo sigV4AuthenticationParameters =
             (SigV4AuthenticationParametersDpo) authenticationParameters;
-        StsClient stsClient = resolvedAwsIamServiceIdentity.stsClientSupplier().get();
+        StsClient stsClient = getStsClient(resolvedAwsIamServiceIdentity);
         AssumeRoleResponse response =
             stsClient.assumeRole(
                 AssumeRoleRequest.builder()
@@ -89,5 +91,11 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
         return credentialMap;
     }
     return credentialMap;
+  }
+
+  @VisibleForTesting
+  public StsClient getStsClient(
+      @NotNull ResolvedAwsIamServiceIdentity resolvedAwsIamServiceIdentity) {
+    return resolvedAwsIamServiceIdentity.stsClientSupplier().get();
   }
 }

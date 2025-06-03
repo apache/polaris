@@ -23,5 +23,5 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EntityMutationConfiguration {
-    Optional<List<String>> mutators();
+  Optional<List<String>> mutators();
 }
