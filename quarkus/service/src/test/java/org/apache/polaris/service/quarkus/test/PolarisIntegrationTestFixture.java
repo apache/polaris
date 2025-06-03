@@ -115,13 +115,12 @@ public class PolarisIntegrationTestFixture {
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             metaStoreSession, helper.diagServices, helper.configurationStore, helper.clock);
-    try (CallContext ctx = CallContext.of(realmContext, polarisContext)) {
-      CallContext.setCurrentContext(ctx);
+    try {
       PolarisMetaStoreManager metaStoreManager =
-          helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
+          helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       EntityResult principal =
           metaStoreManager.readEntityByName(
-              ctx.getPolarisCallContext(),
+              polarisContext,
               null,
               PolarisEntityType.PRINCIPAL,
               PolarisEntitySubType.NULL_SUBTYPE,
@@ -129,7 +128,7 @@ public class PolarisIntegrationTestFixture {
 
       Map<String, String> propertiesMap = readInternalProperties(principal);
       return metaStoreManager
-          .loadPrincipalSecrets(ctx.getPolarisCallContext(), propertiesMap.get("client_id"))
+          .loadPrincipalSecrets(polarisContext, propertiesMap.get("client_id"))
           .getPrincipalSecrets();
     } finally {
       CallContext.unsetCurrentContext();

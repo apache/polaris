@@ -50,17 +50,22 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   }
 
   @Override
+  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+    String realm = realmContext.getRealmIdentifier();
+    LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
+    @SuppressWarnings("unchecked")
+    T confgValue =
+        (T)
+            Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
+                .orElseGet(() -> getDefaultConfiguration(configName));
+    return confgValue;
+  }
+
+  @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
-    if (!realmContextInstance.isUnsatisfied()) {
+    if (realmContextInstance.isResolvable()) {
       RealmContext realmContext = realmContextInstance.get();
-      String realm = realmContext.getRealmIdentifier();
-      LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
-      @SuppressWarnings("unchecked")
-      T confgValue =
-          (T)
-              Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
-                  .orElseGet(() -> getDefaultConfiguration(configName));
-      return confgValue;
+      return getConfiguration(realmContext, configName);
     } else {
       LOGGER.debug(
           "No RealmContext is injected when lookup value for configuration {} ", configName);

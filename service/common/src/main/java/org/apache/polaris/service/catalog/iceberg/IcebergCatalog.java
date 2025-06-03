@@ -255,15 +255,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           CatalogProperties.FILE_IO_IMPL);
     }
 
-    callContext.closeables().addCloseable(this);
-    this.closeableGroup = new CloseableGroup();
-    closeableGroup.addCloseable(metricsReporter());
-    closeableGroup.setSuppressCloseFailure(true);
-
-    tableDefaultProperties =
-        PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
-
-    callContext.closeables().addCloseable(this);
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
@@ -349,7 +340,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getCurrentPolarisContext()
             .getConfigurationStore()
             .getConfiguration(
-                getCurrentPolarisContext(),
+                callContext.getRealmContext(),
                 BehaviorChangeConfiguration.TABLE_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT);
     return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
@@ -529,8 +520,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
-            callContext.getPolarisCallContext(),
-            FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            callContext.getRealmContext(), FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -672,7 +662,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 polarisCallContext
                     .getConfigurationStore()
                     .getConfiguration(
-                        polarisCallContext, FeatureConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+                        callContext.getRealmContext(),
+                        FeatureConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -701,8 +692,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
-            callContext.getPolarisCallContext(),
-            FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            callContext.getRealmContext(), FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity).getBaseLocation(),
@@ -1003,7 +993,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .getPolarisCallContext()
                   .getConfigurationStore()
                   .getConfiguration(
-                      callContext.getPolarisCallContext(),
+                      callContext.getRealmContext(),
                       FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
           if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
             List<String> invalidLocations =
@@ -1034,14 +1024,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(),
+                callContext.getRealmContext(),
                 BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
 
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             catalog,
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
@@ -1974,12 +1964,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+                callContext.getRealmContext(), FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+                callContext.getRealmContext(),
+                FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),
@@ -2276,7 +2267,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               .getPolarisCallContext()
               .getConfigurationStore()
               .getConfiguration(
-                  callContext.getPolarisCallContext(),
+                  callContext.getRealmContext(),
                   catalogEntity,
                   FeatureConfiguration.DROP_WITH_PURGE_ENABLED);
       if (!dropWithPurgeEnabled) {
@@ -2523,13 +2514,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return callContext
         .getPolarisCallContext()
         .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
+        .getConfiguration(callContext.getRealmContext(), configKey, defaultValue);
   }
 
   private int getMaxMetadataRefreshRetries() {
     var ctx = callContext.getPolarisCallContext();
     return ctx.getConfigurationStore()
-        .getConfiguration(ctx, FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
+        .getConfiguration(
+            callContext.getRealmContext(), FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
   }
 
   /** Build a {@link PageToken} from a string and page size. */
@@ -2540,7 +2532,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(),
+                callContext.getRealmContext(),
                 catalogEntity,
                 FeatureConfiguration.LIST_PAGINATION_ENABLED);
     if (!paginationEnabled) {

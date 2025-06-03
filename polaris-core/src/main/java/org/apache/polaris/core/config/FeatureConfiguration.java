@@ -52,7 +52,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
-            .getConfiguration(callContext.getPolarisCallContext(), featureConfig);
+            .getConfiguration(callContext.getRealmContext(), featureConfig);
     if (!enabled) {
       throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key);
     }

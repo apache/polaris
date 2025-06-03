@@ -559,6 +559,8 @@ paths:
         table state.
       operationId: createTable
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/data-access'
       requestBody:
         required: true

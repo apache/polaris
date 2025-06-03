@@ -34,7 +34,7 @@ services:
       POLARIS_PERSISTENCE_TYPE: relational-jdbc
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_RETRIES: 5
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_INITIAL_DELAY_IN_MS: 100
-      POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DELAY_IN_MS: 5000
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DURATION_IN_MS: 5000
       QUARKUS_DATASOURCE_DB_KIND: pgsql
       QUARKUS_DATASOURCE_JDBC_URL: $QUARKUS_DATASOURCE_JDBC_URL
       QUARKUS_DATASOURCE_USERNAME: $QUARKUS_DATASOURCE_USERNAME
@@ -68,7 +68,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
-    image: apache/spark:3.5.5-java17-python3
+    image: apache/spark:3.5.6-java17-python3
     depends_on:
       polaris-setup:
         condition: service_completed_successfully

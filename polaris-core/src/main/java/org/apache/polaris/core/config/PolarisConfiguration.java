@@ -165,10 +165,11 @@ public abstract class PolarisConfiguration<T> {
     /**
      * Used to support backwards compatability before there were reserved properties. Usage of this
      * method should be removed over time.
+     *
+     * @deprecated Use {@link #catalogConfig()} instead.
      */
     @Deprecated
     public Builder<T> catalogConfigUnsafe(String catalogConfig) {
-      LOGGER.info("catalogConfigUnsafe is deprecated! Use catalogConfig() instead.");
       if (catalogConfig.startsWith(SAFE_CATALOG_CONFIG_PREFIX)) {
         throw new IllegalArgumentException(
             "Unsafe catalog configs are not expected to start with " + SAFE_CATALOG_CONFIG_PREFIX);
@@ -225,7 +226,7 @@ public abstract class PolarisConfiguration<T> {
     return callContext
         .getPolarisCallContext()
         .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configuration);
+        .getConfiguration(callContext.getRealmContext(), configuration);
   }
 
   public static <T> Builder<T> builder() {

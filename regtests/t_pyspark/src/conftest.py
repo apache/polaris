@@ -28,7 +28,7 @@ from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
 from polaris.catalog.api_client import ApiClient as CatalogApiClient
 from polaris.management import Catalog, AwsStorageConfigInfo, ApiClient, PolarisDefaultApi, Configuration, \
   CreateCatalogRequest, GrantCatalogRoleRequest, CatalogRole, ApiException, AddGrantRequest, CatalogGrant, \
-  CatalogPrivilege, CreateCatalogRoleRequest
+  CatalogPrivilege, CreateCatalogRoleRequest, CatalogProperties
 
 
 @pytest.fixture
@@ -107,10 +107,11 @@ def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aw
                                       allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
                                       role_arn=aws_role_arn)
   catalog_name = f'snowflake_{str(uuid.uuid4())[-10:]}'
-  catalog = Catalog(name=catalog_name, type='INTERNAL', properties={
+  catalog = Catalog(name=catalog_name, type='INTERNAL', properties=CatalogProperties.from_dict({
     "default-base-location": f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog",
-    "client.credentials-provider": "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
-  },
+    "client.credentials-provider": "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider",
+    "polaris.config.drop-with-purge.enabled": "true"
+  }),
                     storage_config_info=storage_conf)
   catalog.storage_config_info = storage_conf
   try:

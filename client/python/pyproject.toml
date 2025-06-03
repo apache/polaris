@@ -17,6 +17,30 @@
 # under the License.
 #
 
+[project]
+name = "polaris"
+version = "1.0.0"
+description = "Apache Polaris Management Service"
+authors = [
+    {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+license = "Apache-2.0"
+keywords = ["Polaris", "Polaris Management Service"]
+dynamic = ["classifiers"]
+dependencies = [
+    "urllib3>=1.25.3,<2.0",
+    "python-dateutil>=2.8.2",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.7.1",
+    "boto3==1.38.28",
+]
+
+[project.urls]
+homepage = "https://polaris.apache.org/"
+repository = "https://github.com/apache/polaris/"
+
 [tool.poetry]
 name = "polaris.catalog"
 version = "1.0.0"

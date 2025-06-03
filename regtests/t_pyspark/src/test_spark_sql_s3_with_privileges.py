@@ -1165,7 +1165,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
     :param reader_catalog_client:
     :return:
     """
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                              catalog_name=snowflake_catalog.name,
                              polaris_url=polaris_catalog_url) as spark:
         spark.sql(f'USE {snowflake_catalog.name}')
@@ -1203,23 +1203,26 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
     assert metadata_contents['ContentLength'] > 0
 
     # Delete metadata files
+    objects_to_delete = [{'Key': obj['Key']} for obj in objects['Contents']]
     s3.delete_objects(Bucket=test_bucket,
-                      Delete={'Objects': objects})
+                      Delete={'Objects': objects_to_delete})
 
     try:
         response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                      "iceberg_table",
                                                      "vended-credentials")
     except Exception as e:
-        assert '404' in str(e)
+        # 400 error(BadRequest) is thrown when metadata file is missing
+        assert '400' in str(e)
 
 
-    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                              catalog_name=snowflake_catalog.name,
                              polaris_url=polaris_catalog_url) as spark:
-        spark.sql(f'USE {snowflake_catalog.name}')
-        spark.sql('USE db1.schema')
-        spark.sql('DROP TABLE iceberg_table PURGE')
+        # Spark drop table triggers load table underneath, which fails due to missing metadata file.
+        # Directly call drop_table api to drop the table entity.
+        snowman_catalog_client.drop_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                            "iceberg_table")
         spark.sql(f'USE {snowflake_catalog.name}')
         spark.sql('DROP NAMESPACE db1.schema')
         spark.sql('DROP NAMESPACE db1')

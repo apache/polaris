@@ -157,7 +157,8 @@ public class PolarisServiceImpl
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                callContext.getRealmContext(),
+                FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
@@ -179,7 +180,7 @@ public class PolarisServiceImpl
                   .getPolarisCallContext()
                   .getConfigurationStore()
                   .getConfiguration(
-                      callContext.getPolarisCallContext(),
+                      callContext.getRealmContext(),
                       FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
                   .stream()
                   .map(s -> s.toUpperCase(Locale.ROOT))
