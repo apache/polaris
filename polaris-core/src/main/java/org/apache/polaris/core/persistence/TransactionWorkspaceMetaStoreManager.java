@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -388,8 +389,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   /** {@inheritDoc} */
   @Override
-  public Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, long catalogId, String location) {
+  public <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, T entity) {
     callContext
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "hasOverlappingSiblings");

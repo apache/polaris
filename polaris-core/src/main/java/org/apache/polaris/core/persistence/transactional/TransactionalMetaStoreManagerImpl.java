@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -2321,8 +2322,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, long catalogId, String location) {
+  public <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, T entity) {
     return Optional.empty();
   }
 

@@ -26,6 +26,7 @@ import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -397,14 +398,13 @@ public interface PolarisMetaStoreManager
    * location
    *
    * @param callContext the polaris call context
-   * @param catalogId the catalog to look for duplicates inside
-   * @param location the location to check for overlaps against
+   * @param entity the entity to check for overlapping siblings for
    * @return Optional.of(Optional.of ( location)) if the parent entity has children,
-   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
-   *     this operation
+   * Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   * this operation
    */
-  Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, long catalogId, String location);
+  <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, T entity);
 
   /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via

@@ -26,8 +26,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -409,14 +411,13 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * share a base location
    *
    * @param callContext the polaris call context
-   * @param parentId the parent entity to look for duplicates inside
-   * @param location the location to check for overlaps against
+   * @param entity the entity to check for overlapping siblings for
    * @return Optional.of(Optional.of(location)) if the parent entity has children,
    *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
    *     this operation
    */
-  Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, long parentId, String location);
+  <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, T entity);
 
   /**
    * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}

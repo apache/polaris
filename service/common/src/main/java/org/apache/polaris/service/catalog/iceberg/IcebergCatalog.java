@@ -238,7 +238,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     // Base location from catalogEntity is primary source of truth, otherwise fall through
     // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
-        Optional.ofNullable(catalogEntity.getDefaultBaseLocation())
+        Optional.ofNullable(catalogEntity.getBaseLocation())
             .orElse(
                 properties.getOrDefault(
                     CatalogEntity.DEFAULT_BASE_LOCATION_KEY,
@@ -592,7 +592,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       @Nonnull CallContext callContext, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
-      String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
+      String catalogDefaultBaseLocation = catEntity.getBaseLocation();
       callContext
           .getPolarisCallContext()
           .getDiagServices()
@@ -1079,7 +1079,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+                callContext.getRealmContext(), FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
       long parentId = parentNamespace.map(PolarisEntityCore::getId).orElseGet(() -> catalogId);
       Optional<Optional<String>> directSiblingCheckResult =
@@ -2570,7 +2570,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   protected FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(catalogEntity);
     TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
-    Set<String> locations = Set.of(catalogEntity.getDefaultBaseLocation());
+    Set<String> locations = Set.of(catalogEntity.getBaseLocation());
     ResolvedPolarisEntity resolvedCatalogEntity =
         new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =
