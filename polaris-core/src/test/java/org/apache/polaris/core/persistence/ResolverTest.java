@@ -22,6 +22,7 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -57,7 +58,8 @@ public class ResolverTest extends BaseResolverTest {
   protected PolarisTestMetaStoreManager tm() {
     if (tm == null) {
       // bootstrap the mata store with our test schema
-      tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx());
+      RealmContext realmCtx = () -> "testRealm";
+      tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx(), realmCtx);
     }
     return tm;
   }

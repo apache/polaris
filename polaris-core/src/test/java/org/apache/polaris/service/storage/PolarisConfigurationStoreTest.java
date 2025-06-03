@@ -175,13 +175,9 @@ public class PolarisConfigurationStoreTest {
             .addProperty("legacy-key4", "entity-legacy4")
             .build();
 
-    Assertions.assertEquals(
-        "test-default1", store.getConfiguration(testRealmContext, entity, cfg.apply(1)));
-    Assertions.assertEquals(
-        "config-value2", store.getConfiguration(testRealmContext, entity, cfg.apply(2)));
-    Assertions.assertEquals(
-        "entity-new3", store.getConfiguration(testRealmContext, entity, cfg.apply(3)));
-    Assertions.assertEquals(
-        "entity-legacy4", store.getConfiguration(testRealmContext, entity, cfg.apply(4)));
+    Assertions.assertEquals("test-default1", store.getConfiguration(null, entity, cfg.apply(1)));
+    Assertions.assertEquals("config-value2", store.getConfiguration(null, entity, cfg.apply(2)));
+    Assertions.assertEquals("entity-new3", store.getConfiguration(null, entity, cfg.apply(3)));
+    Assertions.assertEquals("entity-legacy4", store.getConfiguration(null, entity, cfg.apply(4)));
   }
 }

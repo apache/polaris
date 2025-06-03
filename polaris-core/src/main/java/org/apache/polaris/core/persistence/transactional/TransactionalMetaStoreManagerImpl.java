@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1938,6 +1939,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** Refer to {@link #loadTasks(PolarisCallContext, String, PageToken)} */
   private @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx,
+      @Nonnull RealmContext realmCtx,
       @Nonnull TransactionalPersistence ms,
       String executorId,
       PageToken pageToken) {
@@ -1956,7 +1958,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   callCtx
                       .getConfigurationStore()
                       .getConfiguration(
-                          callCtx,
+                          realmCtx,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
@@ -2003,9 +2005,13 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull RealmContext realmCtx,
+      String executorId,
+      PageToken pageToken) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
+    return ms.runInTransaction(
+        callCtx, () -> this.loadTasks(callCtx, realmCtx, ms, executorId, pageToken));
   }
 
   /** {@inheritDoc} */

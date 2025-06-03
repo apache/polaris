@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -64,6 +65,8 @@ public class PolarisTestMetaStoreManager {
   // call context
   final PolarisCallContext polarisCallContext;
 
+  final RealmContext realmContext;
+
   // call metastore manager
   final PolarisMetaStoreManager polarisMetaStoreManager;
 
@@ -78,8 +81,15 @@ public class PolarisTestMetaStoreManager {
 
   // initialize the test
   public PolarisTestMetaStoreManager(
-      PolarisMetaStoreManager polarisMetaStoreManager, PolarisCallContext polarisCallContext) {
-    this(polarisMetaStoreManager, polarisCallContext, System.currentTimeMillis(), true);
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      PolarisCallContext polarisCallContext,
+      RealmContext realmContext) {
+    this(
+        polarisMetaStoreManager,
+        polarisCallContext,
+        realmContext,
+        System.currentTimeMillis(),
+        true);
 
     // bootstrap the Polaris service
     polarisMetaStoreManager.purge(polarisCallContext);
@@ -89,10 +99,12 @@ public class PolarisTestMetaStoreManager {
   public PolarisTestMetaStoreManager(
       PolarisMetaStoreManager polarisMetaStoreManager,
       PolarisCallContext polarisCallContext,
+      RealmContext realmContext,
       long testStartTime,
       boolean supportsChangeTracking) {
     this.testStartTime = testStartTime;
     this.polarisCallContext = polarisCallContext;
+    this.realmContext = realmContext;
     this.polarisMetaStoreManager = polarisMetaStoreManager;
     this.supportsChangeTracking = supportsChangeTracking;
     this.doRetry = false;

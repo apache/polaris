@@ -83,6 +83,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
+    RealmContext realmContext = () -> "realm";
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     RealmContext realmContext = () -> "realm";
@@ -96,7 +97,8 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
             session,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            timeSource.withZone(ZoneId.systemDefault())),
+        realmContext);
   }
 
   @ParameterizedTest

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1500,7 +1501,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull RealmContext realmCtx,
+      String executorId,
+      PageToken pageToken) {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
@@ -1517,7 +1521,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   callCtx
                       .getConfigurationStore()
                       .getConfiguration(
-                          callCtx,
+                          realmCtx,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null

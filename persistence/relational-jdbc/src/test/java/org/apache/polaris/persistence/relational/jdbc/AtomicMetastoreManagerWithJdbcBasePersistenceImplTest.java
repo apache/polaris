@@ -71,7 +71,8 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             basePersistence,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            timeSource.withZone(ZoneId.systemDefault())),
+        realmContext);
   }
 
   private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {
