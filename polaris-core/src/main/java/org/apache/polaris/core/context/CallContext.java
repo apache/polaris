@@ -49,6 +49,7 @@ public interface CallContext {
     CURRENT_CONTEXT.remove();
   }
 
+  // only tests are using this method now, we can get rid of them easily in a followup
   static CallContext of(
       final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
     return new CallContext() {

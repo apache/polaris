@@ -228,9 +228,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // CallContext may not have been resolved yet.
     PolarisCallContext polarisContext =
         new PolarisCallContext(
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
+            realmContext,
+            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
+            diagServices);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+      CallContext.setCurrentContext(polarisContext);
     }
 
     EntityResult preliminaryRootPrincipalLookup =
@@ -286,9 +288,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
     PolarisCallContext polarisContext =
         new PolarisCallContext(
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
+            realmContext,
+            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
+            diagServices);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+      CallContext.setCurrentContext(polarisContext);
     }
 
     EntityResult rootPrincipalLookup =
