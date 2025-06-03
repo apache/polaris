@@ -30,7 +30,7 @@ license = "Apache-2.0"
 keywords = ["Polaris", "Polaris Management Service"]
 dynamic = ["classifiers"]
 dependencies = [
-    "urllib3>=1.25.3,<2.0",
+    "urllib3==2.4.0",
     "python-dateutil>=2.8.2",
     "pydantic>=2.0.0",
     "typing-extensions>=4.7.1",
