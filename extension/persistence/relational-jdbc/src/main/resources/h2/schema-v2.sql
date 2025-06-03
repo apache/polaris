@@ -17,6 +17,10 @@
 -- under the License.
 --
 
+-- Changes from v1:
+--  * Added a `location` column to entities
+--  * Added an index `idx_locations` over (realm_id, parent_id, location) in entities
+
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
 

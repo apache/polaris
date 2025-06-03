@@ -28,7 +28,6 @@ services:
       - "8182:8182"
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
-    shm_size: 1gb
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
