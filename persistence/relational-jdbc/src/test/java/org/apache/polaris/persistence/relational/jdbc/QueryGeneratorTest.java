@@ -246,5 +246,15 @@ public class QueryGeneratorTest {
             + "location = 's3://bucket/tmp/' OR location = 's3://bucket/tmp/location/' OR location "
             + "LIKE 's3://bucket/tmp/location/%')",
         QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://bucket/tmp/location/"));
+
+    assertEquals(
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, "
+            + "purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, "
+            + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
+            + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
+            + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
+            + "location = 's3://バケツ/\"location\"/' OR location "
+            + "LIKE 's3://バケツ/\"location\"/%')",
+        QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://バケツ/\"location\"/"));
   }
 }
