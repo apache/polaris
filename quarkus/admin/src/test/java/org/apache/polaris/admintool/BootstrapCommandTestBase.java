@@ -127,14 +127,16 @@ public abstract class BootstrapCommandTestBase {
   @Test
   @Launch(
       value = {"bootstrap", "-r", "realm1", "-c", "realm1,client1d,s3cr3t", "--print-credentials"})
-  public void testPrintCredentials(LaunchResult result) {
+  public void testPrintCredentialsProvided(LaunchResult result) {
+    assertThat(result.exitCode()).isEqualTo(0);
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
-    assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: client1d:");
+    assertThat(result.getOutput()).doesNotContain("root principal credentials");
   }
 
   @Test
   @Launch(value = {"bootstrap", "-r", "realm1", "--print-credentials"})
   public void testPrintCredentialsSystemGenerated(LaunchResult result) {
+    assertThat(result.exitCode()).isEqualTo(0);
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
   }
