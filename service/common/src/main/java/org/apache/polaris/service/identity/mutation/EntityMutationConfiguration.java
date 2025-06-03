@@ -19,8 +19,9 @@
 
 package org.apache.polaris.service.identity.mutation;
 
-import org.apache.polaris.core.entity.PolarisBaseEntity;
+import java.util.List;
+import java.util.Optional;
 
-public interface EntityMutator {
-  PolarisBaseEntity apply(PolarisBaseEntity entity);
+public interface EntityMutationConfiguration {
+    Optional<List<String>> mutators();
 }

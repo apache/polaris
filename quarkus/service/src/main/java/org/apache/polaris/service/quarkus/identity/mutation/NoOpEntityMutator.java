@@ -19,19 +19,14 @@
 
 package org.apache.polaris.service.quarkus.identity.mutation;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.service.identity.mutation.EntityMutator;
 
 @ApplicationScoped
+@Identifier("no-op")
 public class NoOpEntityMutator implements EntityMutator {
-  private static final String MUTATOR_ID = "no-op";
-
-  @Override
-  public String id() {
-    return MUTATOR_ID;
-  }
-
   @Override
   public PolarisBaseEntity apply(PolarisBaseEntity entity) {
     return entity;

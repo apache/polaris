@@ -17,10 +17,15 @@
  * under the License.
  */
 
-package org.apache.polaris.service.identity.mutation;
+package org.apache.polaris.service.quarkus.identity.mutation;
 
-import org.apache.polaris.core.entity.PolarisBaseEntity;
+import io.smallrye.config.ConfigMapping;
+import java.util.List;
+import java.util.Optional;
+import org.apache.polaris.service.identity.mutation.EntityMutationConfiguration;
 
-public interface EntityMutator {
-  PolarisBaseEntity apply(PolarisBaseEntity entity);
+@ConfigMapping(prefix = "polaris.entity-mutation")
+public interface QuarkusEntityMutationConfiguration extends EntityMutationConfiguration {
+  @Override
+  Optional<List<String>> mutators();
 }

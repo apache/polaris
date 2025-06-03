@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.quarkus.identity.mutation;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -31,20 +32,14 @@ import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.service.identity.mutation.EntityMutator;
 
 @RequestScoped
+@Identifier("catalog-connection-config")
 public class CatalogEntityConnectionConfigMutator implements EntityMutator {
-
-  private static final String MUTATOR_ID = "catalog-connection-config";
 
   ServiceIdentityRegistry serviceIdentityRegistry;
 
   @Inject
   CatalogEntityConnectionConfigMutator(ServiceIdentityRegistry serviceIdentityRegistry) {
     this.serviceIdentityRegistry = serviceIdentityRegistry;
-  }
-
-  @Override
-  public String id() {
-    return MUTATOR_ID;
   }
 
   @Override

@@ -68,6 +68,7 @@ import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.mutation.EntityMutationConfiguration;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfiguration;
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
@@ -79,6 +80,7 @@ import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConf
 import org.apache.polaris.service.quarkus.identity.QuarkusRealmServiceIdentityConfiguration;
 import org.apache.polaris.service.quarkus.identity.QuarkusServiceIdentityConfiguration;
 import org.apache.polaris.service.quarkus.identity.QuarkusServiceIdentityRegistryConfiguration;
+import org.apache.polaris.service.quarkus.identity.mutation.QuarkusEntityMutationConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfiguration;
@@ -197,6 +199,12 @@ public class QuarkusProducers {
       @Any Instance<ServiceIdentityRegistryFactory> serviceIdentityRegistryFactories) {
     return serviceIdentityRegistryFactories.select(Identifier.Literal.of(config.type())).get();
   }
+
+//  @Produces
+//  public EntityMutationConfiguration entityMutationConfiguration(
+//      QuarkusEntityMutationConfiguration config) {
+//    return config;
+//  }
 
   @Produces
   public PolarisCredentialManagerFactory credentialManagerFactory(
