@@ -46,10 +46,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from polaris.management.models.bearer_authentication_parameters import BearerAuthenticationParameters
     from polaris.management.models.o_auth_client_credentials_parameters import OAuthClientCredentialsParameters
+    from polaris.management.models.sig_v4_authentication_parameters import SigV4AuthenticationParameters
 
 class AuthenticationParameters(BaseModel):
     """
-    Authentication-specific information for a REST connection
+    Authentication-specific information for a connection
     """ # noqa: E501
     authentication_type: StrictStr = Field(description="The type of authentication to use when connecting to the remote rest service", alias="authenticationType")
     __properties: ClassVar[List[str]] = ["authenticationType"]
@@ -57,8 +58,8 @@ class AuthenticationParameters(BaseModel):
     @field_validator('authentication_type')
     def authentication_type_validate_enum(cls, value):
         """Validates the enum"""
-        if value not in set(['OAUTH', 'BEARER']):
-            raise ValueError("must be one of enum values ('OAUTH', 'BEARER')")
+        if value not in set(['OAUTH', 'BEARER', 'SIGV4']):
+            raise ValueError("must be one of enum values ('OAUTH', 'BEARER', 'SIGV4')")
         return value
 
     model_config = ConfigDict(
@@ -73,7 +74,7 @@ class AuthenticationParameters(BaseModel):
 
     # discriminator mappings
     __discriminator_value_class_map: ClassVar[Dict[str, str]] = {
-        'BEARER': 'BearerAuthenticationParameters','OAUTH': 'OAuthClientCredentialsParameters'
+        'BEARER': 'BearerAuthenticationParameters','OAUTH': 'OAuthClientCredentialsParameters','SIGV4': 'SigV4AuthenticationParameters'
     }
 
     @classmethod
@@ -95,7 +96,7 @@ class AuthenticationParameters(BaseModel):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, json_str: str) -> Optional[Union[BearerAuthenticationParameters, OAuthClientCredentialsParameters]]:
+    def from_json(cls, json_str: str) -> Optional[Union[BearerAuthenticationParameters, OAuthClientCredentialsParameters, SigV4AuthenticationParameters]]:
         """Create an instance of AuthenticationParameters from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
@@ -120,7 +121,7 @@ class AuthenticationParameters(BaseModel):
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[BearerAuthenticationParameters, OAuthClientCredentialsParameters]]:
+    def from_dict(cls, obj: Dict[str, Any]) -> Optional[Union[BearerAuthenticationParameters, OAuthClientCredentialsParameters, SigV4AuthenticationParameters]]:
         """Create an instance of AuthenticationParameters from a dict"""
         # look up the object type based on discriminator mapping
         object_type = cls.get_discriminator_value(obj)
@@ -128,6 +129,8 @@ class AuthenticationParameters(BaseModel):
             return import_module("polaris.management.models.bearer_authentication_parameters").BearerAuthenticationParameters.from_dict(obj)
         if object_type ==  'OAuthClientCredentialsParameters':
             return import_module("polaris.management.models.o_auth_client_credentials_parameters").OAuthClientCredentialsParameters.from_dict(obj)
+        if object_type ==  'SigV4AuthenticationParameters':
+            return import_module("polaris.management.models.sig_v4_authentication_parameters").SigV4AuthenticationParameters.from_dict(obj)
 
         raise ValueError("AuthenticationParameters failed to lookup discriminator value from " +
                             json.dumps(obj) + ". Discriminator property name: " + cls.__discriminator_property_name +

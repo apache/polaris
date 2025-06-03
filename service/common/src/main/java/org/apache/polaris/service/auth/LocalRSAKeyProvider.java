@@ -18,36 +18,49 @@
  */
 package org.apache.polaris.service.auth;
 
+import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Class that can load public / private keys stored on localhost. Meant to be a simple
- * implementation for now where a PEM file is loaded off disk.
- */
+/** Holds a public / private key pair in memory. */
 public class LocalRSAKeyProvider implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalRSAKeyProvider.class);
 
-  private final Path publicKeyFileLocation;
-  private final Path privateKeyFileLocation;
+  private final PublicKey publicKey;
+  private final PrivateKey privateKey;
 
-  public LocalRSAKeyProvider(Path publicKeyFileLocation, Path privateKeyFileLocation) {
-    this.publicKeyFileLocation = publicKeyFileLocation;
-    this.privateKeyFileLocation = privateKeyFileLocation;
+  public LocalRSAKeyProvider(@Nonnull KeyPair keyPair) {
+    this(keyPair.getPublic(), keyPair.getPrivate());
   }
 
-  /**
-   * Getter for the Public Key instance
-   *
-   * @return the Public Key instance
-   */
-  @Override
-  public PublicKey getPublicKey() {
+  public LocalRSAKeyProvider(@Nonnull PublicKey publicKey, @Nonnull PrivateKey privateKey) {
+    this.publicKey = publicKey;
+    this.privateKey = privateKey;
+  }
+
+  public static LocalRSAKeyProvider fromFiles(
+      @Nonnull Path publicKeyFile, @Nonnull Path privateKeyFile) {
+    return new LocalRSAKeyProvider(
+        readPublicKeyFile(publicKeyFile), readPrivateKeyFile(privateKeyFile));
+  }
+
+  private static PrivateKey readPrivateKeyFile(Path privateKeyFileLocation) {
+    try {
+      return PemUtils.readPrivateKeyFromFile(privateKeyFileLocation, "RSA");
+    } catch (IOException e) {
+      LOGGER.error("Unable to read private key from file {}", privateKeyFileLocation, e);
+      throw new RuntimeException(
+          "Unable to read private key from file " + privateKeyFileLocation, e);
+    }
+  }
+
+  private static PublicKey readPublicKeyFile(Path publicKeyFileLocation) {
     try {
       return PemUtils.readPublicKeyFromFile(publicKeyFileLocation, "RSA");
     } catch (IOException e) {
@@ -57,18 +70,22 @@ public class LocalRSAKeyProvider implements KeyProvider {
   }
 
   /**
+   * Getter for the Public Key instance
+   *
+   * @return the Public Key instance
+   */
+  @Override
+  public PublicKey getPublicKey() {
+    return publicKey;
+  }
+
+  /**
    * Getter for the Private Key instance. Used to sign the content on the JWT signing stage.
    *
    * @return the Private Key instance
    */
   @Override
   public PrivateKey getPrivateKey() {
-    try {
-      return PemUtils.readPrivateKeyFromFile(privateKeyFileLocation, "RSA");
-    } catch (IOException e) {
-      LOGGER.error("Unable to read private key from file {}", privateKeyFileLocation, e);
-      throw new RuntimeException(
-          "Unable to read private key from file " + privateKeyFileLocation, e);
-    }
+    return privateKey;
   }
 }

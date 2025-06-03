@@ -138,10 +138,6 @@ public class QuarkusProducers {
     return CallContext.of(realmContext, polarisCallContext);
   }
 
-  public void closeCallContext(@Disposes CallContext callContext) {
-    callContext.close();
-  }
-
   // Polaris service beans - selected from @Identifier-annotated beans
 
   @Produces

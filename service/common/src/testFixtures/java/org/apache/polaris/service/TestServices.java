@@ -27,7 +27,6 @@ import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -103,7 +102,7 @@ public record TestServices(
     }
 
     @Override
-    public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
+    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
       @SuppressWarnings("unchecked")
       T confgValue = (T) defaults.get(configName);
       return confgValue;
@@ -178,13 +177,7 @@ public record TestServices(
                   configurationStore,
                   Mockito.mock(Clock.class));
             }
-
-            @Override
-            public Map<String, Object> contextVariables() {
-              return new HashMap<>();
-            }
           };
-      CallContext.setCurrentContext(callContext);
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =
@@ -211,7 +204,7 @@ public record TestServices(
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getPolarisCallContext(), configurationStore);
+          new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
 
       IcebergCatalogAdapter service =
           new IcebergCatalogAdapter(

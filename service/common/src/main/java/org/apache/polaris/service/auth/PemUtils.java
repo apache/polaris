@@ -120,15 +120,23 @@ public class PemUtils {
     return PemUtils.getPrivateKey(bytes, algorithm);
   }
 
-  public static void generateKeyPair(Path privateFileLocation, Path publicFileLocation)
-      throws NoSuchAlgorithmException, IOException {
+  public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
-    KeyPair kp = kpg.generateKeyPair();
+    return kpg.generateKeyPair();
+  }
+
+  public static void generateKeyPairFiles(Path privateFileLocation, Path publicFileLocation)
+      throws NoSuchAlgorithmException, IOException {
+    writeKeyPairFiles(generateKeyPair(), privateFileLocation, publicFileLocation);
+  }
+
+  public static void writeKeyPairFiles(
+      KeyPair keyPair, Path privateFileLocation, Path publicFileLocation) throws IOException {
     try (BufferedWriter writer = Files.newBufferedWriter(privateFileLocation, UTF_8)) {
       writer.write("-----BEGIN PRIVATE KEY-----");
       writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
+      writer.write(Base64.getMimeEncoder().encodeToString(keyPair.getPrivate().getEncoded()));
       writer.newLine();
       writer.write("-----END PRIVATE KEY-----");
       writer.newLine();
@@ -136,7 +144,7 @@ public class PemUtils {
     try (BufferedWriter writer = Files.newBufferedWriter(publicFileLocation, UTF_8)) {
       writer.write("-----BEGIN PUBLIC KEY-----");
       writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
+      writer.write(Base64.getMimeEncoder().encodeToString(keyPair.getPublic().getEncoded()));
       writer.newLine();
       writer.write("-----END PUBLIC KEY-----");
       writer.newLine();

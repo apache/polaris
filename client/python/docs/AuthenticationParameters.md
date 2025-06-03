@@ -20,7 +20,7 @@
 -->
 # AuthenticationParameters
 
-Authentication-specific information for a REST connection
+Authentication-specific information for a connection
 
 ## Properties
 

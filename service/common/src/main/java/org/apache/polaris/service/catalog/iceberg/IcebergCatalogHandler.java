@@ -705,14 +705,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     LOGGER.info(
         "allow external catalog credential vending: {}",
         configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             catalogEntity,
             FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
         && !configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             catalogEntity,
             FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
       throw new ForbiddenException(
@@ -972,7 +972,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                                   .getPolarisCallContext()
                                   .getConfigurationStore()
                                   .getConfiguration(
-                                      callContext.getPolarisCallContext(),
+                                      callContext.getRealmContext(),
                                       FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
