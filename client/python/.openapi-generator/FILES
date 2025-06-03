@@ -1,6 +1,4 @@
-.github/workflows/python.yml
 .gitignore
-.gitlab-ci.yml
 .travis.yml
 README.md
 docs/AddPartitionSpecUpdate.md
@@ -274,7 +272,6 @@ polaris/catalog/models/view_update.py
 polaris/catalog/models/view_version.py
 polaris/catalog/py.typed
 polaris/catalog/rest.py
-pyproject.toml
 requirements.txt
 setup.cfg
 setup.py
