@@ -69,7 +69,8 @@ docker run --rm \
   -g python \
   -o /local/client/python \
   --additional-properties=packageName=polaris.management \
-  --additional-properties=apiNamePrefix=polaris > /dev/null 
+  --additional-properties=apiNamePrefix=polaris \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
@@ -79,7 +80,8 @@ docker run --rm \
   -o /local/client/python \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
-  --skip-validate-spec > /dev/null
+  --skip-validate-spec \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
@@ -90,7 +92,8 @@ docker run --rm \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
   --additional-properties=apiNamePrefix=Iceberg \
-  --skip-validate-spec > /dev/null
+  --skip-validate-spec \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 #############################
 #      Prepend Licenses     #
