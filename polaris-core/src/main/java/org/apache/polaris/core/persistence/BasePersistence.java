@@ -405,8 +405,8 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long parentId);
 
   /**
-   * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which share a
-   * base location
+   * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which
+   * share a base location
    *
    * @param callContext the polaris call context
    * @param parentId the parent entity to look for duplicates inside
