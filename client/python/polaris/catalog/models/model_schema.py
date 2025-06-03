@@ -36,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from polaris.catalog.models.struct_field import StructField
 from typing import Optional, Set
@@ -51,6 +51,13 @@ class ModelSchema(BaseModel):
     schema_id: Optional[StrictInt] = Field(default=None, alias="schema-id")
     identifier_field_ids: Optional[List[StrictInt]] = Field(default=None, alias="identifier-field-ids")
     __properties: ClassVar[List[str]] = ["type", "fields", "schema-id", "identifier-field-ids"]
+
+    @field_validator('type')
+    def type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['struct']):
+            raise ValueError("must be one of enum values ('struct')")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -96,9 +103,9 @@ class ModelSchema(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in fields (list)
         _items = []
         if self.fields:
-            for _item in self.fields:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_fields in self.fields:
+                if _item_fields:
+                    _items.append(_item_fields.to_dict())
             _dict['fields'] = _items
         return _dict
 

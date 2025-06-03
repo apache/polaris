@@ -92,9 +92,9 @@ class ListGenericTablesResponse(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in identifiers (list)
         _items = []
         if self.identifiers:
-            for _item in self.identifiers:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_identifiers in self.identifiers:
+                if _item_identifiers:
+                    _items.append(_item_identifiers.to_dict())
             _dict['identifiers'] = _items
         # set to None if next_page_token (nullable) is None
         # and model_fields_set contains the field

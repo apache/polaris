@@ -92,9 +92,9 @@ class GetApplicablePoliciesResponse(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in applicable_policies (list)
         _items = []
         if self.applicable_policies:
-            for _item in self.applicable_policies:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_applicable_policies in self.applicable_policies:
+                if _item_applicable_policies:
+                    _items.append(_item_applicable_policies.to_dict())
             _dict['applicable-policies'] = _items
         # set to None if next_page_token (nullable) is None
         # and model_fields_set contains the field

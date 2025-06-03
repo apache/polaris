@@ -36,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
@@ -50,6 +50,13 @@ class ListType(BaseModel):
     element: Type
     element_required: StrictBool = Field(alias="element-required")
     __properties: ClassVar[List[str]] = ["type", "element-id", "element", "element-required"]
+
+    @field_validator('type')
+    def type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['list']):
+            raise ValueError("must be one of enum values ('list')")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
