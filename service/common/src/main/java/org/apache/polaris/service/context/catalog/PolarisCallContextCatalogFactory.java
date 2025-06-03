@@ -21,10 +21,8 @@ package org.apache.polaris.service.context.catalog;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -106,11 +104,16 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     String defaultBaseLocation = catalog.getDefaultBaseLocation();
     LOGGER.debug(
         "Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
-    catalogProperties.put(
-        CatalogProperties.WAREHOUSE_LOCATION,
-        Objects.requireNonNullElseGet(
-            defaultBaseLocation,
-            () -> Paths.get(WAREHOUSE_LOCATION_BASEDIR, catalogKey).toString()));
+
+    if (defaultBaseLocation == null) {
+      throw new IllegalStateException(
+          String.format(
+              "Catalog '%s' does not have a configured warehouse location. "
+                  + "Please configure a default base location for this catalog.",
+              catalogKey));
+    }
+
+    catalogProperties.put(CatalogProperties.WAREHOUSE_LOCATION, defaultBaseLocation);
 
     // TODO: The initialize properties might need to take more from CallContext and the
     // CatalogEntity.
