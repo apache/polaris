@@ -219,8 +219,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   /**
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
-   * metastore and creates a root service principal. After that we rotate the root principal
-   * credentials.
+   * metastore and creates a root service principal.
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
@@ -265,14 +264,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                     .getInternalPropertiesAsMap()
                     .get(PolarisEntityConstants.getClientIdPropertyName()))
             .getPrincipalSecrets();
-    PrincipalSecretsResult rotatedSecrets =
-        metaStoreManager.rotatePrincipalSecrets(
-            polarisContext,
-            secrets.getPrincipalClientId(),
-            secrets.getPrincipalId(),
-            false,
-            secrets.getMainSecretHash());
-    return rotatedSecrets;
+    return secrets;
   }
 
   /**
