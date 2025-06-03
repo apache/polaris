@@ -37,8 +37,20 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryGenerator {
+  private static final Logger log = LoggerFactory.getLogger(QueryGenerator.class);
+  private final DatabaseType databaseType;
+
+  public QueryGenerator(DatabaseType databaseType) {
+    this.databaseType = databaseType;
+  }
+
+  public DatabaseType getDatabaseType() {
+    return databaseType;
+  }
 
   public static class PreparedQuery {
     private final String sql;
@@ -58,11 +70,12 @@ public class QueryGenerator {
     }
   }
 
-  public static <T> PreparedQuery generateSelectQuery(
+  public <T> PreparedQuery generateSelectQuery(
       @Nonnull Converter<T> entity, @Nonnull Map<String, Object> whereClause) {
 
     String tableName = getTableName(entity.getClass());
-    Map<String, Object> objectMap = entity.toMap();
+    Map<String, Object> objectMap = entity.toMap(databaseType);
+    checkInvalidColumns(objectMap, whereClause);
 
     String columns = String.join(", ", objectMap.keySet());
     PreparedQuery whereClauseQuery = generateWhereClause(whereClause);
@@ -71,7 +84,7 @@ public class QueryGenerator {
     return new PreparedQuery(sql, whereClauseQuery.getParameters());
   }
 
-  public static PreparedQuery generateDeleteQueryForEntityGrantRecords(
+  public PreparedQuery generateDeleteQueryForEntityGrantRecords(
       @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
     String where =
         " WHERE (grantee_id = ? AND grantee_catalog_id = ? OR securable_id = ? AND securable_catalog_id = ?) AND realm_id = ?";
@@ -79,10 +92,10 @@ public class QueryGenerator {
         Arrays.asList(
             entity.getId(), entity.getCatalogId(), entity.getId(), entity.getCatalogId(), realmId);
 
-    return new PreparedQuery(generateDeleteQuery(ModelGrantRecord.class, where), params);
+    return new PreparedQuery("DELETE FROM " + getTableName(ModelGrantRecord.class) + where, params);
   }
 
-  public static PreparedQuery generateDeleteQueryForEntityPolicyMappingRecords(
+  public PreparedQuery generateDeleteQueryForEntityPolicyMappingRecords(
       @Nonnull PolarisBaseEntity entity, @Nonnull String realmId) {
     Map<String, Object> queryParams = new LinkedHashMap<>();
     if (entity.getType() == PolarisEntityType.POLICY) {
@@ -96,10 +109,10 @@ public class QueryGenerator {
     }
     queryParams.put("realm_id", realmId);
 
-    return generateDeleteQuery(ModelPolicyMappingRecord.class, queryParams);
+    return generateDeleteQuery(new ModelPolicyMappingRecord(), queryParams);
   }
 
-  public static PreparedQuery generateSelectQueryWithEntityIds(
+  public PreparedQuery generateSelectQueryWithEntityIds(
       @Nonnull String realmId, @Nonnull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
@@ -117,10 +130,10 @@ public class QueryGenerator {
     return new PreparedQuery(generateSelectQuery(new ModelEntity(), where).getSql(), params);
   }
 
-  public static <T> PreparedQuery generateInsertQuery(
+  public <T> PreparedQuery generateInsertQuery(
       @Nonnull Converter<T> entity, @Nonnull String realmId) {
     String tableName = getTableName(entity.getClass());
-    Map<String, Object> obj = entity.toMap();
+    Map<String, Object> obj = entity.toMap(databaseType);
     List<String> columnNames = new ArrayList<>(obj.keySet());
     List<Object> parameters = new ArrayList<>(obj.values());
 
@@ -134,10 +147,11 @@ public class QueryGenerator {
     return new PreparedQuery(sql, parameters);
   }
 
-  public static <T> PreparedQuery generateUpdateQuery(
+  public <T> PreparedQuery generateUpdateQuery(
       @Nonnull Converter<T> entity, @Nonnull Map<String, Object> whereClause) {
     String tableName = getTableName(entity.getClass());
-    Map<String, Object> obj = entity.toMap();
+    Map<String, Object> obj = entity.toMap(databaseType);
+    checkInvalidColumns(obj, whereClause);
 
     List<String> setClauses = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
@@ -161,51 +175,31 @@ public class QueryGenerator {
     return new PreparedQuery(sql, parameters);
   }
 
-  public static PreparedQuery generateDeleteQuery(
-      @Nonnull Class<?> entityClass, @Nonnull Map<String, Object> whereClause) {
-    List<String> conditions = new ArrayList<>();
-    List<Object> parameters = new ArrayList<>();
-
-    for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
-      conditions.add(entry.getKey() + " = ?");
-      parameters.add(entry.getValue());
-    }
-
-    String where = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
-    return new PreparedQuery(generateDeleteQuery(entityClass, where), parameters);
+  public <T> PreparedQuery generateDeleteQuery(
+      @Nonnull Converter<T> entity, @Nonnull Map<String, Object> whereClause) {
+    checkInvalidColumns(entity.toMap(databaseType), whereClause);
+    PreparedQuery preparedQuery = generateWhereClause(whereClause);
+    return new PreparedQuery(
+        "DELETE FROM " + getTableName(entity.getClass()) + preparedQuery.getSql(),
+        preparedQuery.getParameters());
   }
 
-  public static String generateDeleteQuery(
-      @Nonnull Class<?> entityClass, @Nonnull String whereClause) {
-    return "DELETE FROM " + getTableName(entityClass) + whereClause;
-  }
-
-  public static PreparedQuery generateDeleteAll(
-      @Nonnull Class<?> entityClass, @Nonnull String realmId) {
+  public PreparedQuery generateDeleteAll(@Nonnull Class<?> entityClass, @Nonnull String realmId) {
     String sql = "DELETE FROM " + getTableName(entityClass) + " WHERE 1 = 1 AND realm_id = ?";
     return new PreparedQuery(sql, List.of(realmId));
   }
 
-  public static <T> PreparedQuery generateDeleteQuery(
-      @Nonnull Converter<T> entity, @Nonnull String realmId) {
-    String tableName = getTableName(entity.getClass());
-    Map<String, Object> objMap = entity.toMap();
-    objMap.put("realm_id", realmId);
-    return generateDeleteQuery(entity.getClass(), objMap);
-  }
-
   @VisibleForTesting
-  static <T> PreparedQuery generateSelectQuery(
-      @Nonnull Converter<T> entity, @Nonnull String filter) {
+  <T> PreparedQuery generateSelectQuery(@Nonnull Converter<T> entity, @Nonnull String filter) {
     String tableName = getTableName(entity.getClass());
-    Map<String, Object> objectMap = entity.toMap();
+    Map<String, Object> objectMap = entity.toMap(databaseType);
     String columns = String.join(", ", objectMap.keySet());
     String sql = "SELECT " + columns + " FROM " + tableName + filter;
     return new PreparedQuery(sql, Collections.emptyList());
   }
 
   @VisibleForTesting
-  static PreparedQuery generateWhereClause(@Nonnull Map<String, Object> whereClause) {
+  PreparedQuery generateWhereClause(@Nonnull Map<String, Object> whereClause) {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
 
@@ -234,5 +228,13 @@ public class QueryGenerator {
     }
 
     return "POLARIS_SCHEMA." + tableName;
+  }
+
+  private void checkInvalidColumns(Map<String, Object> entity, Map<String, Object> whereClause) {
+    List<String> allColumns = new ArrayList<>(entity.keySet());
+    allColumns.add("realm_id");
+    if (!allColumns.containsAll(whereClause.keySet())) {
+      throw new IllegalArgumentException("Invalid query " + whereClause.keySet());
+    }
   }
 }

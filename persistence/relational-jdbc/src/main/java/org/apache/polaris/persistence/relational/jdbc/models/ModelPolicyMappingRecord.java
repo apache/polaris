@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingRecord> {
   // id of the catalog where target entity resides
@@ -155,14 +156,18 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   }
 
   @Override
-  public Map<String, Object> toMap() {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new HashMap<>();
     map.put("target_catalog_id", targetCatalogId);
     map.put("target_id", targetId);
     map.put("policy_type_code", policyTypeCode);
     map.put("policy_catalog_id", policyCatalogId);
     map.put("policy_id", policyId);
-    map.put("parameters", parameters);
+    if (databaseType.equals(DatabaseType.POSTGRES)) {
+      map.put("parameters", toPGobject(this.getParameters()));
+    } else {
+      map.put("parameters", this.getParameters());
+    }
     return map;
   }
 }

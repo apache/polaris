@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelPrincipalAuthenticationData implements Converter<PolarisPrincipalSecrets> {
   // the id of the principal
@@ -78,7 +79,7 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   }
 
   @Override
-  public Map<String, Object> toMap() {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new HashMap<>();
     map.put("principal_id", this.principalId);
     map.put("principal_client_id", this.principalClientId);

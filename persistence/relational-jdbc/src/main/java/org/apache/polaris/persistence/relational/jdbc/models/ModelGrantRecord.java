@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   // id of the catalog where the securable entity resides, use 0, if this entity is a
@@ -81,7 +82,7 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   }
 
   @Override
-  public Map<String, Object> toMap() {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new HashMap<>();
     map.put("securable_catalog_id", this.securableCatalogId);
     map.put("securable_id", this.securableId);

@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
@@ -164,7 +165,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   }
 
   @Override
-  public Map<String, Object> toMap() {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new HashMap<>();
     map.put("catalog_id", this.getCatalogId());
     map.put("id", this.getId());
@@ -178,8 +179,13 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("purge_timestamp", this.getPurgeTimestamp());
     map.put("to_purge_timestamp", this.getToPurgeTimestamp());
     map.put("last_update_timestamp", this.getLastUpdateTimestamp());
-    map.put("properties", this.getProperties());
-    map.put("internal_properties", this.getInternalProperties());
+    if (databaseType.equals(DatabaseType.POSTGRES)) {
+      map.put("properties", toPGobject(this.getProperties()));
+      map.put("internal_properties", toPGobject(this.getInternalProperties()));
+    } else {
+      map.put("properties", this.getProperties());
+      map.put("internal_properties", this.getInternalProperties());
+    }
     map.put("grant_records_version", this.getGrantRecordsVersion());
     return map;
   }
