@@ -253,8 +253,8 @@ public class QueryGeneratorTest {
             + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
             + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
             + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
-            + "location = 's3://バケツ/\"location\"/' OR location "
-            + "LIKE 's3://バケツ/\"location\"/%')",
-        QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://バケツ/\"location\"/"));
+            + "location = 's3://バケツ/\"loc.ation\"/' OR location "
+            + "LIKE 's3://バケツ/\"loc.ation\"/%')",
+        QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://バケツ/\"loc.ation\"/"));
   }
 }
