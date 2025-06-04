@@ -31,13 +31,17 @@ for arg in "$@"; do
 done
 
 
-if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
+if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
 
+  # Check if the python client needs regeneration
+  if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
+    ./gradlew regeneratePythonClient
+  fi
+
   if [ ! -d ${dir}/polaris-venv ]; then
     echo "Performing first-time setup for the Python client..."
-    ./gradlew regeneratePythonClient
     python3 -m venv "${dir}"/polaris-venv
   else
     echo "Repair dependencies for the Python client..."
