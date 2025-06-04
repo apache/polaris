@@ -91,9 +91,9 @@ class LoadCredentialsResponse(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in storage_credentials (list)
         _items = []
         if self.storage_credentials:
-            for _item in self.storage_credentials:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_storage_credentials in self.storage_credentials:
+                if _item_storage_credentials:
+                    _items.append(_item_storage_credentials.to_dict())
             _dict['storage-credentials'] = _items
         return _dict
 

@@ -60,35 +60,43 @@ echo "Regenerating python from the spec"
 # TODO skip-validate-spec is needed because the upstream Iceberg spec seems invalid. e.g.:
 #   [main] ERROR o.o.codegen.DefaultCodegen - Required var sort-order-id not in properties
 
+OPEN_API_CLI_VERSION="v7.12.0"
+
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
-  openapitools/openapi-generator-cli generate \
+  openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
   -o /local/client/python \
   --additional-properties=packageName=polaris.management \
-  --additional-properties=apiNamePrefix=polaris > /dev/null 
+  --additional-properties=apiNamePrefix=polaris \
+  --additional-properties=pythonVersion=3.9 \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
-  openapitools/openapi-generator-cli generate \
+  openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/polaris-catalog-service.yaml \
   -g python \
   -o /local/client/python \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
-  --skip-validate-spec > /dev/null
+  --skip-validate-spec \
+  --additional-properties=pythonVersion=3.9 \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
-  openapitools/openapi-generator-cli generate \
+  openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/iceberg-rest-catalog-open-api.yaml \
   -g python \
   -o /local/client/python \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
   --additional-properties=apiNamePrefix=Iceberg \
-  --skip-validate-spec > /dev/null
+  --additional-properties=pythonVersion=3.9 \
+  --skip-validate-spec \
+  --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 #############################
 #      Prepend Licenses     #
@@ -119,6 +127,12 @@ EXCLUDE_PATHS=(
   "./polaris/management/__pycache__/"
   "./polaris/management/models/__pycache__/"
   "./polaris/management/api/__pycache__/"
+  "./.github/workflows/python.yml"
+  "./.gitlab-ci.yml"
+  "./pyproject.toml"
+  "./requirements.txt"
+  "./test-requirements.txt"
+  "./setup.py"
 )
 
 EXCLUDE_EXTENSIONS=(

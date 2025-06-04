@@ -39,7 +39,27 @@ Method | HTTP request | Description
 
 Create a mapping between a policy and a resource entity
 
-Create a mapping between a policy and a resource entity  Policy can be attached to different levels: 1. **Table-like level:** Policies specific to individual tables or views. 2. **Namespace level:** Policies applies to a namespace. 3. **Catalog level:** Policies that applies to a catalog  The ability to attach a policy to a specific entity type is governed by the PolicyValidator. A policy can only be attached if the resource entity is a valid target for the specified policy type.  In addition to the validation rules enforced by the PolicyValidator, there are additional constraints on policy attachment: 1. For inheritable policies, only one policy of the same type can be attached to a given resource entity. 2. For non-inheritable policies, multiple policies of the same type can be attached to the same resource entity without restriction.  For inheritable policies, the inheritance override rule is: 1. Table-like level policies override namespace and catalog policies. 2. Namespace-level policies override upper level namespace or catalog policies.  Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.  If the policy is already attached to the target entity, the existing mapping record will be updated with the new set of parameters, replacing the previous ones. 
+Create a mapping between a policy and a resource entity
+
+Policy can be attached to different levels:
+1. **Table-like level:** Policies specific to individual tables or views.
+2. **Namespace level:** Policies applies to a namespace.
+3. **Catalog level:** Policies that applies to a catalog
+
+The ability to attach a policy to a specific entity type is governed by the PolicyValidator. A policy can only be attached if the resource entity is a valid target for the specified policy type.
+
+In addition to the validation rules enforced by the PolicyValidator, there are additional constraints on policy attachment:
+1. For inheritable policies, only one policy of the same type can be attached to a given resource entity.
+2. For non-inheritable policies, multiple policies of the same type can be attached to the same resource entity without restriction.
+
+For inheritable policies, the inheritance override rule is:
+1. Table-like level policies override namespace and catalog policies.
+2. Namespace-level policies override upper level namespace or catalog policies.
+
+Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
+
+If the policy is already attached to the target entity, the existing mapping record will be updated with the new set of parameters, replacing the previous ones.
+
 
 ### Example
 
@@ -131,7 +151,22 @@ void (empty response body)
 
 Create a policy in the given namespace
 
-Creates a policy within the specified namespace.  A policy defines a set of rules governing actions on specified resources under predefined conditions. In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.  User provides the following inputs when creating a policy - `name` (REQUIRED): The name of the policy. - `type` (REQUIRED): The type of the policy.   - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data_compaction` - `description` (OPTIONAL): Provides details about the policy's purpose and functionality - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.  The content field in the request body is validated using the policy's corresponding validator. The policy is created only if the content passes validation.  Upon successful creation, the new policy's version will be 0. 
+Creates a policy within the specified namespace.
+
+A policy defines a set of rules governing actions on specified resources under predefined conditions.
+In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
+
+User provides the following inputs when creating a policy
+- `name` (REQUIRED): The name of the policy.
+- `type` (REQUIRED): The type of the policy.
+  - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data_compaction`
+- `description` (OPTIONAL): Provides details about the policy's purpose and functionality
+- `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
+
+The content field in the request body is validated using the policy's corresponding validator. The policy is created only if the content passes validation.
+
+Upon successful creation, the new policy's version will be 0.
+
 
 ### Example
 
@@ -224,7 +259,10 @@ Name | Type | Description  | Notes
 
 Remove a mapping between a policy and a target entity
 
-Remove a mapping between a policy and a target entity  A target entity can be a catalog, namespace, table or view. 
+Remove a mapping between a policy and a target entity
+
+A target entity can be a catalog, namespace, table or view.
+
 
 ### Example
 
@@ -315,7 +353,10 @@ void (empty response body)
 
 Drop a policy from the catalog
 
-Remove a policy from the catalog.   A policy can only be dropped if it is not attached to any resource entity. To remove the policy along with all its attachments, set detach-all to true. 
+Remove a policy from the catalog. 
+
+A policy can only be dropped if it is not attached to any resource entity. To remove the policy along with all its attachments, set detach-all to true.
+
 
 ### Example
 
@@ -405,7 +446,24 @@ void (empty response body)
 
 Get Applicable policies for catalog, namespace, table, or views
 
-Retrieves all applicable policies for a specified entity, including inherited policies from parent entities. An entity can be a table/view, namespace, or catalog. The required parameters depend on the entity type:  - Table/View:   - The `namespace` parameter is required to specify the entity's namespace.   - The `target-name` parameter is required to specify the entity name. - Namespace:   - The `namespace` parameter is required to specify the identifier.   - The `target-name` parameter should not be set. - Catalog:   - Neither `namespace` nor `target-name` should be set.  An optional policyType parameter filters results to return only policies of the specified type.  This API evaluates the entity's hierarchy and applies inheritable policies from parent entities. The inheritance follows the following override rule:  1. Table-like level policies override namespace and catalog policies. 2. Namespace-level policies override upper level namespace or catalog policies. 
+Retrieves all applicable policies for a specified entity, including inherited policies from parent entities. An entity can be a table/view, namespace, or catalog. The required parameters depend on the entity type:
+
+- Table/View:
+  - The `namespace` parameter is required to specify the entity's namespace.
+  - The `target-name` parameter is required to specify the entity name.
+- Namespace:
+  - The `namespace` parameter is required to specify the identifier.
+  - The `target-name` parameter should not be set.
+- Catalog:
+  - Neither `namespace` nor `target-name` should be set.
+
+An optional policyType parameter filters results to return only policies of the specified type.
+
+This API evaluates the entity's hierarchy and applies inheritable policies from parent entities. The inheritance follows the following override rule:
+
+1. Table-like level policies override namespace and catalog policies.
+2. Namespace-level policies override upper level namespace or catalog policies.
+
 
 ### Example
 
@@ -597,7 +655,10 @@ Name | Type | Description  | Notes
 
 Load a policy
 
-Load a policy from the catalog  The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model. 
+Load a policy from the catalog
+
+The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model.
+
 
 ### Example
 
@@ -688,7 +749,13 @@ Name | Type | Description  | Notes
 
 Update a policy
 
-Update a policy  A policy's description and content can be updated. The new content is validated against the policy's corresponding validator. Upon a successful update, the policy's version is incremented by 1.  The update will only succeed if the current version matches the one in the catalog. 
+Update a policy
+
+A policy's description and content can be updated. The new content is validated against the policy's corresponding validator.
+Upon a successful update, the policy's version is incremented by 1.
+
+The update will only succeed if the current version matches the one in the catalog.
+
 
 ### Example
 

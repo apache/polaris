@@ -101,9 +101,9 @@ class DataFile(ContentFile):
         # override the default output from pydantic by calling `to_dict()` of each item in partition (list)
         _items = []
         if self.partition:
-            for _item in self.partition:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_partition in self.partition:
+                if _item_partition:
+                    _items.append(_item_partition.to_dict())
             _dict['partition'] = _items
         return _dict
 

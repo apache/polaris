@@ -55,7 +55,7 @@ class TestCreateCatalogRoleRequest(unittest.TestCase):
         if include_optional:
             return CreateCatalogRoleRequest(
                 catalog_role = polaris.management.models.catalog_role.CatalogRole(
-                    name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H'qT\\{<?'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
+                    name = 'k&*h<4<U/?R,Fp^l6$ARjbhJk C>i H\'qT\\{<?\'es#)#iK.YM{Rag2/!KB!k@5oXh.:Ts\";mGL,i&z5[P@M\"lzfB+Y,Twzfu~N^z\"mfqecVU0', 
                     properties = {
                         'key' : ''
                         }, 

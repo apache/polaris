@@ -96,16 +96,16 @@ class CompletedPlanningResult(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in delete_files (list)
         _items = []
         if self.delete_files:
-            for _item in self.delete_files:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_delete_files in self.delete_files:
+                if _item_delete_files:
+                    _items.append(_item_delete_files.to_dict())
             _dict['delete-files'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in file_scan_tasks (list)
         _items = []
         if self.file_scan_tasks:
-            for _item in self.file_scan_tasks:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_file_scan_tasks in self.file_scan_tasks:
+                if _item_file_scan_tasks:
+                    _items.append(_item_file_scan_tasks.to_dict())
             _dict['file-scan-tasks'] = _items
         return _dict
 

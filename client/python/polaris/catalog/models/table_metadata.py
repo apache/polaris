@@ -120,65 +120,65 @@ class TableMetadata(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in schemas (list)
         _items = []
         if self.schemas:
-            for _item in self.schemas:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_schemas in self.schemas:
+                if _item_schemas:
+                    _items.append(_item_schemas.to_dict())
             _dict['schemas'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in partition_specs (list)
         _items = []
         if self.partition_specs:
-            for _item in self.partition_specs:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_partition_specs in self.partition_specs:
+                if _item_partition_specs:
+                    _items.append(_item_partition_specs.to_dict())
             _dict['partition-specs'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in sort_orders (list)
         _items = []
         if self.sort_orders:
-            for _item in self.sort_orders:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_sort_orders in self.sort_orders:
+                if _item_sort_orders:
+                    _items.append(_item_sort_orders.to_dict())
             _dict['sort-orders'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in snapshots (list)
         _items = []
         if self.snapshots:
-            for _item in self.snapshots:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_snapshots in self.snapshots:
+                if _item_snapshots:
+                    _items.append(_item_snapshots.to_dict())
             _dict['snapshots'] = _items
         # override the default output from pydantic by calling `to_dict()` of each value in refs (dict)
         _field_dict = {}
         if self.refs:
-            for _key in self.refs:
-                if self.refs[_key]:
-                    _field_dict[_key] = self.refs[_key].to_dict()
+            for _key_refs in self.refs:
+                if self.refs[_key_refs]:
+                    _field_dict[_key_refs] = self.refs[_key_refs].to_dict()
             _dict['refs'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each item in snapshot_log (list)
         _items = []
         if self.snapshot_log:
-            for _item in self.snapshot_log:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_snapshot_log in self.snapshot_log:
+                if _item_snapshot_log:
+                    _items.append(_item_snapshot_log.to_dict())
             _dict['snapshot-log'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in metadata_log (list)
         _items = []
         if self.metadata_log:
-            for _item in self.metadata_log:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_metadata_log in self.metadata_log:
+                if _item_metadata_log:
+                    _items.append(_item_metadata_log.to_dict())
             _dict['metadata-log'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in statistics (list)
         _items = []
         if self.statistics:
-            for _item in self.statistics:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_statistics in self.statistics:
+                if _item_statistics:
+                    _items.append(_item_statistics.to_dict())
             _dict['statistics'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in partition_statistics (list)
         _items = []
         if self.partition_statistics:
-            for _item in self.partition_statistics:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_partition_statistics in self.partition_statistics:
+                if _item_partition_statistics:
+                    _items.append(_item_partition_statistics.to_dict())
             _dict['partition-statistics'] = _items
         return _dict
 

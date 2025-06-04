@@ -36,7 +36,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
+from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
@@ -49,6 +49,13 @@ class TransformTerm(BaseModel):
     transform: StrictStr
     term: StrictStr
     __properties: ClassVar[List[str]] = ["type", "transform", "term"]
+
+    @field_validator('type')
+    def type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in set(['transform']):
+            raise ValueError("must be one of enum values ('transform')")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
