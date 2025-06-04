@@ -172,6 +172,7 @@ public record TestServices(
             @Override
             public PolarisCallContext getPolarisCallContext() {
               return new PolarisCallContext(
+                  realmContext,
                   metaStoreSession,
                   polarisDiagnostics,
                   configurationStore,

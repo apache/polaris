@@ -102,6 +102,7 @@ class TableCleanupTaskHandlerTest {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,

@@ -237,6 +237,7 @@ public abstract class PolarisAuthzTestBase {
 
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
