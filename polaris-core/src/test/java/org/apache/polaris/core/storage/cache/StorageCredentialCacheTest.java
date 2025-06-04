@@ -70,7 +70,7 @@ public class StorageCredentialCacheTest {
     // to interact with the metastore
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(metaStore, diagServices);
+    callCtx = new PolarisCallContext(() -> "realm", metaStore, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = new StorageCredentialCache();
   }

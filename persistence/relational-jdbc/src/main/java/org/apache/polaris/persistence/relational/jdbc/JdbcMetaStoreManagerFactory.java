@@ -157,7 +157,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
       BasePersistence session = getOrCreateSessionSupplier(() -> realm).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(() -> realm, session, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 

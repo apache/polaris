@@ -133,7 +133,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
       TransactionalPersistence session = getOrCreateSessionSupplier(() -> realm).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(() -> realm, session, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 

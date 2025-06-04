@@ -81,15 +81,6 @@ public class PolarisCallContext implements CallContext {
     this.clock = Clock.system(ZoneId.systemDefault());
   }
 
-  @Deprecated
-  public PolarisCallContext(
-      @Nonnull BasePersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = new PolarisConfigurationStore() {};
-    this.clock = Clock.system(ZoneId.systemDefault());
-  }
-
   public BasePersistence getMetaStore() {
     return metaStore;
   }
