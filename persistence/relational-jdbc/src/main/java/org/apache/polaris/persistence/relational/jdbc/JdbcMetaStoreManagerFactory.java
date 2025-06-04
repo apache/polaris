@@ -38,7 +38,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -219,8 +218,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   /**
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
-   * metastore and creates a root service principal. After that we rotate the root principal
-   * credentials.
+   * metastore and creates a root service principal.
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
@@ -257,22 +255,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             PolarisEntityType.PRINCIPAL,
             PolarisEntitySubType.NULL_SUBTYPE,
             PolarisEntityConstants.getRootPrincipalName());
-    PolarisPrincipalSecrets secrets =
-        metaStoreManager
-            .loadPrincipalSecrets(
-                polarisContext,
-                PolarisEntity.of(rootPrincipalLookup.getEntity())
-                    .getInternalPropertiesAsMap()
-                    .get(PolarisEntityConstants.getClientIdPropertyName()))
-            .getPrincipalSecrets();
-    PrincipalSecretsResult rotatedSecrets =
-        metaStoreManager.rotatePrincipalSecrets(
+    PrincipalSecretsResult secrets =
+        metaStoreManager.loadPrincipalSecrets(
             polarisContext,
-            secrets.getPrincipalClientId(),
-            secrets.getPrincipalId(),
-            false,
-            secrets.getMainSecretHash());
-    return rotatedSecrets;
+            PolarisEntity.of(rootPrincipalLookup.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getClientIdPropertyName()));
+    return secrets;
   }
 
   /**
