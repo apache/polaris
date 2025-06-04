@@ -21,9 +21,9 @@ package org.apache.polaris.service.catalog.conversion.xtable;
 public class XTableConvertorConfigurations {
   private XTableConvertorConfigurations() {}
 
-  public static final String SOURCE_TABLE_PATH_KEY = "sourceTablePath";
-  public static final String SOURCE_DATA_PATH_KEY = "sourceDataPath";
-  public static final String SOURCE_TABLE_CONFIGURATIONS = "sourceTableConfigurations";
-  public static final String ENABLED_READ_TABLE_FORMATS_KEY = "enabledReadTableFormats";
-  public static final String TARGET_FORMAT_METADATA_PATH_KEY = "targetMetadataPath";
+  public static final String SOURCE_TABLE_PATH_KEY = "source-table-path";
+  public static final String SOURCE_DATA_PATH_KEY = "source-data-path";
+  public static final String SOURCE_TABLE_CONFIGURATIONS = "source-table-configurations";
+  public static final String ENABLED_READ_TABLE_FORMATS_KEY = "enabled-read-table-formats";
+  public static final String TARGET_FORMAT_METADATA_PATH_KEY = "target-metadata-path";
 }

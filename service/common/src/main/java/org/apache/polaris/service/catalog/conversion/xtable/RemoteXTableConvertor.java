@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.conversion.xtable;
 
 import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.ENABLED_READ_TABLE_FORMATS_KEY;
 import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.SOURCE_DATA_PATH_KEY;
-import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.SOURCE_TABLE_PATH_KEY;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -32,17 +31,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.TableLikeEntity;
 import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertTableRequest;
 import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertTableResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class RemoteXTableConvertor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RemoteXTableConvertor.class);
+
   private static final int HTTP_SUCCESS_START = 200;
   private static final int HTTP_SUCCESS_END = 299;
-  private static final String RUN_SYNC_ENDPOINT = "/v1/conversion/sync";
+  private static final String RUN_SYNC_ENDPOINT = "/v1/conversion/table";
 
   private static RemoteXTableConvertor INSTANCE;
   private final String hostUrl;
@@ -60,7 +62,8 @@ public final class RemoteXTableConvertor {
 
   public static void initialize(String hostUrl) {
     if (INSTANCE != null) {
-      throw new IllegalStateException("RemoteXTableConvertor already initialized");
+      LOGGER.warn("RemoteXTableConvertor already initialized");
+      return;
     }
     INSTANCE =
         new RemoteXTableConvertor(
@@ -82,29 +85,38 @@ public final class RemoteXTableConvertor {
     String sourceTablePath;
     String sourceDataPath;
     List<String> targetFormats;
-    Map<String, String> configurations;
+    Map<String, String> configurations = new HashMap<>();
 
-    switch (tableEntity.getSubType()) {
-      case GENERIC_TABLE -> {
-        GenericTableEntity generic = (GenericTableEntity) tableEntity;
-        sourceFormat = checkIfSupportedFormat(generic.getFormat());
+    switch (tableEntity) {
+      case GenericTableEntity genericTable -> {
+        sourceFormat = checkIfSupportedFormat(genericTable.getFormat());
         sourceTableName = tableEntity.getName();
-        sourceTablePath = generic.getPropertiesAsMap().get(SOURCE_TABLE_PATH_KEY);
-        sourceDataPath = generic.getPropertiesAsMap().get(SOURCE_DATA_PATH_KEY);
-        targetFormats = Arrays.asList(checkIfSupportedFormat(
-                generic.getPropertiesAsMap().get(ENABLED_READ_TABLE_FORMATS_KEY)));
+        sourceTablePath = genericTable.getPropertiesAsMap().get("location");
+        sourceDataPath =
+            genericTable.getPropertiesAsMap().getOrDefault(SOURCE_DATA_PATH_KEY, sourceTablePath);
+        // TODO setting this for now since there is a bug
+        // with polaris spark client: https://github.com/apache/polaris/issues/1785
+        targetFormats =
+            Arrays.asList(
+                checkIfSupportedFormat(
+                    genericTable
+                        .getPropertiesAsMap()
+                        .getOrDefault(ENABLED_READ_TABLE_FORMATS_KEY, "ICEBERG")));
       }
-      case ICEBERG_TABLE -> {
-        IcebergTableLikeEntity iceberg = (IcebergTableLikeEntity) tableEntity;
+      case IcebergTableLikeEntity icebergTable -> {
         sourceFormat = TableFormat.ICEBERG.name();
         sourceTableName = tableEntity.getName();
-        sourceTablePath = iceberg.getBaseLocation();
-        sourceDataPath = iceberg.getBaseLocation() + "/data";
-        targetFormats = Arrays.asList(iceberg.getPropertiesAsMap().get(ENABLED_READ_TABLE_FORMATS_KEY));
+        sourceTablePath = icebergTable.getMetadataLocation();
+        sourceDataPath = icebergTable.getBaseLocation() + "/data";
+        // TODO setting this for now as some issue with table properties in polaris client
+        // once fixed we can get from table prop the value ("HUDI", "DELTA")
+        targetFormats =
+            Arrays.asList(
+                icebergTable
+                    .getPropertiesAsMap()
+                    .getOrDefault(ENABLED_READ_TABLE_FORMATS_KEY, "DELTA"));
       }
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported TableEntity type: " + tableEntity.getSubType());
+      default -> throw new IllegalArgumentException("Unsupported TableEntity: " + tableEntity);
     }
 
     return executeRunSyncRequest(
@@ -113,14 +125,25 @@ public final class RemoteXTableConvertor {
         sourceTablePath,
         sourceDataPath,
         targetFormats,
-        new HashMap<>());
+        configurations);
   }
 
   private ConvertTableResponse executeRunSyncRequest(
-          String sourceFormat, String sourceTableName, String sourceTablePath,
-          String sourceDataPath, List<String> targetFormats, Map<String, String> configurations) {
+      String sourceFormat,
+      String sourceTableName,
+      String sourceTablePath,
+      String sourceDataPath,
+      List<String> targetFormats,
+      Map<String, String> configurations) {
 
-    ConvertTableRequest request = new ConvertTableRequest(sourceFormat, sourceTableName, sourceTablePath, sourceDataPath, targetFormats, configurations);
+    ConvertTableRequest request =
+        new ConvertTableRequest(
+            sourceFormat,
+            sourceTableName,
+            sourceTablePath,
+            sourceDataPath,
+            targetFormats,
+            configurations);
     try {
       String requestBody = mapper.writeValueAsString(request);
       HttpRequest httpRequest =
