@@ -272,11 +272,7 @@ polaris/catalog/models/view_update.py
 polaris/catalog/models/view_version.py
 polaris/catalog/py.typed
 polaris/catalog/rest.py
-pyproject.toml
-requirements.txt
 setup.cfg
-setup.py
-test-requirements.txt
 test/__init__.py
 test/test_async_planning_result.py
 test/test_completed_planning_result.py
