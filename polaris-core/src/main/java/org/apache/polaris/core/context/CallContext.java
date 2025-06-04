@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.context;
 
+import org.apache.commons.compress.harmony.pack200.NewAttributeBands;
 import org.apache.polaris.core.PolarisCallContext;
 
 /**
@@ -45,30 +46,7 @@ public interface CallContext {
   }
 
   /** Copy the {@link CallContext}. */
-  static CallContext copyOf(CallContext base) {
-    String realmId = base.getRealmContext().getRealmIdentifier();
-    RealmContext realmContext = () -> realmId;
-    PolarisCallContext originalPolarisCallContext = base.getPolarisCallContext();
-    PolarisCallContext newPolarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            originalPolarisCallContext.getMetaStore(),
-            originalPolarisCallContext.getDiagServices(),
-            originalPolarisCallContext.getConfigurationStore(),
-            originalPolarisCallContext.getClock());
-
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return newPolarisCallContext;
-      }
-    };
-  }
+  CallContext copy();
 
   RealmContext getRealmContext();
 

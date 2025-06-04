@@ -94,4 +94,17 @@ public class PolarisCallContext implements CallContext {
   public PolarisCallContext getPolarisCallContext() {
     return this;
   }
+
+  @Override
+  public PolarisCallContext copy() {
+    // make a copy of the realm context
+    String realmId = this.realmContext.getRealmIdentifier();
+    RealmContext realmContext = () -> realmId;
+    return new PolarisCallContext(
+            realmContext,
+            this.metaStore,
+            this.diagServices,
+            this.configurationStore,
+            this.clock);
+  }
 }
