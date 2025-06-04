@@ -69,7 +69,15 @@ public interface CallContext {
   static CallContext copyOf(CallContext base) {
     String realmId = base.getRealmContext().getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    PolarisCallContext polarisCallContext = PolarisCallContext.copyOf(base.getPolarisCallContext());
+    PolarisCallContext originalPolarisCallContext = base.getPolarisCallContext();
+    PolarisCallContext newPolarisCallContext =
+        new PolarisCallContext(
+            realmContext,
+            originalPolarisCallContext.getMetaStore(),
+            originalPolarisCallContext.getDiagServices(),
+            originalPolarisCallContext.getConfigurationStore(),
+            originalPolarisCallContext.getClock());
+
     return new CallContext() {
       @Override
       public RealmContext getRealmContext() {
@@ -78,7 +86,7 @@ public interface CallContext {
 
       @Override
       public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
+        return newPolarisCallContext;
       }
     };
   }

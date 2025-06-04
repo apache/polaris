@@ -90,14 +90,6 @@ public class PolarisCallContext implements CallContext {
     this.clock = Clock.system(ZoneId.systemDefault());
   }
 
-  public static PolarisCallContext copyOf(PolarisCallContext original) {
-    return new PolarisCallContext(
-        original.getMetaStore().detach(),
-        original.getDiagServices(),
-        original.getConfigurationStore(),
-        original.getClock());
-  }
-
   public BasePersistence getMetaStore() {
     return metaStore;
   }
