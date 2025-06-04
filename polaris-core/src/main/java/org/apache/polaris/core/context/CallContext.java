@@ -49,6 +49,7 @@ public interface CallContext {
     CURRENT_CONTEXT.remove();
   }
 
+  // only tests are using this method now, we can get rid of them easily in a followup
   static CallContext of(
       final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
     return new CallContext() {
@@ -68,7 +69,15 @@ public interface CallContext {
   static CallContext copyOf(CallContext base) {
     String realmId = base.getRealmContext().getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    PolarisCallContext polarisCallContext = PolarisCallContext.copyOf(base.getPolarisCallContext());
+    PolarisCallContext originalPolarisCallContext = base.getPolarisCallContext();
+    PolarisCallContext newPolarisCallContext =
+        new PolarisCallContext(
+            realmContext,
+            originalPolarisCallContext.getMetaStore(),
+            originalPolarisCallContext.getDiagServices(),
+            originalPolarisCallContext.getConfigurationStore(),
+            originalPolarisCallContext.getClock());
+
     return new CallContext() {
       @Override
       public RealmContext getRealmContext() {
@@ -77,7 +86,7 @@ public interface CallContext {
 
       @Override
       public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
+        return newPolarisCallContext;
       }
     };
   }

@@ -66,8 +66,7 @@ public class DefaultCallContextResolver implements CallContextResolver {
     // factories would then inject something else instead if needed.
     BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(metaStoreSession, diagnostics, configurationStore, clock);
-    return CallContext.of(realmContext, polarisContext);
+    return new PolarisCallContext(
+        realmContext, metaStoreSession, diagnostics, configurationStore, clock);
   }
 }

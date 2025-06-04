@@ -22,13 +22,15 @@ import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
  * low-level services required to process that request
  */
-public class PolarisCallContext {
+public class PolarisCallContext implements CallContext {
 
   // meta store which is used to persist Polaris entity metadata
   private final BasePersistence metaStore;
@@ -40,6 +42,23 @@ public class PolarisCallContext {
 
   private final Clock clock;
 
+  // will make it final once we remove deprecated constructor
+  private RealmContext realmContext = null;
+
+  public PolarisCallContext(
+      @Nonnull RealmContext realmContext,
+      @Nonnull BasePersistence metaStore,
+      @Nonnull PolarisDiagnostics diagServices,
+      @Nonnull PolarisConfigurationStore configurationStore,
+      @Nonnull Clock clock) {
+    this.realmContext = realmContext;
+    this.metaStore = metaStore;
+    this.diagServices = diagServices;
+    this.configurationStore = configurationStore;
+    this.clock = clock;
+  }
+
+  @Deprecated
   public PolarisCallContext(
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices,
@@ -52,19 +71,23 @@ public class PolarisCallContext {
   }
 
   public PolarisCallContext(
-      @Nonnull BasePersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
+      @Nonnull RealmContext realmContext,
+      @Nonnull BasePersistence metaStore,
+      @Nonnull PolarisDiagnostics diagServices) {
+    this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};
     this.clock = Clock.system(ZoneId.systemDefault());
   }
 
-  public static PolarisCallContext copyOf(PolarisCallContext original) {
-    return new PolarisCallContext(
-        original.getMetaStore().detach(),
-        original.getDiagServices(),
-        original.getConfigurationStore(),
-        original.getClock());
+  @Deprecated
+  public PolarisCallContext(
+      @Nonnull BasePersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
+    this.metaStore = metaStore;
+    this.diagServices = diagServices;
+    this.configurationStore = new PolarisConfigurationStore() {};
+    this.clock = Clock.system(ZoneId.systemDefault());
   }
 
   public BasePersistence getMetaStore() {
@@ -81,5 +104,15 @@ public class PolarisCallContext {
 
   public Clock getClock() {
     return clock;
+  }
+
+  @Override
+  public RealmContext getRealmContext() {
+    return realmContext;
+  }
+
+  @Override
+  public PolarisCallContext getPolarisCallContext() {
+    return this;
   }
 }
