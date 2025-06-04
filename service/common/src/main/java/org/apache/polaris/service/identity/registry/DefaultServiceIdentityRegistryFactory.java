@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.identity;
+package org.apache.polaris.service.identity.registry;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
@@ -33,6 +33,9 @@ import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 @ApplicationScoped
 @Identifier("default")

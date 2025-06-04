@@ -21,6 +21,12 @@ package org.apache.polaris.core.identity.registry;
 
 import org.apache.polaris.core.context.RealmContext;
 
+/**
+ * Factory for creating {@link ServiceIdentityRegistry} instances.
+ *
+ * <p>Each {@link ServiceIdentityRegistry} instance is associated with a {@link RealmContext} and is
+ * responsible for managing the service identities for the user in that realm.
+ */
 public interface ServiceIdentityRegistryFactory {
   ServiceIdentityRegistry getOrCreateServiceIdentityRegistry(RealmContext realmContext);
 }

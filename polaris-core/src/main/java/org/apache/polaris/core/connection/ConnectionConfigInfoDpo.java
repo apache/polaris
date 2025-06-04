@@ -18,7 +18,11 @@
  */
 package org.apache.polaris.core.connection;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -195,7 +199,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   }
 
   public abstract ConnectionConfigInfoDpo withServiceIdentity(
-      ServiceIdentityInfoDpo serviceIdentityInfo);
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
    * Produces the correponding API-model ConnectionConfigInfo for this persistence object; many

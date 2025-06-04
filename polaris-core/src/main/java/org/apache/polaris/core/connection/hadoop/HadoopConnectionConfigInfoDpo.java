@@ -65,6 +65,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
         .add("uri", getUri())
         .add("warehouse", getWarehouse())
         .add("authenticationParameters", getAuthenticationParameters().toString())
+        .add("serviceIdentity", getServiceIdentity())
         .toString();
   }
 

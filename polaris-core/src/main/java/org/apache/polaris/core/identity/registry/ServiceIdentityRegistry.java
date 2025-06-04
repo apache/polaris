@@ -23,14 +23,34 @@ import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
+/**
+ * A registry interface for managing and resolving service identities in Polaris.
+ *
+ * <p>In a multi-tenant Polaris deployment, each catalog or tenant may be associated with a distinct
+ * service identity that represents the Polaris service itself when accessing external systems
+ * (e.g., cloud services like AWS or GCP). This registry provides a central mechanism to manage
+ * those identities and resolve them at runtime.
+ *
+ * <p>The registry helps abstract the configuration and retrieval of service-managed credentials
+ * from the logic that uses them. It ensures a consistent and secure way to handle identity
+ * resolution across different deployment models, including SaaS and self-managed environments.
+ */
 public interface ServiceIdentityRegistry {
+  /**
+   * Assigns a new {@link ServiceIdentityInfoDpo} for the given service identity type. Typically
+   * used during entity creation to associate a default or generated identity.
+   *
+   * @param serviceIdentityType The type of service identity (e.g., AWS_IAM).
+   * @return A new {@link ServiceIdentityInfoDpo} representing the assigned service identity.
+   */
   ServiceIdentityInfoDpo assignServiceIdentity(ServiceIdentityType serviceIdentityType);
 
   /**
-   * Resolves the service identity based on the provided service identity information.
+   * Resolves the given service identity by retrieving the actual credential or secret referenced by
+   * it, typically from a secret manager or internal credential store.
    *
-   * @param serviceIdentityInfo The service identity information to resolve.
-   * @return The resolved service identity.
+   * @param serviceIdentityInfo The service identity metadata to resolve.
+   * @return A {@link ResolvedServiceIdentity} including credentials and other resolved data.
    */
   ResolvedServiceIdentity resolveServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo);
 }

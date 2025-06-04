@@ -27,9 +27,27 @@ import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
+/**
+ * Default implementation of {@link ServiceIdentityRegistry} that resolves service identities from
+ * statically configured values (typically defined via Quarkus server configuration).
+ *
+ * <p>This implementation supports both multi-tenant (e.g., SaaS) and self-managed (single-tenant)
+ * Polaris deployments:
+ *
+ * <ul>
+ *   <li>In multi-tenant mode, each tenant (realm) can have its own set of service identities
+ *       defined in the configuration. The same identity will consistently be assigned for each
+ *       {@link ServiceIdentityType} within a given tenant.
+ *   <li>In single-tenant or self-managed deployments, a single set of service identities can be
+ *       defined and used system-wide.
+ * </ul>
+ */
 public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
 
+  /** Map of service identity types to their resolved identities. */
   private final EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedServiceIdentities;
+
+  /** Map of identity info references (URNs) to their resolved service identities. */
   private final Map<String, ResolvedServiceIdentity> referenceToResolvedServiceIdentity;
 
   public DefaultServiceIdentityRegistry(

@@ -68,6 +68,10 @@ public abstract class ServiceIdentityInfoDpo {
     return identityInfoReference;
   }
 
+  /**
+   * Converts this persistence object to the corresponding API model. During the conversion, some
+   * fields will be dropped, e.g. the reference to the service identity's credential
+   */
   public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
 
   @Override

@@ -80,7 +80,8 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   }
 
   @Override
-  public ConnectionConfigInfoDpo withServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo) {
+  public ConnectionConfigInfoDpo withServiceIdentity(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new IcebergRestConnectionConfigInfoDpo(
         getUri(), getAuthenticationParameters(), serviceIdentityInfo, getRemoteCatalogName());
   }

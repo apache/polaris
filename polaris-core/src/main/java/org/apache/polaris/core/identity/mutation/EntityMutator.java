@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package org.apache.polaris.service.identity.mutation;
+package org.apache.polaris.core.identity.mutation;
 
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
+/**
+ * A transformation hook that mutates a Polaris entity.
+ *
+ * <p>Implementations of this interface apply custom logic to modify or enrich a {@link
+ * PolarisBaseEntity}.
+ */
 public interface EntityMutator {
+
+  /**
+   * Applies the mutation logic to the given entity.
+   *
+   * @param entity the entity to mutate
+   * @return the mutated entity
+   */
   PolarisBaseEntity apply(PolarisBaseEntity entity);
 }

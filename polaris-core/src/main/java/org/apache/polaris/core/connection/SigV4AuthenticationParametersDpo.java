@@ -39,18 +39,24 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
  */
 public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDpo {
 
+  // The aws IAM role arn assumed by polaris userArn when signing requests
   @JsonProperty(value = "roleArn")
   private final String roleArn;
 
+  // The session name used when assuming the role
   @JsonProperty(value = "roleSessionName")
   private final String roleSessionName;
 
+  // An optional external id used to establish a trust relationship with AWS in the trust policy
   @JsonProperty(value = "externalId")
   private final String externalId;
 
+  // Region to be used by the SigV4 protocol for signing requests
   @JsonProperty(value = "signingRegion")
   private final String signingRegion;
 
+  // The service name to be used by the SigV4 protocol for signing requests, the default signing
+  // name is "execute-api" is if not provided
   @JsonProperty(value = "signingName")
   private final String signingName;
 

@@ -21,6 +21,11 @@ package org.apache.polaris.core.identity.mutation;
 
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
+/**
+ * A no-op implementation of {@link EntityMutationEngine} that returns the input entity unchanged.
+ *
+ * <p>This can be used in environments where entity mutation is disabled or unnecessary.
+ */
 public class NoOpEntityMutationEngine implements EntityMutationEngine {
 
   @Override

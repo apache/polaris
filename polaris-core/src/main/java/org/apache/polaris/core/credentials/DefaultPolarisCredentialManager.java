@@ -20,6 +20,7 @@
 package org.apache.polaris.core.credentials;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -35,6 +36,17 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 
+/**
+ * Default implementation of {@link PolarisCredentialManager} responsible for retrieving credentials
+ * used by Polaris to access external systems such as remote catalogs or cloud storage.
+ *
+ * <p>It resolves a {@link ServiceIdentityInfoDpo} into a {@link ResolvedServiceIdentity} using the
+ * {@link ServiceIdentityRegistry}, then uses the provided authentication parameters to generate
+ * temporary access credentials (e.g., via AWS STS AssumeRole).
+ *
+ * <p>This implementation currently supports AWS IAM service identities and can be extended to
+ * support other identity types or external services beyond catalogs, such as cloud storage.
+ */
 public class DefaultPolarisCredentialManager implements PolarisCredentialManager {
   private final ServiceIdentityRegistry serviceIdentityRegistry;
 
@@ -43,7 +55,7 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
   }
 
   @Override
-  public EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+  public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
       ServiceIdentityInfoDpo serviceIdentity,
       AuthenticationParametersDpo authenticationParameters) {
     EnumMap<ConnectionCredentialProperty, String> credentialMap =

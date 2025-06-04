@@ -21,6 +21,12 @@ package org.apache.polaris.core.credentials.connection;
 
 import org.apache.iceberg.aws.AwsProperties;
 
+/**
+ * A subset of Iceberg catalog properties recognized by Polaris.
+ *
+ * <p>Most of these properties are meant to initialize Catalog objects for accessing the remote
+ * Catalog service.
+ */
 public enum ConnectionCredentialProperty {
   AWS_ACCESS_KEY_ID(String.class, AwsProperties.REST_ACCESS_KEY_ID, "the aws access key id"),
   AWS_SECRET_ACCESS_KEY(

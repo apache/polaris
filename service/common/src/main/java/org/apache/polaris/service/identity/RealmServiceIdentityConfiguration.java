@@ -23,9 +23,27 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+/**
+ * Represents service identity configuration for a specific realm.
+ *
+ * <p>Supports multiple identity types, such as AWS IAM. This interface allows each realm to define
+ * the credentials and metadata needed to resolve service-managed identities.
+ */
 public interface RealmServiceIdentityConfiguration {
+
+  /**
+   * Returns the AWS IAM service identity configuration for this realm, if present.
+   *
+   * @return an optional AWS IAM configuration
+   */
   Optional<? extends AwsIamServiceIdentityConfiguration> awsIamServiceIdentity();
 
+  /**
+   * Aggregates all configured service identity types into a list. This includes AWS IAM and
+   * potentially other types in the future.
+   *
+   * @return a list of configured service identity definitions
+   */
   default List<? extends ResolvableServiceIdentityConfiguration> serviceIdentityConfigurations() {
     return Stream.of(awsIamServiceIdentity()).flatMap(Optional::stream).toList();
   }

@@ -22,8 +22,18 @@ package org.apache.polaris.service.quarkus.identity.mutation;
 import io.smallrye.config.ConfigMapping;
 import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.core.identity.mutation.EntityMutator;
 import org.apache.polaris.service.identity.mutation.EntityMutationConfiguration;
 
+/**
+ * Quarkus-specific configuration interface for entity mutation behavior.
+ *
+ * <p>This configuration determines which {@link EntityMutator}s are applied during entity mutation
+ * and in what order. Only the listed mutators will be used, and they will be executed sequentially
+ * as configured.
+ *
+ * <p>If no mutators are specified, entity mutation is effectively disabled.
+ */
 @ConfigMapping(prefix = "polaris.entity-mutation")
 public interface QuarkusEntityMutationConfiguration extends EntityMutationConfiguration {
   @Override

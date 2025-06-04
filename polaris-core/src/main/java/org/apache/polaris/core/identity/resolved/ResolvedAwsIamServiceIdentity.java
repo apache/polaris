@@ -31,10 +31,29 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 
+/**
+ * Represents a fully resolved AWS IAM service identity, including the associated IAM ARN and
+ * credentials. This class is used internally by Polaris to access AWS services on behalf of a
+ * configured service identity.
+ *
+ * <p>It contains AWS credentials (access key, secret, and optional session token) and provides a
+ * lazily initialized {@link StsClient} for performing role assumptions or identity verification.
+ *
+ * <p>The resolved identity can be converted back into its persisted DPO form using {@link
+ * #asServiceIdentityInfoDpo()}.
+ */
 public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
+
+  /** IAM role or user ARN representing the Polaris service identity. */
   private final String iamArn;
+
+  /** AWS access key ID of the AWS credential associated with the identity. */
   private final String accessKeyId;
+
+  /** AWS secret access key of the AWS credential associated with the identity. */
   private final String secretAccessKey;
+
+  /** The AWS session token of the AWS credential associated with the identity. */
   private final String sessionToken;
 
   public ResolvedAwsIamServiceIdentity(
@@ -77,6 +96,7 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
     return new AwsIamServiceIdentityInfoDpo(getIdentityInfoReference(), getIamArn());
   }
 
+  /** Returns a memoized supplier for creating an STS client using the resolved credentials. */
   public Supplier<StsClient> stsClientSupplier() {
     return Suppliers.memoize(
         () -> {

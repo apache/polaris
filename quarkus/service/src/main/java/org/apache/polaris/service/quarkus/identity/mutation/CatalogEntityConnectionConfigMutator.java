@@ -28,20 +28,36 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.mutation.EntityMutator;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.service.identity.mutation.EntityMutator;
 
+/**
+ * Entity mutator that injects a {@link ServiceIdentityInfoDpo} into a passthrough {@link
+ * CatalogEntity}, allowing the Polaris service identity to be surfaced to Polaris users.
+ *
+ * <p>This is necessary for authentication mechanisms such as SigV4, where Polaris users must
+ * explicitly allowlist the service identity that Polaris uses to access their services.
+ */
 @RequestScoped
 @Identifier("catalog-connection-config")
 public class CatalogEntityConnectionConfigMutator implements EntityMutator {
 
-  ServiceIdentityRegistry serviceIdentityRegistry;
+  private final ServiceIdentityRegistry serviceIdentityRegistry;
 
   @Inject
   CatalogEntityConnectionConfigMutator(ServiceIdentityRegistry serviceIdentityRegistry) {
     this.serviceIdentityRegistry = serviceIdentityRegistry;
   }
 
+  /**
+   * If the entity is a passthrough {@link CatalogEntity} and its connection uses AWS SIGV4
+   * authentication, this method injects a service identity into its connection configuration.
+   *
+   * @param entity the original Polaris entity
+   * @return the mutated entity with service identity injected, or the original if no change is
+   *     needed
+   */
   @Override
   public PolarisBaseEntity apply(PolarisBaseEntity entity) {
     if (!(entity instanceof CatalogEntity catalogEntity) || !catalogEntity.isPassthroughFacade()) {
@@ -51,6 +67,7 @@ public class CatalogEntityConnectionConfigMutator implements EntityMutator {
     ConnectionConfigInfoDpo connectionConfigInfoDpo = catalogEntity.getConnectionConfigInfoDpo();
     AuthenticationParametersDpo authenticationParameters =
         connectionConfigInfoDpo.getAuthenticationParameters();
+
     if (authenticationParameters.getAuthenticationType() == AuthenticationType.SIGV4) {
       CatalogEntity.Builder builder = new CatalogEntity.Builder(catalogEntity);
       ConnectionConfigInfoDpo injectedConnectionConfigInfoDpo =
@@ -60,6 +77,7 @@ public class CatalogEntityConnectionConfigMutator implements EntityMutator {
       builder.setEntityVersion(entity.getEntityVersion() + 1);
       return builder.build();
     }
+
     return entity;
   }
 }

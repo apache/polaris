@@ -21,6 +21,21 @@ package org.apache.polaris.core.identity.mutation;
 
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
+/**
+ * Engine responsible for applying a sequence of {@link EntityMutator} transformations to a {@link
+ * PolarisBaseEntity}.
+ *
+ * <p>This abstraction allows Polaris to customize or enrich entities during runtime or persistence,
+ * based on configured or contextual logic (e.g., injecting service identity info, computing derived
+ * fields).
+ */
 public interface EntityMutationEngine {
+  /**
+   * Applies all registered entity mutators to the provided entity, in order.
+   *
+   * @param entity The original Polaris entity to mutate.
+   * @return A new or modified instance of {@link PolarisBaseEntity} after all mutations are
+   *     applied.
+   */
   PolarisBaseEntity applyMutations(PolarisBaseEntity entity);
 }

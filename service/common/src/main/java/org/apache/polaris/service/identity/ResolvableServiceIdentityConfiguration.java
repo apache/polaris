@@ -22,6 +22,21 @@ package org.apache.polaris.service.identity;
 import java.util.Optional;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
+/**
+ * Represents a service identity configuration that can be resolved into a fully initialized {@link
+ * ResolvedServiceIdentity}.
+ *
+ * <p>This interface allows identity configurations (e.g., AWS IAM) to encapsulate the logic
+ * required to construct runtime credentials and metadata needed to authenticate as a
+ * Polaris-managed service identity.
+ */
 public interface ResolvableServiceIdentityConfiguration {
+
+  /**
+   * Attempts to resolve this configuration into a {@link ResolvedServiceIdentity}.
+   *
+   * @return an optional resolved service identity, or empty if resolution fails or is not
+   *     configured
+   */
   Optional<? extends ResolvedServiceIdentity> resolve();
 }

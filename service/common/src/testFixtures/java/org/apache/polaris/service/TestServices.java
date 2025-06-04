@@ -67,7 +67,7 @@ import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFacto
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManagerFactory;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
-import org.apache.polaris.service.identity.DefaultServiceIdentityRegistryFactory;
+import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistryFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;

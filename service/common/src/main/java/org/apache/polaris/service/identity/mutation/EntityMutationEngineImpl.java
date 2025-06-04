@@ -27,6 +27,7 @@ import jakarta.inject.Inject;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
+import org.apache.polaris.core.identity.mutation.EntityMutator;
 
 @ApplicationScoped
 public class EntityMutationEngineImpl implements EntityMutationEngine {

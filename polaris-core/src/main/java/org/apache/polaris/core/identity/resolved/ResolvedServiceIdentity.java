@@ -57,5 +57,6 @@ public abstract class ResolvedServiceIdentity {
     this.identityInfoReference = identityInfoReference;
   }
 
+  /** Converts this resolved identity into its corresponding persisted form (DPO). */
   public abstract @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo();
 }
