@@ -30,15 +30,14 @@ for arg in "$@"; do
   fi
 done
 
+# Check if the python client needs regeneration
+if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
+  ./gradlew regeneratePythonClient
+fi
 
-if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
+if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
-
-  # Check if the python client needs regeneration
-  if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
-    ./gradlew regeneratePythonClient
-  fi
 
   if [ ! -d ${dir}/polaris-venv ]; then
     echo "Performing first-time setup for the Python client..."
