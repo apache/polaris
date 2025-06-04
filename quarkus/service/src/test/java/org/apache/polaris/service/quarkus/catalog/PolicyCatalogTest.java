@@ -206,7 +206,7 @@ public class PolicyCatalogTest {
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
 
-    callContext = CallContext.of(realmContext, polarisContext);
+    callContext = polarisContext;
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(

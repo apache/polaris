@@ -49,22 +49,6 @@ public interface CallContext {
     CURRENT_CONTEXT.remove();
   }
 
-  // only tests are using this method now, we can get rid of them easily in a followup
-  static CallContext of(
-      final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-    };
-  }
-
   /** Copy the {@link CallContext}. */
   static CallContext copyOf(CallContext base) {
     String realmId = base.getRealmContext().getRealmIdentifier();

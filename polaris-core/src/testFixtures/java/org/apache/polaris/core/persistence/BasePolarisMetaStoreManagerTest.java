@@ -104,10 +104,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
+      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
     }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
@@ -155,10 +153,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
+      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
     }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
@@ -194,10 +190,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
+      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
     }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);

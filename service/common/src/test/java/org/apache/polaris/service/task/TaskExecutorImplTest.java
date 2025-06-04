@@ -51,7 +51,6 @@ public class TaskExecutorImplTest {
 
     PolarisCallContext polarisCallCtx =
         new PolarisCallContext(realmContext, bp, testServices.polarisDiagnostics());
-    CallContext callContext = CallContext.of(realmContext, polarisCallCtx);
 
     // This task doesn't have a type so it won't be handle-able by a real handler. We register a
     // test TaskHandler below that can handle any task.
@@ -88,11 +87,11 @@ public class TaskExecutorImplTest {
           }
         });
 
-    executor.handleTask(taskEntity.getId(), callContext, attempt);
+    executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterTaskAttemptedEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
-    Assertions.assertEquals(callContext, afterAttemptTaskEvent.callContext());
+    Assertions.assertEquals(polarisCallCtx, afterAttemptTaskEvent.callContext());
     Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());
     Assertions.assertTrue(afterAttemptTaskEvent.success());
   }

@@ -244,7 +244,7 @@ public abstract class PolarisAuthzTestBase {
             clock);
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
-    callContext = CallContext.of(realmContext, polarisContext);
+    callContext = polarisContext;
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
