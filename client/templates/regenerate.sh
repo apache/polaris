@@ -70,6 +70,7 @@ docker run --rm \
   -o /local/client/python \
   --additional-properties=packageName=polaris.management \
   --additional-properties=apiNamePrefix=polaris \
+  --additional-properties=pythonVersion=3.9 \
   --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
@@ -81,6 +82,7 @@ docker run --rm \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
   --skip-validate-spec \
+  --additional-properties=pythonVersion=3.9 \
   --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
 docker run --rm \
@@ -92,6 +94,7 @@ docker run --rm \
   --additional-properties=packageName=polaris.catalog \
   --additional-properties=apiNameSuffix="" \
   --additional-properties=apiNamePrefix=Iceberg \
+  --additional-properties=pythonVersion=3.9 \
   --skip-validate-spec \
   --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 

@@ -194,12 +194,12 @@ docker run --rm \
   -o /local/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
 ```
 
-Tests rely on Python 3.8 or higher. `pyenv` can be used to install a current version and mapped to the local directory
+Tests rely on Python 3.9 or higher. `pyenv` can be used to install a current version and mapped to the local directory
 by using
 
 ```shell
-pyenv install 3.8
-pyenv local 3.8
+pyenv install 3.9
+pyenv local 3.9
 ```
 
 Once you've done that, you can run `setup.sh` to generate a python virtual environment (installed at `~/polaris-venv`)
