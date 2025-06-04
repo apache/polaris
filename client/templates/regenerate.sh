@@ -138,6 +138,7 @@ EXCLUDE_PATHS=(
 EXCLUDE_EXTENSIONS=(
   "json"
   "iml"
+  "keep"
 )
 
 # Process all files in the target directory
