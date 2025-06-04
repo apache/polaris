@@ -36,8 +36,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -580,16 +582,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   /** {@inheritDoc} */
   @Override
-  public Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, long parentId, String location) {
+  public <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
+      @Nonnull PolarisCallContext callContext, T entity) {
     if (this.version < 2) {
       return Optional.empty();
     }
-    if (location.chars().filter(ch -> ch == '/').count() > MAX_LOCATION_COMPONENTS) {
+    if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count() > MAX_LOCATION_COMPONENTS) {
       return Optional.empty();
     }
 
-    String query = QueryGenerator.generateOverlapQuery(realmId, parentId, location);
+    String query = QueryGenerator.generateOverlapQuery(realmId, entity);
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
@@ -600,11 +602,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to retrieve location overlap for location {} due to {}",
-          location,
+          entity.getBaseLocation(),
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to retrieve location overlap for location: %s", location), e);
+          String.format("Failed to retrieve location overlap for location: %s", entity.getBaseLocation()), e);
     }
   }
 

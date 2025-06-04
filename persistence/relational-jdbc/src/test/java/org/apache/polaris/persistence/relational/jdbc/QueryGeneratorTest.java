@@ -28,8 +28,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.entity.table.TableLikeEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
@@ -223,6 +230,14 @@ public class QueryGeneratorTest {
     assertEquals("", QueryGenerator.generateWhereClause(whereClause));
   }
 
+  private IcebergTableLikeEntity buildEntity(int parentId, String location) {
+    return IcebergTableLikeEntity.of(new PolarisEntity
+        .Builder()
+        .setParentId(parentId)
+        .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
+        .build());
+  }
+
   @Test
   void testGenerateOverlapQuery() {
     String realmId = "realmId";
@@ -235,7 +250,7 @@ public class QueryGeneratorTest {
             + "type_code FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = "
             + "-398224152 AND (1 = 2 OR location = '/' OR location = '/tmp/' OR location = '/tmp/location/' "
             + "OR location LIKE '/tmp/location/%')",
-        QueryGenerator.generateOverlapQuery(realmId, parentId, "/tmp/location/"));
+        QueryGenerator.generateOverlapQuery(realmId, buildEntity(parentId, "/tmp/location/")));
 
     assertEquals(
         "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, "
@@ -245,7 +260,7 @@ public class QueryGeneratorTest {
             + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://bucket/' OR "
             + "location = 's3://bucket/tmp/' OR location = 's3://bucket/tmp/location/' OR location "
             + "LIKE 's3://bucket/tmp/location/%')",
-        QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://bucket/tmp/location/"));
+        QueryGenerator.generateOverlapQuery(realmId, buildEntity(parentId, "s3://bucket/tmp/location/")));
 
     assertEquals(
         "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, "
@@ -255,6 +270,6 @@ public class QueryGeneratorTest {
             + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
             + "location = 's3://バケツ/\"loc.ation\"/' OR location "
             + "LIKE 's3://バケツ/\"loc.ation\"/%')",
-        QueryGenerator.generateOverlapQuery(realmId, parentId, "s3://バケツ/\"loc.ation\"/"));
+        QueryGenerator.generateOverlapQuery(realmId, buildEntity(parentId, "s3://バケツ/\"loc.ation\"/")));
   }
 }

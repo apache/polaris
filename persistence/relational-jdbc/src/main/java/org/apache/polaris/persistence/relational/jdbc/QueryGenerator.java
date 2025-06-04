@@ -24,7 +24,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -216,7 +219,9 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  public static String generateOverlapQuery(String realmId, long parentId, String location) {
+  public static <T extends PolarisEntity & LocationBasedEntity> String generateOverlapQuery(
+      String realmId, T entity) {
+    String location = entity.getBaseLocation();
     String[] components = location.split("/");
     StringBuilder locationClauseBuilder = new StringBuilder();
     StringBuilder pathBuilder = new StringBuilder();
@@ -231,7 +236,7 @@ public class QueryGenerator {
     return query
         + String.format(
             " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2%s)",
-            getTableName(ModelEntity.class), realmId, parentId, locationClauseBuilder);
+            getTableName(ModelEntity.class), realmId, entity.getParentId(), locationClauseBuilder);
   }
 
   @VisibleForTesting
