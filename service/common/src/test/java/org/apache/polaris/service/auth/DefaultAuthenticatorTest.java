@@ -20,12 +20,15 @@ package org.apache.polaris.service.auth;
 
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -44,15 +47,20 @@ public class DefaultAuthenticatorTest {
   @BeforeEach
   public void setUp() {
     RealmContext realmContext = () -> "test";
-    polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    CallContext callContext = CallContext.of(realmContext, polarisCallContext);
+    polarisCallContext =
+        new PolarisCallContext(
+            realmContext,
+            Mockito.mock(BasePersistence.class),
+            Mockito.mock(PolarisDiagnostics.class),
+            Mockito.mock(PolarisConfigurationStore.class),
+            Clock.systemUTC());
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
     when(metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext))
         .thenReturn(metaStoreManager);
     authenticator = new DefaultAuthenticator();
     authenticator.metaStoreManagerFactory = metaStoreManagerFactory;
-    authenticator.callContext = callContext;
+    authenticator.callContext = polarisCallContext;
   }
 
   @Test

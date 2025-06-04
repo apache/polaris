@@ -45,10 +45,10 @@ public class CatalogEntityTest {
     MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            () -> "realm",
             metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callContext = CallContext.of(() -> "realm", polarisCallContext);
-    CallContext.setCurrentContext(callContext);
+    CallContext.setCurrentContext(polarisCallContext);
   }
 
   @Test

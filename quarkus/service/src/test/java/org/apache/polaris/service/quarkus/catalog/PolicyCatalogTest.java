@@ -195,17 +195,17 @@ public class PolicyCatalogTest {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+    callContext = polarisContext;
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
-
-    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(

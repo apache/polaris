@@ -103,12 +103,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   @Test
   protected void testCreateEntities() {
+    setCallContext();
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -152,14 +148,24 @@ public abstract class BasePolarisMetaStoreManagerTest {
                 task2.getSubTypeCode()));
   }
 
+  private void setCallContext() {
+    if (CallContext.getCurrentContext() == null) {
+      var oldCtx = polarisTestMetaStoreManager.polarisCallContext;
+      var ctx =
+          new PolarisCallContext(
+              () -> "testRealm",
+              oldCtx.getMetaStore(),
+              oldCtx.getDiagServices(),
+              oldCtx.getConfigurationStore(),
+              oldCtx.getClock());
+      CallContext.setCurrentContext(ctx);
+    }
+  }
+
   @Test
   protected void testCreateEntitiesAlreadyExisting() {
+    setCallContext();
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -193,12 +199,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   @Test
   protected void testCreateEntitiesWithConflict() {
+    setCallContext();
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext);
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(callCtx);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     TaskEntity task3 = createTask("task3", 103L);

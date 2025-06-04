@@ -68,6 +68,7 @@ public class ManagementServiceTest {
             .build();
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            fakeServices.realmContext(),
             fakeServices
                 .metaStoreManagerFactory()
                 .getOrCreateSessionSupplier(fakeServices.realmContext())
@@ -75,7 +76,7 @@ public class ManagementServiceTest {
             fakeServices.polarisDiagnostics(),
             fakeServices.configurationStore(),
             Mockito.mock(Clock.class));
-    CallContext.setCurrentContext(CallContext.of(fakeServices.realmContext(), polarisCallContext));
+    CallContext.setCurrentContext(polarisCallContext);
     services =
         TestServices.builder()
             .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
@@ -185,6 +186,7 @@ public class ManagementServiceTest {
     MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
     RealmContext realmContext = services.realmContext();
     return new PolarisCallContext(
+        realmContext,
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         services.polarisDiagnostics());
   }
@@ -193,7 +195,7 @@ public class ManagementServiceTest {
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     RealmContext realmContext = services.realmContext();
     return new PolarisAdminService(
-        CallContext.of(realmContext, callContext),
+        callContext,
         services.entityManagerFactory().getOrCreateEntityManager(realmContext),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),

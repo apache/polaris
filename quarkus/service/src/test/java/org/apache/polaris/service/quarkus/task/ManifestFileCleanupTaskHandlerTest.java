@@ -89,11 +89,11 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
-    PolarisCallContext polarisCallContext =
+    CallContext callCtx =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
@@ -119,11 +119,11 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
-    PolarisCallContext polarisCallContext =
+    CallContext callCtx =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     CallContext.setCurrentContext(callCtx);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
@@ -148,11 +148,11 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFiles() throws IOException {
-    PolarisCallContext polarisCallContext =
+    CallContext callCtx =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     CallContext.setCurrentContext(callCtx);
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -194,11 +194,11 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext =
+    CallContext callCtx =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     CallContext.setCurrentContext(callCtx);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =

@@ -96,6 +96,7 @@ class InMemoryStorageIntegrationTest {
     Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            () -> "realm",
             Mockito.mock(),
             new PolarisDefaultDiagServiceImpl(),
             new PolarisConfigurationStore() {
@@ -106,7 +107,7 @@ class InMemoryStorageIntegrationTest {
               }
             },
             Clock.systemUTC());
-    CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext));
+    CallContext.setCurrentContext(polarisCallContext);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             new FileStorageConfigurationInfo(List.of("file://", "*")),

@@ -49,18 +49,17 @@ public class TaskExecutorImplTest {
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     BasePersistence bp = metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
-    PolarisCallContext polarisCallCtx =
-        new PolarisCallContext(bp, testServices.polarisDiagnostics());
-    CallContext callContext = CallContext.of(realmContext, polarisCallCtx);
+    PolarisCallContext callContext =
+        new PolarisCallContext(realmContext, bp, testServices.polarisDiagnostics());
 
     // This task doesn't have a type so it won't be handle-able by a real handler. We register a
     // test TaskHandler below that can handle any task.
     TaskEntity taskEntity =
         new TaskEntity.Builder()
             .setName("mytask")
-            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setId(metaStoreManager.generateNewEntityId(callContext).getId())
             .build();
-    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+    metaStoreManager.createEntityIfNotExists(callContext, null, taskEntity);
 
     int attempt = 1;
 
