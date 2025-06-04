@@ -19,16 +19,14 @@
 
 package org.apache.polaris.core.entity;
 
-import java.util.Map;
-
 /**
- * An interface for entity types that represent data stored at some location. These entities provide a
- * method `getBaseLocation` to retrieve that location.
+ * An interface for entity types that represent data stored at some location. These entities provide
+ * a method `getBaseLocation` to retrieve that location.
  */
 public interface LocationBasedEntity {
 
-    /**
-     * @return The base location for this entity
-     */
-    String getBaseLocation();
+  /**
+   * @return The base location for this entity
+   */
+  String getBaseLocation();
 }

@@ -89,8 +89,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     Map<String, String> internalProperties = new HashMap<>();
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
-    builder.setStorageConfigurationInfo(
-        catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+    builder.setStorageConfigurationInfo(catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 

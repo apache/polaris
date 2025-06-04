@@ -582,12 +582,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, T entity) {
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
     if (this.version < 2) {
       return Optional.empty();
     }
-    if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count() > MAX_LOCATION_COMPONENTS) {
+    if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
+        > MAX_LOCATION_COMPONENTS) {
       return Optional.empty();
     }
 
@@ -606,7 +608,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to retrieve location overlap for location: %s", entity.getBaseLocation()), e);
+          String.format(
+              "Failed to retrieve location overlap for location: %s", entity.getBaseLocation()),
+          e);
     }
   }
 

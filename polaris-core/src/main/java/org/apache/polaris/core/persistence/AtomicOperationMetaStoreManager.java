@@ -1822,8 +1822,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisEntity & LocationBasedEntity>  Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, T entity) {
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
     BasePersistence ms = callContext.getMetaStore();
     return ms.hasOverlappingSiblings(callContext, entity);
   }

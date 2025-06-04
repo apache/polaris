@@ -389,8 +389,9 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, T entity) {
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
     callContext
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "hasOverlappingSiblings");

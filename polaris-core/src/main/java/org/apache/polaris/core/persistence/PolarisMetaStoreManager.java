@@ -400,8 +400,8 @@ public interface PolarisMetaStoreManager
    * @param callContext the polaris call context
    * @param entity the entity to check for overlapping siblings for
    * @return Optional.of(Optional.of ( location)) if the parent entity has children,
-   * Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
-   * this operation
+   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   *     this operation
    */
   <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
       @Nonnull PolarisCallContext callContext, T entity);
