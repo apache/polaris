@@ -163,21 +163,13 @@ public record TestServices(
       BasePersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
       CallContext callContext =
-          new CallContext() {
-            @Override
-            public RealmContext getRealmContext() {
-              return realmContext;
-            }
+          new PolarisCallContext(
+              realmContext,
+              metaStoreSession,
+              polarisDiagnostics,
+              configurationStore,
+              Mockito.mock(Clock.class));
 
-            @Override
-            public PolarisCallContext getPolarisCallContext() {
-              return new PolarisCallContext(
-                  metaStoreSession,
-                  polarisDiagnostics,
-                  configurationStore,
-                  Mockito.mock(Clock.class));
-            }
-          };
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =

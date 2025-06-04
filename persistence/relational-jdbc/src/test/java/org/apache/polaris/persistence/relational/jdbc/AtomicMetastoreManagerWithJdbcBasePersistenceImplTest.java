@@ -28,6 +28,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
@@ -61,6 +62,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     return new PolarisTestMetaStoreManager(
         new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(
+            Mockito.mock(RealmContext.class),
             basePersistence,
             diagServices,
             new PolarisConfigurationStore() {},

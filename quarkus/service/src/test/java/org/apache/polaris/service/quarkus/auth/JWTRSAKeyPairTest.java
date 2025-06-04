@@ -30,6 +30,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -61,7 +62,8 @@ public class JWTRSAKeyPairTest {
     final String scope = "PRINCIPAL_ROLE:TEST";
 
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(null, null, configurationStore, null);
+        new PolarisCallContext(
+            Mockito.mock(RealmContext.class), null, null, configurationStore, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =

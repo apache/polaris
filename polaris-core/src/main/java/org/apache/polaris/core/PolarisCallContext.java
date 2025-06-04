@@ -58,18 +58,6 @@ public class PolarisCallContext implements CallContext {
     this.clock = clock;
   }
 
-  @Deprecated
-  public PolarisCallContext(
-      @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisDiagnostics diagServices,
-      @Nonnull PolarisConfigurationStore configurationStore,
-      @Nonnull Clock clock) {
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = configurationStore;
-    this.clock = clock;
-  }
-
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
