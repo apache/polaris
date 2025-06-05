@@ -96,8 +96,12 @@ public class PolarisCallContext implements CallContext {
   }
 
   @Override
-  public PolarisCallContext copy() {
-    // make a copy of the realm context
+  public CallContext copy() {
+    // The realm context is a request scoped bean injected by CDI,
+    // which will be closed after the http request. This copy is currently
+    // only used by TaskExecutor right before the task is handled, since the
+    // task is executed outside the active request scope, we need to make a
+    // copy of the RealmContext to ensure the access during the task executor.
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
