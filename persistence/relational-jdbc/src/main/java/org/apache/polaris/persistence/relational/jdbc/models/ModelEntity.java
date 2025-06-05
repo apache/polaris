@@ -20,7 +20,8 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -28,6 +29,26 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
+  public static final String TABLE_NAME = "ENTITIES";
+
+  public static final List<String> ALL_COLUMNS =
+      List.of(
+          "id",
+          "catalog_id",
+          "parent_id",
+          "type_code",
+          "name",
+          "entity_version",
+          "sub_type_code",
+          "create_timestamp",
+          "drop_timestamp",
+          "purge_timestamp",
+          "to_purge_timestamp",
+          "last_update_timestamp",
+          "properties",
+          "internal_properties",
+          "grant_records_version");
+
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
   private long catalogId;
@@ -166,9 +187,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
-    Map<String, Object> map = new HashMap<>();
-    map.put("catalog_id", this.getCatalogId());
+    Map<String, Object> map = new LinkedHashMap<>();
     map.put("id", this.getId());
+    map.put("catalog_id", this.getCatalogId());
     map.put("parent_id", this.getParentId());
     map.put("type_code", this.getTypeCode());
     map.put("name", this.getName());
@@ -180,8 +201,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("to_purge_timestamp", this.getToPurgeTimestamp());
     map.put("last_update_timestamp", this.getLastUpdateTimestamp());
     if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("properties", toPGobject(this.getProperties()));
-      map.put("internal_properties", toPGobject(this.getInternalProperties()));
+      map.put("properties", toJsonbPGobject(this.getProperties()));
+      map.put("internal_properties", toJsonbPGobject(this.getInternalProperties()));
     } else {
       map.put("properties", this.getProperties());
       map.put("internal_properties", this.getInternalProperties());

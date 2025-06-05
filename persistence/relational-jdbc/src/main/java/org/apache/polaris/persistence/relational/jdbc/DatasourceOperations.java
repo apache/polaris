@@ -143,8 +143,8 @@ public class DatasourceOperations {
     withRetries(
         () -> {
           try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(query.getSql())) {
-            List<Object> params = query.getParameters();
+              PreparedStatement statement = connection.prepareStatement(query.sql())) {
+            List<Object> params = query.parameters();
             for (int i = 0; i < params.size(); i++) {
               statement.setObject(i + 1, params.get(i));
             }
@@ -168,9 +168,8 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(preparedQuery.getSql())) {
-
-            List<Object> params = preparedQuery.getParameters();
+              PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
+            List<Object> params = preparedQuery.parameters();
             for (int i = 0; i < params.size(); i++) {
               statement.setObject(i + 1, params.get(i));
             }
@@ -218,8 +217,8 @@ public class DatasourceOperations {
 
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
       throws SQLException {
-    try (PreparedStatement statement = connection.prepareStatement(preparedQuery.getSql())) {
-      List<Object> params = preparedQuery.getParameters();
+    try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
+      List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
         statement.setObject(i + 1, params.get(i));
       }

@@ -61,6 +61,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     JdbcBasePersistenceImpl basePersistence =
         new JdbcBasePersistenceImpl(
             datasourceOperations,
+            new QueryGenerator(DatabaseType.H2),
             RANDOM_SECRETS,
             Mockito.mock(),
             realmContext.getRealmIdentifier());

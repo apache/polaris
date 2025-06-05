@@ -40,7 +40,7 @@ public interface Converter<T> {
    */
   Map<String, Object> toMap(DatabaseType databaseType);
 
-  default PGobject toPGobject(String props) {
+  default PGobject toJsonbPGobject(String props) {
     try {
       PGobject jsonObject = new PGobject();
       jsonObject.setType("jsonb");

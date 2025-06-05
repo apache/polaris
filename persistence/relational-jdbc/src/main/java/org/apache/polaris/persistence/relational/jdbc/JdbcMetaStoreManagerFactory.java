@@ -127,8 +127,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
-        databaseOperations.executeScript(
-            String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
+        databaseOperations.executeScript(databaseType.getInitScriptResource());
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);
