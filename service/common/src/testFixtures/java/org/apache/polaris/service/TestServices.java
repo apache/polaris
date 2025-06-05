@@ -168,7 +168,7 @@ public record TestServices(
               metaStoreSession,
               polarisDiagnostics,
               configurationStore,
-              Mockito.mock(Clock.class));
+              Clock.systemUTC());
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =
