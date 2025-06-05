@@ -141,7 +141,7 @@ public class FileIOFactoryTest {
             testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             testServices.polarisDiagnostics(),
             testServices.configurationStore(),
-            Mockito.mock(Clock.class));
+            Clock.systemUTC());
   }
 
   @AfterEach
