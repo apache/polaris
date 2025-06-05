@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.context;
 
-import org.apache.commons.compress.harmony.pack200.NewAttributeBands;
 import org.apache.polaris.core.PolarisCallContext;
 
 /**

@@ -136,25 +136,12 @@ public class FileIOFactoryTest {
             .build();
 
     callContext =
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return testServices.realmContext();
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return new PolarisCallContext(
-                realmContext,
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                testServices.polarisDiagnostics(),
-                testServices.configurationStore(),
-                Mockito.mock(Clock.class));
-          }
-        };
+        new PolarisCallContext(
+            realmContext,
+            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.polarisDiagnostics(),
+            testServices.configurationStore(),
+            Mockito.mock(Clock.class));
   }
 
   @AfterEach

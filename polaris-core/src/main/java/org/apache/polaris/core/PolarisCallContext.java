@@ -101,10 +101,6 @@ public class PolarisCallContext implements CallContext {
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
-            realmContext,
-            this.metaStore,
-            this.diagServices,
-            this.configurationStore,
-            this.clock);
+        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock);
   }
 }
