@@ -60,7 +60,7 @@ echo "Regenerating python from the spec"
 # TODO skip-validate-spec is needed because the upstream Iceberg spec seems invalid. e.g.:
 #   [main] ERROR o.o.codegen.DefaultCodegen - Required var sort-order-id not in properties
 
-OPEN_API_CLI_VERSION="v7.12.0"
+OPEN_API_CLI_VERSION="v7.11.0"
 
 docker run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
@@ -133,6 +133,7 @@ EXCLUDE_PATHS=(
   "./requirements.txt"
   "./test-requirements.txt"
   "./setup.py"
+  "./.DS_Store"
 )
 
 EXCLUDE_EXTENSIONS=(

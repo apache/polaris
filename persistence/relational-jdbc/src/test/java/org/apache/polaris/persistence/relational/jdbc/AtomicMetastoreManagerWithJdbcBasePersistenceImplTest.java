@@ -46,7 +46,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations =
-        new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
+        new DatasourceOperations(createH2DataSource(), DatabaseType.H2, new H2JdbcConfiguration());
     try {
       datasourceOperations.executeScript(
           String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));

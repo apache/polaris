@@ -1,5 +1,4 @@
 .gitignore
-.travis.yml
 README.md
 docs/AddPartitionSpecUpdate.md
 docs/AddSchemaUpdate.md

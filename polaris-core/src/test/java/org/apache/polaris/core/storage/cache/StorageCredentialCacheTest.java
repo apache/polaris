@@ -245,12 +245,14 @@ public class StorageCredentialCacheTest {
       Map<String, String> internalMap = entity.getPropertiesAsMap();
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
-      entity.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap));
+      PolarisBaseEntity updateEntity =
+          new PolarisBaseEntity.Builder(entity)
+              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          PolarisEntity.of(updateEntity),
           /* allowedListAction= */ true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket/path")));
@@ -283,12 +285,14 @@ public class StorageCredentialCacheTest {
       Map<String, String> internalMap = entity.getPropertiesAsMap();
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
-      entity.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap));
+      PolarisBaseEntity updateEntity =
+          new PolarisBaseEntity.Builder(entity)
+              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          PolarisEntity.of(updateEntity),
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://differentbucket/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket/path")));
@@ -328,11 +332,10 @@ public class StorageCredentialCacheTest {
 
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
-      entity.setId(1234);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
@@ -341,11 +344,10 @@ public class StorageCredentialCacheTest {
 
     // other property changes does not affect the cache
     for (PolarisEntity entity : entityList) {
-      entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
@@ -353,11 +355,10 @@ public class StorageCredentialCacheTest {
     }
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
@@ -366,11 +367,10 @@ public class StorageCredentialCacheTest {
 
     // order of the allowedWriteLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
-          entity,
+          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
           new HashSet<>(Arrays.asList("s3://bucket4/path", "s3://bucket3/path")));
