@@ -164,7 +164,8 @@ public class PolarisConfigurationStoreTest {
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
           @Override
-          public <T> @Nullable T getConfiguration(RealmContext realmContext, String configName) {
+          public <T> @Nullable T getConfiguration(
+              @Nonnull RealmContext realmContext, String configName) {
             //noinspection unchecked
             return (T) Map.of("key2", "config-value2").get(configName);
           }
