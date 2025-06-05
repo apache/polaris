@@ -107,7 +107,7 @@ class InMemoryStorageIntegrationTest {
               }
             },
             Clock.systemUTC());
-    CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext));
+    CallContext.setCurrentContext(polarisCallContext);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             new FileStorageConfigurationInfo(List.of("file://", "*")),

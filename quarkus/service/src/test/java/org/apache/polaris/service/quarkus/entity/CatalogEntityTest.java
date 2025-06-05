@@ -50,8 +50,7 @@ public class CatalogEntityTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callContext = CallContext.of(() -> "realm", polarisCallContext);
-    CallContext.setCurrentContext(callContext);
+    CallContext.setCurrentContext(polarisCallContext);
   }
 
   @Test
