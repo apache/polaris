@@ -96,7 +96,7 @@ public class PolarisCallContext implements CallContext {
   }
 
   @Override
-  public CallContext copy() {
+  public PolarisCallContext copy() {
     // The realm context is a request scoped bean injected by CDI,
     // which will be closed after the http request. This copy is currently
     // only used by TaskExecutor right before the task is handled, since the
