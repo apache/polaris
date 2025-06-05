@@ -216,18 +216,6 @@ public class QueryGeneratorTest {
   }
 
   @Test
-  void testGenerateSelectQuery_withFilter() {
-    String filter = " WHERE name = '?'";
-    String expectedQuery =
-        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version FROM POLARIS_SCHEMA.ENTITIES WHERE name = '?'";
-    assertEquals(
-        expectedQuery,
-        queryGenerator
-            .generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, filter)
-            .sql());
-  }
-
-  @Test
   void testGenerateWhereClause_singleCondition() {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "test");

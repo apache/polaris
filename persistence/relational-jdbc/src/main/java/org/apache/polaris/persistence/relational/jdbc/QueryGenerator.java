@@ -52,6 +52,9 @@ public class QueryGenerator {
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
 
+  /** A container for the query fragment SQL string and the ordered parameter values. */
+  record QueryFragment(String sql, List<Object> parameters) {}
+
   /**
    * Generates a SELECT query with projection and filtering.
    *
@@ -66,7 +69,7 @@ public class QueryGenerator {
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
     checkInvalidColumns(projections, whereClause);
-    PreparedQuery where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(whereClause);
     PreparedQuery query = generateSelectQuery(projections, tableName, where.sql());
     return new PreparedQuery(query.sql(), where.parameters());
   }
@@ -123,7 +126,7 @@ public class QueryGenerator {
    * @param realmId Realm value to append.
    * @return INSERT query with value bindings.
    */
-  public <T> PreparedQuery generateInsertQuery(
+  public PreparedQuery generateInsertQuery(
       @Nonnull List<String> allColumns,
       @Nonnull String tableName,
       List<Object> values,
@@ -154,14 +157,14 @@ public class QueryGenerator {
    * @param whereClause Conditions for filtering rows to update.
    * @return UPDATE query with parameter values.
    */
-  public <T> PreparedQuery generateUpdateQuery(
+  public PreparedQuery generateUpdateQuery(
       @Nonnull List<String> allColumns,
       @Nonnull String tableName,
       @Nonnull List<Object> values,
       @Nonnull Map<String, Object> whereClause) {
     checkInvalidColumns(allColumns, whereClause);
     List<Object> bindingParams = new ArrayList<>(values);
-    PreparedQuery where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(whereClause);
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
     String sql =
         "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
@@ -182,13 +185,13 @@ public class QueryGenerator {
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
     checkInvalidColumns(tableColumns, whereClause);
-    PreparedQuery where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(whereClause);
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
   @VisibleForTesting
-  PreparedQuery generateSelectQuery(
+  private PreparedQuery generateSelectQuery(
       @Nonnull List<String> columnNames, @Nonnull String tableName, @Nonnull String filter) {
     String sql =
         "SELECT "
@@ -200,7 +203,7 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  PreparedQuery generateWhereClause(@Nonnull Map<String, Object> whereClause) {
+  QueryFragment generateWhereClause(@Nonnull Map<String, Object> whereClause) {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
@@ -208,7 +211,7 @@ public class QueryGenerator {
       parameters.add(entry.getValue());
     }
     String clause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
-    return new PreparedQuery(clause, parameters);
+    return new QueryFragment(clause, parameters);
   }
 
   /** Validates that WHERE clause columns exist in the given list of valid columns. */
