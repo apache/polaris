@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
+import com.google.common.base.Preconditions;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,8 +30,6 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.Context;
 import java.time.Clock;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -67,7 +66,6 @@ import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfigu
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
-import org.apache.polaris.service.quarkus.context.RealmContextFilter;
 import org.apache.polaris.service.quarkus.events.QuarkusPolarisEventListenerConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
 import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
@@ -115,8 +113,10 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public RealmContext realmContext(@Context ContainerRequestContext request) {
-    return (RealmContext) request.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
+  public RealmContext realmContext(PolarisRequestContext context) {
+    RealmContext realmContext = context.realmContext();
+    Preconditions.checkState(realmContext != null, "RealmContext was not property configured");
+    return realmContext;
   }
 
   @Produces
@@ -297,7 +297,7 @@ public class QuarkusProducers {
   public ManagedExecutor taskExecutor(TaskHandlerConfiguration config) {
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("task-executor")
-        .propagated(ThreadContext.ALL_REMAINING)
+        .propagated(ThreadContext.NONE)
         .maxAsync(config.maxConcurrentTasks())
         .maxQueued(config.maxQueuedTasks())
         .build();

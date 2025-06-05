@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.PolarisFilterPriorities;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.quarkus.config.PolarisRequestContext;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 
 public class RealmContextFilter {
@@ -34,6 +35,7 @@ public class RealmContextFilter {
   public static final String REALM_CONTEXT_KEY = "realmContext";
 
   @Inject RealmContextResolver realmContextResolver;
+  @Inject PolarisRequestContext polarisRequestContext;
 
   @ServerRequestFilter(preMatching = true, priority = PolarisFilterPriorities.REALM_CONTEXT_FILTER)
   public Uni<Response> resolveRealmContext(ContainerRequestContext rc) {
@@ -46,7 +48,7 @@ public class RealmContextFilter {
                     rc.getUriInfo().getPath(),
                     rc.getHeaders()::getFirst))
         .onItem()
-        .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
+        .invoke(realmContext -> polarisRequestContext.setRealmContext(realmContext))
         .invoke(realmContext -> ContextLocals.put(REALM_CONTEXT_KEY, realmContext))
         .onItemOrFailure()
         .transform((realmContext, error) -> error == null ? null : errorResponse(error));

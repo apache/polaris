@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.logging;
 
-import static org.apache.polaris.service.quarkus.context.RealmContextFilter.REALM_CONTEXT_KEY;
-
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -28,6 +26,7 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.quarkus.config.PolarisRequestContext;
 import org.apache.polaris.service.quarkus.config.QuarkusFilterPriorities;
 import org.slf4j.MDC;
 
@@ -41,6 +40,7 @@ public class QuarkusLoggingMDCFilter implements ContainerRequestFilter {
   public static final String REQUEST_ID_KEY = "requestId";
 
   @Inject QuarkusLoggingConfiguration loggingConfiguration;
+  @Inject PolarisRequestContext polarisRequestContext;
 
   @Override
   public void filter(ContainerRequestContext rc) {
@@ -54,7 +54,7 @@ public class QuarkusLoggingMDCFilter implements ContainerRequestFilter {
       MDC.put(REQUEST_ID_KEY, requestId);
       rc.setProperty(REQUEST_ID_KEY, requestId);
     }
-    RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
+    RealmContext realmContext = polarisRequestContext.realmContext();
     MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
   }
 }
