@@ -59,15 +59,7 @@ Method | HTTP request | Description
 
 Cancels scan planning for a plan-id
 
-Cancels scan planning for a plan-id.
-
-This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a "submitted" status or while there are remaining plan tasks that have not been fetched.
-
-Cancellation is not necessary when
-- Scan tasks for each plan task have been fetched using fetchScanTasks
-- A plan-id has produced a "failed" or "cancelled" status from
-  planTableScan or fetchPlanningResult
-
+Cancels scan planning for a plan-id.  This notifies the service that it can release resources held for the scan. Clients should cancel scans that are no longer needed, either while the plan-id returns a \"submitted\" status or while there are remaining plan tasks that have not been fetched.  Cancellation is not necessary when - Scan tasks for each plan task have been fetched using fetchScanTasks - A plan-id has produced a \"failed\" or \"cancelled\" status from   planTableScan or fetchPlanningResult 
 
 ### Example
 
@@ -340,11 +332,7 @@ Name | Type | Description  | Notes
 
 Create a table in the given namespace
 
-Create a table or start a create transaction, like atomic CTAS.
-
-If `stage-create` is false, the table is created immediately.
-
-If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
+Create a table or start a create transaction, like atomic CTAS.  If `stage-create` is false, the table is created immediately.  If `stage-create` is true, the table is not created, but table metadata is initialized and returned. The service should prepare as needed for a commit to the table commit endpoint to complete the create transaction. The client uses the returned metadata to begin a transaction. To commit the transaction, the client sends all create and subsequent changes to the table commit route. Changes from the table create operation include changes like AddSchemaUpdate and SetCurrentSchemaUpdate that set the initial table state.
 
 ### Example
 
@@ -799,20 +787,7 @@ void (empty response body)
 
 Fetches the result of scan planning for a plan-id
 
-Fetches the result of scan planning for a plan-id.
-
-Responses must include a valid status
-- When "completed" the planning operation has produced plan-tasks and
-  file-scan-tasks that must be returned in the response
-
-- When "submitted" the planning operation has not completed; the client
-  should wait to call this endpoint again to fetch a completed response
-
-- When "failed" the response must be a valid error response
-- When "cancelled" the plan-id is invalid and should be discarded
-
-The response for a "completed" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.
-
+Fetches the result of scan planning for a plan-id.  Responses must include a valid status - When \"completed\" the planning operation has produced plan-tasks and   file-scan-tasks that must be returned in the response  - When \"submitted\" the planning operation has not completed; the client   should wait to call this endpoint again to fetch a completed response  - When \"failed\" the response must be a valid error response - When \"cancelled\" the plan-id is invalid and should be discarded  The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status. 
 
 ### Example
 
@@ -1001,7 +976,7 @@ Name | Type | Description  | Notes
 
 List namespaces, optionally providing a parent namespace to list underneath
 
-List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, ["accounting", "tax"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, ["accounting", "tax", "paid"]. If `parent` is not provided, all top-level namespaces should be listed.
+List all namespaces at a certain level, optionally starting from a given parent namespace. If table accounting.tax.paid.info exists, using 'SELECT NAMESPACE IN accounting' would translate into `GET /namespaces?parent=accounting` and must return a namespace, [\"accounting\", \"tax\"] only. Using 'SELECT NAMESPACE IN accounting.tax' would translate into `GET /namespaces?parent=accounting%1Ftax` and must return a namespace, [\"accounting\", \"tax\", \"paid\"]. If `parent` is not provided, all top-level namespaces should be listed.
 
 ### Example
 
@@ -1465,13 +1440,7 @@ Name | Type | Description  | Notes
 
 Load a table from the catalog
 
-Load a table from the catalog.
-
-The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.
-
-The response also contains the table's full metadata, matching the table metadata JSON file.
-
-The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key "token" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
+Load a table from the catalog.  The response contains both configuration and table metadata. The configuration, if non-empty is used as additional configuration for the table that overrides catalog configuration. For example, this configuration may change the FileIO implementation to be used for the table.  The response also contains the table's full metadata, matching the table metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the table. The configuration key \"token\" is used to pass an access token to be used as a bearer token for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
 
 ### Example
 
@@ -1570,13 +1539,7 @@ Name | Type | Description  | Notes
 
 Load a view from the catalog
 
-Load a view from the catalog.
-
-The response contains both configuration and view metadata. The configuration, if non-empty is used as additional configuration for the view that overrides catalog configuration.
-
-The response also contains the view's full metadata, matching the view metadata JSON file.
-
-The catalog configuration may contain credentials that should be used for subsequent requests for the view. The configuration key "token" is used to pass an access token to be used as a bearer token for view requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
+Load a view from the catalog.  The response contains both configuration and view metadata. The configuration, if non-empty is used as additional configuration for the view that overrides catalog configuration.  The response also contains the view's full metadata, matching the view metadata JSON file.  The catalog configuration may contain credentials that should be used for subsequent requests for the view. The configuration key \"token\" is used to pass an access token to be used as a bearer token for view requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, \"urn:ietf:params:oauth:token-type:jwt=<JWT-token>\".
 
 ### Example
 
@@ -1755,30 +1718,7 @@ void (empty response body)
 
 Submit a scan for planning
 
-Submits a scan for server-side planning.
-
-Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.
-
-Responses must include a valid status listed below. A "cancelled" status is considered invalid for this endpoint.  
-- When "completed" the planning operation has produced plan tasks and
-  file scan tasks that must be returned in the response (not fetched
-  later by calling fetchPlanningResult)
-
-- When "submitted" the response must include a plan-id used to poll
-  fetchPlanningResult to fetch the planning result when it is ready
-
-- When "failed" the response must be a valid error response
-The response for a "completed" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.
-
-Responses that include a plan-id indicate that the service is holding state or performing work for the client.
-
-- Clients should use the plan-id to fetch results from
-  fetchPlanningResult when the response status is "submitted"
-
-- Clients should inform the service if planning results are no longer
-  needed by calling cancelPlanning. Cancellation is not necessary after
-  fetchScanTasks has been used to fetch scan tasks for each plan task.
-
+Submits a scan for server-side planning.  Point-in-time scans are planned by passing snapshot-id to identify the table snapshot to scan. Incremental scans are planned by passing both start-snapshot-id and end-snapshot-id. Requests that include both point in time config properties and incremental config properties are invalid. If the request does not include either incremental or point-in-time config properties, scan planning should produce a point-in-time scan of the latest snapshot in the table's main branch.  Responses must include a valid status listed below. A \"cancelled\" status is considered invalid for this endpoint.   - When \"completed\" the planning operation has produced plan tasks and   file scan tasks that must be returned in the response (not fetched   later by calling fetchPlanningResult)  - When \"submitted\" the response must include a plan-id used to poll   fetchPlanningResult to fetch the planning result when it is ready  - When \"failed\" the response must be a valid error response The response for a \"completed\" planning operation includes two types of tasks (file scan tasks and plan tasks) and both may be included in the response. Tasks must not be included for any other response status.  Responses that include a plan-id indicate that the service is holding state or performing work for the client.  - Clients should use the plan-id to fetch results from   fetchPlanningResult when the response status is \"submitted\"  - Clients should inform the service if planning results are no longer   needed by calling cancelPlanning. Cancellation is not necessary after   fetchScanTasks has been used to fetch scan tasks for each plan task. 
 
 ### Example
 
@@ -2426,9 +2366,7 @@ void (empty response body)
 
 Set or remove properties on a namespace
 
-Set and/or remove properties on a namespace. The request body specifies a list of properties to remove and a map of key value pairs to update.
-Properties that are not in the request are not modified or removed by this call.
-Server implementations are not required to support namespace properties.
+Set and/or remove properties on a namespace. The request body specifies a list of properties to remove and a map of key value pairs to update. Properties that are not in the request are not modified or removed by this call. Server implementations are not required to support namespace properties.
 
 ### Example
 
@@ -2523,13 +2461,7 @@ Name | Type | Description  | Notes
 
 Commit updates to a table
 
-Commit updates to a table.
-
-Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.
-
-Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.
-
-Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
+Commit updates to a table.  Commits have two parts, requirements and updates. Requirements are assertions that will be validated before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value. Server implementations are required to fail with a 400 status code if any unknown updates or requirements are received.  Updates are changes to make to table metadata. For example, after asserting that the current main ref is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new snapshot id.  Create table transactions that are started by createTable with `stage-create` set to true are committed using this route. Transactions should include all changes to the table, including table initialization, like AddSchemaUpdate and SetCurrentSchemaUpdate. The `assert-create` requirement is used to ensure that the table was not created concurrently.
 
 ### Example
 

@@ -20,11 +20,23 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
+  public static final String TABLE_NAME = "GRANT_RECORDS";
+
+  public static final List<String> ALL_COLUMNS =
+      List.of(
+          "securable_catalog_id",
+          "securable_id",
+          "grantee_catalog_id",
+          "grantee_id",
+          "privilege_code");
+
   // id of the catalog where the securable entity resides, use 0, if this entity is a
   // top-level account entity.
   private long securableCatalogId;
@@ -81,8 +93,8 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   }
 
   @Override
-  public Map<String, Object> toMap() {
-    Map<String, Object> map = new HashMap<>();
+  public Map<String, Object> toMap(DatabaseType databaseType) {
+    Map<String, Object> map = new LinkedHashMap<>();
     map.put("securable_catalog_id", this.securableCatalogId);
     map.put("securable_id", this.securableId);
     map.put("grantee_catalog_id", this.granteeCatalogId);
