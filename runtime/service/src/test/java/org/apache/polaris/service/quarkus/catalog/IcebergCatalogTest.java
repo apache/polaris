@@ -1756,7 +1756,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
-    taskEntity.setInternalPropertiesAsMap(properties);
+    taskEntity =
+        TaskEntity.of(
+            new PolarisBaseEntity.Builder(taskEntity).internalPropertiesAsMap(properties).build());
     TaskFileIOSupplier taskFileIOSupplier =
         new TaskFileIOSupplier(
             new FileIOFactory() {

@@ -334,23 +334,22 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       throw new IllegalArgumentException("Invalid entity subtype: " + model.getSubTypeCode());
     }
 
-    var entity =
-        new PolarisBaseEntity(
-            model.getCatalogId(),
-            model.getId(),
-            entityType,
-            subType,
-            model.getParentId(),
-            model.getName());
-    entity.setEntityVersion(model.getEntityVersion());
-    entity.setCreateTimestamp(model.getCreateTimestamp());
-    entity.setDropTimestamp(model.getDropTimestamp());
-    entity.setPurgeTimestamp(model.getPurgeTimestamp());
-    entity.setToPurgeTimestamp(model.getToPurgeTimestamp());
-    entity.setLastUpdateTimestamp(model.getLastUpdateTimestamp());
-    entity.setProperties(model.getProperties());
-    entity.setInternalProperties(model.getInternalProperties());
-    entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
-    return entity;
+    return new PolarisBaseEntity.Builder()
+        .catalogId(model.getCatalogId())
+        .id(model.getId())
+        .typeCode(model.getTypeCode())
+        .subTypeCode(model.getSubTypeCode())
+        .parentId(model.getParentId())
+        .name(model.getName())
+        .entityVersion(model.getEntityVersion())
+        .createTimestamp(model.getCreateTimestamp())
+        .dropTimestamp(model.getDropTimestamp())
+        .purgeTimestamp(model.getPurgeTimestamp())
+        .toPurgeTimestamp(model.getToPurgeTimestamp())
+        .lastUpdateTimestamp(model.getLastUpdateTimestamp())
+        .properties(model.getProperties())
+        .internalProperties(model.getInternalProperties())
+        .grantRecordsVersion(model.getGrantRecordsVersion())
+        .build();
   }
 }
