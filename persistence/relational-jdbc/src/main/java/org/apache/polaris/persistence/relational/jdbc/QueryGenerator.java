@@ -190,7 +190,6 @@ public class QueryGenerator {
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
-  @VisibleForTesting
   private PreparedQuery generateSelectQuery(
       @Nonnull List<String> columnNames, @Nonnull String tableName, @Nonnull String filter) {
     String sql =
