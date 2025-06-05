@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1501,14 +1500,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull CallContext callCtx, String executorId, PageToken pageToken) {
-    PolarisCallContext polarisCtx = callCtx.getPolarisCallContext();
-    BasePersistence ms = polarisCtx.getMetaStore();
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+    BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
         ms.listEntities(
-            polarisCtx,
+            callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
@@ -1516,7 +1514,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
-                  polarisCtx
+                  callCtx
                       .getConfigurationStore()
                       .getConfiguration(
                           callCtx.getRealmContext(),
@@ -1524,8 +1522,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
-                  || polarisCtx.getClock().millis() - taskState.lastAttemptStartTime
-                      > taskAgeTimeout;
+                  || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
             pageToken);
@@ -1536,19 +1533,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         task -> {
           PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
-              PolarisObjectMapperUtil.deserializeProperties(polarisCtx, task.getProperties());
+              PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
           properties.put(
               PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-              String.valueOf(polarisCtx.getClock().millis()));
+              String.valueOf(callCtx.getClock().millis()));
           properties.put(
               PolarisTaskConstants.ATTEMPT_COUNT,
               String.valueOf(
                   Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                       + 1));
           updatedTask.setProperties(
-              PolarisObjectMapperUtil.serializeProperties(polarisCtx, properties));
-          EntityResult result = updateEntityPropertiesIfNotChanged(polarisCtx, null, updatedTask);
+              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+          EntityResult result = updateEntityPropertiesIfNotChanged(callCtx, null, updatedTask);
           if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
             loadedTasks.add(result.getEntity());
           } else {

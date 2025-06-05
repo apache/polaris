@@ -28,7 +28,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
@@ -65,15 +64,14 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             RANDOM_SECRETS,
             Mockito.mock(),
             realmContext.getRealmIdentifier());
-    PolarisCallContext polarisCallContext =
+    return new PolarisTestMetaStoreManager(
+        new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(
             realmContext,
             basePersistence,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault()));
-    CallContext callContext = CallContext.of(realmContext, polarisCallContext);
-    return new PolarisTestMetaStoreManager(new AtomicOperationMetaStoreManager(), callContext);
+            timeSource.withZone(ZoneId.systemDefault())));
   }
 
   private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {

@@ -1533,10 +1533,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
         metaStoreManager
-            .loadTasks(
-                CallContext.of(() -> "testRealm", polarisContext),
-                "testExecutor",
-                PageToken.fromLimit(1))
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));

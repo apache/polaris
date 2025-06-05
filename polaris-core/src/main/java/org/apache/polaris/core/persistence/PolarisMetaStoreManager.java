@@ -25,7 +25,6 @@ import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -307,7 +306,8 @@ public interface PolarisMetaStoreManager
    * @return list of tasks to be completed
    */
   @Nonnull
-  EntitiesResult loadTasks(@Nonnull CallContext callCtx, String executorId, PageToken pageToken);
+  EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each

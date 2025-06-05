@@ -25,8 +25,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -37,7 +35,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
-    PolarisCallContext polarisCtx =
+    PolarisCallContext callCtx =
         new PolarisCallContext(
             () -> "testRealm",
             new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS),
@@ -45,8 +43,6 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault()));
 
-    RealmContext realmCtx = () -> "testRealm";
-    return new PolarisTestMetaStoreManager(
-        new TransactionalMetaStoreManagerImpl(), CallContext.of(realmCtx, polarisCtx));
+    return new PolarisTestMetaStoreManager(new TransactionalMetaStoreManagerImpl(), callCtx);
   }
 }

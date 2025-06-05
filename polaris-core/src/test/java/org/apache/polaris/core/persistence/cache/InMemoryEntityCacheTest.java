@@ -26,8 +26,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -96,10 +94,8 @@ public class InMemoryEntityCacheTest {
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
     metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
-    RealmContext realmContext = () -> "testRealm";
-
     // bootstrap the mata store with our test schema
-    tm = new PolarisTestMetaStoreManager(metaStoreManager, CallContext.of(realmContext, callCtx));
+    tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
   }
 

@@ -135,18 +135,11 @@ public class FileIOFactoryTest {
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
-            testServices.polarisDiagnostics(),
-            testServices.configurationStore(),
-            Mockito.mock(Clock.class));
-
     callContext =
         new CallContext() {
           @Override
           public RealmContext getRealmContext() {
-            return realmContext;
+            return testServices.realmContext();
           }
 
           @Override
@@ -196,7 +189,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext, "testExecutor", PageToken.fromLimit(1))
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));

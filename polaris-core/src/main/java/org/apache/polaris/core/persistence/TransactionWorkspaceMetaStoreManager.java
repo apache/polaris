@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -323,11 +322,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public EntitiesResult loadTasks(
-      @Nonnull CallContext callCtx, String executorId, PageToken pageToken) {
-    callCtx
-        .getPolarisCallContext()
-        .getDiagServices()
-        .fail("illegal_method_in_transaction_workspace", "loadTasks");
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadTasks");
     return null;
   }
 

@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1936,18 +1935,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         () -> this.loadEntity(callCtx, ms, entityCatalogId, entityId, entityType.getCode()));
   }
 
-  /** Refer to {@link #loadTasks(CallContext, String, PageToken)} */
+  /** Refer to {@link #loadTasks(PolarisCallContext, String, PageToken)} */
   private @Nonnull EntitiesResult loadTasks(
-      @Nonnull CallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       String executorId,
       PageToken pageToken) {
-    PolarisCallContext polarisCtx = callCtx.getPolarisCallContext();
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
         ms.listEntitiesInCurrentTxn(
-            polarisCtx,
+            callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
@@ -1955,7 +1953,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
-                  polarisCtx
+                  callCtx
                       .getConfigurationStore()
                       .getConfiguration(
                           callCtx.getRealmContext(),
@@ -1963,8 +1961,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
-                  || polarisCtx.getClock().millis() - taskState.lastAttemptStartTime
-                      > taskAgeTimeout;
+                  || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
             pageToken);
@@ -1976,20 +1973,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           // TODO: Refactor into immutable/Builder pattern.
           PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
-              PolarisObjectMapperUtil.deserializeProperties(polarisCtx, task.getProperties());
+              PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
           properties.put(
               PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-              String.valueOf(polarisCtx.getClock().millis()));
+              String.valueOf(callCtx.getClock().millis()));
           properties.put(
               PolarisTaskConstants.ATTEMPT_COUNT,
               String.valueOf(
                   Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                       + 1));
           updatedTask.setProperties(
-              PolarisObjectMapperUtil.serializeProperties(polarisCtx, properties));
-          EntityResult result =
-              updateEntityPropertiesIfNotChanged(polarisCtx, ms, null, updatedTask);
+              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+          EntityResult result = updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask);
           if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
             loadedTasks.add(result.getEntity());
           } else {
@@ -2007,11 +2003,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull CallContext callCtx, String executorId, PageToken pageToken) {
-    TransactionalPersistence ms =
-        ((TransactionalPersistence) callCtx.getPolarisCallContext().getMetaStore());
-    return ms.runInTransaction(
-        callCtx.getPolarisCallContext(), () -> this.loadTasks(callCtx, ms, executorId, pageToken));
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
   }
 
   /** {@inheritDoc} */
