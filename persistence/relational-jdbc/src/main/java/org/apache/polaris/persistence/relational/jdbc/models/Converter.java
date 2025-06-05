@@ -21,6 +21,8 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.postgresql.util.PGobject;
 
 public interface Converter<T> {
   /**
@@ -36,5 +38,16 @@ public interface Converter<T> {
    * Convert a model into a Map with keys as snake case names, where as values as values of member
    * of model obj.
    */
-  Map<String, Object> toMap();
+  Map<String, Object> toMap(DatabaseType databaseType);
+
+  default PGobject toJsonbPGobject(String props) {
+    try {
+      PGobject jsonObject = new PGobject();
+      jsonObject.setType("jsonb");
+      jsonObject.setValue(props);
+      return jsonObject;
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

@@ -93,7 +93,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
+    DatabaseType databaseType;
+    try {
+      databaseType = getDatabaseType();
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, databaseType);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -114,14 +120,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
   }
 
-  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
+  private DatasourceOperations getDatasourceOperations(
+      boolean isBootstrap, DatabaseType databaseType) {
     DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+        new DatasourceOperations(dataSource.get(), databaseType, relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
-        DatabaseType databaseType = getDatabaseType();
-        databaseOperations.executeScript(
-            String.format("%s/schema-v1.sql", databaseType.getDisplayName()));
+        databaseOperations.executeScript(databaseType.getInitScriptResource());
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);

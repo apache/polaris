@@ -34,6 +34,7 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
 
   implementation(libs.smallrye.common.annotation) // @Identifier
+  implementation(libs.postgresql)
 
   testImplementation(libs.mockito.junit.jupiter)
   testImplementation(libs.h2)

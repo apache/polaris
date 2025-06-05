@@ -38,82 +38,70 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   // the type of the entity when it was resolved
-  protected int subTypeCode;
+  protected final int subTypeCode;
 
   // timestamp when this entity was created
-  protected long createTimestamp;
+  protected final long createTimestamp;
 
   // when this entity was dropped. Null if was never dropped
-  protected long dropTimestamp;
+  protected final long dropTimestamp;
 
   // when did we start purging this entity. When not null, un-drop is no longer possible
-  protected long purgeTimestamp;
+  protected final long purgeTimestamp;
 
   // when should we start purging this entity
-  protected long toPurgeTimestamp;
+  protected final long toPurgeTimestamp;
 
   // last time this entity was updated, only for troubleshooting
-  protected long lastUpdateTimestamp;
+  protected final long lastUpdateTimestamp;
 
   // properties, serialized as a JSON string
-  protected String properties;
+  protected final String properties;
 
   // internal properties, serialized as a JSON string
-  protected String internalProperties;
+  protected final String internalProperties;
 
   // current version for that entity, will be monotonically incremented
-  protected int grantRecordsVersion;
+  protected final int grantRecordsVersion;
 
   public int getSubTypeCode() {
     return subTypeCode;
-  }
-
-  public void setSubTypeCode(int subTypeCode) {
-    this.subTypeCode = subTypeCode;
   }
 
   public long getCreateTimestamp() {
     return createTimestamp;
   }
 
-  public void setCreateTimestamp(long createTimestamp) {
-    this.createTimestamp = createTimestamp;
-  }
-
   public long getDropTimestamp() {
     return dropTimestamp;
-  }
-
-  public void setDropTimestamp(long dropTimestamp) {
-    this.dropTimestamp = dropTimestamp;
   }
 
   public long getPurgeTimestamp() {
     return purgeTimestamp;
   }
 
-  public void setPurgeTimestamp(long purgeTimestamp) {
-    this.purgeTimestamp = purgeTimestamp;
-  }
-
   public long getToPurgeTimestamp() {
     return toPurgeTimestamp;
-  }
-
-  public void setToPurgeTimestamp(long toPurgeTimestamp) {
-    this.toPurgeTimestamp = toPurgeTimestamp;
   }
 
   public long getLastUpdateTimestamp() {
     return lastUpdateTimestamp;
   }
 
-  public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
-    this.lastUpdateTimestamp = lastUpdateTimestamp;
-  }
-
   public String getProperties() {
     return properties != null ? properties : EMPTY_MAP_STRING;
+  }
+
+  /**
+   * Creates a new instance of PolarisBaseEntity with the specified grant records version. This
+   * method is used to update the grantRecordsVersion field while maintaining immutability of the
+   * PolarisBaseEntity class.
+   *
+   * @param grantRecordsVersion The new grant records version to be set.
+   * @return A new PolarisBaseEntity instance with the updated grant records version.
+   */
+  public PolarisBaseEntity withGrantRecordsVersion(int grantRecordsVersion) {
+    return new Builder(this).grantRecordsVersion(grantRecordsVersion).build();
   }
 
   @JsonIgnore
@@ -129,26 +117,10 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     }
   }
 
-  /**
-   * Set one single property
-   *
-   * @param propName name of the property
-   * @param propValue value of that property
-   */
-  public void addProperty(String propName, String propValue) {
-    Map<String, String> props = this.getPropertiesAsMap();
-    props.put(propName, propValue);
-    this.setPropertiesAsMap(props);
-  }
-
-  public void setProperties(String properties) {
-    this.properties = properties;
-  }
-
   @JsonIgnore
-  public void setPropertiesAsMap(Map<String, String> properties) {
+  public static String convertPropertiesToJson(Map<String, String> properties) {
     try {
-      this.properties = properties == null ? null : MAPPER.writeValueAsString(properties);
+      return properties == null ? null : MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
       throw new IllegalStateException(
           String.format("Failed to serialize json. properties %s", properties), ex);
@@ -174,74 +146,114 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     }
   }
 
-  /**
-   * Set one single internal property
-   *
-   * @param propName name of the property
-   * @param propValue value of that property
-   */
-  public void addInternalProperty(String propName, String propValue) {
-    Map<String, String> props = this.getInternalPropertiesAsMap();
-    props.put(propName, propValue);
-    this.setInternalPropertiesAsMap(props);
-  }
-
-  public void setInternalProperties(String internalProperties) {
-    this.internalProperties = internalProperties;
-  }
-
-  @JsonIgnore
-  public void setInternalPropertiesAsMap(Map<String, String> internalProperties) {
-    try {
-      this.internalProperties =
-          internalProperties == null ? null : MAPPER.writeValueAsString(internalProperties);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException(
-          String.format("Failed to serialize json. internalProperties %s", internalProperties), ex);
-    }
-  }
-
   public int getGrantRecordsVersion() {
     return grantRecordsVersion;
   }
 
-  public void setGrantRecordsVersion(int grantRecordsVersion) {
-    this.grantRecordsVersion = grantRecordsVersion;
+  public static class Builder extends PolarisEntityCore.Builder<PolarisBaseEntity, Builder> {
+    private int subTypeCode;
+    private long createTimestamp;
+    private long dropTimestamp;
+    private long purgeTimestamp;
+    private long toPurgeTimestamp;
+    private long lastUpdateTimestamp;
+    private String properties;
+    private String internalProperties;
+    private int grantRecordsVersion;
+
+    public Builder() {}
+
+    public Builder subTypeCode(int subTypeCode) {
+      this.subTypeCode = subTypeCode;
+      return this;
+    }
+
+    public Builder createTimestamp(long createTimestamp) {
+      this.createTimestamp = createTimestamp;
+      return self();
+    }
+
+    public Builder dropTimestamp(long dropTimestamp) {
+      this.dropTimestamp = dropTimestamp;
+      return self();
+    }
+
+    public Builder purgeTimestamp(long purgeTimestamp) {
+      this.purgeTimestamp = purgeTimestamp;
+      return self();
+    }
+
+    public Builder toPurgeTimestamp(long toPurgeTimestamp) {
+      this.toPurgeTimestamp = toPurgeTimestamp;
+      return self();
+    }
+
+    public Builder lastUpdateTimestamp(long lastUpdateTimestamp) {
+      this.lastUpdateTimestamp = lastUpdateTimestamp;
+      return self();
+    }
+
+    public Builder propertiesAsMap(Map<String, String> properties) {
+      this.properties = convertPropertiesToJson(properties);
+      return self();
+    }
+
+    public Builder properties(String properties) {
+      this.properties = properties;
+      return self();
+    }
+
+    public Builder internalProperties(String internalProperties) {
+      this.internalProperties = internalProperties;
+      return self();
+    }
+
+    public Builder internalPropertiesAsMap(Map<String, String> internalProperties) {
+      this.internalProperties = convertPropertiesToJson(internalProperties);
+      return self();
+    }
+
+    public Builder grantRecordsVersion(int grantRecordsVersion) {
+      this.grantRecordsVersion = grantRecordsVersion;
+      return self();
+    }
+
+    public Builder(PolarisBaseEntity entity) {
+      super.catalogId(entity.getCatalogId());
+      super.id(entity.getId());
+      super.parentId(entity.getParentId());
+      super.typeCode(entity.getTypeCode());
+      super.name(entity.getName());
+      super.entityVersion(entity.getEntityVersion());
+      this.subTypeCode = entity.getSubTypeCode();
+      this.createTimestamp = entity.getCreateTimestamp();
+      this.dropTimestamp = entity.getDropTimestamp();
+      this.purgeTimestamp = entity.getPurgeTimestamp();
+      this.toPurgeTimestamp = entity.getToPurgeTimestamp();
+      this.lastUpdateTimestamp = entity.getLastUpdateTimestamp();
+      this.properties = entity.getProperties();
+      this.internalProperties = entity.getInternalProperties();
+      this.grantRecordsVersion = entity.getGrantRecordsVersion();
+    }
+
+    @Override
+    public PolarisBaseEntity build() {
+      return new PolarisBaseEntity(this);
+    }
   }
 
-  public static PolarisBaseEntity fromCore(
-      PolarisEntityCore coreEntity, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    return new PolarisBaseEntity(
-        coreEntity.getCatalogId(),
-        coreEntity.getId(),
-        entityType,
-        subType,
-        coreEntity.getParentId(),
-        coreEntity.getName());
-  }
-
-  /**
-   * Copy constructor
-   *
-   * @param entity entity to copy
-   */
-  public PolarisBaseEntity(PolarisBaseEntity entity) {
-    super(
-        entity.getCatalogId(),
-        entity.getId(),
-        entity.getParentId(),
-        entity.getTypeCode(),
-        entity.getName(),
-        entity.getEntityVersion());
-    this.subTypeCode = entity.getSubTypeCode();
-    this.createTimestamp = entity.getCreateTimestamp();
-    this.dropTimestamp = entity.getDropTimestamp();
-    this.purgeTimestamp = entity.getPurgeTimestamp();
-    this.toPurgeTimestamp = entity.getToPurgeTimestamp();
-    this.lastUpdateTimestamp = entity.getLastUpdateTimestamp();
-    this.properties = entity.getProperties();
-    this.internalProperties = entity.getInternalProperties();
-    this.grantRecordsVersion = entity.getGrantRecordsVersion();
+  private PolarisBaseEntity(Builder builder) {
+    super(builder);
+    this.subTypeCode = builder.subTypeCode;
+    this.createTimestamp =
+        builder.createTimestamp == 0L ? System.currentTimeMillis() : builder.createTimestamp;
+    this.dropTimestamp = builder.dropTimestamp;
+    this.purgeTimestamp = builder.purgeTimestamp;
+    this.toPurgeTimestamp = builder.toPurgeTimestamp;
+    this.lastUpdateTimestamp = builder.lastUpdateTimestamp;
+    this.properties = builder.properties;
+    this.internalProperties = builder.internalProperties;
+    this.grantRecordsVersion = builder.grantRecordsVersion == 0 ? 1 : builder.grantRecordsVersion;
   }
 
   /** Build the DTO for a new entity */
@@ -258,7 +270,14 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   /** Build the DTO for a new entity */
   protected PolarisBaseEntity(
       long catalogId, long id, int typeCode, int subTypeCode, long parentId, String name) {
-    super(catalogId, id, parentId, typeCode, name, 1);
+    super(
+        new PolarisEntityCore.Builder<>()
+            .catalogId(catalogId)
+            .id(id)
+            .parentId(parentId)
+            .typeCode(typeCode)
+            .name(name)
+            .entityVersion(1));
     this.subTypeCode = subTypeCode;
     this.createTimestamp = System.currentTimeMillis();
     this.dropTimestamp = 0;
@@ -270,9 +289,52 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     this.grantRecordsVersion = 1;
   }
 
+  public PolarisBaseEntity(
+      long catalogId,
+      long id,
+      int typeCode,
+      long parentId,
+      String name,
+      int subTypeCode,
+      long createTimestamp,
+      long dropTimestamp,
+      long purgeTimestamp,
+      long lastUpdateTimestamp,
+      String properties,
+      String internalProperties,
+      int grantRecordsVersion,
+      int entityVersion) {
+    super(
+        new PolarisEntityCore.Builder<>()
+            .catalogId(catalogId)
+            .id(id)
+            .parentId(parentId)
+            .typeCode(typeCode)
+            .name(name)
+            .entityVersion(entityVersion == 0 ? 1 : entityVersion));
+    this.subTypeCode = subTypeCode;
+    this.createTimestamp = createTimestamp;
+    this.dropTimestamp = dropTimestamp;
+    this.purgeTimestamp = purgeTimestamp;
+    this.toPurgeTimestamp = 0;
+    this.lastUpdateTimestamp = lastUpdateTimestamp;
+    this.properties = properties;
+    this.internalProperties = internalProperties;
+    this.grantRecordsVersion = grantRecordsVersion;
+  }
+
   /** Build the DTO for a new entity */
   protected PolarisBaseEntity() {
-    super();
+    super(new PolarisBaseEntity.Builder());
+    this.subTypeCode = 0;
+    this.createTimestamp = 0L;
+    this.dropTimestamp = 0L;
+    this.purgeTimestamp = 0L;
+    this.toPurgeTimestamp = 0L;
+    this.lastUpdateTimestamp = 0L;
+    this.properties = null;
+    this.internalProperties = null;
+    this.grantRecordsVersion = 0;
   }
 
   /**

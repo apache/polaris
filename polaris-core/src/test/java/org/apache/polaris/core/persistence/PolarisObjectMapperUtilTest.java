@@ -29,12 +29,18 @@ class PolarisObjectMapperUtilTest {
   @Test
   public void testParseTaskState() {
     PolarisBaseEntity entity =
-        new PolarisBaseEntity(
-            0L, 1L, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, 0L, "task");
-    entity.setProperties(
-        "{\"name\": \"my name\", \"lastAttemptExecutorId\": \"the_executor\", \"data\": {\"nestedFields\": "
-            + "{\"further_nesting\": \"astring\", \"anArray\": [1, 2, 3, 4]}, \"anotherNestedField\": \"simple string\"}, "
-            + "\"lastAttemptStartTime\": \"100\", \"attemptCount\": \"9\"}");
+        new PolarisBaseEntity.Builder()
+            .catalogId(0L)
+            .id(1L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("task")
+            .properties(
+                "{\"name\": \"my name\", \"lastAttemptExecutorId\": \"the_executor\", \"data\": {\"nestedFields\": "
+                    + "{\"further_nesting\": \"astring\", \"anArray\": [1, 2, 3, 4]}, \"anotherNestedField\": \"simple string\"}, "
+                    + "\"lastAttemptStartTime\": \"100\", \"attemptCount\": \"9\"}")
+            .build();
     PolarisObjectMapperUtil.TaskExecutionState state =
         PolarisObjectMapperUtil.parseTaskState(entity);
     Assertions.assertThat(state)
@@ -47,12 +53,18 @@ class PolarisObjectMapperUtilTest {
   @Test
   public void testParseTaskStateWithMissingFields() {
     PolarisBaseEntity entity =
-        new PolarisBaseEntity(
-            0L, 1L, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, 0L, "task");
-    entity.setProperties(
-        "{\"name\": \"my name\", \"data\": {\"nestedFields\": "
-            + "{\"further_nesting\": \"astring\", \"anArray\": [1, 2, 3, 4]}, \"anotherNestedField\": \"simple string\"}, "
-            + "\"attemptCount\": \"5\"}");
+        new PolarisBaseEntity.Builder()
+            .catalogId(0L)
+            .id(1L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("task")
+            .properties(
+                "{\"name\": \"my name\", \"data\": {\"nestedFields\": "
+                    + "{\"further_nesting\": \"astring\", \"anArray\": [1, 2, 3, 4]}, \"anotherNestedField\": \"simple string\"}, "
+                    + "\"attemptCount\": \"5\"}")
+            .build();
     PolarisObjectMapperUtil.TaskExecutionState state =
         PolarisObjectMapperUtil.parseTaskState(entity);
     Assertions.assertThat(state)
@@ -65,11 +77,17 @@ class PolarisObjectMapperUtilTest {
   @Test
   public void testParseTaskStateWithInvalidJson() {
     PolarisBaseEntity entity =
-        new PolarisBaseEntity(
-            0L, 1L, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, 0L, "task");
-    entity.setProperties(
-        "{\"name\": \"my name\", \"data\": {\"nestedFields\": "
-            + "{\"further_nesting\": \"astring\", \"anArray\": , : \"simple string\"}, ");
+        new PolarisBaseEntity.Builder()
+            .catalogId(0L)
+            .id(1L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("task")
+            .properties(
+                "{\"name\": \"my name\", \"data\": {\"nestedFields\": "
+                    + "{\"further_nesting\": \"astring\", \"anArray\": , : \"simple string\"}, ")
+            .build();
     PolarisObjectMapperUtil.TaskExecutionState state =
         PolarisObjectMapperUtil.parseTaskState(entity);
     Assertions.assertThat(state).isNull();
