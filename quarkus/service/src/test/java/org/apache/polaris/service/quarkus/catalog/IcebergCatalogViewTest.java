@@ -170,6 +170,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,

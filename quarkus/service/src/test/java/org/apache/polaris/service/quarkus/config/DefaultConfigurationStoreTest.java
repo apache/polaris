@@ -91,6 +91,7 @@ public class DefaultConfigurationStoreTest {
     realmContext = () -> realmName;
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,

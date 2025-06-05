@@ -171,6 +171,7 @@ public class PolarisGenericTableCatalogTest {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,

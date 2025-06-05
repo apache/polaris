@@ -92,6 +92,7 @@ public class BatchFileCleanupTaskHandlerTest {
   public void testMetadataFileCleanup() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
@@ -205,6 +206,7 @@ public class BatchFileCleanupTaskHandlerTest {
   public void testMetadataFileCleanupIfFileNotExist() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
@@ -250,6 +252,7 @@ public class BatchFileCleanupTaskHandlerTest {
   public void testCleanupWithRetries() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     CallContext callCtx = CallContext.of(realmContext, polarisCallContext);

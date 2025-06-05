@@ -96,6 +96,7 @@ class InMemoryStorageIntegrationTest {
     Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            () -> "testRealm",
             Mockito.mock(),
             new PolarisDefaultDiagServiceImpl(),
             new PolarisConfigurationStore() {

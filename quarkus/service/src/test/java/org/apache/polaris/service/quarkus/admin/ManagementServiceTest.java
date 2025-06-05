@@ -68,6 +68,7 @@ public class ManagementServiceTest {
             .build();
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            fakeServices.realmContext(),
             fakeServices
                 .metaStoreManagerFactory()
                 .getOrCreateSessionSupplier(fakeServices.realmContext())
@@ -185,6 +186,7 @@ public class ManagementServiceTest {
     MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
     RealmContext realmContext = services.realmContext();
     return new PolarisCallContext(
+        realmContext,
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         services.polarisDiagnostics());
   }

@@ -145,6 +145,7 @@ public class FileIOFactoryTest {
           @Override
           public PolarisCallContext getPolarisCallContext() {
             return new PolarisCallContext(
+                realmContext,
                 testServices
                     .metaStoreManagerFactory()
                     .getOrCreateSessionSupplier(realmContext)
