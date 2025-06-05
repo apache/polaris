@@ -19,7 +19,6 @@
 package org.apache.polaris.core.context;
 
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 
 /**
  * Stores elements associated with an individual REST request such as RealmContext, caller
@@ -39,10 +38,6 @@ public interface CallContext {
 
   static CallContext getCurrentContext() {
     return CURRENT_CONTEXT.get();
-  }
-
-  static PolarisDiagnostics getDiagnostics() {
-    return CURRENT_CONTEXT.get().getPolarisCallContext().getDiagServices();
   }
 
   static void unsetCurrentContext() {
