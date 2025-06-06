@@ -61,6 +61,8 @@ Method | HTTP request | Description
 # **add_grant_to_catalog_role**
 > add_grant_to_catalog_role(catalog_name, catalog_role_name, add_grant_request=add_grant_request)
 
+
+
 Add a new grant to the catalog role
 
 ### Example
@@ -137,6 +139,8 @@ void (empty response body)
 # **assign_catalog_role_to_principal_role**
 > assign_catalog_role_to_principal_role(principal_role_name, catalog_name, grant_catalog_role_request)
 
+
+
 Assign a catalog role to a principal role
 
 ### Example
@@ -212,6 +216,8 @@ void (empty response body)
 # **assign_principal_role**
 > assign_principal_role(principal_name, grant_principal_role_request)
 
+
+
 Add a role to the principal
 
 ### Example
@@ -286,6 +292,8 @@ void (empty response body)
 # **create_catalog**
 > create_catalog(create_catalog_request)
 
+
+
 Add a new Catalog
 
 ### Example
@@ -358,6 +366,8 @@ void (empty response body)
 
 # **create_catalog_role**
 > create_catalog_role(catalog_name, create_catalog_role_request=create_catalog_role_request)
+
+
 
 Create a new role in the catalog
 
@@ -433,6 +443,8 @@ void (empty response body)
 # **create_principal**
 > PrincipalWithCredentials create_principal(create_principal_request)
 
+
+
 Create a principal
 
 ### Example
@@ -507,6 +519,8 @@ Name | Type | Description  | Notes
 # **create_principal_role**
 > create_principal_role(create_principal_role_request)
 
+
+
 Create a principal role
 
 ### Example
@@ -578,6 +592,8 @@ void (empty response body)
 # **delete_catalog**
 > delete_catalog(catalog_name)
 
+
+
 Delete an existing catalog. The catalog must be empty.
 
 ### Example
@@ -648,6 +664,8 @@ void (empty response body)
 
 # **delete_catalog_role**
 > delete_catalog_role(catalog_name, catalog_role_name)
+
+
 
 Delete an existing role from the catalog. All associated grants will also be deleted
 
@@ -722,6 +740,8 @@ void (empty response body)
 # **delete_principal**
 > delete_principal(principal_name)
 
+
+
 Remove a principal from polaris
 
 ### Example
@@ -793,6 +813,8 @@ void (empty response body)
 # **delete_principal_role**
 > delete_principal_role(principal_role_name)
 
+
+
 Remove a principal role from polaris
 
 ### Example
@@ -863,6 +885,8 @@ void (empty response body)
 
 # **get_catalog**
 > Catalog get_catalog(catalog_name)
+
+
 
 Get the details of a catalog
 
@@ -937,6 +961,8 @@ Name | Type | Description  | Notes
 
 # **get_catalog_role**
 > CatalogRole get_catalog_role(catalog_name, catalog_role_name)
+
+
 
 Get the details of an existing role
 
@@ -1014,6 +1040,8 @@ Name | Type | Description  | Notes
 # **get_principal**
 > Principal get_principal(principal_name)
 
+
+
 Get the principal details
 
 ### Example
@@ -1088,6 +1116,8 @@ Name | Type | Description  | Notes
 # **get_principal_role**
 > PrincipalRole get_principal_role(principal_role_name)
 
+
+
 Get the principal role details
 
 ### Example
@@ -1161,6 +1191,8 @@ Name | Type | Description  | Notes
 
 # **list_assignee_principal_roles_for_catalog_role**
 > PrincipalRoles list_assignee_principal_roles_for_catalog_role(catalog_name, catalog_role_name)
+
+
 
 List the PrincipalRoles to which the target catalog role has been assigned
 
@@ -1238,6 +1270,8 @@ Name | Type | Description  | Notes
 # **list_assignee_principals_for_principal_role**
 > Principals list_assignee_principals_for_principal_role(principal_role_name)
 
+
+
 List the Principals to whom the target principal role has been assigned
 
 ### Example
@@ -1312,6 +1346,8 @@ Name | Type | Description  | Notes
 # **list_catalog_roles**
 > CatalogRoles list_catalog_roles(catalog_name)
 
+
+
 List existing roles in the catalog
 
 ### Example
@@ -1383,6 +1419,8 @@ Name | Type | Description  | Notes
 
 # **list_catalog_roles_for_principal_role**
 > CatalogRoles list_catalog_roles_for_principal_role(principal_role_name, catalog_name)
+
+
 
 Get the catalog roles mapped to the principal role
 
@@ -1460,6 +1498,8 @@ Name | Type | Description  | Notes
 # **list_catalogs**
 > Catalogs list_catalogs()
 
+
+
 List all catalogs in this polaris service
 
 ### Example
@@ -1528,6 +1568,8 @@ This endpoint does not need any parameter.
 
 # **list_grants_for_catalog_role**
 > GrantResources list_grants_for_catalog_role(catalog_name, catalog_role_name)
+
+
 
 List the grants the catalog role holds
 
@@ -1603,6 +1645,8 @@ Name | Type | Description  | Notes
 # **list_principal_roles**
 > PrincipalRoles list_principal_roles()
 
+
+
 List the principal roles
 
 ### Example
@@ -1672,6 +1716,8 @@ This endpoint does not need any parameter.
 
 # **list_principal_roles_assigned**
 > PrincipalRoles list_principal_roles_assigned(principal_name)
+
+
 
 List the roles assigned to the principal
 
@@ -1747,6 +1793,8 @@ Name | Type | Description  | Notes
 # **list_principals**
 > Principals list_principals()
 
+
+
 List the principals for the current catalog
 
 ### Example
@@ -1816,6 +1864,8 @@ This endpoint does not need any parameter.
 
 # **revoke_catalog_role_from_principal_role**
 > revoke_catalog_role_from_principal_role(principal_role_name, catalog_name, catalog_role_name)
+
+
 
 Remove a catalog role from a principal role
 
@@ -1891,6 +1941,8 @@ void (empty response body)
 
 # **revoke_grant_from_catalog_role**
 > revoke_grant_from_catalog_role(catalog_name, catalog_role_name, cascade=cascade, revoke_grant_request=revoke_grant_request)
+
+
 
 Delete a specific grant from the role. This may be a subset or a superset of the grants the role has. In case of a subset, the role will retain the grants not specified. If the `cascade` parameter is true, grant revocation will have a cascading effect - that is, if a principal has specific grants on a subresource, and grants are revoked on a parent resource, the grants present on the subresource will be revoked as well. By default, this behavior is disabled and grant revocation only affects the specified resource.
 
@@ -1970,6 +2022,8 @@ void (empty response body)
 # **revoke_principal_role**
 > revoke_principal_role(principal_name, principal_role_name)
 
+
+
 Remove a role from a catalog principal
 
 ### Example
@@ -2042,6 +2096,8 @@ void (empty response body)
 
 # **rotate_credentials**
 > PrincipalWithCredentials rotate_credentials(principal_name)
+
+
 
 Rotate a principal's credentials. The new credentials will be returned in the response. This is the only API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
 
@@ -2116,6 +2172,8 @@ Name | Type | Description  | Notes
 
 # **update_catalog**
 > Catalog update_catalog(catalog_name, update_catalog_request)
+
+
 
 Update an existing catalog
 
@@ -2194,6 +2252,8 @@ Name | Type | Description  | Notes
 
 # **update_catalog_role**
 > CatalogRole update_catalog_role(catalog_name, catalog_role_name, update_catalog_role_request=update_catalog_role_request)
+
+
 
 Update an existing role in the catalog
 
@@ -2275,6 +2335,8 @@ Name | Type | Description  | Notes
 # **update_principal**
 > Principal update_principal(principal_name, update_principal_request)
 
+
+
 Update an existing principal
 
 ### Example
@@ -2352,6 +2414,8 @@ Name | Type | Description  | Notes
 
 # **update_principal_role**
 > PrincipalRole update_principal_role(principal_role_name, update_principal_role_request)
+
+
 
 Update an existing principalRole
 
