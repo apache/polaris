@@ -75,7 +75,7 @@ public class QuarkusProducers {
   @Produces
   public EntityMutationEngine entityMutationEngine() {
     // An entity mutation engine is not required when running the admin tool.
-    return entity -> entity;
+    return ((mutationPoint, entity) -> entity);
   }
 
   @Produces

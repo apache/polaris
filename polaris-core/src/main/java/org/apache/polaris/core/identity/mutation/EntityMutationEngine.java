@@ -33,9 +33,10 @@ public interface EntityMutationEngine {
   /**
    * Applies all registered entity mutators to the provided entity, in order.
    *
+   * @param mutationPoint The point in the entity lifecycle where mutations should be applied.
    * @param entity The original Polaris entity to mutate.
    * @return A new or modified instance of {@link PolarisBaseEntity} after all mutations are
    *     applied.
    */
-  PolarisBaseEntity applyMutations(PolarisBaseEntity entity);
+  PolarisBaseEntity applyMutations(MutationPoint mutationPoint, PolarisBaseEntity entity);
 }

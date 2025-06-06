@@ -47,6 +47,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
+import org.apache.polaris.core.identity.mutation.MutationPoint;
 import org.apache.polaris.core.persistence.*;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
@@ -473,8 +475,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     ms.persistStorageIntegrationIfNeededInCurrentTxn(callCtx, catalog, integration);
 
-    if (callCtx.getEntityMutationEngine() != null) {
-      catalog = callCtx.getEntityMutationEngine().applyMutations(catalog);
+    // CATALOG_PRE_PERSIST mutation point
+    EntityMutationEngine entityMutationEngine = callCtx.getEntityMutationEngine();
+    if (entityMutationEngine != null) {
+      entityMutationEngine.applyMutations(MutationPoint.CATALOG_PRE_PERSIST, catalog);
     }
 
     // now create and persist new catalog entity

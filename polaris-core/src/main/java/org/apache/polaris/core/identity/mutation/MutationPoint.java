@@ -19,17 +19,25 @@
 
 package org.apache.polaris.core.identity.mutation;
 
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-
 /**
- * A no-op implementation of {@link EntityMutationEngine} that returns the input entity unchanged.
+ * Defines points in the entity lifecycle where {@link EntityMutator} can be applied.
  *
- * <p>This can be used in environments where entity mutation is disabled or unnecessary.
+ * <p>Each mutation point corresponds to a specific hook where mutations may be executed. Mutators
+ * can declare which points they support, allowing the engine to invoke only the relevant ones.
  */
-public class NoOpEntityMutationEngine implements EntityMutationEngine {
+public enum MutationPoint {
 
-  @Override
-  public PolarisBaseEntity applyMutations(MutationPoint mutationPoint, PolarisBaseEntity entity) {
-    return entity;
+  /** Applied before a catalog entity is persisted. */
+  CATALOG_PRE_PERSIST(0),
+  ;
+
+  private final int id;
+
+  MutationPoint(int id) {
+    this.id = id;
+  }
+
+  public int id() {
+    return id;
   }
 }

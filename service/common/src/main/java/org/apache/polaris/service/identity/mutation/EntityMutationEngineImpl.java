@@ -25,9 +25,11 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.List;
+import java.util.Objects;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
 import org.apache.polaris.core.identity.mutation.EntityMutator;
+import org.apache.polaris.core.identity.mutation.MutationPoint;
 
 @ApplicationScoped
 public class EntityMutationEngineImpl implements EntityMutationEngine {
@@ -43,26 +45,28 @@ public class EntityMutationEngineImpl implements EntityMutationEngine {
   }
 
   @Override
-  public PolarisBaseEntity applyMutations(PolarisBaseEntity entity) {
+  public PolarisBaseEntity applyMutations(MutationPoint mutationPoint, PolarisBaseEntity entity) {
     PolarisBaseEntity result = entity;
 
+    // Collect mutators in configured order, filtering only those applicable to the mutation point
     List<EntityMutator> orderedMutators =
-        // config.map(EntityMutationConfiguration::mutators).orElse(List.of()).stream()
         config.mutators().orElse(List.of()).stream()
             .map(
                 id -> {
+                  // Resolve the mutator instance by ID
                   Instance<EntityMutator> matched =
                       mutatorInstances.select(Identifier.Literal.of(id));
-                  if (matched.isResolvable()) {
-                    return matched.get();
-                  } else {
+                  if (!matched.isResolvable()) {
                     throw new IllegalStateException("No EntityMutator found for ID: " + id);
                   }
+                  // Filter by MutationPoint via @AppliesTo
+                  Instance<EntityMutator> filtered =
+                      matched.select(AppliesTo.Literal.of(mutationPoint));
+                  return filtered.isResolvable() ? filtered.get() : null;
                 })
+            .filter(Objects::nonNull)
             .toList();
 
-    // Apply all mutators to the entity
-    // TODO: Add a way to control the order of mutators
     for (EntityMutator mutator : orderedMutators) {
       result = mutator.apply(result);
     }

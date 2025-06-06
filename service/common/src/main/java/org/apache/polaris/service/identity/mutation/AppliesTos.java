@@ -17,19 +17,22 @@
  * under the License.
  */
 
-package org.apache.polaris.core.identity.mutation;
+package org.apache.polaris.service.identity.mutation;
 
-import org.apache.polaris.core.entity.PolarisBaseEntity;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import org.apache.polaris.core.identity.mutation.EntityMutator;
+import org.apache.polaris.core.identity.mutation.MutationPoint;
 
 /**
- * A no-op implementation of {@link EntityMutationEngine} that returns the input entity unchanged.
+ * Container annotation for repeating {@link AppliesTo}.
  *
- * <p>This can be used in environments where entity mutation is disabled or unnecessary.
+ * <p>Allows an {@link EntityMutator} to declare support for multiple {@link MutationPoint}s.
  */
-public class NoOpEntityMutationEngine implements EntityMutationEngine {
-
-  @Override
-  public PolarisBaseEntity applyMutations(MutationPoint mutationPoint, PolarisBaseEntity entity) {
-    return entity;
-  }
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface AppliesTos {
+  AppliesTo[] value();
 }
