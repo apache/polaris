@@ -54,8 +54,8 @@ public class DatasourceOperations {
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
   private final DataSource datasource;
-  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
+  private final RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   private final Random random = new Random();
 
@@ -126,8 +126,7 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during the query execution.
    */
   public <T> List<T> executeSelect(
-      @Nonnull QueryGenerator.PreparedQuery query, @Nonnull Converter<T> converterInstance)
-      throws SQLException {
+      @Nonnull PreparedQuery query, @Nonnull Converter<T> converterInstance) throws SQLException {
     ArrayList<T> results = new ArrayList<>();
     executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
     return results;
@@ -144,7 +143,7 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during the query execution.
    */
   public <T> void executeSelectOverStream(
-      @Nonnull QueryGenerator.PreparedQuery query,
+      @Nonnull PreparedQuery query,
       @Nonnull Converter<T> converterInstance,
       @Nonnull Consumer<Stream<T>> consumer)
       throws SQLException {
@@ -172,7 +171,7 @@ public class DatasourceOperations {
    * @return : Number of rows modified / inserted.
    * @throws SQLException : Exception during Query Execution.
    */
-  public int executeUpdate(QueryGenerator.PreparedQuery preparedQuery) throws SQLException {
+  public int executeUpdate(PreparedQuery preparedQuery) throws SQLException {
     return withRetries(
         () -> {
           try (Connection connection = borrowConnection();
@@ -223,9 +222,9 @@ public class DatasourceOperations {
         });
   }
 
-  public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
-      throws SQLException {
+  public Integer execute(Connection connection, PreparedQuery preparedQuery) throws SQLException {
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
+      System.out.println(preparedQuery.sql());
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
         statement.setObject(i + 1, params.get(i));
