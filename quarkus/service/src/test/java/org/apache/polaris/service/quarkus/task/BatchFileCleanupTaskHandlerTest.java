@@ -92,9 +92,9 @@ public class BatchFileCleanupTaskHandlerTest {
   public void testMetadataFileCleanup() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -194,7 +194,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
 
     for (String cleanupFile : cleanupFiles) {
       assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO)).rejects(cleanupFile);
@@ -205,10 +205,10 @@ public class BatchFileCleanupTaskHandlerTest {
   public void testMetadataFileCleanupIfFileNotExist() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
-    CallContext.setCurrentContext(callCtx);
+    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     BatchFileCleanupTaskHandler handler =
@@ -243,17 +243,17 @@ public class BatchFileCleanupTaskHandlerTest {
 
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
 
   @Test
   public void testCleanupWithRetries() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
-    CallContext.setCurrentContext(callCtx);
+    CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -305,10 +305,10 @@ public class BatchFileCleanupTaskHandlerTest {
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(
             () -> {
-              CallContext.setCurrentContext(callCtx);
+              CallContext.setCurrentContext(polarisCallContext);
               addTaskLocation(task);
               assertThatPredicate(handler::canHandleTask).accepts(task);
-              handler.handleTask(task, callCtx); // this will schedule the batch deletion
+              handler.handleTask(task, polarisCallContext); // this will schedule the batch deletion
             });
 
     // Wait for all async tasks to finish

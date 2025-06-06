@@ -58,32 +58,11 @@ public class PolarisCallContext implements CallContext {
     this.clock = clock;
   }
 
-  @Deprecated
-  public PolarisCallContext(
-      @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisDiagnostics diagServices,
-      @Nonnull PolarisConfigurationStore configurationStore,
-      @Nonnull Clock clock) {
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = configurationStore;
-    this.clock = clock;
-  }
-
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices) {
     this.realmContext = realmContext;
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = new PolarisConfigurationStore() {};
-    this.clock = Clock.system(ZoneId.systemDefault());
-  }
-
-  @Deprecated
-  public PolarisCallContext(
-      @Nonnull BasePersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};
@@ -114,5 +93,18 @@ public class PolarisCallContext implements CallContext {
   @Override
   public PolarisCallContext getPolarisCallContext() {
     return this;
+  }
+
+  @Override
+  public PolarisCallContext copy() {
+    // The realm context is a request scoped bean injected by CDI,
+    // which will be closed after the http request. This copy is currently
+    // only used by TaskExecutor right before the task is handled, since the
+    // task is executed outside the active request scope, we need to make a
+    // copy of the RealmContext to ensure the access during the task executor.
+    String realmId = this.realmContext.getRealmIdentifier();
+    RealmContext realmContext = () -> realmId;
+    return new PolarisCallContext(
+        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock);
   }
 }

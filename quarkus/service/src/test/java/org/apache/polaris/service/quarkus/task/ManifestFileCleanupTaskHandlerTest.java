@@ -91,9 +91,9 @@ class ManifestFileCleanupTaskHandlerTest {
   public void testCleanupFileNotExists() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
@@ -114,17 +114,17 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
-    CallContext.setCurrentContext(callCtx);
+    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler =
@@ -143,17 +143,17 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
 
   @Test
   public void testCleanupFiles() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
-    CallContext.setCurrentContext(callCtx);
+    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -187,7 +187,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }
@@ -196,10 +196,10 @@ class ManifestFileCleanupTaskHandlerTest {
   public void testCleanupFilesWithRetries() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
+            realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
-    CallContext callCtx = CallContext.of(realmContext, polarisCallContext);
-    CallContext.setCurrentContext(callCtx);
+    CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -247,7 +247,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, callCtx)).isTrue();
+    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }

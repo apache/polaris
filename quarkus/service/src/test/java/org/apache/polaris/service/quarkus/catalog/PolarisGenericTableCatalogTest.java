@@ -51,7 +51,6 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -132,7 +131,6 @@ public class PolarisGenericTableCatalogTest {
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
-  private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
@@ -171,6 +169,7 @@ public class PolarisGenericTableCatalogTest {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
+            realmContext,
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
@@ -180,8 +179,6 @@ public class PolarisGenericTableCatalogTest {
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(metaStoreManager));
-
-    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -205,7 +202,7 @@ public class PolarisGenericTableCatalogTest {
 
     adminService =
         new PolarisAdminService(
-            callContext,
+            polarisContext,
             entityManager,
             metaStoreManager,
             userSecretsManager,
@@ -242,7 +239,7 @@ public class PolarisGenericTableCatalogTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
+            polarisContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -267,13 +264,13 @@ public class PolarisGenericTableCatalogTest {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,
             metaStoreManager,
-            callContext,
+            polarisContext,
             passthroughView,
             securityContext,
             taskExecutor,

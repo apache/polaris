@@ -130,10 +130,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     Map<String, BaseResult> results = new HashMap<>();
 
     for (String realm : realms) {
-      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
-      TransactionalPersistence session = getOrCreateSessionSupplier(() -> realm).get();
+      RealmContext realmContext = () -> realm;
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
+      TransactionalPersistence session = getOrCreateSessionSupplier(realmContext).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
