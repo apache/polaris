@@ -23,6 +23,7 @@ ENV LANGUAGE='en_US:en'
 
 COPY --chown=jovyan client /home/jovyan/client
 COPY --chown=jovyan regtests/requirements.txt /tmp
+RUN sh /tmp/templates/regenerate.sh
 RUN pip install -r /tmp/requirements.txt && \
     cd client/python && poetry lock && \
     python3 -m poetry install && \
