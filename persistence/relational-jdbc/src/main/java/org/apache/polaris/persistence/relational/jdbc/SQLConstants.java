@@ -154,7 +154,9 @@ public class SQLConstants {
           + SCHEMA
           + "."
           + ModelGrantRecord.TABLE_NAME
-          + " WHERE securable_catalog_id = ? AND securable_id = ? AND grantee_catalog_id = ? AND privilege_code = ? AND realm_id = ?";
+          + " WHERE "
+          + String.join(" = ? AND ", ModelGrantRecord.PK_COLUMNS)
+          + " = ?";
 
   public static final String GRANT_RECORD_LOOKUP_BY_SECURABLE_QUERY =
       "SELECT "

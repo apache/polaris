@@ -224,7 +224,6 @@ public class DatasourceOperations {
 
   public Integer execute(Connection connection, PreparedQuery preparedQuery) throws SQLException {
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
-      System.out.println(preparedQuery.sql());
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
         statement.setObject(i + 1, params.get(i));

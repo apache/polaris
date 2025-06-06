@@ -465,7 +465,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       int privilegeCode) {
     try {
       List<Object> params =
-          List.of(securableCatalogId, securableId, granteeCatalogId, privilegeCode, realmId);
+          List.of(
+              realmId, securableCatalogId, securableId, granteeCatalogId, granteeId, privilegeCode);
       var results =
           datasourceOperations.executeSelect(
               new PreparedQuery(SQLConstants.GRANT_RECORD_LOOKUP_BY_PK_QUERY, params),
