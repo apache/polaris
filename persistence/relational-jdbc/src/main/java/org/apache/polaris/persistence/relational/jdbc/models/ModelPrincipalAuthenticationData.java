@@ -20,11 +20,23 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelPrincipalAuthenticationData implements Converter<PolarisPrincipalSecrets> {
+  public static final String TABLE_NAME = "PRINCIPAL_AUTHENTICATION_DATA";
+
+  public static final List<String> ALL_COLUMNS =
+      List.of(
+          "principal_id",
+          "principal_client_id",
+          "main_secret_hash",
+          "secondary_secret_hash",
+          "secret_salt");
+
   // the id of the principal
   private long principalId;
 
@@ -78,8 +90,8 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   }
 
   @Override
-  public Map<String, Object> toMap() {
-    Map<String, Object> map = new HashMap<>();
+  public Map<String, Object> toMap(DatabaseType databaseType) {
+    Map<String, Object> map = new LinkedHashMap<>();
     map.put("principal_id", this.principalId);
     map.put("principal_client_id", this.principalClientId);
     map.put("main_secret_hash", this.mainSecretHash);
