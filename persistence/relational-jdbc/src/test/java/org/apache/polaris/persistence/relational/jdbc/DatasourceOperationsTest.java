@@ -58,7 +58,8 @@ public class DatasourceOperationsTest {
 
   @BeforeEach
   void setUp() {
-    datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
+    datasourceOperations =
+        new DatasourceOperations(mockDataSource, DatabaseType.H2, relationalJdbcConfiguration);
   }
 
   @Test

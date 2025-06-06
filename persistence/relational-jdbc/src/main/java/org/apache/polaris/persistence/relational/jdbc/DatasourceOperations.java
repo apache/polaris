@@ -55,13 +55,21 @@ public class DatasourceOperations {
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
+  private final DatabaseType databaseType;
 
   private final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
+      DataSource datasource,
+      DatabaseType databaseType,
+      RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
+    this.databaseType = databaseType;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+  }
+
+  public DatabaseType getDatabaseType() {
+    return databaseType;
   }
 
   /**

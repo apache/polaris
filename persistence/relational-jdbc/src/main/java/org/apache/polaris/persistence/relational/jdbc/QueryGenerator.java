@@ -20,11 +20,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -36,18 +32,6 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
  * consistent SQL generation and protects against injection by managing parameters separately.
  */
 public class QueryGenerator {
-  private final DatabaseType databaseType;
-
-  public QueryGenerator(DatabaseType databaseType) {
-    this.databaseType = databaseType;
-  }
-
-  /**
-   * @return The configured database type.
-   */
-  public DatabaseType getDatabaseType() {
-    return databaseType;
-  }
 
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
@@ -64,12 +48,11 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public PreparedQuery generateSelectQuery(
+  public static PreparedQuery generateSelectQuery(
       @Nonnull List<String> projections,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    checkInvalidColumns(projections, whereClause);
-    QueryFragment where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(projections), whereClause);
     PreparedQuery query = generateSelectQuery(projections, tableName, where.sql());
     return new PreparedQuery(query.sql(), where.parameters());
   }
@@ -81,10 +64,14 @@ public class QueryGenerator {
    * @param realmId The associated realm.
    * @return A DELETE query removing all grants for this entity.
    */
-  public PreparedQuery generateDeleteQueryForEntityGrantRecords(
+  public static PreparedQuery generateDeleteQueryForEntityGrantRecords(
       @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
     String where =
-        " WHERE ((grantee_id = ? AND grantee_catalog_id = ?) OR (securable_id = ? AND securable_catalog_id = ?)) AND realm_id = ?";
+        """
+             WHERE (
+                (grantee_id = ? AND grantee_catalog_id = ?) OR
+                (securable_id = ? AND securable_catalog_id = ?)
+            ) AND realm_id = ?""";
     List<Object> params =
         Arrays.asList(
             entity.getId(), entity.getCatalogId(), entity.getId(), entity.getCatalogId(), realmId);
@@ -100,7 +87,7 @@ public class QueryGenerator {
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
-  public PreparedQuery generateSelectQueryWithEntityIds(
+  public static PreparedQuery generateSelectQueryWithEntityIds(
       @Nonnull String realmId, @Nonnull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
@@ -126,7 +113,7 @@ public class QueryGenerator {
    * @param realmId Realm value to append.
    * @return INSERT query with value bindings.
    */
-  public PreparedQuery generateInsertQuery(
+  public static PreparedQuery generateInsertQuery(
       @Nonnull List<String> allColumns,
       @Nonnull String tableName,
       List<Object> values,
@@ -157,14 +144,13 @@ public class QueryGenerator {
    * @param whereClause Conditions for filtering rows to update.
    * @return UPDATE query with parameter values.
    */
-  public PreparedQuery generateUpdateQuery(
+  public static PreparedQuery generateUpdateQuery(
       @Nonnull List<String> allColumns,
       @Nonnull String tableName,
       @Nonnull List<Object> values,
       @Nonnull Map<String, Object> whereClause) {
-    checkInvalidColumns(allColumns, whereClause);
     List<Object> bindingParams = new ArrayList<>(values);
-    QueryFragment where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause);
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
     String sql =
         "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
@@ -180,17 +166,16 @@ public class QueryGenerator {
    * @param whereClause Column-value filters.
    * @return DELETE query with parameter bindings.
    */
-  public PreparedQuery generateDeleteQuery(
+  public static PreparedQuery generateDeleteQuery(
       @Nonnull List<String> tableColumns,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    checkInvalidColumns(tableColumns, whereClause);
-    QueryFragment where = generateWhereClause(whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause);
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
-  private PreparedQuery generateSelectQuery(
+  private static PreparedQuery generateSelectQuery(
       @Nonnull List<String> columnNames, @Nonnull String tableName, @Nonnull String filter) {
     String sql =
         "SELECT "
@@ -202,10 +187,14 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  QueryFragment generateWhereClause(@Nonnull Map<String, Object> whereClause) {
+  static QueryFragment generateWhereClause(
+      @Nonnull Set<String> tableColumns, @Nonnull Map<String, Object> whereClause) {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
+      if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
+        throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
+      }
       conditions.add(entry.getKey() + " = ?");
       parameters.add(entry.getValue());
     }
@@ -213,18 +202,7 @@ public class QueryGenerator {
     return new QueryFragment(clause, parameters);
   }
 
-  /** Validates that WHERE clause columns exist in the given list of valid columns. */
-  private void checkInvalidColumns(List<String> entity, Map<String, Object> whereClause) {
-    if (!whereClause.isEmpty()) {
-      for (String key : whereClause.keySet()) {
-        if (!entity.contains(key) && !key.equals("realm_id")) {
-          throw new IllegalArgumentException("Invalid query column: " + key);
-        }
-      }
-    }
-  }
-
-  private String getFullyQualifiedTableName(String tableName) {
+  private static String getFullyQualifiedTableName(String tableName) {
     // TODO: make schema name configurable.
     return "POLARIS_SCHEMA." + tableName;
   }

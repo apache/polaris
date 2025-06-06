@@ -105,7 +105,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         () ->
             new JdbcBasePersistenceImpl(
                 databaseOperations,
-                new QueryGenerator(databaseType),
                 secretsGenerator(realmContext, rootCredentialsSet),
                 storageIntegrationProvider,
                 realmContext.getRealmIdentifier()));
@@ -124,7 +123,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private DatasourceOperations getDatasourceOperations(
       boolean isBootstrap, DatabaseType databaseType) {
     DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+        new DatasourceOperations(dataSource.get(), databaseType, relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
         databaseOperations.executeScript(databaseType.getInitScriptResource());
