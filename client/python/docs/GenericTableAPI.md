@@ -309,8 +309,7 @@ Name | Type | Description  | Notes
 
 Load a generic table under the given namespace from the catalog
 
-Load a generic table from the catalog under the given namespace.
-The response contains all table information passed during create.
+Load a generic table from the catalog under the given namespace. The response contains all table information passed during create.
 
 ### Example
 
