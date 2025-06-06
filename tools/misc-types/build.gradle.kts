@@ -20,6 +20,7 @@
 plugins {
   alias(libs.plugins.jandex)
   id("polaris-client")
+  id("polaris-checkstyle")
 }
 
 description =

@@ -21,6 +21,7 @@ plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-client")
   alias(libs.plugins.jandex)
+  id("polaris-checkstyle")
 }
 
 dependencies {
