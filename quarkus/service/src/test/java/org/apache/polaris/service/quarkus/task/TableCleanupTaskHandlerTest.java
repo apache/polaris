@@ -141,7 +141,8 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    task = TaskTestUtils.addTaskLocation(task);
+    task = TaskTestUtils.
+      ocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task, callContext);
