@@ -135,13 +135,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -221,14 +221,14 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, table to load does not exist |  -  |
 **409** | Conflict - CommitFailedException, one or more requirements failed. The client may retry. |  -  |
-**419** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
 **500** | An unknown server-side problem occurred; the commit state is unknown. |  -  |
-**503** |  |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
 **502** | A gateway or proxy received an invalid response from the upstream server; the commit state is unknown. |  -  |
 **504** | A server-side gateway timeout occurred; the commit state is unknown. |  -  |
 **5XX** | A server-side problem that might not be addressable on the client. |  -  |
@@ -315,15 +315,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
-**406** |  |  -  |
+**200** | Represents a successful call to create a namespace. Returns the namespace created, as well as any properties that were stored for the namespace, including those the server might have added. Implementations are not required to support namespace properties. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
 **409** | Conflict - The namespace already exists |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -411,15 +411,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Table metadata result after creating a table |  * etag -  <br>  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - The namespace specified does not exist |  -  |
 **409** | Conflict - The table already exists |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -505,15 +505,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | View metadata result when loading a view |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - The namespace specified does not exist |  -  |
 **409** | Conflict - The view already exists |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -592,13 +592,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - Namespace to delete does not exist. |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -683,13 +683,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, Table to drop does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -772,13 +772,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchViewException, view to drop does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -865,14 +865,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Result of fetching a submitted scan planning operation |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchPlanIdException, the plan-id does not exist - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -960,14 +960,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Result of retrieving additional plan tasks and file scan tasks. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchPlanTaskException, the plan-task does not exist - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1054,14 +1054,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | A list of namespaces |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - Namespace provided in the &#x60;parent&#x60; query parameter is not found. |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1148,14 +1148,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | A list of table identifiers |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - The namespace specified does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1242,14 +1242,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | A list of table identifiers |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - The namespace specified does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1334,14 +1334,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Table credentials result when loading credentials for a table |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, table to load credentials for does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1424,14 +1424,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Returns a namespace, as well as any properties stored on the namespace if namespace properties are supported by the server. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - Namespace not found |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1522,15 +1522,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+**200** | Table metadata result when loading a table |  * etag -  <br>  |
 **304** | Not Modified - Based on the content of the &#39;If-None-Match&#39; header the table metadata has not changed since. |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, table to load does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1615,14 +1615,14 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | View metadata result when loading a view |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchViewException, view to load does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1703,13 +1703,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - Namespace not found |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1797,15 +1797,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Result of submitting a table scan to plan |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, the table does not exist - NoSuchNamespaceException, the namespace does not exist |  -  |
-**406** |  |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1891,15 +1891,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Table metadata result when loading a table |  * etag -  <br>  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - The namespace specified does not exist |  -  |
 **409** | Conflict - The table already exists |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -1981,15 +1981,15 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, Table to rename does not exist - NoSuchNamespaceException, The target namespace of the new table identifier does not exist |  -  |
-**406** |  |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
 **409** | Conflict - The target identifier to rename to already exists as a table or view |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2071,15 +2071,15 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchViewException, view to rename does not exist - NoSuchNamespaceException, The target namespace of the new identifier does not exist |  -  |
-**406** |  |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
 **409** | Conflict - The target identifier to rename to already exists as a table or view |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2167,15 +2167,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | View metadata result when loading a view |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchViewException, view to load does not exist |  -  |
 **409** | Conflict - CommitFailedException. The client may retry. |  -  |
-**419** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
 **500** | An unknown server-side problem occurred; the commit state is unknown. |  -  |
-**503** |  |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
 **502** | A gateway or proxy received an invalid response from the upstream server; the commit state is unknown. |  -  |
 **504** | A server-side gateway timeout occurred; the commit state is unknown. |  -  |
 **5XX** | A server-side problem that might not be addressable on the client. |  -  |
@@ -2262,13 +2262,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, table to load does not exist |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2351,13 +2351,13 @@ void (empty response body)
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** | Success, no content |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, Table not found |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2443,16 +2443,16 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | JSON data response for a synchronous update properties request. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - Namespace not found |  -  |
-**406** |  |  -  |
+**406** | Not Acceptable / Unsupported Operation. The server does not support this operation. |  -  |
 **422** | Unprocessable Entity - A property key was included in both &#x60;removals&#x60; and &#x60;updates&#x60; |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -2540,15 +2540,15 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
+**200** | Response used when a table is successfully updated. The table metadata JSON is returned in the metadata field. The corresponding file location of table metadata must be returned in the metadata-location field. Clients can check whether metadata has changed by comparing metadata locations. |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
 **404** | Not Found - NoSuchTableException, table to load does not exist |  -  |
 **409** | Conflict - CommitFailedException, one or more requirements failed. The client may retry. |  -  |
-**419** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
 **500** | An unknown server-side problem occurred; the commit state is unknown. |  -  |
-**503** |  |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
 **502** | A gateway or proxy received an invalid response from the upstream server; the commit state is unknown. |  -  |
 **504** | A server-side gateway timeout occurred; the commit state is unknown. |  -  |
 **5XX** | A server-side problem that might not be addressable on the client. |  -  |
@@ -2637,9 +2637,9 @@ void (empty response body)
 **400** | Bad Request |  -  |
 **401** | Unauthorized |  -  |
 **404** | Not Found |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

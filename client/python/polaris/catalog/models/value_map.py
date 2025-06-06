@@ -92,9 +92,9 @@ class ValueMap(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of each item in values (list)
         _items = []
         if self.values:
-            for _item in self.values:
-                if _item:
-                    _items.append(_item.to_dict())
+            for _item_values in self.values:
+                if _item_values:
+                    _items.append(_item_values.to_dict())
             _dict['values'] = _items
         return _dict
 

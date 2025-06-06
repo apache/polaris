@@ -19,7 +19,6 @@
 package org.apache.polaris.core.context;
 
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 
 /**
  * Stores elements associated with an individual REST request such as RealmContext, caller
@@ -41,46 +40,12 @@ public interface CallContext {
     return CURRENT_CONTEXT.get();
   }
 
-  static PolarisDiagnostics getDiagnostics() {
-    return CURRENT_CONTEXT.get().getPolarisCallContext().getDiagServices();
-  }
-
   static void unsetCurrentContext() {
     CURRENT_CONTEXT.remove();
   }
 
-  static CallContext of(
-      final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-    };
-  }
-
   /** Copy the {@link CallContext}. */
-  static CallContext copyOf(CallContext base) {
-    String realmId = base.getRealmContext().getRealmIdentifier();
-    RealmContext realmContext = () -> realmId;
-    PolarisCallContext polarisCallContext = PolarisCallContext.copyOf(base.getPolarisCallContext());
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-    };
-  }
+  CallContext copy();
 
   RealmContext getRealmContext();
 

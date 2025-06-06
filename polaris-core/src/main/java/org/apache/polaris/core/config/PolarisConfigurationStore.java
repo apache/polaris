@@ -24,7 +24,6 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.slf4j.Logger;
@@ -36,48 +35,6 @@ import org.slf4j.LoggerFactory;
  */
 public interface PolarisConfigurationStore {
   Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
-
-  /**
-   * Retrieve the current value for a configuration key. May be null if not set.
-   *
-   * <p>This function will be deprecated, it can not be called outside of active request scope, such
-   * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
-   * realmContext, String configName) to get the configuration value in a more robust way. TODO:
-   * Remove this function and replace the usage with the function takes realm. Github issue
-   * https://github.com/apache/polaris/issues/1775
-   *
-   * @param ctx the current call context
-   * @param configName the name of the configuration key to check
-   * @return the current value set for the configuration key or null if not set
-   * @param <T> the type of the configuration value
-   */
-  @Deprecated
-  default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-    return null;
-  }
-
-  /**
-   * Retrieve the current value for a configuration key. If not set, return the non-null default
-   * value.
-   *
-   * <p>This function will be deprecated, it can not be called outside of active request scope, such
-   * as background tasks (TaskExecutor). Please use the function getConfiguration(RealmContext
-   * realmContext, String configName, T defaultValue) to get the configuration value in a more
-   * robust way. TODO: Remove this function and replace the usage with the function takes realm.
-   * Github issue https://github.com/apache/polaris/issues/1775
-   *
-   * @param ctx the current call context
-   * @param configName the name of the configuration key to check
-   * @param defaultValue the default value if the configuration key has no value
-   * @return the current value or the supplied default value
-   */
-  @Deprecated
-  default <T> @Nonnull T getConfiguration(
-      PolarisCallContext ctx, String configName, @Nonnull T defaultValue) {
-    Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
-    T configValue = getConfiguration(ctx, configName);
-    return configValue != null ? configValue : defaultValue;
-  }
 
   /**
    * Retrieve the current value for a configuration key for a given realm. May be null if not set.
@@ -102,7 +59,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext, String configName, @Nonnull T defaultValue) {
+      @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
     T configValue = getConfiguration(realmContext, configName);
     return configValue != null ? configValue : defaultValue;
@@ -141,7 +98,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext, PolarisConfiguration<T> config) {
+      @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
     T result = getConfiguration(realmContext, config.key, config.defaultValue);
     return tryCast(config, result);
   }
@@ -157,7 +114,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(
-      RealmContext realmContext,
+      @Nonnull RealmContext realmContext,
       @Nonnull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {

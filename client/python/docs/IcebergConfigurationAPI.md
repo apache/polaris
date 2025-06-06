@@ -105,12 +105,12 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Server specified configuration values. |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**403** |  |  -  |
-**419** |  |  -  |
-**503** |  |  -  |
-**5XX** |  |  -  |
+**400** | Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server&#39;s middleware. |  -  |
+**401** | Unauthorized. Authentication is required and has failed or has not yet been provided. |  -  |
+**403** | Forbidden. Authenticated user does not have the necessary permissions. |  -  |
+**419** | Credentials have timed out. If possible, the client should refresh credentials and retry. |  -  |
+**503** | The service is not ready to handle the request. The client should wait and retry.  The service may additionally send a Retry-After header to indicate when to retry. |  -  |
+**5XX** | A server-side problem that might not be addressable from the client side. Used for server 5xx errors without more specific documentation in individual routes. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

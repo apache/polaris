@@ -121,10 +121,10 @@ Name | Type | Description  | Notes
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**401** |  |  -  |
-**5XX** |  |  -  |
+**200** | OAuth2 token response for client credentials or token exchange |  -  |
+**400** | OAuth2 error response |  -  |
+**401** | OAuth2 error response |  -  |
+**5XX** | OAuth2 error response |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
