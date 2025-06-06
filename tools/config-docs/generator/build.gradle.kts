@@ -17,7 +17,10 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+    id("polaris-server")
+    id("polaris-checkstyle")
+}
 
 description = "Generates Polaris reference docs"
 

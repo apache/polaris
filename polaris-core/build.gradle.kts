@@ -20,6 +20,7 @@
 plugins {
   id("polaris-client")
   alias(libs.plugins.jandex)
+  id("polaris-checkstyle")
 }
 
 dependencies {
