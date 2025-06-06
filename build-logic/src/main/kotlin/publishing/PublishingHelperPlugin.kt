@@ -133,6 +133,10 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
 
                 suppressPomMetadataWarningsFor("testFixturesApiElements")
                 suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
+
+                if (project.tasks.findByName("createPolarisSparkJar") != null) {
+                  artifact(project.tasks.named("createPolarisSparkJar").get())
+                }
               }
 
               if (
