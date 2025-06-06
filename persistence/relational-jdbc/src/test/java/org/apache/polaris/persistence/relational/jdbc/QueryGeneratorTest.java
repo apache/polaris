@@ -244,7 +244,7 @@ public class QueryGeneratorTest {
             + "catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, "
             + "parent_id, name, location, id, drop_timestamp, properties, grant_records_version, "
             + "type_code FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = "
-            + "-398224152 AND (1 = 2 OR location = '/' OR location = '/tmp/' OR location = '/tmp/location/' "
+            + "-398224152 AND (location = '/' OR location = '/tmp/' OR location = '/tmp/location/' "
             + "OR location LIKE '/tmp/location/%')",
         QueryGenerator.generateOverlapQuery(realmId, buildEntity(parentId, "/tmp/location/")));
 
@@ -253,7 +253,7 @@ public class QueryGeneratorTest {
             + "purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, "
             + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
             + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
-            + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://bucket/' OR "
+            + "AND (location = 's3:/' OR location = 's3://' OR location = 's3://bucket/' OR "
             + "location = 's3://bucket/tmp/' OR location = 's3://bucket/tmp/location/' OR location "
             + "LIKE 's3://bucket/tmp/location/%')",
         QueryGenerator.generateOverlapQuery(
@@ -264,7 +264,7 @@ public class QueryGeneratorTest {
             + "purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, "
             + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
             + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
-            + "AND (1 = 2 OR location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
+            + "AND (location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
             + "location = 's3://バケツ/\"loc.ation\"/' OR location "
             + "LIKE 's3://バケツ/\"loc.ation\"/%')",
         QueryGenerator.generateOverlapQuery(

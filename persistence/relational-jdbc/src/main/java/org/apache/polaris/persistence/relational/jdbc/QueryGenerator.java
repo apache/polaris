@@ -222,20 +222,23 @@ public class QueryGenerator {
       String realmId, T entity) {
     String location = entity.getBaseLocation();
     String[] components = location.split("/");
-    StringBuilder locationClauseBuilder = new StringBuilder();
+    ArrayList<String> locationClauseComponents = new ArrayList<>();
     StringBuilder pathBuilder = new StringBuilder();
     for (String component : components) {
       pathBuilder.append(component).append("/");
-      locationClauseBuilder.append(String.format(" OR location = '%s'", pathBuilder));
+      locationClauseComponents.add(String.format("location = '%s'", pathBuilder));
     }
-    locationClauseBuilder.append(String.format(" OR location LIKE '%s%%'", location));
+    locationClauseComponents.add(String.format("location LIKE '%s%%'", location));
     String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
 
-    // TODO harden against realmId in this method and others
+    // TODO harden against raw strings in this method and others
     return query
         + String.format(
-            " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (1 = 2%s)",
-            getTableName(ModelEntity.class), realmId, entity.getParentId(), locationClauseBuilder);
+            " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (%s)",
+            getTableName(ModelEntity.class),
+            realmId,
+            entity.getParentId(),
+            String.join(" OR ", locationClauseComponents));
   }
 
   @VisibleForTesting
