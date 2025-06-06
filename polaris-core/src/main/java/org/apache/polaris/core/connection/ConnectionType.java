@@ -40,8 +40,8 @@ public enum ConnectionType {
   static {
     // find max array size
     int maxCode =
-        Arrays.stream(AuthenticationType.values())
-            .mapToInt(AuthenticationType::getCode)
+        Arrays.stream(ConnectionType.values())
+            .mapToInt(ConnectionType::getCode)
             .max()
             .orElse(0);
 
