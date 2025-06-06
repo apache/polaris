@@ -16,34 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
 
-import java.util.Locale;
+package org.apache.polaris.persistence.relational.jdbc.models;
 
-public enum DatabaseType {
-  POSTGRES("postgres"),
-  H2("h2");
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
 
-  private final String displayName; // Store the user-friendly name
+public class SchemaVersion implements Converter<SchemaVersion> {
+  private final int value;
 
-  DatabaseType(String displayName) {
-    this.displayName = displayName;
+  public SchemaVersion() {
+    this.value = -1;
   }
 
-  // Method to get the user-friendly display name
-  public String getDisplayName() {
-    return displayName;
+  private SchemaVersion(int value) {
+    this.value = value;
   }
 
-  public static DatabaseType fromDisplayName(String displayName) {
-    return switch (displayName.toLowerCase(Locale.ROOT)) {
-      case "h2" -> DatabaseType.H2;
-      case "postgresql" -> DatabaseType.POSTGRES;
-      default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
-    };
+  public int getValue() {
+    if (value == -1) {
+      throw new IllegalStateException("Schema version should be constructed via fromResultSet");
+    }
+    return value;
   }
 
-  public String getInitScriptResource() {
-    return String.format("%s/schema-v2.sql", this.getDisplayName());
+  @Override
+  public SchemaVersion fromResultSet(ResultSet rs) throws SQLException {
+    return new SchemaVersion(rs.getInt("version_value"));
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    return Map.of("version_value", this.value);
   }
 }

@@ -28,8 +28,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
@@ -45,7 +48,7 @@ public class QueryGeneratorTest {
     whereClause.put("name", "testEntity");
     whereClause.put("entity_version", 1);
     String expectedQuery =
-        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND name = 'testEntity'";
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND name = 'testEntity'";
     assertEquals(expectedQuery, QueryGenerator.generateSelectQuery(new ModelEntity(), whereClause));
   }
 
@@ -64,7 +67,7 @@ public class QueryGeneratorTest {
   void testGenerateSelectQueryWithEntityIds_singleId() {
     List<PolarisEntityId> entityIds = Collections.singletonList(new PolarisEntityId(123L, 1L));
     String expectedQuery =
-        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((123, 1)) AND realm_id = 'testRealm'";
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((123, 1)) AND realm_id = 'testRealm'";
     assertEquals(
         expectedQuery, QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, entityIds));
   }
@@ -74,7 +77,7 @@ public class QueryGeneratorTest {
     List<PolarisEntityId> entityIds =
         Arrays.asList(new PolarisEntityId(123L, 1L), new PolarisEntityId(456L, 2L));
     String expectedQuery =
-        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((123, 1),(456, 2)) AND realm_id = 'testRealm'";
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((123, 1),(456, 2)) AND realm_id = 'testRealm'";
     assertEquals(
         expectedQuery, QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, entityIds));
   }
@@ -91,7 +94,7 @@ public class QueryGeneratorTest {
   void testGenerateInsertQuery_nonNullFields() {
     ModelEntity entity = ModelEntity.builder().name("test").entityVersion(1).build();
     String expectedQuery =
-        "INSERT INTO POLARIS_SCHEMA.ENTITIES (entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code, realm_id) VALUES ('1', '0', '{}', '0', '0', '0', '0', '0', '0', 'test', '0', '0', '{}', '0', '0', 'testRealm')";
+        "INSERT INTO POLARIS_SCHEMA.ENTITIES (entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code, realm_id) VALUES ('1', '0', '{}', '0', '0', '0', '0', '0', '0', 'test', NULL, '0', '0', '{}', '0', '0', 'testRealm')";
     assertEquals(expectedQuery, QueryGenerator.generateInsertQuery(entity, REALM_ID));
   }
 
@@ -99,7 +102,7 @@ public class QueryGeneratorTest {
   void testGenerateInsertQuery_nullFields() {
     ModelEntity entity = ModelEntity.builder().name("test").build();
     String expectedQuery =
-        "INSERT INTO POLARIS_SCHEMA.ENTITIES (entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code, realm_id) VALUES ('0', '0', '{}', '0', '0', '0', '0', '0', '0', 'test', '0', '0', '{}', '0', '0', 'testRealm')";
+        "INSERT INTO POLARIS_SCHEMA.ENTITIES (entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code, realm_id) VALUES ('0', '0', '{}', '0', '0', '0', '0', '0', '0', 'test', NULL, '0', '0', '{}', '0', '0', 'testRealm')";
     assertEquals(expectedQuery, QueryGenerator.generateInsertQuery(entity, REALM_ID));
   }
 
@@ -109,7 +112,7 @@ public class QueryGeneratorTest {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("id", 123L);
     String expectedQuery =
-        "UPDATE POLARIS_SCHEMA.ENTITIES SET entity_version = '2', to_purge_timestamp = '0', internal_properties = '{}', catalog_id = '0', purge_timestamp = '0', sub_type_code = '0', create_timestamp = '0', last_update_timestamp = '0', parent_id = '0', name = 'newName', id = '0', drop_timestamp = '0', properties = '{}', grant_records_version = '0', type_code = '0' WHERE id = 123";
+        "UPDATE POLARIS_SCHEMA.ENTITIES SET entity_version = '2', to_purge_timestamp = '0', internal_properties = '{}', catalog_id = '0', purge_timestamp = '0', sub_type_code = '0', create_timestamp = '0', last_update_timestamp = '0', parent_id = '0', name = 'newName', location = NULL, id = '0', drop_timestamp = '0', properties = '{}', grant_records_version = '0', type_code = '0' WHERE id = 123";
     assertEquals(expectedQuery, QueryGenerator.generateUpdateQuery(entity, whereClause));
   }
 
@@ -119,7 +122,7 @@ public class QueryGeneratorTest {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("id", 123L);
     String expectedQuery =
-        "UPDATE POLARIS_SCHEMA.ENTITIES SET entity_version = '0', to_purge_timestamp = '0', internal_properties = '{}', catalog_id = '0', purge_timestamp = '0', sub_type_code = '0', create_timestamp = '0', last_update_timestamp = '0', parent_id = '0', name = 'newName', id = '0', drop_timestamp = '0', properties = '{}', grant_records_version = '0', type_code = '0' WHERE id = 123";
+        "UPDATE POLARIS_SCHEMA.ENTITIES SET entity_version = '0', to_purge_timestamp = '0', internal_properties = '{}', catalog_id = '0', purge_timestamp = '0', sub_type_code = '0', create_timestamp = '0', last_update_timestamp = '0', parent_id = '0', name = 'newName', location = NULL, id = '0', drop_timestamp = '0', properties = '{}', grant_records_version = '0', type_code = '0' WHERE id = 123";
     assertEquals(expectedQuery, QueryGenerator.generateUpdateQuery(entity, whereClause));
   }
 
@@ -149,7 +152,7 @@ public class QueryGeneratorTest {
   void testGenerateDeleteQuery_byObject() {
     ModelEntity entityToDelete = ModelEntity.builder().name("test").entityVersion(1).build();
     String expectedQuery =
-        "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
+        "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 1 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND location = null AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
     assertEquals(expectedQuery, QueryGenerator.generateDeleteQuery(entityToDelete, REALM_ID));
   }
 
@@ -157,7 +160,7 @@ public class QueryGeneratorTest {
   void testGenerateDeleteQuery_byObject_nullValue() {
     ModelEntity entityToDelete = ModelEntity.builder().name("test").dropTimestamp(0L).build();
     String expectedQuery =
-        "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 0 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
+        "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = 0 AND to_purge_timestamp = 0 AND realm_id = 'testRealm' AND internal_properties = '{}' AND catalog_id = 0 AND purge_timestamp = 0 AND sub_type_code = 0 AND create_timestamp = 0 AND last_update_timestamp = 0 AND parent_id = 0 AND name = 'test' AND location = null AND id = 0 AND drop_timestamp = 0 AND properties = '{}' AND grant_records_version = 0 AND type_code = 0";
     assertEquals(expectedQuery, QueryGenerator.generateDeleteQuery(entityToDelete, REALM_ID));
   }
 
@@ -190,7 +193,7 @@ public class QueryGeneratorTest {
   void testGenerateSelectQuery_withFilter() {
     String filter = " WHERE name = 'testEntity'";
     String expectedQuery =
-        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE name = 'testEntity'";
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, name, location, id, drop_timestamp, properties, grant_records_version, type_code FROM POLARIS_SCHEMA.ENTITIES WHERE name = 'testEntity'";
     // Note: The private generateSelectQuery is called by the public one, so testing the public one
     // with a filter is sufficient.
     // We don't need to directly test the private one unless there's very specific logic not
@@ -221,5 +224,50 @@ public class QueryGeneratorTest {
   void testGenerateWhereClause_emptyMap() {
     Map<String, Object> whereClause = Collections.emptyMap();
     assertEquals("", QueryGenerator.generateWhereClause(whereClause));
+  }
+
+  private IcebergTableLikeEntity buildEntity(int parentId, String location) {
+    return IcebergTableLikeEntity.of(
+        new PolarisEntity.Builder()
+            .setParentId(parentId)
+            .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
+            .build());
+  }
+
+  @Test
+  void testGenerateOverlapQuery() {
+    String realmId = "realmId";
+    int parentId = "polaris".hashCode();
+
+    assertEquals(
+        "SELECT entity_version, to_purge_timestamp, internal_properties, "
+            + "catalog_id, purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, "
+            + "parent_id, name, location, id, drop_timestamp, properties, grant_records_version, "
+            + "type_code FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = "
+            + "-398224152 AND (location = '/' OR location = '/tmp/' OR location = '/tmp/location/' "
+            + "OR location LIKE '/tmp/location/%')",
+        QueryGenerator.generateOverlapQuery(realmId, buildEntity(parentId, "/tmp/location/")));
+
+    assertEquals(
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, "
+            + "purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, "
+            + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
+            + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
+            + "AND (location = 's3:/' OR location = 's3://' OR location = 's3://bucket/' OR "
+            + "location = 's3://bucket/tmp/' OR location = 's3://bucket/tmp/location/' OR location "
+            + "LIKE 's3://bucket/tmp/location/%')",
+        QueryGenerator.generateOverlapQuery(
+            realmId, buildEntity(parentId, "s3://bucket/tmp/location/")));
+
+    assertEquals(
+        "SELECT entity_version, to_purge_timestamp, internal_properties, catalog_id, "
+            + "purge_timestamp, sub_type_code, create_timestamp, last_update_timestamp, parent_id, "
+            + "name, location, id, drop_timestamp, properties, grant_records_version, type_code "
+            + "FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = 'realmId' AND parent_id = -398224152 "
+            + "AND (location = 's3:/' OR location = 's3://' OR location = 's3://バケツ/' OR "
+            + "location = 's3://バケツ/\"loc.ation\"/' OR location "
+            + "LIKE 's3://バケツ/\"loc.ation\"/%')",
+        QueryGenerator.generateOverlapQuery(
+            realmId, buildEntity(parentId, "s3://バケツ/\"loc.ation\"/")));
   }
 }

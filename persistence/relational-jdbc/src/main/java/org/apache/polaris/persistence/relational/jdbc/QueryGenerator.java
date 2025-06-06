@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -105,7 +107,17 @@ public class QueryGenerator {
     Map<String, Object> obj = entity.toMap();
     List<String> columnNames = new ArrayList<>(obj.keySet());
     List<String> values =
-        new ArrayList<>(obj.values().stream().map(val -> "'" + val.toString() + "'").toList());
+        new ArrayList<>(
+            obj.values().stream()
+                .map(
+                    val -> {
+                      if (val != null) {
+                        return "'" + val.toString() + "'";
+                      } else {
+                        return "NULL";
+                      }
+                    })
+                .toList());
     columnNames.add("realm_id");
     values.add("'" + realmId + "'");
 
@@ -121,7 +133,17 @@ public class QueryGenerator {
     Map<String, Object> obj = entity.toMap();
     List<String> setClauses = new ArrayList<>();
     List<String> columnNames = new ArrayList<>(obj.keySet());
-    List<String> values = obj.values().stream().map(val -> "'" + val.toString() + "'").toList();
+    List<String> values =
+        obj.values().stream()
+            .map(
+                val -> {
+                  if (val != null) {
+                    return "'" + val.toString() + "'";
+                  } else {
+                    return "NULL";
+                  }
+                })
+            .toList();
 
     for (int i = 0; i < columnNames.size(); i++) {
       setClauses.add(columnNames.get(i) + " = " + values.get(i)); // Placeholders
@@ -188,6 +210,35 @@ public class QueryGenerator {
 
     String whereConditionsString = String.join(" AND ", whereConditions);
     return !whereConditionsString.isEmpty() ? (" WHERE " + whereConditionsString) : "";
+  }
+
+  @VisibleForTesting
+  public static String generateVersionQuery() {
+    return "SELECT version_value FROM POLARIS_SCHEMA.VERSION";
+  }
+
+  @VisibleForTesting
+  public static <T extends PolarisEntity & LocationBasedEntity> String generateOverlapQuery(
+      String realmId, T entity) {
+    String location = entity.getBaseLocation();
+    String[] components = location.split("/");
+    ArrayList<String> locationClauseComponents = new ArrayList<>();
+    StringBuilder pathBuilder = new StringBuilder();
+    for (String component : components) {
+      pathBuilder.append(component).append("/");
+      locationClauseComponents.add(String.format("location = '%s'", pathBuilder));
+    }
+    locationClauseComponents.add(String.format("location LIKE '%s%%'", location));
+    String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
+
+    // TODO harden against raw strings in this method and others
+    return query
+        + String.format(
+            " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (%s)",
+            getTableName(ModelEntity.class),
+            realmId,
+            entity.getParentId(),
+            String.join(" OR ", locationClauseComponents));
   }
 
   @VisibleForTesting
