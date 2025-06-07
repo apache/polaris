@@ -631,7 +631,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .newRewrite()
         .addFile(FILE_B)
         .deleteFile(FILE_A)
-        .set("polaris.conflict-resolution.by-operation-type.replace", "rollback")
+        .set("polaris.internal.conflict-resolution.by-operation-type.replace", "rollback")
         .commit();
 
     try {
@@ -744,7 +744,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .newRewrite()
         .addFile(FILE_B)
         .deleteFile(FILE_A)
-        .set("polaris.conflict-resolution.by-operation-type.replace", "rollback")
+        .set("polaris.internal.conflict-resolution.by-operation-type.replace", "rollback")
         .commit();
 
     // commit FILE_C
@@ -819,7 +819,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .newRewrite()
         .addFile(FILE_B)
         .deleteFile(FILE_A)
-        .set("polaris.conflict-resolution.by-operation-type.replace", "rollback")
+        .set("polaris.internal.conflict-resolution.by-operation-type.replace", "rollback")
         .commit();
 
     Table t = catalog.loadTable(TABLE);
@@ -906,7 +906,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .newRewrite()
         .addFile(FILE_B)
         .deleteFile(FILE_A)
-        .set("polaris.conflict-resolution.by-operation-type.replace", "rollback")
+        .set("polaris.internal.conflict-resolution.by-operation-type.replace", "rollback")
         .commit();
 
     // now add more files to non-main branch, this will make sequence number non monotonic for main
