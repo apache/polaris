@@ -128,6 +128,11 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
+
+  compileOnly(libs.lombok)
+  annotationProcessor(libs.lombok)
+  testCompileOnly(libs.lombok)
+  testAnnotationProcessor(libs.lombok)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

@@ -27,6 +27,7 @@ scala212 = "2.12.19"
 spark35 = "3.5.6"
 slf4j = "2.0.17"
 swagger = "1.6.16"
+lombok = "1.18.30"
 
 [bundles]
 
@@ -94,6 +95,7 @@ swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref =
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 
 [plugins]
 jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }
