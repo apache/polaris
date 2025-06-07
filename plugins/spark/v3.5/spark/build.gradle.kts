@@ -154,7 +154,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
-  // include the LICENSE and NOTICE files for the shaded Jar
+  // include the LICENSE and NOTICE files for the shadow Jar
   from(projectDir) {
     include("LICENSE")
     include("NOTICE")
