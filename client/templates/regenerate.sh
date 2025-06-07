@@ -134,11 +134,13 @@ EXCLUDE_PATHS=(
   "./test-requirements.txt"
   "./setup.py"
   "./.DS_Store"
+  "./poetry.lock"
 )
 
 EXCLUDE_EXTENSIONS=(
   "json"
   "iml"
+  "keep"
 )
 
 # Process all files in the target directory
