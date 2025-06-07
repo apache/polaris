@@ -687,6 +687,11 @@ public class PolarisAdminService {
                   AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
               break;
             }
+          case SIGV4:
+            {
+              // SigV4 authentication is not secret-based
+              break;
+            }
           default:
             throw new IllegalStateException(
                 "Unsupported authentication type: "

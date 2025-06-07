@@ -49,6 +49,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -61,6 +62,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject EntityMutationEngine entityMutationEngine;
 
   private final RealmContext realmContext = () -> "realmName";
 
@@ -93,7 +95,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            new PolarisDefaultDiagServiceImpl());
+            new PolarisDefaultDiagServiceImpl(),
+            entityMutationEngine);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
@@ -123,7 +126,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            new PolarisDefaultDiagServiceImpl());
+            new PolarisDefaultDiagServiceImpl(),
+            entityMutationEngine);
     CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
@@ -152,7 +156,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            new PolarisDefaultDiagServiceImpl());
+            new PolarisDefaultDiagServiceImpl(),
+            entityMutationEngine);
     CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -198,7 +203,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
-            new PolarisDefaultDiagServiceImpl());
+            new PolarisDefaultDiagServiceImpl(),
+            entityMutationEngine);
     CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =

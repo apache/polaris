@@ -33,6 +33,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
+import org.apache.polaris.core.identity.mutation.NoOpEntityMutationEngine;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -65,6 +67,9 @@ public class InMemoryEntityCacheTest {
   // the meta store manager
   private final PolarisMetaStoreManager metaStoreManager;
 
+  // the entity mutation engine
+  private final EntityMutationEngine entityMutationEngine;
+
   /**
    * Initialize and create the test metadata
    *
@@ -91,7 +96,9 @@ public class InMemoryEntityCacheTest {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new TreeMapMetaStore(diagServices);
     metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    entityMutationEngine = new NoOpEntityMutationEngine();
+    callCtx =
+        new PolarisCallContext(() -> "testRealm", metaStore, diagServices, entityMutationEngine);
     metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema

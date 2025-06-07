@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -45,17 +46,21 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
+  private final EntityMutationEngine entityMutationEngine;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   public InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
-    super(diagnostics);
+      PolarisStorageIntegrationProvider storageIntegration,
+      PolarisDiagnostics diagnostics,
+      EntityMutationEngine entityMutationEngine) {
+    super(diagnostics, entityMutationEngine);
     this.storageIntegration = storageIntegration;
+    this.entityMutationEngine = entityMutationEngine;
   }
 
   @Override

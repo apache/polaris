@@ -46,6 +46,7 @@ import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
+import org.apache.polaris.service.quarkus.identity.QuarkusServiceIdentityConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -205,6 +206,24 @@ public class ProductionReadinessChecks {
           Error.of("TestPolarisEventListener is intended for tests only.", "polaris.events.type"));
     }
     return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkServiceIdentities(
+      QuarkusServiceIdentityConfiguration configuration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    configuration
+        .realms()
+        .forEach(
+            (realm, config) -> {
+              if (config.awsIamServiceIdentity().isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "AWS IAM Service identity is not configured.",
+                        "polaris.service-identity.%saws-iam".formatted(authRealmSegment(realm))));
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
   }
 
   private static String authRealmSegment(String realm) {

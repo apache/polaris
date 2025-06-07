@@ -22,6 +22,8 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
+import org.apache.polaris.core.identity.mutation.NoOpEntityMutationEngine;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -40,7 +42,9 @@ public class ResolverTest extends BaseResolverTest {
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
           new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-      callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+      EntityMutationEngine entityMutationEngine = new NoOpEntityMutationEngine();
+      callCtx =
+          new PolarisCallContext(() -> "testRealm", metaStore, diagServices, entityMutationEngine);
     }
     return callCtx;
   }

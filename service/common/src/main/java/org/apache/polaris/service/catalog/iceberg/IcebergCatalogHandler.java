@@ -82,6 +82,7 @@ import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -125,6 +126,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
+  private final PolarisCredentialManager credentialManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
@@ -143,6 +145,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
+      PolarisCredentialManager credentialManager,
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
@@ -152,6 +155,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
+    this.credentialManager = credentialManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
@@ -199,6 +203,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return userSecretsManager;
   }
 
+  private PolarisCredentialManager getPolarisCredentialManager() {
+    return credentialManager;
+  }
+
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity =
@@ -229,13 +237,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           .build());
           federatedCatalog.initialize(
               ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+              connectionConfigInfoDpo.asIcebergCatalogProperties(
+                  getUserSecretsManager(), getPolarisCredentialManager()));
           break;
         case HADOOP:
           federatedCatalog = new HadoopCatalog();
           federatedCatalog.initialize(
               ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse(),
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+              connectionConfigInfoDpo.asIcebergCatalogProperties(
+                  getUserSecretsManager(), getPolarisCredentialManager()));
           break;
         default:
           throw new UnsupportedOperationException(
