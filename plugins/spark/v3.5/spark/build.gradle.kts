@@ -19,9 +19,7 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
-  id("polaris-client")
-}
+plugins { id("polaris-client") }
 
 // get version information
 val sparkMajorVersion = "3.5"
@@ -154,12 +152,15 @@ tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
-  // archiveBaseName =
-  //   "polaris-spark-${sparkMajorVersion}_${scalaVersion}-iceberg-${icebergVersion}"
   isZip64 = true
 
-  // pack both the source code and dependencies
+  // include the LICENSE and NOTICE files for the shaded Jar
+  from(projectDir) {
+    include("LICENSE")
+    include("NOTICE")
+  }
 
+  // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
