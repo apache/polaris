@@ -41,11 +41,16 @@
 # Then explicitly reverse the ignore rule for a single file:
 #!docs/README.md
 
-.github/workflows/python.yml
-.gitlab-ci.yml
 pyproject.toml
 requirements.txt
 test-requirements.txt
 setup.py
+.gitlab-ci.yml
+.travis.yml
+.github/workflows/python.yml
+git_push.sh
+setup.cfg
+tox.ini
+README.md
 
 

@@ -40,8 +40,8 @@ follows:
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```

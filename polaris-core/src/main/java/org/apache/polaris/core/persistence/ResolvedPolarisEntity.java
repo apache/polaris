@@ -58,23 +58,22 @@ public class ResolvedPolarisEntity {
     diagnostics.checkNotNull(entity, "entity_null");
     diagnostics.checkNotNull(grantRecords, "grant_records_null");
 
-    // we copy all attributes of the entity to avoid any contamination
-    this.entity = PolarisEntity.of(entity);
-
     // if only the grant records have been reloaded because they were changed, the entity will
     // have an old version for those. Patch the entity if this is the case, as if we had reloaded it
-    if (this.entity.getGrantRecordsVersion() != grantsVersion) {
+    if (entity.getGrantRecordsVersion() != grantsVersion) {
       // remember the grants versions. For now grants should be loaded after the entity, so expect
       // grants version to be same or higher
       diagnostics.check(
-          this.entity.getGrantRecordsVersion() <= grantsVersion,
+          entity.getGrantRecordsVersion() <= grantsVersion,
           "grants_version_going_backward",
           "entity={} grantsVersion={}",
           entity,
           grantsVersion);
-
       // patch grant records version
-      this.entity.setGrantRecordsVersion(grantsVersion);
+      this.entity = PolarisEntity.of(entity.withGrantRecordsVersion(grantsVersion));
+    } else {
+      // we copy all attributes of the entity to avoid any contamination
+      this.entity = PolarisEntity.of(entity);
     }
 
     // Split the combined list of grant records into grantee vs securable grants since the main

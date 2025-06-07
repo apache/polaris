@@ -110,13 +110,13 @@ To build Polaris with the necessary H2 dependency and start the Polaris service,
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   -PeclipseLinkDeps=com.h2database:h2:2.3.232
 java -Dpolaris.persistence.type=eclipse-link \
      -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
      -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-     -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+     -jar runtime/server/build/quarkus-app/quarkus-run.jar
 ```
 
 ### Using Postgres

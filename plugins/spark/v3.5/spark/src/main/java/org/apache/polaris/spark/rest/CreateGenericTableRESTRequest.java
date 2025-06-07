@@ -36,13 +36,19 @@ public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
   public CreateGenericTableRESTRequest(
       @JsonProperty(value = "name", required = true) String name,
       @JsonProperty(value = "format", required = true) String format,
+      @JsonProperty(value = "base-location") String baseLocation,
       @JsonProperty(value = "doc") String doc,
       @JsonProperty(value = "properties") Map<String, String> properties) {
-    super(name, format, doc, properties);
+    super(name, format, baseLocation, doc, properties);
   }
 
   public CreateGenericTableRESTRequest(CreateGenericTableRequest request) {
-    this(request.getName(), request.getFormat(), request.getDoc(), request.getProperties());
+    this(
+        request.getName(),
+        request.getFormat(),
+        request.getBaseLocation(),
+        request.getDoc(),
+        request.getProperties());
   }
 
   @Override

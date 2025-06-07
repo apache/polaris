@@ -23,7 +23,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +31,7 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -74,6 +74,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+  @Inject PolarisConfigurationStore configurationStore;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -93,13 +94,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatabaseType databaseType;
-    try {
-      databaseType = getDatabaseType();
-    } catch (SQLException e) {
-      throw new RuntimeException(e);
-    }
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, databaseType);
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -113,20 +108,18 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  protected DatabaseType getDatabaseType() throws SQLException {
-    try (Connection connection = dataSource.get().getConnection()) {
-      String productName = connection.getMetaData().getDatabaseProductName();
-      return DatabaseType.fromDisplayName(productName);
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
+    DatasourceOperations databaseOperations;
+    try {
+      databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+    } catch (SQLException sqlException) {
+      throw new RuntimeException(sqlException);
     }
-  }
-
-  private DatasourceOperations getDatasourceOperations(
-      boolean isBootstrap, DatabaseType databaseType) {
-    DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), databaseType, relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
-        databaseOperations.executeScript(databaseType.getInitScriptResource());
+        // Run the set-up script to create the tables.
+        databaseOperations.executeScript(
+            databaseOperations.getDatabaseType().getInitScriptResource());
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);
@@ -205,7 +198,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(),
+          new StorageCredentialCache(realmContext, configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
@@ -216,7 +210,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
-          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager));
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

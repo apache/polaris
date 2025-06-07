@@ -67,13 +67,25 @@ jobs:
         working-directory: client/python
         run: poetry install --all-extras
 
-      - name: Lint with flake8
+      - name: Lint
         working-directory: client/python
         run: |
-          poetry run flake8 --select=E9,F63,F7,F82 --max-line-length=127 --statistics
+          make lint
 
-      - name: Test with pytest
+      - name: Generated Client Tests
         working-directory: client/python
         run: |
           export SCRIPT_DIR="non-existing-mock-directory"
-          poetry run pytest
+          poetry run pytest test/
+
+      - name: Image build
+        run: |
+          ./gradlew \
+              :polaris-server:assemble \
+              :polaris-server:quarkusAppPartsBuild --rerun \
+              -Dquarkus.container-image.build=true
+
+      - name: Integration Tests
+        working-directory: client/python
+        run: |
+          make test-integration

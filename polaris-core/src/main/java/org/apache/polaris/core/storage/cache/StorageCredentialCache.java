@@ -32,7 +32,8 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -47,10 +48,16 @@ public class StorageCredentialCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
+
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
+  private final RealmContext realmContext;
+  private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache() {
+  public StorageCredentialCache(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    this.realmContext = realmContext;
+    this.configurationStore = configurationStore;
     cache =
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
@@ -62,7 +69,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  maxCacheDurationMs()));
+                                  this.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -73,12 +80,13 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private static long maxCacheDurationMs() {
+  private long maxCacheDurationMs() {
     var cacheDurationSeconds =
-        PolarisConfiguration.loadConfig(
-            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(

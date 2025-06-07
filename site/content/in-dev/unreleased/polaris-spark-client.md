@@ -71,7 +71,7 @@ bin/spark-shell \
 --conf spark.sql.catalog.<spark-catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled=true
 ```
-Assume the released Polaris Spark client you want to use is `org.apache.polaris:polaris-iceberg-1.8.1-spark-runtime-3.5_2.12:1.0.0`,
+Assume the released Polaris Spark client you want to use is `org.apache.polaris:polaris-spark-3.5_2.12:1.0.0`,
 replace the `polaris-spark-client-package` field with the release.
 
 The `spark-catalog-name` is the catalog name you will use with Spark, and `polaris-catalog-name` is the catalog name used 
