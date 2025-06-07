@@ -31,13 +31,7 @@ import jakarta.inject.Inject;
 import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
@@ -577,6 +571,7 @@ public class CatalogHandlerUtils {
     Long snapshotId = base.ref(updateRefName).snapshotId(); // current tip of the given branch
     // ensure this branch has the latest sequence number.
     long expectedSequenceNumber = base.lastSequenceNumber();
+    Set<Long> snapshotsToRemove = new LinkedHashSet<>();
     while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
       Snapshot snap = base.snapshot(snapshotId);
       if (expectedSequenceNumber != snap.sequenceNumber()) {
@@ -587,13 +582,14 @@ public class CatalogHandlerUtils {
         // reference either by branch or a tag.
         break;
       }
-      updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshot(snap.snapshotId()));
+      snapshotsToRemove.add(snap.snapshotId());
       snapshotId = snap.parentId();
       // we need continuous sequence number to correctly rollback
       expectedSequenceNumber--;
     }
 
     boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
+    updateToRemoveSnapshot.add(new MetadataUpdate.RemoveSnapshots(snapshotsToRemove));
     return wasExpectedSnapshotReached ? updateToRemoveSnapshot : null;
   }
 
@@ -635,6 +631,7 @@ public class CatalogHandlerUtils {
   }
 
   private TableMetadata setAppropriateLastSeqNumber(TableMetadata newBase) {
+    // TODO: Get rid of the reflection call once TableMetadata have API for it.
     // move the lastSequenceNumber back, to apply snapshot properly on the
     // current-metadata Seq number are considered increasing monotonically
     // snapshot over snapshot, the client generates the manifest list and hence
@@ -800,6 +797,6 @@ public class CatalogHandlerUtils {
   @VisibleForTesting
   public boolean isRollbackCompactionEnabled() {
     return configurationStore.getConfiguration(
-        polarisCallContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
+        realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
   }
 }
