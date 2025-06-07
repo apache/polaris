@@ -31,8 +31,11 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   public static final String TABLE_NAME = "ENTITIES";
 
+  public static final List<String> PK_COLUMNS = List.of("realm_id", "id");
+
   public static final List<String> ALL_COLUMNS =
       List.of(
+          "realm_id",
           "id",
           "catalog_id",
           "parent_id",
@@ -48,6 +51,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "properties",
           "internal_properties",
           "grant_records_version");
+
+  private String realmId;
 
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
@@ -94,6 +99,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   // current version for that entity, will be monotonically incremented
   private int grantRecordsVersion;
+
+  public String getRealmId() {
+    return realmId;
+  }
 
   public long getId() {
     return id;
@@ -163,6 +172,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   public PolarisBaseEntity fromResultSet(ResultSet r) throws SQLException {
     var modelEntity =
         ModelEntity.builder()
+            .realmId(r.getString("realm_id"))
             .catalogId(r.getObject("catalog_id", Long.class))
             .id(r.getObject("id", Long.class))
             .parentId(r.getObject("parent_id", Long.class))
@@ -188,6 +198,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
+    map.put("realm_id", this.getRealmId());
     map.put("id", this.getId());
     map.put("catalog_id", this.getCatalogId());
     map.put("parent_id", this.getParentId());
@@ -220,6 +231,11 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
     public Builder catalogId(long catalogId) {
       entity.catalogId = catalogId;
+      return this;
+    }
+
+    public Builder realmId(String realmId) {
+      entity.realmId = realmId;
       return this;
     }
 
@@ -298,8 +314,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     }
   }
 
-  public static ModelEntity fromEntity(PolarisBaseEntity entity) {
+  public static ModelEntity fromEntity(PolarisBaseEntity entity, String realmId) {
     return ModelEntity.builder()
+        .realmId(realmId)
         .catalogId(entity.getCatalogId())
         .id(entity.getId())
         .parentId(entity.getParentId())

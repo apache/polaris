@@ -65,8 +65,7 @@ public class DatasourceOperationsTest {
   @Test
   void testExecuteUpdate_success() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    QueryGenerator.PreparedQuery query =
-        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    PreparedQuery query = new PreparedQuery("UPDATE users SET active = ?", List.of());
     when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeUpdate()).thenReturn(1);
 
@@ -78,7 +77,7 @@ public class DatasourceOperationsTest {
   @Test
   void testExecuteUpdate_failure() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    QueryGenerator.PreparedQuery query = new QueryGenerator.PreparedQuery("INVALID SQL", List.of());
+    PreparedQuery query = new PreparedQuery("INVALID SQL", List.of());
     when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
 
     when(mockPreparedStatement.executeUpdate()).thenThrow(new SQLException("demo", "42P07"));
@@ -89,8 +88,7 @@ public class DatasourceOperationsTest {
   @Test
   void testExecuteSelect_exception() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    QueryGenerator.PreparedQuery query =
-        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    PreparedQuery query = new PreparedQuery("SELECT * FROM users", List.of());
     when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
 
