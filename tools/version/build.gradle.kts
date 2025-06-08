@@ -32,9 +32,7 @@ description =
 val syncNoticeAndLicense by
   tasks.registering(Sync::class) {
     // Have to manually declare the inputs of this task here on top of the from/include below
-    inputs.files(fileTree(rootProject.rootDir) {
-      include("NOTICE*", "LICENSE*", "version.txt")
-    })
+    inputs.files(rootProject.layout.files("NOTICE*", "LICENSE*", "version.txt"))
     inputs.property("version", project.version)
     destinationDir = project.layout.buildDirectory.dir("notice-licenses").get().asFile
     from(rootProject.rootDir) {
