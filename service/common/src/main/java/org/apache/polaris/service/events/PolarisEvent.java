@@ -18,8 +18,22 @@
  */
 package org.apache.polaris.service.events;
 
-/**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
- */
-public interface PolarisEvent {}
+import java.util.UUID;
+
+/** Represents an event emitted by Polaris. */
+public abstract class PolarisEvent {
+  private final String eventId = UUID.randomUUID().toString();
+  private final long timestampMs = System.currentTimeMillis();
+
+  public static String createRequestId() {
+    return UUID.randomUUID().toString();
+  }
+
+  public String getEventId() {
+    return eventId;
+  }
+
+  public long getTimestampMs() {
+    return timestampMs;
+  }
+}

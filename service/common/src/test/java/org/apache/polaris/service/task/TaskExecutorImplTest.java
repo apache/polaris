@@ -28,7 +28,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -80,9 +80,9 @@ public class TaskExecutorImplTest {
           public boolean handleTask(TaskEntity task, CallContext callContext) {
             var beforeTaskAttemptedEvent =
                 testPolarisEventListener.getLatest(BeforeTaskAttemptedEvent.class);
-            Assertions.assertEquals(taskEntity.getId(), beforeTaskAttemptedEvent.taskEntityId());
-            Assertions.assertEquals(callContext, beforeTaskAttemptedEvent.callContext());
-            Assertions.assertEquals(attempt, beforeTaskAttemptedEvent.attempt());
+            Assertions.assertEquals(taskEntity.getId(), beforeTaskAttemptedEvent.getTaskEntityId());
+            Assertions.assertEquals(callContext, beforeTaskAttemptedEvent.getCallContext());
+            Assertions.assertEquals(attempt, beforeTaskAttemptedEvent.getAttempt());
             return true;
           }
         });
@@ -90,9 +90,10 @@ public class TaskExecutorImplTest {
     executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterTaskAttemptedEvent.class);
-    Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
-    Assertions.assertEquals(polarisCallCtx, afterAttemptTaskEvent.callContext());
-    Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());
-    Assertions.assertTrue(afterAttemptTaskEvent.success());
+
+    Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.getTaskEntityId());
+    Assertions.assertEquals(polarisCallCtx, afterAttemptTaskEvent.getCallContext());
+    Assertions.assertEquals(attempt, afterAttemptTaskEvent.getAttempt());
+    Assertions.assertTrue(afterAttemptTaskEvent.isSuccess());
   }
 }

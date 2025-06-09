@@ -77,6 +77,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
@@ -141,6 +142,7 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -153,7 +155,8 @@ public class IcebergCatalogAdapter
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      PolarisEventListener polarisEventListener) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
@@ -164,6 +167,7 @@ public class IcebergCatalogAdapter
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.polarisEventListener = polarisEventListener;
 
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
@@ -203,7 +207,8 @@ public class IcebergCatalogAdapter
         catalogName,
         polarisAuthorizer,
         reservedProperties,
-        catalogHandlerUtils);
+        catalogHandlerUtils,
+        polarisEventListener);
   }
 
   @Override
@@ -342,11 +347,11 @@ public class IcebergCatalogAdapter
     validateIcebergProperties(callContext, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
-    Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
+          Namespace ns = decodeNamespace(namespace);
           if (createTableRequest.stageCreate()) {
             if (delegationModes.isEmpty()) {
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();

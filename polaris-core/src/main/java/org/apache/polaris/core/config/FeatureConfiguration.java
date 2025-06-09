@@ -287,4 +287,35 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "This should only be set to 'true' for tests!")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> EVENT_BUFFER_TIME_TO_FLUSH_IN_MS =
+      PolarisConfiguration.<Integer>builder()
+          .key("EVENT_BUFFER_TIME_TO_FLUSH_IN_MS")
+          .description(
+              "The minimum amount of time (in ms) before events in the buffer flush to the persistence")
+          .defaultValue(30 * 1000) // Flush every 30s
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> EVENT_BUFFER_NUM_SHARDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("EVENT_BUFFER_NUM_SHARDS")
+          .description("The amount of shards available for event buffers")
+          .defaultValue(5)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> EVENT_BUFFER_NUM_THREADS =
+      PolarisConfiguration.<Integer>builder()
+          .key("EVENT_BUFFER_NUM_THREADS")
+          .description("The amount of threads available for processing event buffers")
+          .defaultValue(1)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> EVENT_BUFFER_MAX_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("EVENT_BUFFER_MAX_SIZE")
+          .description(
+              "The maximum amount of events allowed in a buffer for processing event buffers. "
+                  + "If a buffer goes over this size, it will be dumped to the sink.")
+          .defaultValue(5)
+          .buildFeatureConfiguration();
 }

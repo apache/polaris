@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.Connection;
@@ -41,6 +42,7 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
@@ -59,7 +61,9 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
@@ -222,6 +226,34 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to grant records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    int batchSize = 10;
+
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            List<List<List<Object>>> batchedModelEvents =
+                Lists.partition(
+                    events.stream()
+                        .map(e -> ModelEvent.fromEvent(e).toMap(datasourceOperations.getDatabaseType()).values().stream().toList())
+                        .toList(),
+                    batchSize);
+            for (List<List<Object>> batchedModelEvent : batchedModelEvents) {
+              datasourceOperations.execute(connection, QueryGenerator.generateMultipleInsertQuery(
+                      ModelEvent.ALL_COLUMNS,
+                      ModelEvent.TABLE_NAME,
+                      batchedModelEvent,
+                      realmId));
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write events due to %s", e.getMessage()), e);
     }
   }
 

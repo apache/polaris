@@ -78,6 +78,10 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
+import org.apache.polaris.service.events.BeforeCatalogCreatedEvent;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +99,7 @@ public class PolarisServiceImpl
   private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
   private final ReservedProperties reservedProperties;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisServiceImpl(
@@ -103,13 +108,15 @@ public class PolarisServiceImpl
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      PolarisEventListener polarisEventListener) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
     this.reservedProperties = reservedProperties;
+    this.polarisEventListener = polarisEventListener;
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
   }
@@ -142,12 +149,24 @@ public class PolarisServiceImpl
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
+    String requestId = PolarisEvent.createRequestId();
+    polarisEventListener.onBeforeCatalogCreated(
+        new BeforeCatalogCreatedEvent(
+            request.getCatalog().getName(),
+            requestId,
+            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateConnectionConfigInfo(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
+    polarisEventListener.onAfterCatalogCreated(
+        new AfterCatalogCreatedEvent(
+            newCatalog.getName(),
+            requestId,
+            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        callContext);
     return Response.status(Response.Status.CREATED).build();
   }
 
