@@ -18,8 +18,8 @@
  */
 
 plugins {
-    id("polaris-server")
-    id("polaris-checkstyle")
+  id("polaris-server")
+  id("polaris-checkstyle")
 }
 
 description = "Generates Polaris reference docs"

@@ -30,11 +30,11 @@ import org.apache.polaris.service.types.ListGenericTablesResponse;
  * currently required because the Iceberg HTTPClient requires the request and response to be a class
  * of RESTRequest and RESTResponse.
  */
-public class ListGenericTablesRESTResponse extends ListGenericTablesResponse
+public class ListGenericTablesRestResponse extends ListGenericTablesResponse
     implements RESTResponse {
 
   @JsonCreator
-  public ListGenericTablesRESTResponse(
+  public ListGenericTablesRestResponse(
       @JsonProperty(value = "next-page-token") String nextPageToken,
       @JsonProperty(value = "identifiers") Set<TableIdentifier> identifiers) {
     super(nextPageToken, identifiers);

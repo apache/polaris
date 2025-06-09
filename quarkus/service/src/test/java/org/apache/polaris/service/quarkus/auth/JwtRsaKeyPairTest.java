@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-public class JWTRSAKeyPairTest {
+public class JwtRsaKeyPairTest {
 
   @Inject protected PolarisConfigurationStore configurationStore;
 

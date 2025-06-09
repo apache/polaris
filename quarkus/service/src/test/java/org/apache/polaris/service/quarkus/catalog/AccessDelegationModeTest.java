@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.*;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesList;
 import static org.assertj.core.api.Assertions.assertThat;

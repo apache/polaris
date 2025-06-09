@@ -29,11 +29,11 @@ import org.apache.polaris.service.types.CreateGenericTableRequest;
  * currently required because the Iceberg HTTPClient requires the request and response to be a class
  * of RESTRequest and RESTResponse.
  */
-public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
+public class CreateGenericTableRestRequest extends CreateGenericTableRequest
     implements RESTRequest {
 
   @JsonCreator
-  public CreateGenericTableRESTRequest(
+  public CreateGenericTableRestRequest(
       @JsonProperty(value = "name", required = true) String name,
       @JsonProperty(value = "format", required = true) String format,
       @JsonProperty(value = "doc") String doc,
@@ -41,7 +41,7 @@ public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
     super(name, format, doc, properties);
   }
 
-  public CreateGenericTableRESTRequest(CreateGenericTableRequest request) {
+  public CreateGenericTableRestRequest(CreateGenericTableRequest request) {
     this(request.getName(), request.getFormat(), request.getDoc(), request.getProperties());
   }
 
