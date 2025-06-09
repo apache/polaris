@@ -70,12 +70,12 @@ public class UserSecretReference {
   public UserSecretReference(
       @JsonProperty(value = "urn", required = true) @Nonnull String urn,
       @JsonProperty(value = "referencePayload") @Nullable Map<String, String> referencePayload) {
-    // TODO: Add better/standardized parsing and validation of URN syntax
     Preconditions.checkArgument(
-        urn.startsWith("urn:polaris-secret:") && urn.split(":").length >= 4,
-        "Invalid secret URN '%s'; must be of the form "
-            + "'urn:polaris-secret:<secret-manager-type>:<type-specific-identifier>'",
-        urn);
+        UserSecretReferenceUrnHelper.isValid(urn),
+        "Invalid secret URN: "
+            + urn
+            + "; must be of the form: "
+            + UserSecretReferenceUrnHelper.getUrnPattern());
     this.urn = urn;
     this.referencePayload = Objects.requireNonNullElse(referencePayload, new HashMap<>());
   }
@@ -88,8 +88,7 @@ public class UserSecretReference {
    */
   @JsonIgnore
   public String getUserSecretManagerTypeFromUrn() {
-    // TODO: Add better/standardized parsing and validation of URN syntax
-    return urn.split(":")[2];
+    return UserSecretReferenceUrnHelper.getSecretManagerType(urn);
   }
 
   public @Nonnull String getUrn() {
