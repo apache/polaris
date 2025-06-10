@@ -38,31 +38,31 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   // the type of the entity when it was resolved
-  protected int subTypeCode;
+  protected final int subTypeCode;
 
   // timestamp when this entity was created
-  protected long createTimestamp;
+  protected final long createTimestamp;
 
   // when this entity was dropped. Null if was never dropped
-  protected long dropTimestamp;
+  protected final long dropTimestamp;
 
   // when did we start purging this entity. When not null, un-drop is no longer possible
-  protected long purgeTimestamp;
+  protected final long purgeTimestamp;
 
   // when should we start purging this entity
-  protected long toPurgeTimestamp;
+  protected final long toPurgeTimestamp;
 
   // last time this entity was updated, only for troubleshooting
-  protected long lastUpdateTimestamp;
+  protected final long lastUpdateTimestamp;
 
   // properties, serialized as a JSON string
-  protected String properties;
+  protected final String properties;
 
   // internal properties, serialized as a JSON string
-  protected String internalProperties;
+  protected final String internalProperties;
 
   // current version for that entity, will be monotonically incremented
-  protected int grantRecordsVersion;
+  protected final int grantRecordsVersion;
 
   public int getSubTypeCode() {
     return subTypeCode;
@@ -289,9 +289,52 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     this.grantRecordsVersion = 1;
   }
 
+  public PolarisBaseEntity(
+      long catalogId,
+      long id,
+      int typeCode,
+      long parentId,
+      String name,
+      int subTypeCode,
+      long createTimestamp,
+      long dropTimestamp,
+      long purgeTimestamp,
+      long lastUpdateTimestamp,
+      String properties,
+      String internalProperties,
+      int grantRecordsVersion,
+      int entityVersion) {
+    super(
+        new PolarisEntityCore.Builder<>()
+            .catalogId(catalogId)
+            .id(id)
+            .parentId(parentId)
+            .typeCode(typeCode)
+            .name(name)
+            .entityVersion(entityVersion == 0 ? 1 : entityVersion));
+    this.subTypeCode = subTypeCode;
+    this.createTimestamp = createTimestamp;
+    this.dropTimestamp = dropTimestamp;
+    this.purgeTimestamp = purgeTimestamp;
+    this.toPurgeTimestamp = 0;
+    this.lastUpdateTimestamp = lastUpdateTimestamp;
+    this.properties = properties;
+    this.internalProperties = internalProperties;
+    this.grantRecordsVersion = grantRecordsVersion;
+  }
+
   /** Build the DTO for a new entity */
   protected PolarisBaseEntity() {
     super(new PolarisBaseEntity.Builder());
+    this.subTypeCode = 0;
+    this.createTimestamp = 0L;
+    this.dropTimestamp = 0L;
+    this.purgeTimestamp = 0L;
+    this.toPurgeTimestamp = 0L;
+    this.lastUpdateTimestamp = 0L;
+    this.properties = null;
+    this.internalProperties = null;
+    this.grantRecordsVersion = 0;
   }
 
   /**

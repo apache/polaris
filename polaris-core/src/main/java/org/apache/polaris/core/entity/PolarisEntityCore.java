@@ -31,22 +31,22 @@ public class PolarisEntityCore {
 
   // the id of the catalog associated to that entity. NULL_ID if this entity is top-level like
   // a catalog
-  protected long catalogId;
+  protected final long catalogId;
 
   // the id of the entity which was resolved
-  protected long id;
+  protected final long id;
 
   // the id of the parent of this entity, use 0 for a top-level entity whose parent is the account
-  protected long parentId;
+  protected final long parentId;
 
   // the type of the entity when it was resolved
-  protected int typeCode;
+  protected final int typeCode;
 
   // the name that this entity had when it was resolved
-  protected String name;
+  protected final String name;
 
   // the version that this entity had when it was resolved
-  protected int entityVersion;
+  protected final int entityVersion;
 
   PolarisEntityCore(Builder<?, ?> builder) {
     this.catalogId = builder.catalogId;
