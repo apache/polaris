@@ -114,6 +114,7 @@ public interface PolarisMetaStoreManager
    * @param entityType entity type
    * @param entitySubType entity subtype. Can be the special value ANY_SUBTYPE to match any subtype.
    *     Else exact match will be performed.
+   * @param pageToken
    * @return all entities name, ids and subtype under the specified namespace.
    */
   @Nonnull

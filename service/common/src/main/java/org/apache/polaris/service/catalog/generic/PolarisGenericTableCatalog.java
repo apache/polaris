@@ -192,7 +192,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
                     PolarisEntityType.TABLE_LIKE,
                     PolarisEntitySubType.GENERIC_TABLE,
                     PageToken.readEverything())
-                .getEntities());
+                .getEntities()
+                .items());
     return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
   }
 }

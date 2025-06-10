@@ -18,82 +18,85 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
-import java.util.Objects;
+import static com.google.common.base.Preconditions.checkState;
 
-/**
- * Represents a page token that can be used by operations like `listTables`. Clients that specify a
- * `pageSize` (or a `pageToken`) may receive a `next-page-token` in the response, the content of
- * which is a serialized PageToken.
- *
- * <p>By providing that in the next query's `pageToken`, the client can resume listing where they
- * left off. If the client provides a `pageToken` or `pageSize` but `next-page-token` is null in the
- * response, that means there is no more data to read.
- */
-public abstract class PageToken {
+import jakarta.annotation.Nullable;
 
-  /** Build a new PageToken that reads everything */
+/** A wrapper for pagination information passed in as part of a request. */
+public class PageToken {
+  private final @Nullable String encodedDataReference;
+  private final int pageSize;
+
+  PageToken(@Nullable String encodedDataReference, int pageSize) {
+    this.encodedDataReference = encodedDataReference;
+    this.pageSize = pageSize;
+  }
+
+  /** Represents a non-paginated request. */
   public static PageToken readEverything() {
-    return build(null, null);
+    return new PageToken(null, -1);
   }
 
-  /** Build a new PageToken from an input String, without a specified page size */
-  public static PageToken fromString(String token) {
-    return build(token, null);
+  /** Represents a request to start paginating with a particular page size. */
+  public static PageToken fromLimit(int limit) {
+    return new PageToken(null, limit);
   }
-
-  /** Build a new PageToken from a limit */
-  public static PageToken fromLimit(Integer pageSize) {
-    return build(null, pageSize);
-  }
-
-  /** Build a {@link PageToken} from the input string and page size */
-  public static PageToken build(String token, Integer pageSize) {
-    if (token == null || token.isEmpty()) {
-      if (pageSize != null) {
-        return new LimitPageToken(pageSize);
-      } else {
-        return new ReadEverythingPageToken();
-      }
-    } else {
-      // TODO implement, split out by the token's prefix
-      throw new IllegalArgumentException("Unrecognized page token: " + token);
-    }
-  }
-
-  /** Serialize a {@link PageToken} into a string */
-  public abstract String toTokenString();
 
   /**
-   * Builds a new page token to reflect new data that's been read. If the amount of data read is
-   * less than the pageSize, this will return a {@link DonePageToken}
+   * Reconstructs a page token from the API-level page token string (returned to the client in the
+   * response to a previous request for similar data) and an API-level new requested page size.
+   *
+   * @param encodedPageToken page token from the {@link Page#encodedResponseToken() previous page}
+   * @param requestedPageSize optional page size for the next page. If not set, the page size of the
+   *     previous page (encoded in the page token string) will be reused.
+   * @see Page#encodedResponseToken()
    */
-  protected abstract PageToken updated(List<?> newData);
+  public static PageToken decode(
+      @Nullable String encodedPageToken, @Nullable Integer requestedPageSize) {
+    return PageTokenUtil.decodePageRequest(encodedPageToken, requestedPageSize);
+  }
 
   /**
-   * Builds a {@link Page <T>} from a {@link List<T>}. The {@link PageToken} attached to the new
-   * {@link Page <T>} is the same as the result of calling {@link #updated(List)} on this {@link
-   * PageToken}.
+   * Returns whether requests using this page token should produce paginated responses ({@code
+   * true}) or return all available data ({@code false}).
    */
-  public final <T> Page<T> buildNextPage(List<T> data) {
-    return new Page<T>(updated(data), data);
+  public boolean paginationRequested() {
+    return pageSize > 0;
   }
 
-  @Override
-  public final boolean equals(Object o) {
-    if (o instanceof PageToken) {
-      return Objects.equals(this.toTokenString(), ((PageToken) o).toTokenString());
-    } else {
-      return false;
-    }
+  /**
+   * Returns whether this token has an opaque reference that should be used to produce the next
+   * response page ({@code true}), or whether the response should start from the first page of
+   * available data ({@code false}).
+   */
+  public boolean hasDataReference() {
+    return paginationRequested() && encodedDataReference != null;
   }
 
-  @Override
-  public final int hashCode() {
-    if (toTokenString() == null) {
-      return 0;
-    } else {
-      return toTokenString().hashCode();
-    }
+  /**
+   * Returns the encoded form of the internal pointer to a page of data. This data should be
+   * interpreted by the code that actually handles pagination for this request (usually at the
+   * Persistence layer). This piece of code is normally the code that produced the {@link Page} of
+   * data in response to the previous request.
+   *
+   * <p>If this request is not related to a previous page, {@code null} will be returned.
+   *
+   * @throws IllegalStateException if this method is called when {@link #paginationRequested()} is
+   *     {@code false}
+   */
+  public @Nullable String encodedDataReference() {
+    checkState(paginationRequested(), "Pagination was not requested.");
+    return encodedDataReference;
+  }
+
+  /**
+   * Returns the requested results page size.
+   *
+   * @throws IllegalStateException if this method is called when {@link #paginationRequested()} is
+   *     {@code false}
+   */
+  public int pageSize() {
+    checkState(paginationRequested(), "Pagination was not requested.");
+    return pageSize;
   }
 }

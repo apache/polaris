@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -39,7 +40,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.EntityIdPaging;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -361,13 +362,19 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .map(
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-            .filter(entityFilter);
-    if (pageToken instanceof HasPageSize) {
-      data = data.limit(((HasPageSize) pageToken).getPageSize());
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
+
+    Predicate<PolarisBaseEntity> tokenFilter = e -> true;
+    if (pageToken.hasDataReference()) {
+      long nextId = EntityIdPaging.entityIdBoundary(pageToken);
+      tokenFilter = e -> e.getId() > nextId;
     }
 
-    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
+    data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
+
+    data = data.filter(entityFilter);
+
+    return Page.mapped(pageToken, data, transformer, EntityIdPaging::encodedDataReference);
   }
 
   /** {@inheritDoc} */

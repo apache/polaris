@@ -129,7 +129,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
                 PolarisEntityType.TASK,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PageToken.readEverything())
-            .getEntities();
+            .getEntities()
+            .items();
     Assertions.assertThat(listedEntities)
         .isNotNull()
         .hasSize(2)

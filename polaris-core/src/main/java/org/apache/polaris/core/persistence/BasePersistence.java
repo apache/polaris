@@ -315,6 +315,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *     returns true are returned in the list
    * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
    *     returning
+   * @param pageToken
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull

@@ -171,6 +171,7 @@ public class PolicyCatalog {
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PageToken.readEverything())
             .getEntities()
+            .items()
             .stream()
             .map(
                 polarisEntityActiveRecord ->
