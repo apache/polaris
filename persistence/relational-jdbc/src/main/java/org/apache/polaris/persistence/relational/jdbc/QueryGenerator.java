@@ -150,11 +150,15 @@ public class QueryGenerator {
           List<List<Object>> values,
           String realmId) {
     List<String> finalColumns = new ArrayList<>(allColumns);
-    List<List<Object>> transformedValues = new ArrayList<>(values);
+    List<List<Object>> transformedValues = new ArrayList<>(values.size());
     finalColumns.add("realm_id");
-    for (List<Object> value : transformedValues) {
-      value.add(realmId);
+
+    for (List<Object> value : values) {
+      List<Object> transformedValue = new ArrayList<>(value);
+      transformedValue.add(realmId);
+      transformedValues.add(transformedValue);
     }
+
     List<Object> finalValues = transformedValues.stream().flatMap(List::stream).collect(Collectors.toList());
     String columns = String.join(", ", finalColumns);
     String placeholders = transformedValues.stream().map(l -> "( " + l.stream().map(c -> "?").collect(Collectors.joining(", ")) + " )").collect(Collectors.joining(", "));

@@ -22,6 +22,7 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -33,8 +34,6 @@ public class ModelEvent implements Converter<PolarisEvent> {
   public static final List<String> ALL_COLUMNS =
           List.of(
                   "catalog_id",
-                  "id",
-                  "parent_id",
                   "event_id",
                   "request_id",
                   "event_type",
@@ -130,14 +129,14 @@ public class ModelEvent implements Converter<PolarisEvent> {
 
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
-    Map<String, Object> map = new HashMap<>();
+    Map<String, Object> map = new LinkedHashMap<>();
     map.put("catalog_id", this.catalogId);
     map.put("event_id", this.eventId);
     map.put("request_id", this.requestId);
     map.put("event_type", this.eventType);
     map.put("timestamp_ms", this.timestampMs);
     map.put("principal_name", this.principalName);
-    map.put("resource_type", this.resourceType);
+    map.put("resource_type", this.resourceType.toString());
     map.put("resource_identifier", this.resourceIdentifier);
     if (databaseType.equals(DatabaseType.POSTGRES)) {
       map.put("additional_parameters", toJsonbPGobject(this.additionalParameters));
