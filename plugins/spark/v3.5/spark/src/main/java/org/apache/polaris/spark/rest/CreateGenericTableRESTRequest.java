@@ -46,7 +46,7 @@ public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
     this(
         request.getName(),
         request.getFormat(),
-        request.getLocation(),
+        request.getBaseLocation(),
         request.getDoc(),
         request.getProperties());
   }
