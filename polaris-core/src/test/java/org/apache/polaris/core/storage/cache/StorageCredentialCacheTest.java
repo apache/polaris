@@ -72,12 +72,16 @@ public class StorageCredentialCacheTest {
         new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
+  }
+
+  private StorageCredentialCache getStorageCredentialCache() {
+    return new StorageCredentialCache(callCtx.getRealmContext(), callCtx.getConfigurationStore());
   }
 
   @Test
   public void testBadResult() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     ScopedCredentialsResult badResult =
         new ScopedCredentialsResult(
             BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
@@ -110,7 +114,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheHit() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -153,7 +157,7 @@ public class StorageCredentialCacheTest {
 
   @RepeatedTest(10)
   public void testCacheEvict() throws InterruptedException {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds = getFakeScopedCreds(3, /* expireSoon= */ true);
 
     Mockito.when(
@@ -211,7 +215,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheGenerateNewEntries() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -298,7 +302,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheNotAffectedBy() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
 
@@ -443,7 +447,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testAzureCredentialFormatting() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         List.of(
             new ScopedCredentialsResult(
@@ -532,7 +536,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testExtraProperties() {
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = getStorageCredentialCache();
     ScopedCredentialsResult properties =
         new ScopedCredentialsResult(
             new EnumMap<>(

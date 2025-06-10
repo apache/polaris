@@ -258,7 +258,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(realmContext, configurationStore),
+            createEntityCache(metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -424,7 +426,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+        return new StorageCredentialCache(realmContext, configurationStore);
       }
 
       @Override

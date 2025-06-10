@@ -207,7 +207,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(),
+          new StorageCredentialCache(realmContext, configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());

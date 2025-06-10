@@ -32,7 +32,6 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -55,7 +54,8 @@ public class StorageCredentialCache {
   private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+  public StorageCredentialCache(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
     this.realmContext = realmContext;
     this.configurationStore = configurationStore;
     cache =
@@ -81,10 +81,12 @@ public class StorageCredentialCache {
 
   /** How long credentials should remain in the cache. */
   private long maxCacheDurationMs() {
-    var cacheDurationSeconds = configurationStore
-        .getConfiguration(realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
-    var credentialDurationSeconds = configurationStore
-        .getConfiguration(realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+    var cacheDurationSeconds =
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+    var credentialDurationSeconds =
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(

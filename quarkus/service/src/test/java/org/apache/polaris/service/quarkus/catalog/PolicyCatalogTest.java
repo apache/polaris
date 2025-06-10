@@ -203,7 +203,7 @@ public class PolicyCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
+            new StorageCredentialCache(realmContext, configurationStore),
             new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     callContext = polarisContext;
@@ -326,7 +326,7 @@ public class PolicyCatalogTest {
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+        return new StorageCredentialCache(realmContext, configurationStore);
       }
 
       @Override
