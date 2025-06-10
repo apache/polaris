@@ -20,7 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
 }
 
 configurations.all {

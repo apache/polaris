@@ -86,10 +86,10 @@ jobs:
         run: |
           eval $(minikube -p minikube docker-env)
           ./gradlew \
-            :polaris-quarkus-server:assemble \
-            :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-            :polaris-quarkus-admin:assemble \
-            :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+            :polaris-runtime-server:assemble \
+            :polaris-runtime-server:quarkusAppPartsBuild --rerun \
+            :polaris-runtime-admin:assemble \
+            :polaris-runtime-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true
           minikube image ls
 
