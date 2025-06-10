@@ -211,8 +211,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
 
+  protected String realmName;
+
   private IcebergCatalog catalog;
-  private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
@@ -428,7 +429,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
       @Override
       public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
       }
 
       @Override

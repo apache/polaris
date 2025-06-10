@@ -178,7 +178,7 @@ public class PolarisGenericTableCatalogTest {
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
-            new InMemoryEntityCache(metaStoreManager));
+            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -307,7 +307,7 @@ public class PolarisGenericTableCatalogTest {
 
       @Override
       public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
       }
 
       @Override
