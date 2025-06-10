@@ -52,8 +52,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @Inject
   protected EclipseLinkPolarisMetaStoreManagerFactory(
-      PolarisDiagnostics diagnostics,
-      PolarisConfigurationStore configurationStore) {
+      PolarisDiagnostics diagnostics, PolarisConfigurationStore configurationStore) {
     super(diagnostics, configurationStore);
   }
 

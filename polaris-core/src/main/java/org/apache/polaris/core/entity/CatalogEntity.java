@@ -261,7 +261,6 @@ public class CatalogEntity extends PolarisEntity {
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -302,19 +301,6 @@ public class CatalogEntity extends PolarisEntity {
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
       return this;
-    }
-
-    /** Validate the number of allowed locations not exceeding the max value. */
-    private void validateMaxAllowedLocations(Collection<String> allowedLocations) {
-      int maxAllowedLocations =
-          BehaviorChangeConfiguration.loadConfig(
-              BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
-      if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Number of configured locations (%s) exceeds the limit of %s",
-                allowedLocations.size(), maxAllowedLocations));
-      }
     }
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
