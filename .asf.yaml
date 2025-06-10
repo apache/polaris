@@ -72,7 +72,6 @@ github:
   collaborators:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
     - renovate-bot
-    - gh-yzou
     - nssalian
     - adnanhemani
 
