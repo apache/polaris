@@ -20,7 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
 }
 
 // get version information
@@ -43,7 +43,7 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-runtime-service"))
 
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
@@ -72,7 +72,7 @@ dependencies {
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   )
 
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
