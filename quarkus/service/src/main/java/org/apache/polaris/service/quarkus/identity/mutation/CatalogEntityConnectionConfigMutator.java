@@ -29,10 +29,10 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.service.identity.mutation.AppliesTo;
 import org.apache.polaris.core.identity.mutation.EntityMutator;
 import org.apache.polaris.core.identity.mutation.MutationPoint;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.service.identity.mutation.AppliesTo;
 
 /**
  * Entity mutator that injects a {@link ServiceIdentityInfoDpo} into a passthrough {@link

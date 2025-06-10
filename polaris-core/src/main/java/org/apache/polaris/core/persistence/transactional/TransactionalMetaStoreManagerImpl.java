@@ -478,7 +478,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // CATALOG_PRE_PERSIST mutation point
     EntityMutationEngine entityMutationEngine = callCtx.getEntityMutationEngine();
     if (entityMutationEngine != null) {
-      entityMutationEngine.applyMutations(MutationPoint.CATALOG_PRE_PERSIST, catalog);
+      catalog = entityMutationEngine.applyMutations(MutationPoint.CATALOG_PRE_PERSIST, catalog);
     }
 
     // now create and persist new catalog entity

@@ -22,7 +22,8 @@ package org.apache.polaris.core.identity.mutation;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 /**
- * A transformation hook that mutates a Polaris entity.
+ * A transformation hook that mutates a Polaris entity. The mutator must create a new transformed
+ * copy of the entity rather than mutating them in-place.
  *
  * <p>Implementations of this interface apply custom logic to modify or enrich a {@link
  * PolarisBaseEntity}.

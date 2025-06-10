@@ -23,7 +23,6 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.identity.mutation.EntityMutator;
-import org.apache.polaris.service.identity.mutation.AppliesTo;
 
 /**
  * A no-op implementation of {@link EntityMutator} that returns the entity unchanged.
