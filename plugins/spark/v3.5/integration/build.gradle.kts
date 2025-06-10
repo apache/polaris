@@ -60,6 +60,7 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-core")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+
   // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
   // of spark-sql dependency
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.1")
