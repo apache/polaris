@@ -23,7 +23,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -93,13 +92,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatabaseType databaseType;
-    try {
-      databaseType = getDatabaseType();
-    } catch (SQLException e) {
-      throw new RuntimeException(e);
-    }
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, databaseType);
+    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -113,20 +106,14 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  protected DatabaseType getDatabaseType() throws SQLException {
-    try (Connection connection = dataSource.get().getConnection()) {
-      String productName = connection.getMetaData().getDatabaseProductName();
-      return DatabaseType.fromDisplayName(productName);
-    }
-  }
-
-  private DatasourceOperations getDatasourceOperations(
-      boolean isBootstrap, DatabaseType databaseType) {
+  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
     DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), databaseType, relationalJdbcConfiguration);
+        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     if (isBootstrap) {
       try {
-        databaseOperations.executeScript(databaseType.getInitScriptResource());
+        // Run the set-up script to create the tables.
+        databaseOperations.executeScript(
+            databaseOperations.getDatabaseType().getInitScriptResource());
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);
