@@ -961,10 +961,10 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.6
-Group: io.micrometer Name: micrometer-core Version: 1.14.6
-Group: io.micrometer Name: micrometer-observation Version: 1.14.6
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.6
+Group: io.micrometer Name: micrometer-commons Version: 1.15.1
+Group: io.micrometer Name: micrometer-core Version: 1.15.1
+Group: io.micrometer Name: micrometer-observation Version: 1.15.1
+Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.15.1
 Project URL: https://github.com/micrometer-metrics/micrometer
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1053,8 +1053,8 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.6
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.6
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.7
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.7
 Project URL: https://github.com/reactor/reactor-netty
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
