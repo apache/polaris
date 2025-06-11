@@ -202,124 +202,366 @@
 
 --------------------------------------------------------------------------------
 
-This product includes a gradle wrapper.
-
-* gradlew
-* gradle/wrapper/gradle-wrapper.properties
-
-Copyright: 2010-2019 Gradle Authors.
-Home page: https://github.com/gradle/gradle
-License: https://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
 This product includes code from Apache Iceberg.
 
-* spec/iceberg-rest-catalog-open-api.yaml
-* spec/polaris-catalog-apis/oauth-tokens-api.yaml
-* integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationTest.java
-* service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
-* service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/CatalogHandlerUtils.java
-* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisSparkCatalog.java
-* plugins/spark/v3.5/spark/src/test/java/org/apache/polaris/spark/PolarisInMemoryCatalog.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
 
-Copyright: Copyright 2017-2025 The Apache Software Foundation
+Copyright: 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
 License: https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
-This product includes code from OpenAPITool openapi-generator
+This binary artifact contains Apache Iceberg.
 
-* server-templates/formParams.mustache
-* server-templates/apiService.mustache
-* server-templates/bodyParams.mustache
-* server-templates/pojo.mustache
-* server-templates/headerParams.mustache
-* server-templates/apiServiceImpl.mustache
-* server-templates/queryParams.mustache
-* server-templates/api.mustache
-
-Copyright: Copyright 2018 OpenAPI-Generator Contributors (https://openapi-generator.tech) 
-           Copyright 2018 SmartBear Software
-Home page: https://openapi-generator.tech/
-License: https://www.apache.org/licenses/LICENSE-2.0
+Copyright: 2017-2025 The Apache Software Foundation
+Project URL: https://iceberg.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product includes code from Google Docsy.
+This binary artifact contains Apache Spark.
 
-* site/layouts/community/list.html
-* site/layouts/docs/baseof.html
-* site/layouts/partials/community_links.html
-* site/layouts/partials/head.html
-* site/layouts/partials/navbar.html
-* site/layouts/shortcodes/redoc-polaris.html
-
-Home page: https://www.docsy.dev/
-License: https://www.apache.org/licenses/LICENSE-2.0
+Copyright: 2014 and onwards The Apache Software Foundation
+Project URL: https://spark.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product includes code from Project Nessie.
+This binary artifact contains Guava.
 
-* build-logic/src/main/kotlin/LicenseFileValidation.kt
-* build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerPlugin.kt
-* build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerExtension.kt
-* build-logic/src/main/kotlin/publishing/PublishingHelperPlugin.kt
-* build-logic/src/main/kotlin/Utilities.kt
-* build-logic/src/main/kotlin/polaris-shadow-jar.gradle.kts
-* build-logic/src/main/kotlin/polaris-quarkus.gradle.kts
-* tools/config-docs/annotations/src/main/java/org/apache/polaris/docs/ConfigDocs.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/DocGenDoclet.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownFormatter.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownPropertyFormatter.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownTypeFormatter.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertiesConfigItem.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertiesConfigPageGroup.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertiesConfigs.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/PropertyInfo.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigMappingInfo.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigPropertyInfo.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/SmallRyeConfigs.java
-* tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/ReferenceConfigDocsGenerator.java
-* tools/config-docs/generator/src/test/java/org/apache/polaris/docs/generator/TestDocGenTool.java
-* tools/config-docs/generator/src/test/java/tests/properties/ConfigProps.java
-* tools/config-docs/generator/src/test/java/tests/properties/MoreProps.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/AllTypes.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/ExtremelyNested.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceOne.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceThree.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceTwo.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/MappedA.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedA.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedA1.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedA11.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedA2.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedB.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedB1.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedB12.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionA.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionB.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionC.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionTypeA.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionTypeB.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/NestedSectionsRoot.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/OtherMapped.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
-* tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
-* quarkus/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
-* helm/polaris/tests/logging_storage_test.yaml
-* helm/polaris/tests/quantity_test.yaml
-* helm/polaris/tests/service_monitor_test.yaml
-* helm/polaris/templates/_helpers.tpl
-* helm/polaris/templates/serviceaccount.yaml
-* helm/polaris/templates/servicemonitor.yaml
-* helm/polaris/templates/storage.yaml
+Copyright: 2006-2020 The Guava Authors
+Project URL: https://github.com/google/guava
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
-Copyright: Copyright 2015-2025 Dremio Corporation
-Home page: https://projectnessie.org/
-License: https://www.apache.org/licenses/LICENSE-2.0
+--------------------------------------------------------------------------------
+
+This binary artifact contains jspecify.
+
+Copyright: Google LLC - SpotBugs Team
+Project URL: https://github.com/jspecify/jspecify
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache Datasketches.
+
+Copyright: 2020 The Apache Software Foundation
+           2015-2018 Yahoo
+           2019 Verizon Media
+Project URL: https://datasketches.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache Parquet.
+
+Copyright: 2014-2024 The Apache Software Foundation
+Project URL: https://parquet.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains FastUtil.
+
+Copyright: 2002-2014 Sebastiano Vigna
+Project URL: http://fastutil.di.unimi.it/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache ORC.
+
+Copyright: 2013 and onwards The Apache Software Foundation.
+Project URL: https://orc.apache.org
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache Arrow.
+
+Copyright: 2016-2025 The Apache Software Foundation
+Project URL: https://arrow.apache.org
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Caffeine by Ben Manes.
+
+Copyright: 2014-2019 Ben Manes and contributors
+Project URL: https://github.com/ben-manes/caffeine
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains RoaringBitmap.
+
+Copyright: (c) 2013-... the RoaringBitmap authors
+Project URL: https://github.com/RoaringBitmap/RoaringBitmap
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains failsafe.
+
+Copyright: Jonathan Halterman and friends
+Project URL: https://failsafe.dev/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Project Nessie.
+
+Copyright: 2015-2025 Dremio Corporation
+Project URL: https://projectnessie.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache Avro.
+
+Copyright: 2010-2019 The Apache Software Foundation
+Project URL: https://avro.apache.org
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains the Jackson JSON processor.
+
+Copyright: 2007-2020 Tatu Saloranta and other contributors
+Project URL: http://jackson.codehaus.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Airlift Aircompressor.
+
+Copyright: 2011-2020 Aircompressor authors.
+Project URL: https://github.com/airlift/aircompressor
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache HttpComponents Client.
+
+Copyright: 1999-2022 The Apache Software Foundation.
+Project URL: https://hc.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Netty's buffer library.
+
+Copyright: 2014-2020 The Netty Project
+Project URL: https://netty.io/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache Thrift.
+
+Copyright: 2006-2017 The Apache Software Foundation.
+Project URL: https://thrift.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Jetbrains Annotations.
+
+Copyright: 2000-2020 JetBrains s.r.o.
+Project URL: https://github.com/JetBrains/java-annotations
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains ThreeTen.
+
+Copyright: 2007-present, Stephen Colebourne & Michael Nascimento Santos.
+Project URL: https://www.threeten.org/threeten-extra/
+License: BSD 3-Clause
+| All rights reserved.
+|
+| * Redistribution and use in source and binary forms, with or without
+|   modification, are permitted provided that the following conditions are met:
+|
+| * Redistributions of source code must retain the above copyright notice,
+|   this list of conditions and the following disclaimer.
+|
+| * Redistributions in binary form must reproduce the above copyright notice,
+|   this list of conditions and the following disclaimer in the documentation
+|   and/or other materials provided with the distribution.
+|
+| * Neither the name of JSR-310 nor the names of its contributors
+|   may be used to endorse or promote products derived from this software
+|   without specific prior written permission.
+|
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+| "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+| LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+| A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+| CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+| EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+| PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+| PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+| LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+| NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+| SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Eclipse Collections.
+
+Copyright: 2021 Goldman Sachs.
+Project URL: https://github.com/eclipse-collections/eclipse-collections/
+License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains checkerframework checker-qual Annotations.
+
+Copyright: 2004-2019 the Checker Framework developers
+Project URL: https://github.com/typetools/checker-framework
+License: MIT License
+| The annotations are licensed under the MIT License.  (The text of this
+| license appears below.)  More specifically, all the parts of the Checker
+| Framework that you might want to include with your own program use the
+| MIT License.  This is the checker-qual.jar file and all the files that
+| appear in it:  every file in a qual/ directory, plus utility files such
+| as NullnessUtil.java, RegexUtil.java, SignednessUtil.java, etc.
+| In addition, the cleanroom implementations of third-party annotations,
+| which the Checker Framework recognizes as aliases for its own
+| annotations, are licensed under the MIT License.
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in
+| all copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+| THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Google Error Prone Annotations.
+
+Copyright: Copyright 2011-2019 The Error Prone Authors
+Project URL: https://github.com/google/error-prone
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Eclipse MicroProfile OpenAPI.
+
+Copyright: 2017 Contributors to the Eclipse Foundation
+Project URL: https://github.com/microprofile/microprofile-open-api
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Jakarta Annotation.
+
+Project URL: https://projects.eclipse.org/projects/ee4j.ca
+License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Jakarta Validation.
+
+Project URL: https://beanvalidation.org
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Jakarta Servlet.
+
+Project URL: https://projects.eclipse.org/projects/ee4j.servlet
+License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Micrometer.
+
+Copyright: 2017-Present VMware, Inc. All Rights Reserved.
+Project URL: https://github.com/micrometer-metrics/micrometer
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Commons Compress.
+
+Copyright: 2002-2025 The Apache Software Foundation
+Project URL: https://commons.apache.org/proper/commons-compress/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Commons Codec.
+
+Copyright: 2002-2025 The Apache Software Foundation
+Project URL: https://commons.apache.org/proper/commons-codec/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains SLF4J.
+
+Copyright: 2004-2022 QOS.ch Sarl (Switzerland)
+Project URL: http://www.slf4j.org
+License: MIT License
+| Copyright (c) 2004-2022 QOS.ch Sarl (Switzerland)
+| All rights reserved.
+|
+| Permission is hereby granted, free  of charge, to any person obtaining
+| a  copy  of this  software  and  associated  documentation files  (the
+| "Software"), to  deal in  the Software without  restriction, including
+| without limitation  the rights to  use, copy, modify,  merge, publish,
+| distribute,  sublicense, and/or sell  copies of  the Software,  and to
+| permit persons to whom the Software  is furnished to do so, subject to
+| the following conditions:
+|
+| The  above  copyright  notice  and  this permission  notice  shall  be
+| included in all copies or substantial portions of the Software.
+|
+| THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
+| EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
+| MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
+| NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+| LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+| OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
+| WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains j2objc.
+
+Project URL: https://github.com/google/j2objc/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Commons IO.
+
+Copyright: 2002-2025 The Apache Software Foundation
+Project URL: https://commons.apache.org/proper/commons-io/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Commons Lang3.
+
+Copyright: 2001-2025 The Apache Software Foundation
+Project URL: https://commons.apache.org/proper/commons-lang/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
