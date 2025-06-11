@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,15 +18,5 @@
 # under the License.
 #
 
-FROM jupyter/all-spark-notebook:spark-3.5.0
-
-ENV LANGUAGE='en_US:en'
-
-COPY --chown=jovyan client /home/jovyan/client
-COPY --chown=jovyan regtests/requirements.txt /tmp
-RUN pip install -r /tmp/requirements.txt && \
-    cd client/python && poetry lock && \
-    python3 -m poetry install && \
-    pip install -e .
-
-WORKDIR /home/jovyan/
+./gradlew regeneratePythonClient
+docker-compose -f getting-started/spark/docker-compose.yml up
