@@ -128,3 +128,21 @@ The Polaris Spark client has the following functionality limitations:
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
 5) For other non-Iceberg tables like csv, it is not supported.
+
+## Iceberg Spark Runtime Client compatibility with Polaris Spark Client
+The Polaris Spark Client today is not designed to be used with Iceberg Spark Runtime client together. In other words,
+there is no guarantee provided if both `org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:<iceberg_version>` and 
+`org.apache.polaris:polaris-spark-3.5_2.12:<polaris_version>` are provided for the Spark `package` configuration.
+
+In order to help the usage of IcebergExtension use the same client, Polaris Spark Client also ships a version of
+Iceberg Spark Runtime with it, the version information is described in the following table:
+
+| Spark Client Version | Iceberg Spark Runtime Version |
+|----------------------|-------------------------------|
+| 1.0.0                | 1.9.0                         |
+
+## Trouble Shooting
+1. When starting spark, sometimes it complains it failed to download a package, for example, 
+   `download failed: org.apache.commons#commons-compress;1.26.2!commons-compress.jar`. If that happens, you can explicitly
+    specify the package in the `package` configuration, for example, `--package org.apache.commons:commons-compress:1.27.1`
+
