@@ -112,7 +112,7 @@ public class SparkCatalog
    * Initialize REST Catalog for Iceberg and Polaris, this is the only catalog type supported by
    * Polaris at this moment.
    */
-  private void initRestCatalog(String name, CaseInsensitiveStringMap options) {
+  private void initRESTCatalog(String name, CaseInsensitiveStringMap options) {
     CaseInsensitiveStringMap resolvedOptions = validateAndResolveCatalogOptions(options);
 
     // initialize the icebergSparkCatalog
@@ -131,7 +131,7 @@ public class SparkCatalog
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
     this.catalogName = name;
-    initRestCatalog(name, options);
+    initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
   }
 
