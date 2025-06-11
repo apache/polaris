@@ -29,14 +29,26 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingRecord> {
   public static final String TABLE_NAME = "POLICY_MAPPING_RECORD";
 
+  public static final List<String> PK_COLUMNS =
+      List.of(
+          "realm_id",
+          "target_catalog_id",
+          "target_id",
+          "policy_type_code",
+          "policy_catalog_id",
+          "policy_id");
+
   public static final List<String> ALL_COLUMNS =
       List.of(
+          "realm_id",
           "target_catalog_id",
           "target_id",
           "policy_type_code",
           "policy_catalog_id",
           "policy_id",
           "parameters");
+
+  private String realmId;
 
   // id of the catalog where target entity resides
   private long targetCatalogId;
@@ -55,6 +67,10 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
 
   // additional parameters of the mapping
   private String parameters;
+
+  public String getRealmId() {
+    return realmId;
+  }
 
   public long getTargetCatalogId() {
     return targetCatalogId;
@@ -89,6 +105,11 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
 
     private Builder() {
       policyMappingRecord = new ModelPolicyMappingRecord();
+    }
+
+    public Builder realmId(String realmId) {
+      policyMappingRecord.realmId = realmId;
+      return this;
     }
 
     public Builder targetCatalogId(long targetCatalogId) {
@@ -127,10 +148,11 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   }
 
   public static ModelPolicyMappingRecord fromPolicyMappingRecord(
-      PolarisPolicyMappingRecord record) {
+      PolarisPolicyMappingRecord record, String realmId) {
     if (record == null) return null;
 
     return ModelPolicyMappingRecord.builder()
+        .realmId(realmId)
         .targetCatalogId(record.getTargetCatalogId())
         .targetId(record.getTargetId())
         .policyTypeCode(record.getPolicyTypeCode())
@@ -156,6 +178,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   public PolarisPolicyMappingRecord fromResultSet(ResultSet rs) throws SQLException {
     var modelRecord =
         ModelPolicyMappingRecord.builder()
+            .realmId(rs.getString("realm_id"))
             .targetCatalogId(rs.getObject("target_catalog_id", Long.class))
             .targetId(rs.getObject("target_id", Long.class))
             .policyTypeCode(rs.getObject("policy_type_code", Integer.class))
@@ -170,6 +193,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
+    map.put("realm_id", realmId);
     map.put("target_catalog_id", targetCatalogId);
     map.put("target_id", targetId);
     map.put("policy_type_code", policyTypeCode);

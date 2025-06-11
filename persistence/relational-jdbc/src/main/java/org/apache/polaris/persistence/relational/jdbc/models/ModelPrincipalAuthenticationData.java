@@ -29,13 +29,18 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public class ModelPrincipalAuthenticationData implements Converter<PolarisPrincipalSecrets> {
   public static final String TABLE_NAME = "PRINCIPAL_AUTHENTICATION_DATA";
 
+  public static final List<String> PK_COLUMNS = List.of("realm_id", "principal_client_id");
+
   public static final List<String> ALL_COLUMNS =
       List.of(
+          "realm_id",
           "principal_id",
           "principal_client_id",
           "main_secret_hash",
           "secondary_secret_hash",
           "secret_salt");
+
+  private String realmId;
 
   // the id of the principal
   private long principalId;
@@ -50,6 +55,10 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   private String secondarySecretHash;
 
   private String secretSalt;
+
+  public String getRealmId() {
+    return realmId;
+  }
 
   public long getPrincipalId() {
     return principalId;
@@ -79,6 +88,7 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   public PolarisPrincipalSecrets fromResultSet(ResultSet rs) throws SQLException {
     var modelRecord =
         ModelPrincipalAuthenticationData.builder()
+            .realmId(rs.getString("realm_id"))
             .principalId(rs.getObject("principal_id", Long.class))
             .principalClientId(rs.getObject("principal_client_id", String.class))
             .mainSecretHash(rs.getObject("main_secret_hash", String.class))
@@ -92,6 +102,7 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
+    map.put("realm_id", this.realmId);
     map.put("principal_id", this.principalId);
     map.put("principal_client_id", this.principalClientId);
     map.put("main_secret_hash", this.mainSecretHash);
@@ -105,6 +116,11 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
 
     private Builder() {
       principalAuthenticationData = new ModelPrincipalAuthenticationData();
+    }
+
+    public Builder realmId(String realmId) {
+      principalAuthenticationData.realmId = realmId;
+      return this;
     }
 
     public Builder principalId(long principalId) {
@@ -138,10 +154,11 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   }
 
   public static ModelPrincipalAuthenticationData fromPrincipalAuthenticationData(
-      PolarisPrincipalSecrets record) {
+      PolarisPrincipalSecrets record, String realmId) {
     if (record == null) return null;
 
     return ModelPrincipalAuthenticationData.builder()
+        .realmId(realmId)
         .principalId(record.getPrincipalId())
         .principalClientId(record.getPrincipalClientId())
         .secretSalt(record.getSecretSalt())

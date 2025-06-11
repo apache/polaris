@@ -29,14 +29,25 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   public static final String TABLE_NAME = "GRANT_RECORDS";
 
-  public static final List<String> ALL_COLUMNS =
+  public static final List<String> PK_COLUMNS =
       List.of(
+          "realm_id",
           "securable_catalog_id",
           "securable_id",
           "grantee_catalog_id",
           "grantee_id",
           "privilege_code");
 
+  public static final List<String> ALL_COLUMNS =
+      List.of(
+          "realm_id",
+          "securable_catalog_id",
+          "securable_id",
+          "grantee_catalog_id",
+          "grantee_id",
+          "privilege_code");
+
+  private String realmId;
   // id of the catalog where the securable entity resides, use 0, if this entity is a
   // top-level account entity.
   private long securableCatalogId;
@@ -53,6 +64,10 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
 
   // id associated to the privilege
   private int privilegeCode;
+
+  public String getRealmId() {
+    return realmId;
+  }
 
   public long getSecurableCatalogId() {
     return securableCatalogId;
@@ -82,6 +97,7 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   public PolarisGrantRecord fromResultSet(ResultSet rs) throws SQLException {
     var modelGrantRecord =
         ModelGrantRecord.builder()
+            .realmId(rs.getString("realm_id"))
             .securableCatalogId(rs.getObject("securable_catalog_id", Long.class))
             .securableId(rs.getObject("securable_id", Long.class))
             .granteeCatalogId(rs.getObject("grantee_catalog_id", Long.class))
@@ -95,6 +111,7 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
+    map.put("realm_id", realmId);
     map.put("securable_catalog_id", this.securableCatalogId);
     map.put("securable_id", this.securableId);
     map.put("grantee_catalog_id", this.granteeCatalogId);
@@ -108,6 +125,11 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
 
     private Builder() {
       grantRecord = new ModelGrantRecord();
+    }
+
+    public Builder realmId(String realmId) {
+      grantRecord.realmId = realmId;
+      return this;
     }
 
     public Builder securableCatalogId(long securableCatalogId) {
@@ -140,10 +162,11 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
     }
   }
 
-  public static ModelGrantRecord fromGrantRecord(PolarisGrantRecord record) {
+  public static ModelGrantRecord fromGrantRecord(PolarisGrantRecord record, String realmId) {
     if (record == null) return null;
 
     return ModelGrantRecord.builder()
+        .realmId(realmId)
         .securableCatalogId(record.getSecurableCatalogId())
         .securableId(record.getSecurableId())
         .granteeCatalogId(record.getGranteeCatalogId())
