@@ -145,10 +145,10 @@ public class QueryGenerator {
    * @return INSERT query with value bindings.
    */
   public static PreparedQuery generateMultipleInsertQuery(
-          @Nonnull List<String> allColumns,
-          @Nonnull String tableName,
-          List<List<Object>> values,
-          String realmId) {
+      @Nonnull List<String> allColumns,
+      @Nonnull String tableName,
+      List<List<Object>> values,
+      String realmId) {
     List<String> finalColumns = new ArrayList<>(allColumns);
     List<List<Object>> transformedValues = new ArrayList<>(values.size());
     finalColumns.add("realm_id");
@@ -159,16 +159,20 @@ public class QueryGenerator {
       transformedValues.add(transformedValue);
     }
 
-    List<Object> finalValues = transformedValues.stream().flatMap(List::stream).collect(Collectors.toList());
+    List<Object> finalValues =
+        transformedValues.stream().flatMap(List::stream).collect(Collectors.toList());
     String columns = String.join(", ", finalColumns);
-    String placeholders = transformedValues.stream().map(l -> "( " + l.stream().map(c -> "?").collect(Collectors.joining(", ")) + " )").collect(Collectors.joining(", "));
+    String placeholders =
+        transformedValues.stream()
+            .map(l -> "( " + l.stream().map(c -> "?").collect(Collectors.joining(", ")) + " )")
+            .collect(Collectors.joining(", "));
     String sql =
-            "INSERT INTO "
-                    + getFullyQualifiedTableName(tableName)
-                    + " ("
-                    + columns
-                    + ") VALUES "
-                    + placeholders;
+        "INSERT INTO "
+            + getFullyQualifiedTableName(tableName)
+            + " ("
+            + columns
+            + ") VALUES "
+            + placeholders;
     return new PreparedQuery(sql, finalValues);
   }
 

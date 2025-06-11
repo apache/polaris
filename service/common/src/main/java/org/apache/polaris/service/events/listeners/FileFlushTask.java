@@ -23,6 +23,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.KryoBufferUnderflowException;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -62,9 +63,9 @@ class FileFlushTask implements Runnable {
   public void run() {
     LOGGER.trace("Starting file flush task #{}", file);
     List<PolarisEvent> polarisEvents = new ArrayList<>();
-    try (Input in = new Input(new FileInputStream(this.file))) {
+    try (Input in = createInputStream(this.file)) {
       while (true) {
-        PolarisEvent polarisEvent = kryo.readObject(in, PolarisEvent.class);
+        PolarisEvent polarisEvent = readPolarisEvent(in);
         polarisEvents.add(polarisEvent);
       }
     } catch (KryoException e) {
@@ -95,5 +96,16 @@ class FileFlushTask implements Runnable {
     File file = new File(this.file);
     file.delete();
     this.cleanupFutures.accept(this.file);
+  }
+
+  // For testing: allow mocking of InputStream and event reading
+  @VisibleForTesting
+  Input createInputStream(String file) throws IOException {
+    return new Input(new FileInputStream(file));
+  }
+
+  @VisibleForTesting
+  PolarisEvent readPolarisEvent(Input input) {
+    return kryo.readObject(input, PolarisEvent.class);
   }
 }

@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +31,16 @@ public class ModelEvent implements Converter<PolarisEvent> {
   public static final String TABLE_NAME = "EVENTS";
 
   public static final List<String> ALL_COLUMNS =
-          List.of(
-                  "catalog_id",
-                  "event_id",
-                  "request_id",
-                  "event_type",
-                  "timestamp_ms",
-                  "principal_name",
-                  "resource_type",
-                  "resource_identifier",
-                  "additional_parameters");
+      List.of(
+          "catalog_id",
+          "event_id",
+          "request_id",
+          "event_type",
+          "timestamp_ms",
+          "principal_name",
+          "resource_type",
+          "resource_identifier",
+          "additional_parameters");
 
   // catalog id
   private String catalogId;

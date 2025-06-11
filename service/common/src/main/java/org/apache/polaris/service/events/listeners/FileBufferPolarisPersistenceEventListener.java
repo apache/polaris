@@ -20,12 +20,14 @@ package org.apache.polaris.service.events.listeners;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +56,7 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
       LoggerFactory.getLogger(FileBufferPolarisPersistenceEventListener.class);
   MetaStoreManagerFactory metaStoreManagerFactory;
   PolarisConfigurationStore polarisConfigurationStore;
+  Clock clock;
 
   // Key: str - Realm
   // Value:
@@ -72,9 +75,11 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
   @Inject
   public FileBufferPolarisPersistenceEventListener(
       MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore polarisConfigurationStore) {
+      PolarisConfigurationStore polarisConfigurationStore,
+      Clock clock) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisConfigurationStore = polarisConfigurationStore;
+    this.clock = clock;
     shardCount =
         polarisConfigurationStore.getConfiguration(
             null, FeatureConfiguration.EVENT_BUFFER_NUM_SHARDS);
@@ -103,6 +108,7 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
                 taskSubmissionFunction,
                 activeFlushFutures,
                 timeToFlush,
+                clock,
                 this::rotateShard,
                 eventWriter),
             timeToFlush,
@@ -147,7 +153,7 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
   private BufferShard createShard(String realmId, int shardNum) {
     String bufferDirName =
         getBufferDirectory() + realmId + "/" + BUFFER_SHARD_PREFIX + shardNum + "/";
-    File file = new File(bufferDirName + "buffer_timestamp-" + System.currentTimeMillis());
+    File file = new File(bufferDirName + "buffer_timestamp-" + clock.millis());
     File parent = file.getParentFile();
     if (parent != null && !parent.exists()) {
       parent.mkdirs(); // Creates all missing parent directories
@@ -162,7 +168,8 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
     return null;
   }
 
-  private void rotateShard(String realmId, int shardNum) {
+  @VisibleForTesting
+  void rotateShard(String realmId, int shardNum) {
     buffers.get(realmId).put(shardNum, createShard(realmId, shardNum));
   }
 
@@ -170,7 +177,7 @@ public class FileBufferPolarisPersistenceEventListener extends PolarisPersistenc
     return metaStoreManagerFactory.getOrCreateSessionSupplier(getRealmContext(realmId)).get();
   }
 
-  public String getBufferDirectory() {
+  private String getBufferDirectory() {
     return System.getProperty("java.io.tmpdir") + "event_buffers/";
   }
 

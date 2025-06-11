@@ -19,7 +19,9 @@
 
 package org.apache.polaris.service.events.listeners;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,18 +41,21 @@ class FileBufferListingTask implements Runnable {
   private final BiConsumer<String, List<PolarisEvent>> eventWriter;
   private final ConcurrentHashMap<String, Future> activeFlushFutures;
   private final int timeToFlush;
+  private final Clock clock;
 
   public FileBufferListingTask(
       String bufferDirectory,
       Function<TaskSubmissionInput, Future> taskSubmitter,
       ConcurrentHashMap<String, Future> activeFlushFutures,
       int timeToFlush,
+      Clock clock,
       BiConsumer<String, Integer> rotateShard,
       BiConsumer<String, List<PolarisEvent>> eventWriter) {
     this.bufferDirectory = bufferDirectory;
     this.taskSubmitter = taskSubmitter;
     this.activeFlushFutures = activeFlushFutures;
     this.timeToFlush = timeToFlush;
+    this.clock = clock;
     this.rotateShard = rotateShard;
     this.eventWriter = eventWriter;
   }
@@ -60,7 +65,7 @@ class FileBufferListingTask implements Runnable {
     LOGGER.info("Attempting to list all event buffer files");
     try {
       // Example, if `topLevelDirectory` is /var/tmp/...
-      File topLevelDirectory = new File(this.bufferDirectory);
+      File topLevelDirectory = newFile(this.bufferDirectory);
       File[] realmDirs = topLevelDirectory.listFiles();
       if (realmDirs == null || realmDirs.length == 0) {
         LOGGER.debug(
@@ -97,8 +102,7 @@ class FileBufferListingTask implements Runnable {
           // Get the buffer start time from the file name
           String[] fileDeconstructed = latestFile.getName().split("-");
           // Check if this buffer has been alive for longer than the `timeToFlush`
-          if (System.currentTimeMillis()
-                  - Long.parseLong(fileDeconstructed[fileDeconstructed.length - 1])
+          if (clock.millis() - Long.parseLong(fileDeconstructed[fileDeconstructed.length - 1])
               > timeToFlush) {
             // Get realmId and buffer number
             String[] shardDirNameDeconstructed = bufferDir.getName().split("-");
@@ -123,6 +127,11 @@ class FileBufferListingTask implements Runnable {
     } finally {
       var future = taskSubmitter.apply(new TaskSubmissionInput(this, timeToFlush));
     }
+  }
+
+  @VisibleForTesting
+  protected File newFile(String path) {
+    return new File(path);
   }
 
   public record TaskSubmissionInput(Runnable task, Integer delayInMs) {}

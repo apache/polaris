@@ -61,7 +61,6 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -239,15 +238,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             List<List<List<Object>>> batchedModelEvents =
                 Lists.partition(
                     events.stream()
-                        .map(e -> ModelEvent.fromEvent(e).toMap(datasourceOperations.getDatabaseType()).values().stream().toList())
+                        .map(
+                            e ->
+                                ModelEvent.fromEvent(e)
+                                    .toMap(datasourceOperations.getDatabaseType())
+                                    .values()
+                                    .stream()
+                                    .toList())
                         .toList(),
                     batchSize);
             for (List<List<Object>> batchedModelEvent : batchedModelEvents) {
-              datasourceOperations.execute(connection, QueryGenerator.generateMultipleInsertQuery(
-                      ModelEvent.ALL_COLUMNS,
-                      ModelEvent.TABLE_NAME,
-                      batchedModelEvent,
-                      realmId));
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateMultipleInsertQuery(
+                      ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, batchedModelEvent, realmId));
             }
             return true;
           });

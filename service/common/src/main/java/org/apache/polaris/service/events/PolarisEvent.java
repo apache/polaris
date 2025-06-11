@@ -18,12 +18,22 @@
  */
 package org.apache.polaris.service.events;
 
+import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.UUID;
 
 /** Represents an event emitted by Polaris. */
 public abstract class PolarisEvent {
-  private final String eventId = UUID.randomUUID().toString();
-  private final long timestampMs = System.currentTimeMillis();
+  protected Clock clock;
+  private String eventId;
+  private long timestampMs;
+
+  @Inject
+  public void setClock(Clock clock) {
+    this.clock = clock;
+    this.eventId = UUID.randomUUID().toString();
+    this.timestampMs = clock.millis();
+  }
 
   public static String createRequestId() {
     return UUID.randomUUID().toString();

@@ -18,9 +18,11 @@
  */
 package org.apache.polaris.service.events.listeners;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,8 +45,9 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
       LoggerFactory.getLogger(InMemoryBufferPolarisPersistenceEventListener.class);
   MetaStoreManagerFactory metaStoreManagerFactory;
   PolarisConfigurationStore polarisConfigurationStore;
+  Clock clock;
 
-  private HashMap<String, List<PolarisEvent>> buffer = new HashMap<>();
+  private final HashMap<String, List<PolarisEvent>> buffer = new HashMap<>();
   private final ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor();
   private final int timeToFlush;
   private final int maxBufferSize;
@@ -52,9 +55,11 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   @Inject
   public InMemoryBufferPolarisPersistenceEventListener(
       MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore polarisConfigurationStore) {
+      PolarisConfigurationStore polarisConfigurationStore,
+      Clock clock) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisConfigurationStore = polarisConfigurationStore;
+    this.clock = clock;
     this.timeToFlush =
         polarisConfigurationStore.getConfiguration(
             null, FeatureConfiguration.EVENT_BUFFER_TIME_TO_FLUSH_IN_MS);
@@ -83,13 +88,13 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     checkAndFlushBufferIfNecessary(realmId);
   }
 
-  private void checkAndFlushBufferIfNecessary(String realmId) {
+  @VisibleForTesting
+  public void checkAndFlushBufferIfNecessary(String realmId) {
     if (!buffer.containsKey(realmId) || buffer.get(realmId).isEmpty()) {
       return;
     }
-    if (System.currentTimeMillis() - buffer.get(realmId).getFirst().getTimestampMs()
-            > this.timeToFlush
-        || buffer.size() >= this.maxBufferSize) {
+    if (clock.millis() - buffer.get(realmId).getFirst().getTimestampMs() > this.timeToFlush
+        || buffer.get(realmId).size() >= this.maxBufferSize) {
       List<PolarisEvent> bufferToFlush = buffer.get(realmId);
       buffer.put(realmId, new ArrayList<>());
       metaStoreManagerFactory

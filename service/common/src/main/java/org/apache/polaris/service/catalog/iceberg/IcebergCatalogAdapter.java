@@ -347,11 +347,11 @@ public class IcebergCatalogAdapter
     validateIcebergProperties(callContext, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
+    Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-          Namespace ns = decodeNamespace(namespace);
           if (createTableRequest.stageCreate()) {
             if (delegationModes.isEmpty()) {
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
