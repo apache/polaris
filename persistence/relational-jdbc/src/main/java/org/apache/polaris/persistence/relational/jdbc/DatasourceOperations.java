@@ -55,27 +55,22 @@ public class DatasourceOperations {
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
-  private volatile DatabaseType databaseType;
+  private final DatabaseType databaseType;
 
   private final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration)
+      throws SQLException {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+    try (Connection connection = this.datasource.getConnection()) {
+      String productName = connection.getMetaData().getDatabaseProductName();
+      this.databaseType = DatabaseType.fromDisplayName(productName);
+    }
   }
 
-  protected DatabaseType getDatabaseType() throws SQLException {
-    if (databaseType == null) {
-      synchronized (this) {
-        if (databaseType == null) {
-          try (Connection connection = datasource.getConnection()) {
-            String productName = connection.getMetaData().getDatabaseProductName();
-            return DatabaseType.fromDisplayName(productName);
-          }
-        }
-      }
-    }
+  DatabaseType getDatabaseType() throws SQLException {
     return databaseType;
   }
 

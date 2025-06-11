@@ -107,8 +107,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
-    DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+    DatasourceOperations databaseOperations;
+    try {
+      databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+    } catch (SQLException sqlException) {
+      throw new RuntimeException(sqlException);
+    }
     if (isBootstrap) {
       try {
         // Run the set-up script to create the tables.
