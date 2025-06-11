@@ -33,6 +33,7 @@ import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestHelper;
 import org.apache.polaris.service.quarkus.test.TestEnvironment;
 import org.apache.polaris.service.quarkus.test.TestEnvironmentExtension;
 import org.apache.polaris.service.quarkus.test.TestMetricsUtil;
+import org.awaitility.Awaitility;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.Assertions;
@@ -43,7 +44,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestEnvironmentExtension.class)
