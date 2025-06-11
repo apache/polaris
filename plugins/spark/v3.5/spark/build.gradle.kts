@@ -113,7 +113,6 @@ dependencies {
 }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
-  archiveClassifier = null
   isZip64 = true
 
   // include the LICENSE and NOTICE files for the shadow Jar
@@ -141,4 +140,10 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
 
-tasks.named<Jar>("jar") { archiveClassifier.set("internal") }
+tasks.named<Jar>("jar") {
+  // retain the default jar job, and add a classifier to avoid conflict
+  // with the createPolarisSparkJar. This jar is needed by the task "test",
+  // which can not be switched to depends on createPolarisSparkJar due to
+  // relocation of com.fasterxml.
+  archiveClassifier.set("internal")
+}
