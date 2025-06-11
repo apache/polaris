@@ -105,7 +105,7 @@ class ManifestFileCleanupTaskHandlerTest {
                     tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
             .setName(UUID.randomUUID().toString())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
@@ -134,7 +134,7 @@ class ManifestFileCleanupTaskHandlerTest {
                     tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
             .setName(UUID.randomUUID().toString())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
@@ -178,7 +178,7 @@ class ManifestFileCleanupTaskHandlerTest {
                     tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
             .setName(UUID.randomUUID().toString())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
@@ -238,7 +238,7 @@ class ManifestFileCleanupTaskHandlerTest {
                     tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
             .setName(UUID.randomUUID().toString())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);

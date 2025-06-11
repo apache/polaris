@@ -142,7 +142,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task, callContext);
@@ -217,7 +217,7 @@ class TableCleanupTaskHandlerTest {
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(icebergTableLikeEntity)
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -278,7 +278,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -403,7 +403,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task, callContext);
@@ -576,7 +576,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
 
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 

@@ -185,7 +185,7 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
 
@@ -234,7 +234,7 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
     assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
   }
@@ -299,9 +299,10 @@ public class BatchFileCleanupTaskHandlerTest {
         CompletableFuture.runAsync(
             () -> {
               CallContext.setCurrentContext(polarisCallContext);
-              addTaskLocation(task);
-              assertThatPredicate(handler::canHandleTask).accepts(task);
-              handler.handleTask(task, polarisCallContext); // this will schedule the batch deletion
+              var newTask = addTaskLocation(task);
+              assertThatPredicate(handler::canHandleTask).accepts(newTask);
+              handler.handleTask(
+                  newTask, polarisCallContext); // this will schedule the batch deletion
             });
 
     // Wait for all async tasks to finish
