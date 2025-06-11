@@ -17,10 +17,7 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  id("polaris-checkstyle")
-}
+plugins { id("polaris-server") }
 
 dependencies {
   implementation(libs.guava)

@@ -19,10 +19,7 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
-  id("polaris-client")
-  id("polaris-checkstyle")
-}
+plugins { id("polaris-client") }
 
 // get version information
 val sparkMajorVersion = "3.5"
