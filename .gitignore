@@ -28,6 +28,8 @@ client/python/poetry.lock
 /poetry.lock
 /polaris-venv/
 /pyproject.toml
+/client/python/
+!/client/python/pyproject.toml
 
 # Polaris CLI profile
 .polaris.json
