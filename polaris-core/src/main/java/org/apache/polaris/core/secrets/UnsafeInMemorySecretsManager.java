@@ -43,7 +43,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   private static final String CIPHERTEXT_HASH = "ciphertext-hash";
   private static final String ENCRYPTION_KEY = "encryption-key";
 
-  private static final String SECRET_MANAGER_TYPE = "unsafe-in-memory";
+  public static final String SECRET_MANAGER_TYPE = "unsafe-in-memory";
 
   /** {@inheritDoc} */
   @Override
@@ -74,9 +74,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
     String secretUrn;
     for (int secretOrdinal = 0; ; ++secretOrdinal) {
       String typeSpecificIdentifier = forEntity.getId() + ":" + secretOrdinal;
-      secretUrn =
-          UserSecretReferenceUrnHelper.buildUrn(SECRET_MANAGER_TYPE, typeSpecificIdentifier);
-
+      secretUrn = buildUrn(SECRET_MANAGER_TYPE, typeSpecificIdentifier);
       // Store the base64-encoded encrypted ciphertext in the simulated "secret store".
       String existingSecret =
           rawSecretStore.putIfAbsent(secretUrn, encryptedSecretCipherTextBase64);
