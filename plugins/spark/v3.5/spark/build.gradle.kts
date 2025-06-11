@@ -151,7 +151,7 @@ tasks.register("checkNoDisallowedImports") {
 tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
-  archiveClassifier = "bundle"
+  archiveClassifier = null
   isZip64 = true
 
   // include the LICENSE and NOTICE files for the shadow Jar
@@ -178,3 +178,5 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
+
+tasks.named<Jar>("jar") { archiveClassifier.set("testJar") }
