@@ -139,6 +139,12 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
+tasks.named<Jar>("jar") { isEnabled = false }
+
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
 
-tasks.named<Jar>("jar") { archiveClassifier.set("defaultJar") }
+tasks.named("test") {
+  dependsOn("sourcesJar")
+}
+
+// tasks.named<Jar>("jar") { archiveClassifier.set("defaultJar") }
