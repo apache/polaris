@@ -194,7 +194,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
         throw new AlreadyExistsException("Duplicate key error when persisting entity", e);
       } else {
-        throw e;
+        throw new RuntimeException("Error persisting entity", e);
       }
     }
   }

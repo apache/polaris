@@ -37,7 +37,7 @@ for contribution guidelines.
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Polaris Overview
-Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick overview of Polaris.
+Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
 
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.

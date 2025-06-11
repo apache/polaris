@@ -1340,45 +1340,33 @@ License: MIT License
 Group: org.checkerframework Name: checker-qual Version: 3.49.1
 Project URL: https://checkerframework.org/
 License: MIT License
-| The Checker Framework
-| Copyright 2004-present by the Checker Framework developers
-| 
-| 
-| Most of the Checker Framework is licensed under the GNU General Public
-| License, version 2 (GPL2), with the classpath exception.  The text of this
-| license appears below.  This is the same license used for OpenJDK.
-| 
-| A few parts of the Checker Framework have more permissive licenses, notably
-| the parts that you might want to include with your own program.
-| 
-|  * The annotations and utility files are licensed under the MIT License.
-|    (The text of this license also appears below.)  This applies to
-|    checker-qual*.jar and checker-util.jar and all the files that appear in
-|    them, which is all files in checker-qual and checker-util directories.
-|    It also applies to the cleanroom implementations of
-|    third-party annotations (in checker/src/testannotations/,
-|    framework/src/main/java/org/jmlspecs/, and
-|    framework/src/main/java/com/google/).
-| 
-| The Checker Framework includes annotations for some libraries.  Those in
-| .astub files use the MIT License.  Those in https://github.com/typetools/jdk
-| (which appears in the annotated-jdk directory of file checker.jar) use the
-| GPL2 license.
-| 
-| Some external libraries that are included with the Checker Framework
-| distribution have different licenses.  Here are some examples.
-| 
-|  * JavaParser is dual licensed under the LGPL or the Apache license -- you
-|    may use it under whichever one you want.  (The JavaParser source code
-|    contains a file with the text of the GPL, but it is not clear why, since
-|    JavaParser does not use the GPL.)  See
-|    https://github.com/typetools/stubparser .
-| 
-|  * Annotation Tools (https://github.com/typetools/annotation-tools) uses
-|    the MIT license.
-| 
-|  * Libraries in plume-lib (https://github.com/plume-lib/) are licensed
-|    under the MIT License.
+| The annotations are licensed under the MIT License.  (The text of this
+| license appears below.)  More specifically, all the parts of the Checker
+| Framework that you might want to include with your own program use the
+| MIT License.  This is the checker-qual.jar file and all the files that
+| appear in it:  every file in a qual/ directory, plus utility files such
+| as NullnessUtil.java, RegexUtil.java, SignednessUtil.java, etc.
+| In addition, the cleanroom implementations of third-party annotations,
+| which the Checker Framework recognizes as aliases for its own
+| annotations, are licensed under the MIT License.
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in
+| all copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+| THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 
