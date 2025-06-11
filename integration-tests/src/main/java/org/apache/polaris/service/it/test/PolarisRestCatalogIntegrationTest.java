@@ -1468,11 +1468,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                 Map.of("cat", currentCatalogName, "ns", ns))
             .post(
                 Entity.json(
-                    new CreateGenericTableRequest(
-                        tableIdentifier.name(),
-                        "format",
-                        "doc",
-                        Map.of("polaris.reserved", "true"))))) {
+                    CreateGenericTableRequest.builder()
+                        .setName(tableIdentifier.name())
+                        .setFormat("format")
+                        .setDoc("doc")
+                        .setProperties(Map.of("polaris.reserved", "true"))
+                        .build()))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
       Assertions.assertThat(res.readEntity(String.class)).contains("reserved prefix");
     }
