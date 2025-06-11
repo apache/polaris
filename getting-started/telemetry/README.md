@@ -52,10 +52,10 @@ This example requires `jq` to be installed on your machine.
    the `Polairs-Request-Id` header; you should see it in all logs and traces:
 
     ```shell
-    curl -v http://localhost:8181/api/management/v1/principal-roles \
+    curl -v 'http://localhost:8181/api/management/v1/principal-roles' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
       -H "Polaris-Request-Id: 1234"
-    curl -v 'http://localhost.0.0.1:8181/api/catalog/v1/config?warehouse=quickstart_catalog' \
+    curl -v 'http://localhost:8181/api/catalog/v1/config?warehouse=quickstart_catalog' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
       -H "Polaris-Request-Id: 5678"
     ```
