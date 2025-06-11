@@ -2053,7 +2053,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     try {
       EnumMap<StorageAccessProperty, String> creds =
           storageIntegration.getSubscopedCreds(
-              callCtx.getDiagServices(),
+              callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,

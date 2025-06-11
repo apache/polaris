@@ -48,7 +48,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -59,7 +59,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class GcpCredentialsStorageIntegrationTest {
+class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -171,7 +171,7 @@ class GcpCredentialsStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<StorageAccessProperty, String> credsMap =
         gcpCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            newCallContext(),
             gcpConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),
