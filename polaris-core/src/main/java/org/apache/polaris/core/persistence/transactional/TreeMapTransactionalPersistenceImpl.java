@@ -364,10 +364,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                     this.lookupEntityInCurrentTxn(
                         callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
 
-    Predicate<PolarisBaseEntity> tokenFilter = e -> true;
+    Predicate<PolarisBaseEntity> tokenFilter;
     if (pageToken.hasDataReference()) {
       long nextId = EntityIdPaging.entityIdBoundary(pageToken);
       tokenFilter = e -> e.getId() > nextId;
+    } else {
+      tokenFilter = e -> true;
     }
 
     data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
