@@ -54,8 +54,8 @@ This example requires `jq` to be installed on your machine.
    You may not see Spark's prompt immediately, type ENTER to see it. A few commands that you can try:
 
     ```sql
-    CREATE NAMESPACE polaris.ns1;
-    USE polaris.ns1;
+    CREATE NAMESPACE quickstart_catalog.ns1;
+    USE quickstart_catalog.ns1;
     CREATE TABLE table1 (id int, name string);
     INSERT INTO table1 VALUES (1, 'a');
     SELECT * FROM table1;
@@ -64,8 +64,7 @@ This example requires `jq` to be installed on your machine.
 4. To access Polaris from the host machine, first request an access token:
 
     ```shell
-    export POLARIS_TOKEN=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
-       --resolve polaris:8181:127.0.0.1 \
+    export POLARIS_TOKEN=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
        --user root:s3cr3t \
        -d 'grant_type=client_credentials' \
        -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
@@ -74,15 +73,15 @@ This example requires `jq` to be installed on your machine.
 5. Then, use the access token in the Authorization header when accessing Polaris:
 
     ```shell
-    curl -v http://127.0.0.1:8181/api/management/v1/principal-roles -H "Authorization: Bearer $POLARIS_TOKEN"
-    curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "Authorization: Bearer $POLARIS_TOKEN"
+    curl -v http://localhost:8181/api/management/v1/principal-roles -H "Authorization: Bearer $POLARIS_TOKEN"
+    curl -v http://localhost:8181/api/management/v1/catalogs/quickstart_catalog -H "Authorization: Bearer $POLARIS_TOKEN"
     ```
 
 6. Using Trino CLI: To access the Trino CLI, run this command:
 ```
-docker exec -it eclipselink-trino-1 trino
+docker exec -it polaris-trino-1 trino
 ```
-Note, `trino-trino-1` is the name of the Docker container.
+Note, `polaris-trino-1` is the name of the Docker container. The actual name on your system may vary.
 
 Example Trino queries:
 ```
