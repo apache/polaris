@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.List;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 
@@ -55,7 +56,11 @@ public class ListEntitiesResult extends BaseResult {
     this.entities = entities;
   }
 
-  public Page<EntityNameLookupRecord> getEntities() {
-    return entities;
+  public @Nullable List<EntityNameLookupRecord> getEntities() {
+    return entities == null ? null : entities.items();
+  }
+
+  public Page<EntityNameLookupRecord> getPage() {
+    return entities == null ? Page.fromItems(List.of()) : entities;
   }
 }

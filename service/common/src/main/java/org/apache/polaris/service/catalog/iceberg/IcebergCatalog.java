@@ -791,7 +791,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntitySubType.NULL_SUBTYPE,
                 pageToken);
     return listResult
-        .getEntities()
+        .getPage()
         .map(
             record ->
                 PolarisCatalogHelpers.nameAndIdToNamespace(
@@ -1076,14 +1076,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                     throw new IllegalStateException(
                         "Unable to resolve siblings entities to validate location - could not list tables");
                   }
-                  return siblingTablesResult.getEntities().items().stream()
+                  return siblingTablesResult.getEntities().stream()
                       .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
                       .collect(Collectors.toList());
                 })
             .orElse(List.of());
 
     List<Namespace> siblingNamespaces =
-        siblingNamespacesResult.getEntities().items().stream()
+        siblingNamespacesResult.getEntities().stream()
             .map(
                 ns -> {
                   String[] nsLevels =
@@ -2457,7 +2457,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 pageToken);
 
     Namespace ns = PolarisCatalogHelpers.parentNamespace(catalogPath);
-    return listResult.getEntities().map(record -> TableIdentifier.of(ns, record.getName()));
+    return listResult.getPage().map(record -> TableIdentifier.of(ns, record.getName()));
   }
 
   /**

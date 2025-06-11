@@ -769,8 +769,7 @@ public class PolarisTestMetaStoreManager {
                     PolarisEntityType.NAMESPACE,
                     PolarisEntitySubType.NULL_SUBTYPE,
                     PageToken.readEverything())
-                .getEntities()
-                .items();
+                .getEntities();
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
           children =
@@ -781,8 +780,7 @@ public class PolarisTestMetaStoreManager {
                       PolarisEntityType.TABLE_LIKE,
                       PolarisEntitySubType.ANY_SUBTYPE,
                       PageToken.readEverything())
-                  .getEntities()
-                  .items();
+                  .getEntities();
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
           children =
@@ -793,8 +791,7 @@ public class PolarisTestMetaStoreManager {
                       PolarisEntityType.CATALOG_ROLE,
                       PolarisEntitySubType.ANY_SUBTYPE,
                       PageToken.readEverything())
-                  .getEntities()
-                  .items();
+                  .getEntities();
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
           if (children.size() == 1) {
@@ -1568,8 +1565,7 @@ public class PolarisTestMetaStoreManager {
                 entityType,
                 entitySubType,
                 PageToken.readEverything())
-            .getEntities()
-            .items();
+            .getEntities();
     Assertions.assertThat(result).isNotNull();
 
     // now validate the result
@@ -1887,8 +1883,7 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PageToken.readEverything())
-            .getEntities()
-            .items();
+            .getEntities();
 
     // ensure not null, one element only
     Assertions.assertThat(principals).isNotNull().hasSize(1);
@@ -1915,8 +1910,7 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityType.PRINCIPAL_ROLE,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PageToken.readEverything())
-            .getEntities()
-            .items();
+            .getEntities();
 
     // ensure not null, one element only
     Assertions.assertThat(principalRoles).isNotNull().hasSize(1);
@@ -2655,8 +2649,7 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PageToken.readEverything())
-            .getEntities()
-            .items();
+            .getEntities();
 
     // ensure not null, one element only
     Assertions.assertThat(principals).isNotNull().hasSize(1);

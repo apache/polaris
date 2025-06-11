@@ -943,7 +943,6 @@ public class PolarisAdminService {
             PolarisEntitySubType.ANY_SUBTYPE,
             PageToken.readEverything())
         .getEntities()
-        .items()
         .stream()
         .map(
             nameAndId ->
@@ -1126,7 +1125,6 @@ public class PolarisAdminService {
             PolarisEntitySubType.NULL_SUBTYPE,
             PageToken.readEverything())
         .getEntities()
-        .items()
         .stream()
         .map(
             nameAndId ->
@@ -1240,7 +1238,6 @@ public class PolarisAdminService {
             PolarisEntitySubType.NULL_SUBTYPE,
             PageToken.readEverything())
         .getEntities()
-        .items()
         .stream()
         .map(
             nameAndId ->
@@ -1373,7 +1370,6 @@ public class PolarisAdminService {
             PolarisEntitySubType.NULL_SUBTYPE,
             PageToken.readEverything())
         .getEntities()
-        .items()
         .stream()
         .map(
             nameAndId ->
