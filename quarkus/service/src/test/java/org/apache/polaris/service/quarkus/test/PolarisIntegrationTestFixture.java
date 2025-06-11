@@ -118,6 +118,7 @@ public class PolarisIntegrationTestFixture {
             metaStoreSession,
             helper.diagServices,
             helper.configurationStore,
+            helper.entityMutationEngine,
             helper.clock);
     try {
       PolarisMetaStoreManager metaStoreManager =

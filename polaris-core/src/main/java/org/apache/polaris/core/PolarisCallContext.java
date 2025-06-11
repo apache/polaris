@@ -24,6 +24,7 @@ import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.mutation.EntityMutationEngine;
 import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
@@ -40,6 +41,8 @@ public class PolarisCallContext implements CallContext {
 
   private final PolarisConfigurationStore configurationStore;
 
+  private final EntityMutationEngine entityMutationEngine;
+
   private final Clock clock;
 
   // will make it final once we remove deprecated constructor
@@ -50,22 +53,26 @@ public class PolarisCallContext implements CallContext {
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices,
       @Nonnull PolarisConfigurationStore configurationStore,
+      @Nonnull EntityMutationEngine entityMutationEngine,
       @Nonnull Clock clock) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
+    this.entityMutationEngine = entityMutationEngine;
     this.clock = clock;
   }
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisDiagnostics diagServices) {
+      @Nonnull PolarisDiagnostics diagServices,
+      @Nonnull EntityMutationEngine entityMutationEngine) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};
+    this.entityMutationEngine = entityMutationEngine;
     this.clock = Clock.system(ZoneId.systemDefault());
   }
 
@@ -79,6 +86,10 @@ public class PolarisCallContext implements CallContext {
 
   public PolarisConfigurationStore getConfigurationStore() {
     return configurationStore;
+  }
+
+  public EntityMutationEngine getEntityMutationEngine() {
+    return entityMutationEngine;
   }
 
   public Clock getClock() {
@@ -105,6 +116,11 @@ public class PolarisCallContext implements CallContext {
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
-        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock);
+        realmContext,
+        this.metaStore,
+        this.diagServices,
+        this.configurationStore,
+        this.entityMutationEngine,
+        this.clock);
   }
 }
