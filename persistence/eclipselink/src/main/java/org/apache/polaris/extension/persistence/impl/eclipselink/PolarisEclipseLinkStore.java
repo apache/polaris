@@ -296,15 +296,14 @@ public class PolarisEclipseLinkStore {
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
     String hql =
         "SELECT m from ModelEntity m where"
-            + " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode and m.id > :tokenId";
+            + " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode";
 
-    long tokenId = -1;
+    if (pageToken.hasDataReference()) {
+      hql += " and m.id > :tokenId";
+    }
+
     if (pageToken.paginationRequested()) {
       hql += " order by m.id asc";
-
-      if (pageToken.hasDataReference()) {
-        tokenId = EntityIdPaging.entityIdBoundary(pageToken);
-      }
     }
 
     TypedQuery<ModelEntity> query =
@@ -312,8 +311,12 @@ public class PolarisEclipseLinkStore {
             .createQuery(hql, ModelEntity.class)
             .setParameter("catalogId", catalogId)
             .setParameter("parentId", parentId)
-            .setParameter("typeCode", entityType.getCode())
-            .setParameter("tokenId", tokenId);
+            .setParameter("typeCode", entityType.getCode());
+
+    if (pageToken.hasDataReference()) {
+      long tokenId = EntityIdPaging.entityIdBoundary(pageToken);
+      query = query.setParameter("tokenId", tokenId);
+    }
 
     return query.getResultList();
   }
