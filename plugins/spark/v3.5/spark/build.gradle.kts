@@ -179,4 +179,4 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
 
-tasks.named<Jar>("jar") { archiveClassifier.set("defaultJar") }
+tasks.named<Jar>("jar") { archiveClassifier.set("internal") }
