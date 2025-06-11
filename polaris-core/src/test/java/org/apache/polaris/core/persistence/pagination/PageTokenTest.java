@@ -34,7 +34,7 @@ class PageTokenTest {
     assertThatThrownBy(r::encodedDataReference).isInstanceOf(IllegalStateException.class);
     assertThatThrownBy(r::pageSize).isInstanceOf(IllegalStateException.class);
 
-    r = PageToken.decode(null, null);
+    r = PageToken.build(null, null);
     assertThat(r.paginationRequested()).isFalse();
     assertThatThrownBy(r::encodedDataReference).isInstanceOf(IllegalStateException.class);
     assertThatThrownBy(r::pageSize).isInstanceOf(IllegalStateException.class);
@@ -50,7 +50,7 @@ class PageTokenTest {
 
   @Test
   public void testFirstRequest() {
-    PageToken r = PageToken.decode(null, 123);
+    PageToken r = PageToken.build(null, 123);
     assertThat(r.encodedDataReference()).isNull();
     assertThat(r.paginationRequested()).isTrue();
     assertThat(r.pageSize()).isEqualTo(123);
@@ -58,15 +58,15 @@ class PageTokenTest {
 
   @Test
   public void testApiRoundTrip() {
-    PageToken request = PageToken.decode(null, 123);
+    PageToken request = PageToken.build(null, 123);
     Page<?> page = Page.mapped(request, Stream.of("i1"), Function.identity(), x -> "test:123");
     assertThat(page.encodedResponseToken()).isNotNull();
-    PageToken r = PageToken.decode(page.encodedResponseToken(), null);
+    PageToken r = PageToken.build(page.encodedResponseToken(), null);
     assertThat(r.paginationRequested()).isTrue();
     assertThat(r.encodedDataReference()).isEqualTo("test:123");
     assertThat(r.pageSize()).isEqualTo(123);
 
-    r = PageToken.decode(page.encodedResponseToken(), 456);
+    r = PageToken.build(page.encodedResponseToken(), 456);
     assertThat(r.paginationRequested()).isTrue();
     assertThat(r.encodedDataReference()).isEqualTo("test:123");
     assertThat(r.pageSize()).isEqualTo(456);

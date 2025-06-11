@@ -51,7 +51,7 @@ public class PageToken {
    *     previous page (encoded in the page token string) will be reused.
    * @see Page#encodedResponseToken()
    */
-  public static PageToken decode(
+  public static PageToken build(
       @Nullable String encodedPageToken, @Nullable Integer requestedPageSize) {
     return PageTokenUtil.decodePageRequest(encodedPageToken, requestedPageSize);
   }

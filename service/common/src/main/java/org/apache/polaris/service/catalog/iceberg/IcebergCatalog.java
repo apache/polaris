@@ -2518,7 +2518,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!paginationEnabled) {
       return PageToken.readEverything();
     } else {
-      return PageToken.decode(tokenString, pageSize);
+      return PageToken.build(tokenString, pageSize);
     }
   }
 }

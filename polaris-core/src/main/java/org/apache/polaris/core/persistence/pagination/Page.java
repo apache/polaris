@@ -95,7 +95,7 @@ public class Page<T> {
 
   /**
    * Returns a page token in encoded form suitable for returning to API clients. The string returned
-   * from this method is expected to be parsed by {@link PageToken#decode(String, Integer)} when
+   * from this method is expected to be parsed by {@link PageToken#build(String, Integer)} when
    * servicing the request for the next page of related data.
    */
   public @Nullable String encodedResponseToken() {

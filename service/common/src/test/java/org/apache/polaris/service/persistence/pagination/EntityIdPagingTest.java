@@ -43,7 +43,6 @@ public class EntityIdPagingTest {
     Page<?> page =
         Page.mapped(
             request, Stream.of(e1, e2), Function.identity(), EntityIdPaging::encodedDataReference);
-    assertThat(entityIdBoundary(PageToken.decode(page.encodedResponseToken(), null)))
-        .isEqualTo(11L);
+    assertThat(entityIdBoundary(PageToken.build(page.encodedResponseToken(), null))).isEqualTo(11L);
   }
 }

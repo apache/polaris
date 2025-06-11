@@ -2012,7 +2012,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.decode(previousPage.encodedResponseToken(), null);
+    return PageToken.build(previousPage.encodedResponseToken(), null);
   }
 
   @Test
