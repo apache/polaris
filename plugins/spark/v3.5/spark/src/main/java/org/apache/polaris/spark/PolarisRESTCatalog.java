@@ -48,16 +48,16 @@ import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
-import org.apache.polaris.spark.rest.CreateGenericTableRestRequest;
-import org.apache.polaris.spark.rest.ListGenericTablesRestResponse;
-import org.apache.polaris.spark.rest.LoadGenericTableRestResponse;
+import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
+import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
+import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 
 /**
  * [[PolarisRESTCatalog]] talks to Polaris REST APIs, and implements the PolarisCatalog interfaces,
  * which are generic table related APIs at this moment. This class doesn't interact with any Spark
  * objects.
  */
-public class PolarisRestCatalog implements PolarisCatalog, Closeable {
+public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   public static final String REST_PAGE_SIZE = "rest-page-size";
 
   private final Function<Map<String, String>, RESTClient> clientBuilder;
@@ -72,11 +72,11 @@ public class PolarisRestCatalog implements PolarisCatalog, Closeable {
   // the default endpoints to config if server doesn't specify the 'endpoints' configuration.
   private static final Set<Endpoint> DEFAULT_ENDPOINTS = PolarisEndpoints.GENERIC_TABLE_ENDPOINTS;
 
-  public PolarisRestCatalog() {
+  public PolarisRESTCatalog() {
     this(config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
   }
 
-  public PolarisRestCatalog(Function<Map<String, String>, RESTClient> clientBuilder) {
+  public PolarisRESTCatalog(Function<Map<String, String>, RESTClient> clientBuilder) {
     this.clientBuilder = clientBuilder;
   }
 
@@ -164,13 +164,13 @@ public class PolarisRestCatalog implements PolarisCatalog, Closeable {
 
     do {
       queryParams.put("pageToken", pageToken);
-      ListGenericTablesRestResponse response =
+      ListGenericTablesRESTResponse response =
           restClient
               .withAuthSession(this.catalogAuth)
               .get(
                   pathGenerator.genericTables(ns),
                   queryParams,
-                  ListGenericTablesRestResponse.class,
+                  ListGenericTablesRESTResponse.class,
                   Map.of(),
                   ErrorHandlers.namespaceErrorHandler());
       pageToken = response.getNextPageToken();
@@ -202,8 +202,8 @@ public class PolarisRestCatalog implements PolarisCatalog, Closeable {
   public GenericTable createGenericTable(
       TableIdentifier identifier, String format, String doc, Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
-    CreateGenericTableRestRequest request =
-        new CreateGenericTableRestRequest(
+    CreateGenericTableRESTRequest request =
+        new CreateGenericTableRESTRequest(
             CreateGenericTableRequest.builder()
                 .setName(identifier.name())
                 .setFormat(format)
@@ -211,13 +211,13 @@ public class PolarisRestCatalog implements PolarisCatalog, Closeable {
                 .setProperties(props)
                 .build());
 
-    LoadGenericTableRestResponse response =
+    LoadGenericTableRESTResponse response =
         restClient
             .withAuthSession(this.catalogAuth)
             .post(
                 pathGenerator.genericTables(identifier.namespace()),
                 request,
-                LoadGenericTableRestResponse.class,
+                LoadGenericTableRESTResponse.class,
                 Map.of(),
                 ErrorHandlers.tableErrorHandler());
 
@@ -227,13 +227,13 @@ public class PolarisRestCatalog implements PolarisCatalog, Closeable {
   @Override
   public GenericTable loadGenericTable(TableIdentifier identifier) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
-    LoadGenericTableRestResponse response =
+    LoadGenericTableRESTResponse response =
         restClient
             .withAuthSession(this.catalogAuth)
             .get(
                 pathGenerator.genericTable(identifier),
                 null,
-                LoadGenericTableRestResponse.class,
+                LoadGenericTableRESTResponse.class,
                 Map.of(),
                 ErrorHandlers.tableErrorHandler());
 

@@ -62,10 +62,8 @@ public class ProductionReadinessChecks {
    * null character {@code 0000} to ensure that the warning sign is displayed correctly regardless
    * of the log pattern (some log patterns seem to interfere with non-ASCII characters).
    */
-  @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   private static final String WARNING_SIGN_UTF_8 = "\u0000\u26A0\uFE0F";
 
-  @SuppressWarnings("checkstyle:AvoidEscapedUnicodeCharacters")
   private static final String SEVERE_SIGN_UTF_8 = "\u0000\uD83D\uDED1";
 
   /** A simple warning sign displayed when the character set is not UTF-8. */

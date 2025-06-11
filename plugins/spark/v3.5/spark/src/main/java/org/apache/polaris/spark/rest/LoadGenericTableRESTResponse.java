@@ -29,10 +29,10 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
  * currently required because the Iceberg HTTPClient requires the request and response to be a class
  * of RESTRequest and RESTResponse.
  */
-public class LoadGenericTableRestResponse extends LoadGenericTableResponse implements RESTResponse {
+public class LoadGenericTableRESTResponse extends LoadGenericTableResponse implements RESTResponse {
 
   @JsonCreator
-  public LoadGenericTableRestResponse(
+  public LoadGenericTableRESTResponse(
       @JsonProperty(value = "table", required = true) GenericTable table) {
     super(table);
   }

@@ -122,7 +122,7 @@ public class SparkCatalog
     // initialize the polaris spark catalog
     OAuth2Util.AuthSession catalogAuth =
         PolarisCatalogUtils.getAuthSession(this.icebergsSparkCatalog);
-    PolarisRestCatalog restCatalog = new PolarisRestCatalog();
+    PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
     restCatalog.initialize(options, catalogAuth);
     this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
     this.polarisSparkCatalog.initialize(name, resolvedOptions);

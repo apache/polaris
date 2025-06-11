@@ -76,10 +76,10 @@ public class DeserializationTest {
             .setProperties(properties)
             .setDoc(doc)
             .build();
-    LoadGenericTableRestResponse response = new LoadGenericTableRestResponse(table);
+    LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
     String json = mapper.writeValueAsString(response);
-    LoadGenericTableRestResponse deserializedResponse =
-        mapper.readValue(json, LoadGenericTableRestResponse.class);
+    LoadGenericTableRESTResponse deserializedResponse =
+        mapper.readValue(json, LoadGenericTableRESTResponse.class);
     assertThat(deserializedResponse.getTable().getFormat()).isEqualTo("delta");
     assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
     assertThat(deserializedResponse.getTable().getDoc()).isEqualTo(doc);
@@ -90,8 +90,8 @@ public class DeserializationTest {
   @MethodSource("genericTableTestCases")
   public void testCreateGenericTableRESTRequest(String doc, Map<String, String> properties)
       throws JsonProcessingException {
-    CreateGenericTableRestRequest request =
-        new CreateGenericTableRestRequest(
+    CreateGenericTableRESTRequest request =
+        new CreateGenericTableRESTRequest(
             CreateGenericTableRequest.builder()
                 .setName("test-table")
                 .setFormat("delta")
@@ -99,8 +99,8 @@ public class DeserializationTest {
                 .setProperties(properties)
                 .build());
     String json = mapper.writeValueAsString(request);
-    CreateGenericTableRestRequest deserializedRequest =
-        mapper.readValue(json, CreateGenericTableRestRequest.class);
+    CreateGenericTableRESTRequest deserializedRequest =
+        mapper.readValue(json, CreateGenericTableRESTRequest.class);
     assertThat(deserializedRequest.getName()).isEqualTo("test-table");
     assertThat(deserializedRequest.getFormat()).isEqualTo("delta");
     assertThat(deserializedRequest.getDoc()).isEqualTo(doc);
@@ -117,10 +117,10 @@ public class DeserializationTest {
             TableIdentifier.of(namespace, "table3"));
 
     // page token is null
-    ListGenericTablesRestResponse response = new ListGenericTablesRestResponse(null, idents);
+    ListGenericTablesRESTResponse response = new ListGenericTablesRESTResponse(null, idents);
     String json = mapper.writeValueAsString(response);
-    ListGenericTablesRestResponse deserializedResponse =
-        mapper.readValue(json, ListGenericTablesRestResponse.class);
+    ListGenericTablesRESTResponse deserializedResponse =
+        mapper.readValue(json, ListGenericTablesRESTResponse.class);
     assertThat(deserializedResponse.getNextPageToken()).isNull();
     assertThat(deserializedResponse.getIdentifiers().size()).isEqualTo(idents.size());
     for (TableIdentifier identifier : idents) {
@@ -128,9 +128,9 @@ public class DeserializationTest {
     }
 
     // page token is not null
-    response = new ListGenericTablesRestResponse("page-token", idents);
+    response = new ListGenericTablesRESTResponse("page-token", idents);
     json = mapper.writeValueAsString(response);
-    deserializedResponse = mapper.readValue(json, ListGenericTablesRestResponse.class);
+    deserializedResponse = mapper.readValue(json, ListGenericTablesRESTResponse.class);
     assertThat(deserializedResponse.getNextPageToken()).isEqualTo("page-token");
     for (TableIdentifier identifier : idents) {
       assertThat(deserializedResponse.getIdentifiers()).contains(identifier);

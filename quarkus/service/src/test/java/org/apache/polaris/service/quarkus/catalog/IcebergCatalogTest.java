@@ -1660,13 +1660,13 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   static Stream<Arguments> testRetriableException() {
-    Set<Integer> nonRetryableCodes = Set.of(401, 403, 404);
-    Set<Integer> retryableCodes = Set.of(408, 504);
+    Set<Integer> NON_RETRYABLE_CODES = Set.of(401, 403, 404);
+    Set<Integer> RETRYABLE_CODES = Set.of(408, 504);
 
     // Create a map of HTTP code returned from a cloud provider to whether it should be retried
     Map<Integer, Boolean> cloudCodeMappings = new HashMap<>();
-    nonRetryableCodes.forEach(code -> cloudCodeMappings.put(code, false));
-    retryableCodes.forEach(code -> cloudCodeMappings.put(code, true));
+    NON_RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, false));
+    RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, true));
 
     return Stream.of(
             Stream.of(
