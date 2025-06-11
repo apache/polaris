@@ -349,7 +349,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         new AzureCredentialsStorageIntegration();
     EnumMap<StorageAccessProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
-            getCallContext(),
+            newCallContext(),
             azureConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

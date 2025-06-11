@@ -35,14 +35,17 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class CatalogEntityTest {
 
-  @BeforeAll
-  public static void setup() {
+  private CallContext callContext;
+
+  @BeforeEach
+  public void setup() {
     MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
     RealmContext realmContext = () -> "realm";
     PolarisCallContext polarisCallContext =
@@ -50,6 +53,7 @@ public class CatalogEntityTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
             new PolarisDefaultDiagServiceImpl());
+    this.callContext = polarisCallContext;
     CallContext.setCurrentContext(polarisCallContext);
   }
 
@@ -72,7 +76,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -93,7 +97,7 @@ public class CatalogEntityTest {
                 new CatalogProperties("abfs://container@storageaccount.blob.windows.net/path"))
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(azureCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid azure location uri unsupportPrefix://mybucket/path");
 
@@ -110,7 +114,7 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties("gs://externally-owned-bucket"))
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(gcpCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -142,7 +146,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog))
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
         .doesNotThrowAnyException();
   }
 
@@ -166,7 +170,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog));
+    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog));
 
     basedLocation = "abfs://container@storageaccount.blob.windows.net/path";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -183,7 +187,7 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties(basedLocation))
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(azureCatalog));
+    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog));
 
     basedLocation = "gs://externally-owned-bucket";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -199,7 +203,7 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties(basedLocation))
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(gcpCatalog));
+    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog));
   }
 
   @ParameterizedTest
@@ -234,7 +238,7 @@ public class CatalogEntityTest {
         expectedMessage = "Invalid role ARN format";
     }
     ;
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }

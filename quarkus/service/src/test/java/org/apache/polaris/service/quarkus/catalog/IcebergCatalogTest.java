@@ -211,9 +211,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
 
-  protected String realmName;
-
   private IcebergCatalog catalog;
+  private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
@@ -225,6 +224,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
+
+  protected String getRealmName() {
+    return realmName;
+  }
 
   @BeforeAll
   public static void setUpMocks() {

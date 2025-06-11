@@ -171,7 +171,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<StorageAccessProperty, String> credsMap =
         gcpCredsIntegration.getSubscopedCreds(
-            getCallContext(),
+            newCallContext(),
             gcpConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

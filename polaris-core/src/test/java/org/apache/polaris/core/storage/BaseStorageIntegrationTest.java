@@ -26,7 +26,7 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.mockito.Mockito;
 
 public abstract class BaseStorageIntegrationTest {
-  protected CallContext getCallContext() {
+  protected CallContext newCallContext() {
     return new PolarisCallContext(
         () -> "realm", Mockito.mock(BasePersistence.class), Mockito.mock(PolarisDiagnostics.class));
   }

@@ -83,7 +83,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                getCallContext(),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(warehouseDir),
@@ -231,7 +231,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            getCallContext(),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 storageType,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -248,7 +248,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    getCallContext(),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         storageType,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -349,7 +349,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                getCallContext(),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -444,7 +444,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                getCallContext(),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     storageType,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -509,7 +509,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                getCallContext(),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -549,7 +549,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            getCallContext(),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -566,7 +566,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    getCallContext(),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         PolarisStorageConfigurationInfo.StorageType.S3,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -604,7 +604,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    getCallContext(),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         PolarisStorageConfigurationInfo.StorageType.S3,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -622,7 +622,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            getCallContext(),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
