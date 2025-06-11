@@ -135,16 +135,10 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     exclude(dependency("org.apache.avro:avro*.*"))
   }
 
-  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml")
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
-tasks.named<Jar>("jar") { isEnabled = false }
-
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
 
-tasks.named("test") {
-  dependsOn("sourcesJar")
-}
-
-// tasks.named<Jar>("jar") { archiveClassifier.set("defaultJar") }
+tasks.named<Jar>("jar") { archiveClassifier.set("defaultJar") }
