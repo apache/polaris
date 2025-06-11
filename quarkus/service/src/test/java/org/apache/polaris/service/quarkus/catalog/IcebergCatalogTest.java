@@ -319,7 +319,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        polarisContext, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -1596,7 +1597,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(
+                    polarisContext, noPurgeStorageConfigModel, storageLocation)
                 .build()
                 .asCatalog()));
     PolarisPassthroughResolutionView passthroughView =

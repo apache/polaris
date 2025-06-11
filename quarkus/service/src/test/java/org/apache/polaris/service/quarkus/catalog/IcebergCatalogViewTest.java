@@ -224,6 +224,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
                 .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                 .setDefaultBaseLocation("file://tmp")
                 .setStorageConfigurationInfo(
+                    polarisContext,
                     new FileStorageConfigInfo(
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")

@@ -248,9 +248,7 @@ public class CatalogEntity extends PolarisEntity {
     }
 
     public Builder setStorageConfigurationInfo(
-        CallContext callContext,
-        StorageConfigInfo storageConfigModel,
-        String defaultBaseLocation) {
+        CallContext callContext, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -309,14 +307,14 @@ public class CatalogEntity extends PolarisEntity {
 
     /** Validate the number of allowed locations not exceeding the max value. */
     private void validateMaxAllowedLocations(
-        CallContext callContext,
-        Collection<String> allowedLocations) {
-      int maxAllowedLocations = callContext
-          .getPolarisCallContext()
-          .getConfigurationStore()
-          .getConfiguration(
-              callContext.getRealmContext(),
-              BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+        CallContext callContext, Collection<String> allowedLocations) {
+      int maxAllowedLocations =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getRealmContext(),
+                  BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(

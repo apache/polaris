@@ -31,6 +31,6 @@ public class PolarisCatalogWithEntityCacheTest extends IcebergCatalogTest {
   @Nullable
   @Override
   protected InMemoryEntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(() -> realmName, configurationStore, metaStoreManager);
+    return new InMemoryEntityCache(() -> getRealmName(), configurationStore, metaStoreManager);
   }
 }

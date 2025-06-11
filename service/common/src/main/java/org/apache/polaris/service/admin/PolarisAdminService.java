@@ -898,7 +898,7 @@ public class PolarisAdminService {
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
-          updateRequest.getStorageConfigInfo(), defaultBaseLocation);
+          callContext, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 

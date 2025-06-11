@@ -233,7 +233,8 @@ public class PolarisGenericTableCatalogTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        polarisContext, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 

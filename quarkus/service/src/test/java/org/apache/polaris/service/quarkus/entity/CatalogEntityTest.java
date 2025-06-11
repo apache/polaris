@@ -34,7 +34,6 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -170,7 +169,8 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog));
 
     basedLocation = "abfs://container@storageaccount.blob.windows.net/path";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -187,7 +187,8 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties(basedLocation))
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog));
 
     basedLocation = "gs://externally-owned-bucket";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -203,7 +204,8 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties(basedLocation))
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
-    Assertions.assertThatNoException().isThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog));
   }
 
   @ParameterizedTest
