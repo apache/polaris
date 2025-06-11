@@ -48,7 +48,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -58,6 +58,7 @@ import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguratio
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 class GcpCredentialsStorageIntegrationTest {
 
@@ -171,7 +172,7 @@ class GcpCredentialsStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<StorageAccessProperty, String> credsMap =
         gcpCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            Mockito.mock(CallContext.class),
             gcpConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

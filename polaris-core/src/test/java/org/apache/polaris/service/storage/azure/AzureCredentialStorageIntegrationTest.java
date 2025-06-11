@@ -47,7 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -60,6 +60,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.mockito.Mockito;
 
 public class AzureCredentialStorageIntegrationTest {
 
@@ -349,7 +350,7 @@ public class AzureCredentialStorageIntegrationTest {
         new AzureCredentialsStorageIntegration();
     EnumMap<StorageAccessProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            Mockito.mock(CallContext.class),
             azureConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),
