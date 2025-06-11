@@ -127,6 +127,7 @@ EXCLUDE_PATHS=(
   "./polaris/management/__pycache__/"
   "./polaris/management/models/__pycache__/"
   "./polaris/management/api/__pycache__/"
+  "./integration_tests/"
   "./.github/workflows/python.yml"
   "./.gitlab-ci.yml"
   "./pyproject.toml"
@@ -134,13 +135,17 @@ EXCLUDE_PATHS=(
   "./test-requirements.txt"
   "./setup.py"
   "./.DS_Store"
+  "./Makefile"
   "./poetry.lock"
+  "./docker-compose.yml"
+  "./.pre-commit-config.yaml"
 )
 
 EXCLUDE_EXTENSIONS=(
   "json"
   "iml"
   "keep"
+  "gitignore"
 )
 
 # Process all files in the target directory

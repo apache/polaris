@@ -72,7 +72,7 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   echo "RUN REGRESSION TEST FOR SPARK_MAJOR_VERSION=${SPARK_MAJOR_VERSION}, SPARK_VERSION=${SPARK_VERSION}, SCALA_VERSION=${SCALA_VERSION}"
   # find the project jar
   SPARK_DIR=${SPARK_ROOT_DIR}/spark
-  JAR_PATH=$(find ${SPARK_DIR} -name "polaris-iceberg-*.*-spark-runtime-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.jar" -print -quit)
+  JAR_PATH=$(find ${SPARK_DIR} -name "polaris-spark-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.*-bundle.jar" -print -quit)
   echo "find jar ${JAR_PATH}"
 
   SPARK_EXISTS="TRUE"

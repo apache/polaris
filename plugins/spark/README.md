@@ -30,8 +30,8 @@ and depends on iceberg-spark-runtime 1.9.0.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
-`polaris-iceberg-<icebergVersion>-spark-runtime-<sparkVersion>_<scalaVersion>-<polarisVersion>.jar`. For example:
-`polaris-iceberg-1.9.0-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar`.
+`polaris-spark-<sparkVersion>_<scalaVersion>-<polarisVersion>-bundle.jar`. For example:
+`polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar`.
 
 - `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.12.
 - `./gradlew :polaris-spark-3.5_2.13:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.13.
@@ -67,12 +67,12 @@ bin/spark-shell \
 ```
 
 Assume the path to the built Spark client jar is
-`/polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-iceberg-1.9.0-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar`
+`/polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar`
 and the name of the catalog is `polaris`. The cli command will look like following:
 
 ```shell
 bin/spark-shell \
---jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-iceberg-1.9.0-spark-runtime-3.5_2.12-0.10.0-beta-incubating-SNAPSHOT.jar \
+--jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar \
 --packages org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \

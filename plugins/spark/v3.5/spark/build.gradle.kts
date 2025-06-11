@@ -151,13 +151,16 @@ tasks.register("checkNoDisallowedImports") {
 tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
-  archiveClassifier = null
-  archiveBaseName =
-    "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
+  archiveClassifier = "bundle"
   isZip64 = true
 
-  // pack both the source code and dependencies
+  // include the LICENSE and NOTICE files for the shadow Jar
+  from(projectDir) {
+    include("LICENSE")
+    include("NOTICE")
+  }
 
+  // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 

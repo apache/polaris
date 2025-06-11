@@ -107,9 +107,9 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.6
-Group: io.micrometer Name: micrometer-core Version: 1.14.6
-Group: io.micrometer Name: micrometer-observation Version: 1.14.6
+Group: io.micrometer Name: micrometer-commons Version: 1.15.1
+Group: io.micrometer Name: micrometer-core Version: 1.15.1
+Group: io.micrometer Name: micrometer-observation Version: 1.15.1
 
 NOTICE:
 | Micrometer
@@ -816,36 +816,36 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.50
-Group: software.amazon.awssdk Name: arns Version: 2.31.50
-Group: software.amazon.awssdk Name: auth Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.50
-Group: software.amazon.awssdk Name: checksums Version: 2.31.50
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.50
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.50
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.50
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.50
-Group: software.amazon.awssdk Name: profiles Version: 2.31.50
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.50
-Group: software.amazon.awssdk Name: regions Version: 2.31.50
-Group: software.amazon.awssdk Name: retries Version: 2.31.50
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: s3 Version: 2.31.50
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.50
-Group: software.amazon.awssdk Name: sts Version: 2.31.50
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.50
-Group: software.amazon.awssdk Name: utils Version: 2.31.50
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.59
+Group: software.amazon.awssdk Name: arns Version: 2.31.59
+Group: software.amazon.awssdk Name: auth Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.59
+Group: software.amazon.awssdk Name: checksums Version: 2.31.59
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.59
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.59
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.59
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.59
+Group: software.amazon.awssdk Name: profiles Version: 2.31.59
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.59
+Group: software.amazon.awssdk Name: regions Version: 2.31.59
+Group: software.amazon.awssdk Name: retries Version: 2.31.59
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: s3 Version: 2.31.59
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.59
+Group: software.amazon.awssdk Name: sts Version: 2.31.59
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.59
+Group: software.amazon.awssdk Name: utils Version: 2.31.59
 
 NOTICE:
 | AWS SDK for Java
