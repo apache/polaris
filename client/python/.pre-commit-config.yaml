@@ -33,4 +33,4 @@ repos:
     hooks:
       - id: mypy
         args:
-          [--disallow-untyped-defs, --ignore-missing-imports, --install-types, --non-interactive, --config=pyproject.toml]
+          [--disallow-untyped-defs, --ignore-missing-imports, --install-types, --non-interactive]
