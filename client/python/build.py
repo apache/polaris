@@ -38,7 +38,6 @@ OPEN_API_GENERATOR_IGNORE = os.path.join(PROJECT_ROOT, ".openapi-generator-ignor
 # Open API Generator Configs
 PACKAGE_NAME_POLARIS_MANAGEMENT = "--additional-properties=packageName=polaris.management"
 PACKAGE_NAME_POLARIS_CATALOG = "--additional-properties=packageName=polaris.catalog"
-API_PREFIX = "--additional-properties=apiNamePrefix=polaris"
 PYTHON_VERSION = "--additional-properties=pythonVersion=3.9"
 
 def generate_polaris_management_client() -> None:
@@ -48,7 +47,7 @@ def generate_polaris_management_client() -> None:
         "-g", "python",
         "-o", PROJECT_ROOT,
         PACKAGE_NAME_POLARIS_MANAGEMENT,
-        API_PREFIX,
+        "--additional-properties=apiNamePrefix=polaris",
         PYTHON_VERSION,
         "--ignore-file-override", OPEN_API_GENERATOR_IGNORE
     ],
@@ -61,7 +60,7 @@ def generate_polaris_catalog_client() -> None:
         "-g", "python",
         "-o", PROJECT_ROOT,
         PACKAGE_NAME_POLARIS_CATALOG,
-        API_PREFIX,
+        "--additional-properties=apiNameSuffix=",
         PYTHON_VERSION,
         "--skip-validate-spec",
         "--ignore-file-override", OPEN_API_GENERATOR_IGNORE
@@ -75,7 +74,8 @@ def generate_iceberg_catalog_client() -> None:
         "-g", "python",
         "-o", PROJECT_ROOT,
         PACKAGE_NAME_POLARIS_CATALOG,
-        API_PREFIX,
+        "--additional-properties=apiNameSuffix=",
+        "--additional-properties=apiNamePrefix=Iceberg",
         PYTHON_VERSION,
         "--skip-validate-spec",
         "--ignore-file-override", OPEN_API_GENERATOR_IGNORE
