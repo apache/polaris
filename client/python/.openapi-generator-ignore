@@ -48,5 +48,9 @@ setup.py
 .gitlab-ci.yml
 .travis.yml
 .github/workflows/python.yml
+git_push.sh
+setup.cfg
+tox.ini
+README.md
 
 
