@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
@@ -94,6 +95,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String prefix,
       String namespace,
       CreatePolicyRequest createPolicyRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -109,6 +111,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String pageToken,
       Integer pageSize,
       String policyType,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -124,6 +127,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String prefix,
       String namespace,
       String policyName,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -139,6 +143,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String namespace,
       String policyName,
       UpdatePolicyRequest updatePolicyRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -154,6 +159,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String namespace,
       String policyName,
       Boolean detachAll,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -169,6 +175,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String namespace,
       String policyName,
       AttachPolicyRequest attachPolicyRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -184,6 +191,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String namespace,
       String policyName,
       DetachPolicyRequest detachPolicyRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -201,6 +209,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String namespace,
       String targetName,
       String policyType,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = namespace != null ? decodeNamespace(namespace) : null;

@@ -29,6 +29,8 @@ import {{javaxPackage}}.ws.rs.PathParam;
 import {{javaxPackage}}.ws.rs.HeaderParam;
 import {{javaxPackage}}.ws.rs.QueryParam;
 import {{javaxPackage}}.ws.rs.FormParam;
+import {{javaxPackage}}.ws.rs.core.Context;
+import {{javaxPackage}}.ws.rs.core.HttpHeaders;
 import {{javaxPackage}}.ws.rs.core.Response;
 import {{javaxPackage}}.servlet.http.HttpServletRequest;
 import {{javaxPackage}}.servlet.http.HttpServletResponse;
@@ -93,7 +95,7 @@ public class {{classname}}  {
   {{#authMethods}}{{#isOAuth}}@RolesAllowed("**"){{/isOAuth}}{{/authMethods}}{{/hasAuthMethods}}
   @Timed("{{metricsPrefix}}.{{baseName}}.{{nickname}}")
   @Timeout
-  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context @MeterTag(key="realm_id",expression="realmIdentifier") RealmContext realmContext,@Context SecurityContext securityContext) {
+  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context HttpHeaders httpHeaders,@Context @MeterTag(key="realm_id",expression="realmIdentifier") RealmContext realmContext,@Context SecurityContext securityContext) {
 {{! Don't log form or header params in case there are secrets, e.g., OAuth tokens }}
     LOGGER.atDebug().setMessage("Invoking {{baseName}} with params")
       .addKeyValue("operation", "{{nickname}}"){{#allParams}}{{^isHeaderParam}}{{^isFormParam}}
