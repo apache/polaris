@@ -96,6 +96,8 @@ import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * CODE_COPIED_TO_POLARIS Copied from CatalogHandler in Iceberg 1.8.0 Contains a collection of
@@ -103,6 +105,8 @@ import org.apache.polaris.core.context.RealmContext;
  */
 @ApplicationScoped
 public class CatalogHandlerUtils {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CatalogHandlerUtils.class);
+
   private static final Schema EMPTY_SCHEMA = new Schema();
   private static final String INITIAL_PAGE_TOKEN = "";
   private static final String CONFLICT_RESOLUTION_ACTION =
@@ -468,12 +472,20 @@ public class CatalogHandlerUtils {
                   if (!isRollbackCompactionEnabled()) {
                     throw new ValidationFailureException(e);
                   }
+                  LOGGER.debug(
+                      "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}",
+                      base.uuid(),
+                      base.currentSnapshot());
                   UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
                       findAssertRefSnapshotID(request);
                   MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
 
                   if (assertRefSnapshotId == null || setSnapshotRef == null) {
                     // This implies the request was not trying to add a snapshot.
+                    LOGGER.debug(
+                        "Giving up on to Rollback replace operation for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
+                        base.uuid(),
+                        base.currentSnapshot());
                     throw new ValidationFailureException(e);
                   }
 
@@ -486,12 +498,15 @@ public class CatalogHandlerUtils {
                     throw new ValidationFailureException(e);
                   }
 
+                  LOGGER.info(
+                      "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
+                      base.uuid(),
+                      base.currentSnapshot(),
+                      snapshotToBeAdded.snapshot().snapshotId());
+
                   List<MetadataUpdate> metadataUpdates =
                       generateUpdatesToRemoveNoopSnapshot(
-                          base,
-                          expectedCurrentSnapshotId,
-                          setSnapshotRef.name(),
-                          snapshotToBeAdded.snapshot().sequenceNumber());
+                          base, expectedCurrentSnapshotId, setSnapshotRef.name());
 
                   if (metadataUpdates == null || metadataUpdates.isEmpty()) {
                     // Nothing can be done as this implies that there were not all
@@ -512,6 +527,11 @@ public class CatalogHandlerUtils {
                   // Ref rolled back update correctly to snapshot to be committed parent now.
                   metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
                   newBase = setAppropriateLastSeqNumber(metadataBuilder.build());
+                  LOGGER.info(
+                      "Successfully to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
+                      base.uuid(),
+                      base.currentSnapshot(),
+                      newBase.currentSnapshot().snapshotId());
                 }
                 // double check if the requirements passes now.
                 try {
@@ -552,10 +572,7 @@ public class CatalogHandlerUtils {
   }
 
   private List<MetadataUpdate> generateUpdatesToRemoveNoopSnapshot(
-      TableMetadata base,
-      long expectedCurrentSnapshotId,
-      String updateRefName,
-      long newSnapshotSeqNumber) {
+      TableMetadata base, long expectedCurrentSnapshotId, String updateRefName) {
     // find the all the snapshots we want to retain which are not the part of current branch.
     Set<Long> idsToRetain = Sets.newHashSet();
     for (Map.Entry<String, SnapshotRef> ref : base.refs().entrySet()) {
@@ -584,11 +601,20 @@ public class CatalogHandlerUtils {
       // catch un-expected state the commit sequence number are
       // not continuous can happen for a table with multiple branches.
       if (expectedSequenceNumber != snap.sequenceNumber()) {
+        LOGGER.debug(
+            "Giving up rolling back table {} to snapshot {}, Sequence Number are not continuous from {}",
+            base.uuid(),
+            snapshotId,
+            expectedSequenceNumber);
         break;
       }
       if (!isRollbackSnapshot(snap) || idsToRetain.contains(snapshotId)) {
         // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
         // reference either by branch or a tag.
+        LOGGER.debug(
+            "Giving up rolling back table {} to snapshot {}, snapshot to be removed referenced by another branch or tag ancestor",
+            snapshotId,
+            expectedSequenceNumber);
         break;
       }
       snapshotsToRemove.add(snap.snapshotId());
@@ -647,9 +673,15 @@ public class CatalogHandlerUtils {
     // the sequence number can't be changed for a snapshot the only possible option
     // then is to change the sequenceNumber tracked by metadata.json
     try {
+      long lastSeqNumber = newBase.lastSequenceNumber();
       // this should point to the sequence number that current tip of the
       // branch belongs to, as the new commit will be applied on top of this.
       LAST_SEQUENCE_NUMBER_FIELD.set(newBase, newBase.currentSnapshot().sequenceNumber());
+      LOGGER.info(
+          "Setting table :{} last sequence number from {} to {}",
+          newBase.uuid(),
+          lastSeqNumber,
+          newBase.lastSequenceNumber());
     } catch (IllegalAccessException ex) {
       throw new RuntimeException(ex);
     }
