@@ -60,59 +60,61 @@ public class DatasourceOperations {
   private final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource,
-      DatabaseType databaseType,
-      RelationalJdbcConfiguration relationalJdbcConfiguration) {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration)
+      throws SQLException {
     this.datasource = datasource;
-    this.databaseType = databaseType;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+    try (Connection connection = this.datasource.getConnection()) {
+      String productName = connection.getMetaData().getDatabaseProductName();
+      this.databaseType = DatabaseType.fromDisplayName(productName);
+    }
   }
 
-  public DatabaseType getDatabaseType() {
+  DatabaseType getDatabaseType() {
     return databaseType;
   }
 
   /**
-   * Execute SQL script
+   * Execute SQL script.
    *
    * @param scriptFilePath : Path of SQL script.
    * @throws SQLException : Exception while executing the script.
    */
   public void executeScript(String scriptFilePath) throws SQLException {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    try (Connection connection = borrowConnection();
-        Statement statement = connection.createStatement()) {
-      boolean autoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(true);
-      try {
-        BufferedReader reader =
-            new BufferedReader(
-                new InputStreamReader(
-                    Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)),
-                    UTF_8));
-        StringBuilder sqlBuffer = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-          line = line.trim();
-          if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
-            sqlBuffer.append(line).append("\n");
-            if (line.endsWith(";")) { // Execute statement when semicolon is found
-              String sql = sqlBuffer.toString().trim();
-              try {
-                statement.executeUpdate(sql);
-              } catch (SQLException e) {
-                throw new RuntimeException(e);
+    runWithinTransaction(
+        connection -> {
+          try (Statement statement = connection.createStatement()) {
+            BufferedReader reader =
+                new BufferedReader(
+                    new InputStreamReader(
+                        Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)),
+                        UTF_8));
+            StringBuilder sqlBuffer = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+              line = line.trim();
+              if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
+                sqlBuffer.append(line).append("\n");
+                if (line.endsWith(";")) { // Execute statement when semicolon is found
+                  String sql = sqlBuffer.toString().trim();
+                  try {
+                    // since SQL is directly read from the file, there is close to 0 possibility
+                    // of this being injected plus this run via an Admin tool, if attacker can
+                    // fiddle with this that means lot of other things are already compromised.
+                    statement.execute(sql);
+                  } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                  }
+                  sqlBuffer.setLength(0); // Clear the buffer for the next statement
+                }
               }
-              sqlBuffer.setLength(0); // Clear the buffer for the next statement
             }
+            return true;
+          } catch (IOException e) {
+            throw new RuntimeException(e);
           }
-        }
-      } finally {
-        connection.setAutoCommit(autoCommit);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+        });
   }
 
   /**
