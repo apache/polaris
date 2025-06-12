@@ -103,7 +103,7 @@ public class {{classname}}  {
       .log();
 
     Response ret =
-      service.{{nickname}}({{#isMultipart}}input,{{/isMultipart}}{{#allParams}}{{^isMultipart}}{{paramName}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}realmContext,securityContext);
+      service.{{nickname}}({{#isMultipart}}input,{{/isMultipart}}{{#allParams}}{{^isMultipart}}{{paramName}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}httpHeaders,realmContext,securityContext);
     LOGGER.debug("Completed execution of {{nickname}} API with status code {}", ret.getStatus());
     return ret;
   }
