@@ -142,7 +142,10 @@ tasks.named<ShadowJar>("shadowJar") {
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
-tasks.withType(Jar::class).named("sourcesJar") { dependsOn("shadowJar") }
+// ensure the shadowJar job is run for both `assemble` and `build` task
+tasks.named("assemble") { dependsOn("shadowJar") }
+
+tasks.named("build") { dependsOn("shadowJar") }
 
 tasks.named<Jar>("jar") {
   // retain the default jar job, and add a classifier to avoid conflict
