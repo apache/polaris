@@ -25,8 +25,8 @@ enabling seamless multi-engine interoperability across a wide range of platforms
 Apache Spark™, StarRocks, and Trino.
 
 Documentation is available at https://polaris.apache.org, including
-[Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
-and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
+[Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
+and [Polaris Catalog API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
 [Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
 for contribution guidelines.
