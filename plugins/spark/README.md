@@ -29,12 +29,12 @@ Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 an
 and depends on iceberg-spark-runtime 1.9.0.
 
 # Build Plugin Jar
-A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
+A shadowJar task is added to build a jar for the Polaris Spark plugin, the jar is named as:
 `polaris-spark-<sparkVersion>_<scalaVersion>-<polarisVersion>-bundle.jar`. For example:
 `polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar`.
 
-- `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.12.
-- `./gradlew :polaris-spark-3.5_2.13:createPolarisSparkJar` -- build jar for Spark 3.5 with Scala version 2.13.
+- `./gradlew :polaris-spark-3.5_2.12:shadowJar` -- build jar for Spark 3.5 with Scala version 2.12.
+- `./gradlew :polaris-spark-3.5_2.13:shadowJar` -- build jar for Spark 3.5 with Scala version 2.13.
 
 The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after the build.
 
