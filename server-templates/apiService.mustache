@@ -38,7 +38,7 @@ It is here to remove some unsupported imports and to update the default implemen
 {{#operations}}
 public interface {{classname}}Service {
   {{#operation}}
-  default Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>serviceQueryParams}}{{>servicePathParams}}{{>serviceHeaderParams}}{{>serviceBodyParams}}{{^isMultipart}}{{>serviceFormParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context HttpHeaders httpHeaders, RealmContext realmContext,SecurityContext securityContext) {
+  default Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>serviceQueryParams}}{{>servicePathParams}}{{>serviceHeaderParams}}{{>serviceBodyParams}}{{^isMultipart}}{{>serviceFormParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context HttpHeaders httpHeaders,RealmContext realmContext,SecurityContext securityContext) {
     return Response.status(501).build(); // not implemented
   }
   {{/operation}}
