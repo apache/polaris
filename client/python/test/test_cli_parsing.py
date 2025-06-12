@@ -85,7 +85,7 @@ class TestCliParsing(unittest.TestCase):
 
     def _check_usage_output(self, f, needle='usage:'):
         with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout, \
-             patch('sys.stderr', new_callable=io.StringIO) as mock_stderr:
+                patch('sys.stderr', new_callable=io.StringIO) as mock_stderr:
             with self.assertRaises(SystemExit) as cm:
                 f()
             self.assertEqual(cm.exception.code, 0)
@@ -259,7 +259,7 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(mock_execute(['catalogs', 'list']), 'list_catalogs')
         check_arguments(mock_execute([
-              '--base-url', 'https://customservice.com/subpath', 'catalogs', 'list']), 'list_catalogs')
+            '--base-url', 'https://customservice.com/subpath', 'catalogs', 'list']), 'list_catalogs')
         check_arguments(mock_execute(['catalogs', 'delete', 'foo']), 'delete_catalog', {
             (0, None): 'foo',
         })
