@@ -19,7 +19,10 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins { id("polaris-client") }
+plugins {
+  id("polaris-client")
+  id("com.gradleup.shadow")
+}
 
 // get version information
 val sparkMajorVersion = "3.5"
@@ -112,7 +115,8 @@ dependencies {
   }
 }
 
-tasks.register<ShadowJar>("createPolarisSparkJar") {
+tasks.named<ShadowJar>("shadowJar") {
+  archiveClassifier = null
   isZip64 = true
 
   // include the LICENSE and NOTICE files for the shadow Jar
@@ -136,14 +140,4 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml")
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
-}
-
-tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
-
-tasks.named<Jar>("jar") {
-  // retain the default jar job, and add a classifier to avoid conflict
-  // with the createPolarisSparkJar. This jar is needed by the task "test",
-  // which can not be switched to depends on createPolarisSparkJar due to
-  // relocation of com.fasterxml.
-  archiveClassifier.set("internal")
 }
