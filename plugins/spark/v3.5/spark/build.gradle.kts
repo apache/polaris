@@ -143,3 +143,11 @@ tasks.named<ShadowJar>("shadowJar") {
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { dependsOn("shadowJar") }
+
+tasks.named<Jar>("jar") {
+  // retain the default jar job, and add a classifier to avoid conflict
+  // with the createPolarisSparkJar. This jar is needed by the task "test",
+  // which can not be switched to depends on createPolarisSparkJar due to
+  // relocation of com.fasterxml.
+  archiveClassifier.set("internal")
+}
