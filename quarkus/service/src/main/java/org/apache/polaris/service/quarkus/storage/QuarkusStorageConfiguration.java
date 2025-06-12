@@ -21,7 +21,7 @@ package org.apache.polaris.service.quarkus.storage;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import java.time.Duration;
-import java.util.*;
+import java.util.Optional;
 import org.apache.polaris.service.storage.StorageConfiguration;
 
 @ConfigMapping(prefix = "polaris.storage")
