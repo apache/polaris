@@ -70,7 +70,7 @@ public class DatasourceOperations {
     }
   }
 
-  DatabaseType getDatabaseType() throws SQLException {
+  DatabaseType getDatabaseType() {
     return databaseType;
   }
 
