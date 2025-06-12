@@ -18,25 +18,20 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /** a set of returned entities result */
 public class EntitiesResult extends BaseResult {
 
   // null if not success. Else the list of entities being returned
-  private final List<PolarisBaseEntity> entities;
-  private final Optional<PageToken> pageTokenOpt;
+  private final Page<PolarisBaseEntity> entities;
 
   public static EntitiesResult fromPage(Page<PolarisBaseEntity> page) {
-    return new EntitiesResult(page.items, Optional.ofNullable(page.pageToken));
+    return new EntitiesResult(page);
   }
 
   /**
@@ -48,11 +43,6 @@ public class EntitiesResult extends BaseResult {
   public EntitiesResult(@Nonnull ReturnStatus errorStatus, @Nullable String extraInformation) {
     super(errorStatus, extraInformation);
     this.entities = null;
-    this.pageTokenOpt = Optional.empty();
-  }
-
-  public EntitiesResult(@Nonnull List<PolarisBaseEntity> entities) {
-    this(entities, Optional.empty());
   }
 
   /**
@@ -60,29 +50,12 @@ public class EntitiesResult extends BaseResult {
    *
    * @param entities list of entities being returned, implies success
    */
-  public EntitiesResult(
-      @Nonnull List<PolarisBaseEntity> entities, @Nonnull Optional<PageToken> pageTokenOpt) {
+  public EntitiesResult(@Nonnull Page<PolarisBaseEntity> entities) {
     super(ReturnStatus.SUCCESS);
     this.entities = entities;
-    this.pageTokenOpt = pageTokenOpt;
   }
 
-  @JsonCreator
-  private EntitiesResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("entities") List<PolarisBaseEntity> entities,
-      @JsonProperty("pageToken") Optional<PageToken> pageTokenOpt) {
-    super(returnStatus, extraInformation);
-    this.entities = entities;
-    this.pageTokenOpt = pageTokenOpt;
-  }
-
-  public List<PolarisBaseEntity> getEntities() {
-    return entities;
-  }
-
-  public Optional<PageToken> getPageToken() {
-    return pageTokenOpt;
+  public @Nullable List<PolarisBaseEntity> getEntities() {
+    return entities == null ? null : entities.items();
   }
 }

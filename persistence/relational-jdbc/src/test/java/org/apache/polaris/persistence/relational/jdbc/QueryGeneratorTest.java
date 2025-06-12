@@ -206,7 +206,8 @@ public class QueryGeneratorTest {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "test");
     assertEquals(
-        " WHERE name = ?", QueryGenerator.generateWhereClause(Set.of("name"), whereClause).sql());
+        " WHERE name = ?",
+        QueryGenerator.generateWhereClause(Set.of("name"), whereClause, Map.of()).sql());
   }
 
   @Test
@@ -216,12 +217,24 @@ public class QueryGeneratorTest {
     whereClause.put("version", 1);
     assertEquals(
         " WHERE name = ? AND version = ?",
-        QueryGenerator.generateWhereClause(Set.of("name", "version"), whereClause).sql());
+        QueryGenerator.generateWhereClause(Set.of("name", "version"), whereClause, Map.of()).sql());
+  }
+
+  @Test
+  void testGenerateWhereClause_multipleConditions_AndInequality() {
+    Map<String, Object> whereClause = new HashMap<>();
+    whereClause.put("name", "test");
+    whereClause.put("version", 1);
+    assertEquals(
+        " WHERE name = ? AND version = ? AND id > ?",
+        QueryGenerator.generateWhereClause(
+                Set.of("name", "version", "id"), whereClause, Map.of("id", 123))
+            .sql());
   }
 
   @Test
   void testGenerateWhereClause_emptyMap() {
     Map<String, Object> whereClause = Collections.emptyMap();
-    assertEquals("", QueryGenerator.generateWhereClause(Set.of(), whereClause).sql());
+    assertEquals("", QueryGenerator.generateWhereClause(Set.of(), whereClause, Map.of()).sql());
   }
 }

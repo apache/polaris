@@ -53,7 +53,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.EntityIdPaging;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
@@ -468,6 +468,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
+
     // full range scan under the parent for that type
     Stream<PolarisBaseEntity> data =
         this.store
@@ -477,11 +478,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
             .map(ModelEntity::toEntity)
             .filter(entityFilter);
 
-    if (pageToken instanceof HasPageSize hasPageSize) {
-      data = data.limit(hasPageSize.getPageSize());
-    }
-
-    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
+    return Page.mapped(pageToken, data, transformer, EntityIdPaging::encodedDataReference);
   }
 
   /** {@inheritDoc} */
