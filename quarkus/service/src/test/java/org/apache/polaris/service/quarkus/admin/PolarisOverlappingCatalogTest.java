@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
 
 public class PolarisOverlappingCatalogTest {
 
@@ -78,7 +80,10 @@ public class PolarisOverlappingCatalogTest {
     return services
         .catalogsApi()
         .createCatalog(
-            new CreateCatalogRequest(catalog), services.realmContext(), services.securityContext());
+            new CreateCatalogRequest(catalog),
+            Mockito.mock(HttpHeaders.class),
+            services.realmContext(),
+            services.securityContext());
   }
 
   @ParameterizedTest

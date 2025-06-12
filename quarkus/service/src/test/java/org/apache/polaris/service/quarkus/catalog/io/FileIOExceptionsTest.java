@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
 import java.util.List;
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /** Validates the propagation of FileIO-level exceptions to the REST API layer. */
@@ -98,6 +100,7 @@ public class FileIOExceptionsTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(201);
@@ -109,6 +112,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
@@ -129,7 +133,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .createTable(
-                catalog, "ns1", request, null, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                request,
+                null,
+                Mockito.mock(HttpHeaders.class),
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
@@ -138,7 +148,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .dropTable(
-                catalog, "ns1", "t1", false, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                "t1",
+                false,
+                Mockito.mock(HttpHeaders.class),
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
@@ -153,6 +169,7 @@ public class FileIOExceptionsTest {
                 null,
                 null,
                 "ALL",
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext());
     res.close();

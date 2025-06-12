@@ -23,6 +23,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCT
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
 import java.util.List;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 
 public class PolarisOverlappingTableTest {
 
@@ -65,6 +67,7 @@ public class PolarisOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       return response.getStatus();
@@ -153,6 +156,7 @@ public class PolarisOverlappingTableTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalogObject),
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
@@ -166,6 +170,7 @@ public class PolarisOverlappingTableTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());

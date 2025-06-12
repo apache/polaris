@@ -23,6 +23,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
@@ -67,6 +68,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       TokenType subjectTokenType,
       String actorToken,
       TokenType actorTokenType,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
 

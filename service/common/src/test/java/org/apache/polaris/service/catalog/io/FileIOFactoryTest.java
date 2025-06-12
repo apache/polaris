@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.HttpHeaders;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.List;
@@ -220,7 +221,10 @@ public class FileIOFactoryTest {
     services
         .catalogsApi()
         .createCatalog(
-            new CreateCatalogRequest(catalog), services.realmContext(), services.securityContext());
+            new CreateCatalogRequest(catalog),
+            Mockito.mock(HttpHeaders.class),
+            services.realmContext(),
+            services.securityContext());
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

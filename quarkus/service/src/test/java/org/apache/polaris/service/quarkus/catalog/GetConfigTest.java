@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.catalog;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 public class GetConfigTest {
   @ParameterizedTest
@@ -66,6 +68,7 @@ public class GetConfigTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext());
     assertThat(response.getStatus()).isEqualTo(CREATED.getStatusCode());
@@ -73,7 +76,11 @@ public class GetConfigTest {
     response =
         services
             .restConfigurationApi()
-            .getConfig(catalogName, services.realmContext(), services.securityContext());
+            .getConfig(
+                catalogName,
+                Mockito.mock(HttpHeaders.class),
+                services.realmContext(),
+                services.securityContext());
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
     if (enableGenericTable) {
