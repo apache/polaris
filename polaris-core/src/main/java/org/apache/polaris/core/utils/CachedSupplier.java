@@ -16,12 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.core.utils;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+import java.util.function.Supplier;
+
+public class CachedSupplier<T> implements Supplier<T> {
+  private final Supplier<T> delegate;
+  private T value;
+  private boolean initialized = false;
+
+  public CachedSupplier(Supplier<T> delegate) {
+    this.delegate = delegate;
+  }
+
+  @Override
+  public synchronized T get() {
+    if (!initialized) {
+      value = delegate.get();
+      initialized = true;
+    }
+    return value;
+  }
+}

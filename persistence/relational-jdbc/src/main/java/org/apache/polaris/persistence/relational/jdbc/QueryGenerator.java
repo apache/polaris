@@ -136,6 +136,47 @@ public class QueryGenerator {
   }
 
   /**
+   * Generates an INSERT query for multiple values into a given table.
+   *
+   * @param allColumns Columns to insert values into.
+   * @param tableName Target table name.
+   * @param values Values for each column (must match order of columns).
+   * @param realmId Realm value to append.
+   * @return INSERT query with value bindings.
+   */
+  public static PreparedQuery generateMultipleInsertQuery(
+      @Nonnull List<String> allColumns,
+      @Nonnull String tableName,
+      List<List<Object>> values,
+      String realmId) {
+    List<String> finalColumns = new ArrayList<>(allColumns);
+    List<List<Object>> transformedValues = new ArrayList<>(values.size());
+    finalColumns.add("realm_id");
+
+    for (List<Object> value : values) {
+      List<Object> transformedValue = new ArrayList<>(value);
+      transformedValue.add(realmId);
+      transformedValues.add(transformedValue);
+    }
+
+    List<Object> finalValues =
+        transformedValues.stream().flatMap(List::stream).collect(Collectors.toList());
+    String columns = String.join(", ", finalColumns);
+    String placeholders =
+        transformedValues.stream()
+            .map(l -> "( " + l.stream().map(c -> "?").collect(Collectors.joining(", ")) + " )")
+            .collect(Collectors.joining(", "));
+    String sql =
+        "INSERT INTO "
+            + getFullyQualifiedTableName(tableName)
+            + " ("
+            + columns
+            + ") VALUES "
+            + placeholders;
+    return new PreparedQuery(sql, finalValues);
+  }
+
+  /**
    * Builds an UPDATE query.
    *
    * @param allColumns Columns to update.

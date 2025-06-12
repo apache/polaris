@@ -18,8 +18,32 @@
  */
 package org.apache.polaris.service.events;
 
-/**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
- */
-public interface PolarisEvent {}
+import jakarta.inject.Inject;
+import java.time.Clock;
+import java.util.UUID;
+
+/** Represents an event emitted by Polaris. */
+public abstract class PolarisEvent {
+  protected Clock clock;
+  private String eventId;
+  private long timestampMs;
+
+  @Inject
+  public void setClock(Clock clock) {
+    this.clock = clock;
+    this.eventId = UUID.randomUUID().toString();
+    this.timestampMs = clock.millis();
+  }
+
+  public static String createRequestId() {
+    return UUID.randomUUID().toString();
+  }
+
+  public String getEventId() {
+    return eventId;
+  }
+
+  public long getTimestampMs() {
+    return timestampMs;
+  }
+}

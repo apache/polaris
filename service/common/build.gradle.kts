@@ -62,6 +62,7 @@ dependencies {
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation(libs.kryo)
 
   implementation(libs.caffeine)
   implementation(libs.guava)
@@ -107,6 +108,7 @@ dependencies {
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jakarta.ws.rs.api)
+  testFixturesApi(libs.threeten.extra)
 
   testFixturesImplementation(platform(libs.quarkus.bom))
   testFixturesImplementation("io.quarkus:quarkus-rest-client")

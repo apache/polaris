@@ -16,18 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
+package org.apache.polaris.service.events;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface QuarkusPolarisEventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   */
-  String type();
+import org.apache.iceberg.catalog.TableIdentifier;
+
+/** Emitted when Polaris intends to create a table. */
+public final class BeforeTableCreatedEvent extends PolarisEvent {
+  private final TableIdentifier identifier;
+  private final String requestId;
+
+  public BeforeTableCreatedEvent(TableIdentifier tableIdentifier, String requestId) {
+    this.identifier = tableIdentifier;
+    this.requestId = requestId;
+  }
+
+  public TableIdentifier getIdentifier() {
+    return identifier;
+  }
+
+  public String getRequestId() {
+    return requestId;
+  }
 }

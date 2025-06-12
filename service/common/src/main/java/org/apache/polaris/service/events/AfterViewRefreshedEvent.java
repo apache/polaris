@@ -20,9 +20,20 @@ package org.apache.polaris.service.events;
 
 import org.apache.iceberg.catalog.TableIdentifier;
 
-/**
- * Emitted after Polaris refreshes its known version of a view's metadata by fetching the latest.
- *
- * @param viewIdentifier The identifier of the view that was refreshed.
- */
-public record AfterViewRefreshedEvent(TableIdentifier viewIdentifier) implements PolarisEvent {}
+public final class AfterViewRefreshedEvent extends PolarisEvent {
+
+  private final TableIdentifier viewIdentifier;
+
+  /**
+   * Emitted after Polaris refreshes its known version of a view's metadata by fetching the latest.
+   *
+   * @param viewIdentifier The identifier of the view that was refreshed.
+   */
+  public AfterViewRefreshedEvent(TableIdentifier viewIdentifier) {
+    this.viewIdentifier = viewIdentifier;
+  }
+
+  public TableIdentifier getViewIdentifier() {
+    return viewIdentifier;
+  }
+}
