@@ -141,3 +141,5 @@ tasks.named<ShadowJar>("shadowJar") {
   relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml")
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
+
+tasks.withType(Jar::class).named("sourcesJar") { dependsOn("shadowJar") }

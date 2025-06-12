@@ -67,12 +67,12 @@ bin/spark-shell \
 ```
 
 Assume the path to the built Spark client jar is
-`/polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar`
+`/polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT.jar`
 and the name of the catalog is `polaris`. The cli command will look like following:
 
 ```shell
 bin/spark-shell \
---jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar \
+--jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT.jar \
 --packages org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
