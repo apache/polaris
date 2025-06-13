@@ -38,14 +38,13 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
-val checkstyleVersion =
-  versionCatalogs
-    .named("libs")
-    .findVersion("checkstyle")
-    .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
-    .requiredVersion
-
 checkstyle {
+  val checkstyleVersion =
+    versionCatalogs
+      .named("libs")
+      .findVersion("checkstyle")
+      .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
+      .requiredVersion
   toolVersion = checkstyleVersion
   configFile = rootProject.file("codestyle/checkstyle.xml")
   isIgnoreFailures = false
@@ -54,9 +53,7 @@ checkstyle {
 }
 
 // Ensure Checkstyle runs after jandex to avoid task dependency issues
-tasks
-  .matching { it.name.startsWith("checkstyle") }
-  .configureEach { mustRunAfter(tasks.matching { it.name == "jandex" }) }
+tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
