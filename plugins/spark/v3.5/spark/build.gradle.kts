@@ -19,7 +19,10 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins { id("polaris-client") }
+plugins {
+  id("polaris-client")
+  id("com.gradleup.shadow")
+}
 
 // get version information
 val sparkMajorVersion = "3.5"
@@ -150,8 +153,8 @@ tasks.register("checkNoDisallowedImports") {
 
 tasks.named("check") { dependsOn("checkNoDisallowedImports") }
 
-tasks.register<ShadowJar>("createPolarisSparkJar") {
-  archiveClassifier = "bundle"
+tasks.named<ShadowJar>("shadowJar") {
+  archiveClassifier = null
   isZip64 = true
 
   // include the LICENSE and NOTICE files for the shadow Jar
@@ -164,6 +167,8 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
+  mergeServiceFiles()
+
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
   // therefore excluded from the optimization.
@@ -173,8 +178,19 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     exclude(dependency("org.apache.avro:avro*.*"))
   }
 
-  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml")
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
-tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
+// ensure the shadowJar job is run for both `assemble` and `build` task
+tasks.named("assemble") { dependsOn("shadowJar") }
+
+tasks.named("build") { dependsOn("shadowJar") }
+
+tasks.named<Jar>("jar") {
+  // retain the default jar job, and add a classifier to avoid conflict
+  // with the shadowJar task. This jar is needed by the task "test",
+  // which can not be switched to depends on shadow Jar task due to
+  // relocation of com.fasterxml.
+  archiveClassifier.set("internal")
+}
