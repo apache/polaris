@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
 public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
