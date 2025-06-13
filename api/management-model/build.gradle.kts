@@ -70,5 +70,3 @@ sourceSets {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("processResources") { dependsOn("openApiGenerate") }
-
-tasks.named("openApiGenerate") { outputs.cacheIf { false } }
