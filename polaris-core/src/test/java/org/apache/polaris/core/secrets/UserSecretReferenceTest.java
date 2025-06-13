@@ -19,12 +19,13 @@
 package org.apache.polaris.core.secrets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public class UserSecretReferenceUrnHelperTest {
+public class UserSecretReferenceTest {
 
   @ParameterizedTest
   @ValueSource(
@@ -35,7 +36,7 @@ public class UserSecretReferenceUrnHelperTest {
         "urn:polaris-secret:vault:project:env:service:key"
       })
   public void testValidUrns(String validUrn) {
-    assertThat(UserSecretReferenceUrnHelper.isValid(validUrn)).isTrue();
+    assertThat(new UserSecretReference(validUrn, null)).isNotNull();
   }
 
   @ParameterizedTest
@@ -53,30 +54,30 @@ public class UserSecretReferenceUrnHelperTest {
         "urn:polaris-secret:unsafe-in-memory:key::"
       })
   public void testInvalidUrns(String invalidUrn) {
-    assertThat(UserSecretReferenceUrnHelper.isValid(invalidUrn))
-        .as("URN should be invalid: %s", invalidUrn)
-        .isFalse();
+    assertThatThrownBy(() -> new UserSecretReference(invalidUrn, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid secret URN: " + invalidUrn);
   }
 
   @Test
   public void tesGetUrnComponents() {
     String urn = "urn:polaris-secret:unsafe-in-memory:key1:value1";
-    assertThat(UserSecretReferenceUrnHelper.getSecretManagerType(urn))
-        .isEqualTo("unsafe-in-memory");
-    assertThat(UserSecretReferenceUrnHelper.getTypeSpecificIdentifier(urn))
-        .isEqualTo("key1:value1");
+    UserSecretReference reference = new UserSecretReference(urn, null);
+
+    assertThat(reference.getUserSecretManagerType()).isEqualTo("unsafe-in-memory");
+    assertThat(reference.getTypeSpecificIdentifier()).isEqualTo("key1:value1");
   }
 
   @Test
   public void testBuildUrn() {
-    String urn = UserSecretReferenceUrnHelper.buildUrn("aws-secrets", "my-key");
+    String urn = UserSecretReference.buildUrnString("aws-secrets", "my-key");
     assertThat(urn).isEqualTo("urn:polaris-secret:aws-secrets:my-key");
 
     String urnWithMultipleIdentifiers =
-        UserSecretReferenceUrnHelper.buildUrn("vault", "project:service");
+        UserSecretReference.buildUrnString("vault", "project:service");
     assertThat(urnWithMultipleIdentifiers).isEqualTo("urn:polaris-secret:vault:project:service");
 
-    String urnWithNumbers = UserSecretReferenceUrnHelper.buildUrn("type_123", "456:789");
+    String urnWithNumbers = UserSecretReference.buildUrnString("type_123", "456:789");
     assertThat(urnWithNumbers).isEqualTo("urn:polaris-secret:type_123:456:789");
   }
 }

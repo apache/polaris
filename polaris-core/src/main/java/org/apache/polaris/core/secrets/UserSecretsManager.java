@@ -74,6 +74,6 @@ public interface UserSecretsManager {
   @Nonnull
   default String buildUrn(
       @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
-    return UserSecretReferenceUrnHelper.buildUrn(secretManagerType, typeSpecificIdentifier);
+    return UserSecretReference.buildUrnString(secretManagerType, typeSpecificIdentifier);
   }
 }

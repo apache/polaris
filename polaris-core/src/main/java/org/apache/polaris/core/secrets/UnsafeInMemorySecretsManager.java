@@ -105,10 +105,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   @Override
   @Nonnull
   public String readSecret(@Nonnull UserSecretReference secretReference) {
-    String urn = secretReference.getUrn();
-    Preconditions.checkState(UserSecretReferenceUrnHelper.isValid(urn), "Invalid URN: " + urn);
-
-    String secretManagerType = UserSecretReferenceUrnHelper.getSecretManagerType(urn);
+    String secretManagerType = secretReference.getUserSecretManagerType();
     Preconditions.checkState(
         secretManagerType.equals(SECRET_MANAGER_TYPE),
         "Invalid secret manager type, expected: "
