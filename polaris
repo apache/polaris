@@ -35,9 +35,9 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
 
-  if [ ! -d ${dir}/polaris-venv ]; then
+  if [ ! -d "${dir}/polaris-venv" ]; then
     echo "Performing first-time setup for the Python client..."
-    ./gradlew regeneratePythonClient
+    "${dir}/gradlew" regeneratePythonClient
     python3 -m venv "${dir}"/polaris-venv
   else
     echo "Repair dependencies for the Python client..."
