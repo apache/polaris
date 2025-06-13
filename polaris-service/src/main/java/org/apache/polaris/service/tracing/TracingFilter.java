@@ -90,7 +90,6 @@ public class TracingFilter implements Filter {
         span.setAttribute(ServerAttributes.SERVER_ADDRESS, httpRequest.getServerName());
         span.setAttribute(UrlAttributes.URL_SCHEME, httpRequest.getScheme());
         span.setAttribute(UrlAttributes.URL_PATH, httpRequest.getPathInfo());
-        span.setAttribute("polaris.client.id", httpRequest.getHeader("Polaris-Client-ID"));
 
         chain.doFilter(request, response);
       } finally {

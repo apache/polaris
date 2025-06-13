@@ -176,17 +176,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       }
 
       Map<String, String> properties = loadProperties(confFile, persistenceUnitName);
-      // Replace database name in JDBC URL with realm
-      if (properties.containsKey(JDBC_URL)) {
-        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm));
-      }
-      if (System.getenv()
-              .containsKey("POLARIS_DB_USER")) { // To avoid Polaris regression tests fetching from the
-        // environment
-        properties.put(JDBC_USER, System.getenv("POLARIS_DB_USER"));
-        properties.put(JDBC_PASSWORD, System.getenv("POLARIS_DB_PASSWORD"));
-        properties.put(JDBC_URL, System.getenv("POLARIS_JDBC_URL"));
-      }
+      // Replace database name in JDBC URL with real
       properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
       factory = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
