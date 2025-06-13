@@ -126,6 +126,7 @@ dependencies {
 
   testImplementation(project(":polaris-quarkus-test-commons"))
   testImplementation("io.quarkus:quarkus-junit5")
+  implementation(libs.awaitility)
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")

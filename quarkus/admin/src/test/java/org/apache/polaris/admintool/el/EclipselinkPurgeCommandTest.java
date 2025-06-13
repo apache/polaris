@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.admintool.el;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @TestProfile(EclipselinkPurgeCommandTest.Profile.class)
 class EclipselinkPurgeCommandTest extends PurgeCommandTestBase {
