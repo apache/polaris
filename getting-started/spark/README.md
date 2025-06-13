@@ -35,9 +35,9 @@ If a Polaris image is not already present locally, build one with the following 
 
 ## Run the `docker-compose` file
 
-To start the `docker-compose` file, run this command from the repo's root directory:
+To start the `docker-compose` file with the necessary dependencies, run this command from the repo's root directory:
 ```shell
-docker-compose -f getting-started/spark/docker-compose.yml up
+sh getting-started/spark/launch-docker.sh
 ```
 
 This will spin up 2 container services

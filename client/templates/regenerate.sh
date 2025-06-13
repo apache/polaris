@@ -144,6 +144,7 @@ EXCLUDE_PATHS=(
 EXCLUDE_EXTENSIONS=(
   "json"
   "iml"
+  "keep"
   "gitignore"
 )
 

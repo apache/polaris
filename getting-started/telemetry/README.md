@@ -33,14 +33,16 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
+    export ASSETS_PATH=$(pwd)/getting-started/assets/
+    export CLIENT_ID=root
+    export CLIENT_SECRET=s3cr3t
     docker compose -f getting-started/telemetry/docker-compose.yml up
     ```
 
 3. To access Polaris from the host machine, first request an access token:
 
     ```shell
-    export POLARIS_TOKEN=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
-       --resolve polaris:8181:127.0.0.1 \
+    export POLARIS_TOKEN=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
        --user root:s3cr3t \
        -d 'grant_type=client_credentials' \
        -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
@@ -50,10 +52,10 @@ This example requires `jq` to be installed on your machine.
    the `Polairs-Request-Id` header; you should see it in all logs and traces:
 
     ```shell
-    curl -v http://127.0.0.1:8181/api/management/v1/principal-roles \
+    curl -v 'http://localhost:8181/api/management/v1/principal-roles' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
       -H "Polaris-Request-Id: 1234"
-    curl -v http://127.0.0.1:8181/api/catalog/v1/config?warehouse=polaris_demo \
+    curl -v 'http://localhost:8181/api/catalog/v1/config?warehouse=quickstart_catalog' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
       -H "Polaris-Request-Id: 5678"
     ```

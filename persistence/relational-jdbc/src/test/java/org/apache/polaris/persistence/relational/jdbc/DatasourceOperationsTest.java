@@ -23,11 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -52,14 +54,18 @@ public class DatasourceOperationsTest {
 
   @Mock private RelationalJdbcConfiguration relationalJdbcConfiguration;
 
+  @Mock private DatabaseMetaData mockDatabaseMetaData;
+
   @Mock Operation<String> mockOperation;
 
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
-  void setUp() {
-    datasourceOperations =
-        new DatasourceOperations(mockDataSource, DatabaseType.H2, relationalJdbcConfiguration);
+  void setUp() throws SQLException {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.getMetaData()).thenReturn(mockDatabaseMetaData);
+    when(mockDatabaseMetaData.getDatabaseProductName()).thenReturn("h2");
+    datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
   }
 
   @Test
@@ -100,6 +106,8 @@ public class DatasourceOperationsTest {
 
   @Test
   void testRunWithinTransaction_commit() throws Exception {
+    // reset to ignore constructor interaction
+    reset(mockConnection);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     DatasourceOperations.TransactionCallback callback = connection -> true;
     when(mockConnection.getAutoCommit()).thenReturn(true);

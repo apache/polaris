@@ -16,22 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.relational.jdbc;
 
-import com.google.common.collect.ImmutableMap;
-import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
-import org.apache.polaris.admintool.PurgeCommandTestBase;
+package org.apache.polaris.core.storage;
 
-@TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
-public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
-  public static class Profile extends RelationalJdbcAdminProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("pre-bootstrap", "true")
-          .build();
-    }
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.persistence.BasePersistence;
+import org.mockito.Mockito;
+
+public abstract class BaseStorageIntegrationTest {
+  protected CallContext newCallContext() {
+    return new PolarisCallContext(
+        () -> "realm", Mockito.mock(BasePersistence.class), Mockito.mock(PolarisDiagnostics.class));
   }
 }

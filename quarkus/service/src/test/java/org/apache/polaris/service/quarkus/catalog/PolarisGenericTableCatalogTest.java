@@ -177,8 +177,8 @@ public class PolarisGenericTableCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
-            new InMemoryEntityCache(metaStoreManager));
+            new StorageCredentialCache(realmContext, configurationStore),
+            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -233,7 +233,8 @@ public class PolarisGenericTableCatalogTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        polarisContext, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -302,12 +303,12 @@ public class PolarisGenericTableCatalogTest {
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+        return new StorageCredentialCache(realmContext, configurationStore);
       }
 
       @Override
       public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
       }
 
       @Override
