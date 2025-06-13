@@ -43,9 +43,8 @@
     <!-- Checks for imports                            -->
     <!-- See http://checkstyle.org/config_imports.html -->
     <module name="IllegalImport">
-      <property name="illegalPkgs"
-        value="org.apache.iceberg.shaded, org.apache.iceberg.relocated, org.testcontainers.shaded"/>
-      <property name="regexp" value="false"/>
+      <property name="illegalPkgs" value=".*\.shaded\..*, .*\.relocated\..*"/>
+      <property name="regexp" value="true"/>
     </module>
 
   </module>
