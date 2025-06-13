@@ -27,6 +27,8 @@ import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Represents a "wrapped reference" to a user-owned secret that holds an identifier to retrieve
@@ -56,6 +58,43 @@ public class UserSecretReference {
   @JsonProperty(value = "referencePayload")
   private final Map<String, String> referencePayload;
 
+  private static final String URN_SCHEME = "urn";
+  private static final String URN_NAMESPACE = "polaris-secret";
+  private static final String SECRET_MANAGER_TYPE_REGEX = "([a-zA-Z0-9_-]+)";
+  private static final String TYPE_SPECIFIC_IDENTIFIER_REGEX =
+      "([a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)*)";
+
+  /**
+   * Precompiled regex pattern for validating the secret manager type and type-specific identifier.
+   */
+  private static final Pattern SECRET_MANAGER_TYPE_PATTERN =
+      Pattern.compile("^" + SECRET_MANAGER_TYPE_REGEX + "$");
+
+  private static final Pattern TYPE_SPECIFIC_IDENTIFIER_PATTERN =
+      Pattern.compile("^" + TYPE_SPECIFIC_IDENTIFIER_REGEX + "$");
+
+  /**
+   * Precompiled regex pattern for validating and parsing UserSecretReference URNs. Expected format:
+   * urn:polaris-secret:<secret-manager-type>:<identifier1>(:<identifier2>:...).
+   *
+   * <p>Groups:
+   *
+   * <p>Group 1: secret-manager-type (alphanumeric, hyphens, underscores).
+   *
+   * <p>Group 2: type-specific-identifier (one or more colon-separated alphanumeric components).
+   */
+  private static final Pattern URN_PATTERN =
+      Pattern.compile(
+          "^"
+              + URN_SCHEME
+              + ":"
+              + URN_NAMESPACE
+              + ":"
+              + SECRET_MANAGER_TYPE_REGEX
+              + ":"
+              + TYPE_SPECIFIC_IDENTIFIER_REGEX
+              + "$");
+
   /**
    * @param urn A string which should be self-sufficient to retrieve whatever secret material that
    *     is stored in the remote secret store and also to identify an implementation of the
@@ -71,13 +110,57 @@ public class UserSecretReference {
       @JsonProperty(value = "urn", required = true) @Nonnull String urn,
       @JsonProperty(value = "referencePayload") @Nullable Map<String, String> referencePayload) {
     Preconditions.checkArgument(
-        UserSecretReferenceUrnHelper.isValid(urn),
-        "Invalid secret URN: "
-            + urn
-            + "; must be of the form: "
-            + UserSecretReferenceUrnHelper.getUrnPattern());
+        urnIsValid(urn),
+        "Invalid secret URN: " + urn + "; must be of the form: " + URN_PATTERN.toString());
     this.urn = urn;
     this.referencePayload = Objects.requireNonNullElse(referencePayload, new HashMap<>());
+  }
+
+  /**
+   * Validates whether the given URN string matches the expected format for UserSecretReference
+   * URNs.
+   *
+   * @param urn The URN string to validate.
+   * @return true if the URN is valid, false otherwise.
+   */
+  private static boolean urnIsValid(@Nonnull String urn) {
+    return urn.trim().isEmpty() ? false : URN_PATTERN.matcher(urn).matches();
+  }
+
+  /**
+   * Builds a URN string from the given secret manager type and type-specific identifier. Validates
+   * the inputs to ensure they conform to the expected pattern.
+   *
+   * @param secretManagerType The secret manager type (alphanumeric, hyphens, underscores).
+   * @param typeSpecificIdentifier The type-specific identifier (colon-separated alphanumeric
+   *     components).
+   * @return The constructed URN string.
+   */
+  @Nonnull
+  public static String buildUrnString(
+      @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
+
+    Preconditions.checkArgument(
+        !secretManagerType.trim().isEmpty(), "Secret manager type cannot be empty");
+    Preconditions.checkArgument(
+        SECRET_MANAGER_TYPE_PATTERN.matcher(secretManagerType).matches(),
+        "Invalid secret manager type '%s'; must contain only alphanumeric characters, hyphens, and underscores",
+        secretManagerType);
+
+    Preconditions.checkArgument(
+        !typeSpecificIdentifier.trim().isEmpty(), "Type-specific identifier cannot be empty");
+    Preconditions.checkArgument(
+        TYPE_SPECIFIC_IDENTIFIER_PATTERN.matcher(typeSpecificIdentifier).matches(),
+        "Invalid type-specific identifier '%s'; must be colon-separated alphanumeric components (hyphens and underscores allowed)",
+        typeSpecificIdentifier);
+
+    return URN_SCHEME
+        + ":"
+        + URN_NAMESPACE
+        + ":"
+        + secretManagerType
+        + ":"
+        + typeSpecificIdentifier;
   }
 
   /**
@@ -87,8 +170,22 @@ public class UserSecretReference {
    * concurrent implementations are possible in a given runtime environment.
    */
   @JsonIgnore
-  public String getUserSecretManagerTypeFromUrn() {
-    return UserSecretReferenceUrnHelper.getSecretManagerType(urn);
+  public String getUserSecretManagerType() {
+    Matcher matcher = URN_PATTERN.matcher(urn);
+    Preconditions.checkState(matcher.matches(), "Invalid secret URN: " + urn);
+    return matcher.group(1);
+  }
+
+  /**
+   * Returns the type-specific identifier from the URN. Since the format is specific to the
+   * UserSecretManager implementation, this method does not validate the identifier. It is the
+   * responsibility of the caller to validate it.
+   */
+  @JsonIgnore
+  public String getTypeSpecificIdentifier() {
+    Matcher matcher = URN_PATTERN.matcher(urn);
+    Preconditions.checkState(matcher.matches(), "Invalid secret URN: " + urn);
+    return matcher.group(2);
   }
 
   public @Nonnull String getUrn() {
