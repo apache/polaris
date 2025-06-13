@@ -20,6 +20,7 @@ package org.apache.polaris.spark.utils;
 
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
@@ -29,14 +30,25 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SparkCatalog;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.TableIdentifier;
+import org.apache.spark.sql.catalyst.analysis.NoSuchDatabaseException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.hudi.catalog.HoodieInternalV2Table;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scala.Option;
 
 public class PolarisCatalogUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogUtils.class);
+
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
 
@@ -48,6 +60,10 @@ public class PolarisCatalogUtils {
   /** Check whether the table provider is delta. */
   public static boolean useDelta(String provider) {
     return "delta".equalsIgnoreCase(provider);
+  }
+
+  public static boolean useHudi(String provider) {
+    return "hudi".equalsIgnoreCase(provider);
   }
 
   /**
@@ -64,10 +80,37 @@ public class PolarisCatalogUtils {
    * Load spark table using DataSourceV2.
    *
    * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
-   *     DeltaTableV2.
+   *     DeltaTableV2. For hudi it should return HoodieInternalV2Table
    */
-  public static Table loadSparkTable(GenericTable genericTable) {
+  public static Table loadSparkTable(GenericTable genericTable, Identifier identifier) {
     SparkSession sparkSession = SparkSession.active();
+    if (genericTable.getFormat().toLowerCase(Locale.getDefault()).equals("hudi")) {
+      // Hudi does not use table provider interface so will need to catch it here
+      Map<String, String> tableProperties = Maps.newHashMap();
+      tableProperties.putAll(genericTable.getProperties());
+      tableProperties.put(
+          TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
+
+      TableIdentifier tableIdentifier =
+          new TableIdentifier(identifier.name(), Option.apply(identifier.namespace()[0]));
+
+      CatalogTable catalogTable = null;
+      try {
+        catalogTable = sparkSession.sessionState().catalog().getTableMetadata(tableIdentifier);
+      } catch (NoSuchDatabaseException e) {
+        throw new RuntimeException(
+            "No database found for the given tableIdentifier:" + tableIdentifier, e);
+      } catch (NoSuchTableException e) {
+        LOG.debug("No table currently exists, initial create table");
+      }
+
+      return new HoodieInternalV2Table(
+          sparkSession,
+          genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
+          Option.apply(catalogTable),
+          Option.apply(identifier.toString()),
+          new CaseInsensitiveStringMap(tableProperties));
+    }
     TableProvider provider =
         DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
             .get();

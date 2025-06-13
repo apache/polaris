@@ -64,7 +64,7 @@ public class PolarisSparkCatalog implements TableCatalog {
     try {
       GenericTable genericTable =
           this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
-      return PolarisCatalogUtils.loadSparkTable(genericTable);
+      return PolarisCatalogUtils.loadSparkTable(genericTable, identifier);
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(identifier);
     }
@@ -82,7 +82,7 @@ public class PolarisSparkCatalog implements TableCatalog {
       GenericTable genericTable =
           this.polarisCatalog.createGenericTable(
               Spark3Util.identifierToTableIdentifier(identifier), format, null, properties);
-      return PolarisCatalogUtils.loadSparkTable(genericTable);
+      return PolarisCatalogUtils.loadSparkTable(genericTable, identifier);
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(identifier);
     }
