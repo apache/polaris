@@ -25,11 +25,13 @@ import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import java.util.concurrent.ExecutorService;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.quarkus.config.PolarisRequestContext;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -38,9 +40,10 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
 
   private final Tracer tracer;
+  private final PolarisRequestContext polarisRequestContext;
 
   public QuarkusTaskExecutorImpl() {
-    this(null, null, null, null, null);
+    this(null, null, null, null, null, null);
   }
 
   @Inject
@@ -49,9 +52,11 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       Tracer tracer,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      PolarisRequestContext polarisRequestContext) {
     super(executorService, metaStoreManagerFactory, fileIOSupplier, polarisEventListener);
     this.tracer = tracer;
+    this.polarisRequestContext = polarisRequestContext;
   }
 
   @Startup
@@ -61,6 +66,7 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   }
 
   @Override
+  @ActivateRequestContext
   protected void handleTask(long taskEntityId, CallContext callContext, int attempt) {
     Span span =
         tracer
@@ -73,6 +79,7 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
             .setAttribute("polaris.task.attempt", attempt)
             .startSpan();
     try (Scope ignored = span.makeCurrent()) {
+      polarisRequestContext.setRealmContext(callContext.getRealmContext());
       super.handleTask(taskEntityId, callContext, attempt);
     } finally {
       span.end();
