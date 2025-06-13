@@ -32,6 +32,10 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-defaults"))
 
+  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -131,6 +135,10 @@ dependencies {
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("org.postgresql:postgresql")
+
+  testImplementation(project(":polaris-persistence-nosql-api"))
+  testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))
+  testImplementation(project(":polaris-persistence-nosql-impl"))
 }
 
 tasks.withType(Test::class.java).configureEach {
