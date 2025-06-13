@@ -18,8 +18,6 @@
  */
 
 import com.diffplug.spotless.FormatterFunc
-import gradle.kotlin.dsl.accessors._fa00c0b20184971a79f32516372275b9.java
-import gradle.kotlin.dsl.accessors._fa00c0b20184971a79f32516372275b9.spotless
 import java.io.Serializable
 import org.gradle.api.GradleException
 
