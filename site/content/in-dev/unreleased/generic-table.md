@@ -45,15 +45,15 @@ A generic table in Polaris is an entity that defines the following fields:
 
 ## Generic Table API Vs. Iceberg Table API
 
-Generic Table provides a different set of APIs to operate on the Generic Table entities while Iceberg APIs operates on
-the Iceberg Table entities.
+Generic Table provides a different set of APIs to operate on the generic table entities while Iceberg APIs operates on
+the Iceberg table entities.
 
-| Operations   | **Iceberg Table API**                                           | **Generic Table API**                                           |
-|--------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
-| Create Table | Create an Iceberg table                                         | Create a generic table                                          |
-| Load Table   | Load an Iceberg table. Loading a generic table throws an error  | Load a generic table. Loading an Iceberg table throws an error  |
-| Drop Table   | Drop an Iceberg table. Dropping a generic table throws an error | Drop a generic table. Dropping an Iceberg table throws an error |
-| List Table   | List all Iceberg tables                                         | List all generic tables                                         |
+| Operations   | **Iceberg Table API**                                                                                                                                               | **Generic Table API**                                                                                                         |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| Create Table | Create an Iceberg table                                                                                                                                             | Create a generic table                                                                                                        |
+| Load Table   | Load an Iceberg table. If the table to load is a generic table, you need to call the Generic Table loadTable API, otherwise a TableNotFoundException will be thrown | Load a generic table. Similarly, try to load an Iceberg table through Generic Table API will thrown a TableNotFoundException. |
+| Drop Table   | Drop an Iceberg table. Similar as load table, if the table to drop is a Generic table, a tableNotFoundException will be thrown.                                     | Drop a generic table. Drop an Iceberg table through Generic table endpoint will thrown an TableNotFound Exception             |
+| List Table   | List all Iceberg tables                                                                                                                                             | List all generic tables                                                                                                       |
 
 Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace.
 
@@ -61,7 +61,7 @@ Note that generic table shares the same namespace with Iceberg tables, the table
 
 There are two ways to work with Polaris Generic Tables today:
 1) Directly communicate with Polaris through REST API calls using tools such as `curl`. Details will be described in the later section.
-2) Use the Spark Client provided if you are working with Spark. Please refer to [Polaris Spark Client]({{% ref "polaris-spark-client" %}}) for detailed instructions.
+2) Use the Spark client provided if you are working with Spark. Please refer to [Polaris Spark Client]({{% ref "polaris-spark-client" %}}) for detailed instructions.
 
 ### Create a Generic Table
 
