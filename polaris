@@ -32,14 +32,14 @@ done
 
 # Check if the python client needs regeneration
 if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
-  ./gradlew regeneratePythonClient
+  "${dir}/gradlew" regeneratePythonClient
 fi
 
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
 
-  if [ ! -d ${dir}/polaris-venv ]; then
+  if [ ! -d "${dir}/polaris-venv" ]; then
     echo "Performing first-time setup for the Python client..."
     python3 -m venv "${dir}"/polaris-venv
   else
