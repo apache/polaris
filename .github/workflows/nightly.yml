@@ -61,3 +61,19 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }} 
+      - name: Docker login
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a #v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build Docker images
+        run: |
+          ./gradlew \
+            :polaris-quarkus-server:assemble \
+            :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+            :polaris-quarkus-admin:assemble \
+            :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+      - name: Push Docker images to Docker HUB
+        run: |
+          docker push apache/polaris
