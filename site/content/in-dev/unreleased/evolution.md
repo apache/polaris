@@ -24,7 +24,7 @@ weight: 1000
 
 This page discusses what can be expected from Apache Polaris as the project evolves.
 
-## Polaris as a Catalog
+## Using Polaris as a Catalog
 
 Polaris is primarily intended to be used as a Catalog of Tables and Views. As such, 
 it implements the Iceberg REST API, Polaris Management API and the Generic Tables API.
@@ -50,7 +50,7 @@ it is added in Polaris 2.0).
 Polaris servers will support deprecated API endpoints / parameters / versions / etc. 
 for some transition period to allow clients to migrate.
 
-## Polaris as a Library
+## Using Polaris as a Build-Time Dependency
 
 Polaris produces several jars. These jars or custom builds of Polaris code may be used in
 downstream projects according to the terms of the license included into Polaris distributions.
