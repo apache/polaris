@@ -45,7 +45,6 @@ function logred() {
 
 REGTEST_HOME=$(dirname $(realpath $0))
 
-cd "${SCRIPT_DIR}/.." && ./gradlew regeneratePythonClient
 cd ${REGTEST_HOME}
 
 ./setup.sh
