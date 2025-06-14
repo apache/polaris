@@ -28,8 +28,8 @@ If a Polaris image is not already present locally, build one with the following 
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-runtime-server:assemble \
+  :polaris-runtime-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 ```
 

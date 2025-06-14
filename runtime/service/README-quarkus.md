@@ -17,7 +17,7 @@
   under the License.
 -->
 
-This module contains the Polaris Service powered by Quarkus (instead of Dropwizard).
+This module contains the Polaris Service powered by Quarkus.
 
 # Main differences
 
@@ -45,35 +45,35 @@ The build creates ready to run package:
 You can directly run Polaris service (in the build scope) using:
 
 ```
-./gradlew :polaris-quarkus-service:quarkusRun
+./gradlew :polaris-runtime-service:quarkusRun
 ```
 
 You can run in Dev mode as well:
 
 ```
-./gradlew --console=plain :polaris-quarkus-service:quarkusDev
+./gradlew --console=plain :polaris-runtime-service:quarkusDev
 ```
 
 You can directly build a Docker image using:
 
 ```
-./gradlew :polaris-quarkus-service:imageBuild
+./gradlew :polaris-runtime-service:imageBuild
 ```
 
 # Configuration
 
 The main configuration file is not the `application.properties`. The default configuration is
-packaged as part of the `polaris-quarkus-service`. `polaris-quarkus-service` uses several 
+packaged as part of the `polaris-runtime-service`. `polaris-runtime-service` uses several 
 configuration sources (in this order):
 * system properties
 * environment variables
 * `.env` file in the current working directory
 * `$PWD/config/application.properties` file
-* the `application.properties` packaged in the `polaris-quarkus-service` application
+* the `application.properties` packaged in the `polaris-runtime-service` application
 
 It means you can override some configuration property using environment variables for example.
 
-By default, `polaris-quarkus-service` uses 8181 as the HTTP port (defined in the `quarkus.http.port`
+By default, `polaris-runtime-service` uses 8181 as the HTTP port (defined in the `quarkus.http.port`
 configuration property) and 8182 as the management port (defined in the `quarkus.management.port`
 configuration property).
 

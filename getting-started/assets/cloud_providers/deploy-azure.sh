@@ -66,7 +66,7 @@ fs.native-azure.enabled=true
 azure.auth-type=DEFAULT
 EOF
 
-./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew clean :polaris-runtime-server:assemble :polaris-runtime-admin:assemble \
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache

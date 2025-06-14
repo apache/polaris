@@ -20,7 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
 }
 
 dependencies {
@@ -32,10 +32,10 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-runtime-service"))
 
   testImplementation(project(":polaris-tests"))
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")

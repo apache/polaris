@@ -24,7 +24,7 @@ plugins {
 description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
-  ":polaris-quarkus-service",
+  ":polaris-runtime-service",
   ":polaris-eclipselink",
 )
 

@@ -269,7 +269,7 @@ This product includes code from Project Nessie.
 * build-logic/src/main/kotlin/publishing/PublishingHelperPlugin.kt
 * build-logic/src/main/kotlin/Utilities.kt
 * build-logic/src/main/kotlin/polaris-shadow-jar.gradle.kts
-* build-logic/src/main/kotlin/polaris-quarkus.gradle.kts
+* build-logic/src/main/kotlin/polaris-runtime.gradle.kts
 * tools/config-docs/annotations/src/main/java/org/apache/polaris/docs/ConfigDocs.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/DocGenDoclet.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownFormatter.java
@@ -309,7 +309,7 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
-* quarkus/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* runtime/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
 * helm/polaris/tests/logging_storage_test.yaml
 * helm/polaris/tests/quantity_test.yaml
 * helm/polaris/tests/service_monitor_test.yaml

@@ -30,16 +30,16 @@ Building this module will create a zip/tar distribution with the Polaris server.
 To build the distribution, you can use the following command:
 
 ```shell
-./gradlew :polaris-quarkus-admin:build
+./gradlew :polaris-runtime-admin:build
 ```
 
 You can manually unpack and run the distribution archives:
 
 ```shell
-cd quarkus/admin/build/distributions
-unzip polaris-quarkus-admin-<version>.zip
-cd polaris-quarkus-admin-<version>
-java -jar polaris-quarkus-admin-<version>-runner.jar
+cd runtime/admin/build/distributions
+unzip polaris-runtime-admin-<version>.zip
+cd polaris-runtime-admin-<version>
+java -jar polaris-runtime-admin-<version>-runner.jar
 ```
 
 ## Docker image
@@ -48,8 +48,8 @@ To also build the Docker image, you can use the following command:
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-admin:assemble \
-  :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+  :polaris-runtime-admin:assemble \
+  :polaris-runtime-admin:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 ```
 
@@ -58,7 +58,7 @@ To also build the Docker image, you can use the following command:
 The admin tool can be run from the command line using the following command:
 
 ```shell
-java -jar polaris-quarkus-admin-<version>-runner.jar --help
+java -jar polaris-runtime-admin-<version>-runner.jar --help
 ```
 
 Using the Docker image, you can run the admin tool with the following command:

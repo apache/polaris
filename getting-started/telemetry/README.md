@@ -25,8 +25,8 @@ This example requires `jq` to be installed on your machine.
 
     ```shell
     ./gradlew \
-      :polaris-quarkus-server:assemble \
-      :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+      :polaris-runtime-server:assemble \
+      :polaris-runtime-server:quarkusAppPartsBuild --rerun \
       -Dquarkus.container-image.build=true
     ```
 
