@@ -34,14 +34,14 @@ community. Polaris attempts to accurately implement this specification. However,
 is no guarantee that Polaris releases always implement the latest version of the Iceberg
 REST Catalog API.
 
-The Polaris Management API is maintained as a versioned REST API. New releases of Polaris may
-include changes to the current version of the Management API. When that happens those changes
-are intended to be compatible with prior versions of Polaris clients. Certain endpoints and
-parameters may be deprecated.
+Any API under Polaris control (e.g. the Management API) is maintained as a versioned REST
+API. New releases of Polaris may include changes to the current version of the API. When
+that happens those changes are intended to be compatible with prior versions of Polaris 
+clients. Certain endpoints and parameters may be deprecated.
 
 In case a major change is required to the Management API that cannot be implemented in a
 backward-compatible way, new endpoints (URI paths) may be introduced. New URI "roots" may
-be introduced too (e.g. `catalog/v2`). 
+be introduced too (e.g. `api/catalog/v2`). 
 
 Note that those "v1", "v2", etc. URI path segments are not meant to be 1:1 with Polaris
 releases or Polaris project version numbers (e.g. a "v2" path segment does not mean that
@@ -49,9 +49,6 @@ it is added in Polaris 2.0).
 
 Polaris servers will support deprecated API endpoints / parameters / versions / etc. 
 for some transition period to allow clients to migrate.
-
-The Generic Tables API is an experimental API at this time. Refer to its documentation page
-for more details about compatibility expectations.
 
 ## Polaris as a Library
 
