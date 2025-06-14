@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.generic;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -94,6 +95,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       CreateGenericTableRequest createGenericTableRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
@@ -112,6 +114,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       String genericTable,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
@@ -125,6 +128,7 @@ public class GenericTableCatalogAdapter
       String namespace,
       String pageToken,
       Integer pageSize,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
@@ -137,6 +141,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       String genericTable,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);

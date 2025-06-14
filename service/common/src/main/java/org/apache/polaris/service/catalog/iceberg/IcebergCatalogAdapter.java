@@ -210,6 +210,7 @@ public class IcebergCatalogAdapter
   public Response createNamespace(
       String prefix,
       CreateNamespaceRequest createNamespaceRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(callContext, createNamespaceRequest.properties());
@@ -225,6 +226,7 @@ public class IcebergCatalogAdapter
       String pageToken,
       Integer pageSize,
       String parent,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Optional<Namespace> namespaceOptional = Optional.ofNullable(parent).map(this::decodeNamespace);
@@ -240,7 +242,11 @@ public class IcebergCatalogAdapter
 
   @Override
   public Response loadNamespaceMetadata(
-      String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
+      String prefix,
+      String namespace,
+      HttpHeaders httpHeaders,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.loadNamespaceMetadata(ns)).build());
@@ -273,7 +279,11 @@ public class IcebergCatalogAdapter
 
   @Override
   public Response namespaceExists(
-      String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
+      String prefix,
+      String namespace,
+      HttpHeaders httpHeaders,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
@@ -286,7 +296,11 @@ public class IcebergCatalogAdapter
 
   @Override
   public Response dropNamespace(
-      String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
+      String prefix,
+      String namespace,
+      HttpHeaders httpHeaders,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
@@ -302,6 +316,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(callContext, updateNamespacePropertiesRequest.updates());
@@ -337,6 +352,7 @@ public class IcebergCatalogAdapter
       String namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(callContext, createTableRequest.properties());
@@ -376,6 +392,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String pageToken,
       Integer pageSize,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -393,6 +410,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
@@ -433,6 +451,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -452,6 +471,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       Boolean purgeRequested,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -474,6 +494,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -492,6 +513,7 @@ public class IcebergCatalogAdapter
   public Response renameTable(
       String prefix,
       RenameTableRequest renameTableRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     return withCatalog(
@@ -509,6 +531,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       CommitTableRequest commitTableRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     commitTableRequest.updates().stream()
@@ -543,6 +566,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       CreateViewRequest createViewRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(callContext, createViewRequest.properties());
@@ -564,6 +588,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String pageToken,
       Integer pageSize,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -578,6 +603,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -601,6 +627,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -614,6 +641,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -632,6 +660,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -649,6 +678,7 @@ public class IcebergCatalogAdapter
   public Response renameView(
       String prefix,
       RenameTableRequest renameTableRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     return withCatalog(
@@ -666,6 +696,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String view,
       CommitViewRequest commitViewRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     UpdateTableRequest revisedRequest =
@@ -687,6 +718,7 @@ public class IcebergCatalogAdapter
   public Response commitTransaction(
       String prefix,
       CommitTransactionRequest commitTransactionRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     commitTransactionRequest.tableChanges().stream()
@@ -723,6 +755,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       ReportMetricsRequest reportMetricsRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     return Response.status(Response.Status.NO_CONTENT).build();
@@ -734,6 +767,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       NotificationRequest notificationRequest,
+      HttpHeaders httpHeaders,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -750,7 +784,10 @@ public class IcebergCatalogAdapter
   /** From IcebergRestConfigurationApiService. */
   @Override
   public Response getConfig(
-      String warehouse, RealmContext realmContext, SecurityContext securityContext) {
+      String warehouse,
+      HttpHeaders httpHeaders,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     // 'warehouse' as an input here is catalogName.
     // 'warehouse' as an output will be treated by the client as a default catalog
     // storage

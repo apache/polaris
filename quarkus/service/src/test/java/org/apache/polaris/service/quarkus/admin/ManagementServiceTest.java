@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
@@ -103,6 +104,7 @@ public class ManagementServiceTest {
                     .catalogsApi()
                     .createCatalog(
                         new CreateCatalogRequest(catalog),
+                        Mockito.mock(HttpHeaders.class),
                         services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
@@ -132,6 +134,7 @@ public class ManagementServiceTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
+                Mockito.mock(HttpHeaders.class),
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
@@ -142,7 +145,11 @@ public class ManagementServiceTest {
     try (Response response =
         services
             .catalogsApi()
-            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+            .getCatalog(
+                catalogName,
+                Mockito.mock(HttpHeaders.class),
+                services.realmContext(),
+                services.securityContext())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = (Catalog) response.getEntity();
 
@@ -170,6 +177,7 @@ public class ManagementServiceTest {
                     .updateCatalog(
                         catalogName,
                         updateRequest,
+                        Mockito.mock(HttpHeaders.class),
                         services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)

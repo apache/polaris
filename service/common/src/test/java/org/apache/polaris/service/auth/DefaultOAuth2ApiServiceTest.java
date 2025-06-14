@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.Charset;
@@ -349,6 +350,7 @@ class DefaultOAuth2ApiServiceTest {
           subjectTokenType,
           actorToken,
           actorTokenType,
+          Mockito.mock(HttpHeaders.class),
           realmContext,
           securityContext);
     }
