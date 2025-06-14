@@ -50,6 +50,23 @@ it is added in Polaris 2.0).
 Polaris servers will support deprecated API endpoints / parameters / versions / etc. 
 for some transition period to allow clients to migrate.
 
+### Managing Polaris Database
+
+Polaris stores its data in a database, which is sometimes referred to as "Meta Store" or
+"Persistence" in other docs.
+
+Several Persistence implementations may be supported by Polaris in each release.
+For example: "EclipseLink" (deprecated) and "JDBC" (current).
+
+Each type of Persistence evolves individually. Within each Persistence type, Polaris
+attempts to support rolling upgrades (both version X and X + 1 servers running at the
+same time).
+
+However, users should not expect that a transition from "EclipseLink" to "JDBC" can be
+done in a rolling upgrade manner. Polaris provides tools for migrating between different
+catalogs and those tools may be used to migrate between different Persistence types.
+Service interruption (downtime) should be expected in those cases.
+
 ## Using Polaris as a Build-Time Dependency
 
 Polaris produces several jars. These jars or custom builds of Polaris code may be used in
