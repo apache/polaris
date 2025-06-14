@@ -102,15 +102,21 @@ public class PolarisEntity extends PolarisBaseEntity {
       @JsonProperty("internalProperties") String internalProperties,
       @JsonProperty("entityVersion") int entityVersion,
       @JsonProperty("grantRecordsVersion") int grantRecordsVersion) {
-    super(catalogId, id, type, subType, parentId, name);
-    this.createTimestamp = createTimestamp;
-    this.dropTimestamp = dropTimestamp;
-    this.purgeTimestamp = purgeTimestamp;
-    this.lastUpdateTimestamp = lastUpdateTimestamp;
-    this.properties = properties;
-    this.internalProperties = internalProperties;
-    this.entityVersion = entityVersion;
-    this.grantRecordsVersion = grantRecordsVersion;
+    super(
+        catalogId,
+        id,
+        type.getCode(),
+        parentId,
+        name,
+        subType.getCode(),
+        createTimestamp,
+        dropTimestamp,
+        purgeTimestamp,
+        lastUpdateTimestamp,
+        properties,
+        internalProperties,
+        grantRecordsVersion,
+        entityVersion);
   }
 
   public PolarisEntity(
@@ -128,15 +134,21 @@ public class PolarisEntity extends PolarisBaseEntity {
       Map<String, String> internalProperties,
       int entityVersion,
       int grantRecordsVersion) {
-    super(catalogId, id, type, subType, parentId, name);
-    this.createTimestamp = createTimestamp;
-    this.dropTimestamp = dropTimestamp;
-    this.purgeTimestamp = purgeTimestamp;
-    this.lastUpdateTimestamp = lastUpdateTimestamp;
-    this.setPropertiesAsMap(properties);
-    this.setInternalPropertiesAsMap(internalProperties);
-    this.entityVersion = entityVersion;
-    this.grantRecordsVersion = grantRecordsVersion;
+    super(
+        catalogId,
+        id,
+        type.getCode(),
+        parentId,
+        name,
+        subType.getCode(),
+        createTimestamp,
+        dropTimestamp,
+        purgeTimestamp,
+        lastUpdateTimestamp,
+        convertPropertiesToJson(properties),
+        convertPropertiesToJson(internalProperties),
+        grantRecordsVersion,
+        entityVersion);
   }
 
   public static PolarisEntity of(PolarisBaseEntity sourceEntity) {
@@ -154,15 +166,14 @@ public class PolarisEntity extends PolarisBaseEntity {
   }
 
   public static PolarisEntityCore toCore(PolarisBaseEntity entity) {
-    PolarisEntityCore entityCore =
-        new PolarisEntityCore(
-            entity.getCatalogId(),
-            entity.getId(),
-            entity.getParentId(),
-            entity.getTypeCode(),
-            entity.getName(),
-            entity.getEntityVersion());
-    return entityCore;
+    return new PolarisEntityCore.Builder<>()
+        .catalogId(entity.getCatalogId())
+        .id(entity.getId())
+        .parentId(entity.getParentId())
+        .typeCode(entity.getTypeCode())
+        .name(entity.getName())
+        .entityVersion(entity.getEntityVersion())
+        .build();
   }
 
   public static List<PolarisEntityCore> toCoreList(List<PolarisEntity> path) {
@@ -186,18 +197,18 @@ public class PolarisEntity extends PolarisBaseEntity {
     super(
         sourceEntity.getCatalogId(),
         sourceEntity.getId(),
-        sourceEntity.getTypeCode(),
-        sourceEntity.getSubTypeCode(),
+        sourceEntity.getType().getCode(),
         sourceEntity.getParentId(),
-        sourceEntity.getName());
-    this.createTimestamp = sourceEntity.getCreateTimestamp();
-    this.dropTimestamp = sourceEntity.getDropTimestamp();
-    this.purgeTimestamp = sourceEntity.getPurgeTimestamp();
-    this.lastUpdateTimestamp = sourceEntity.getLastUpdateTimestamp();
-    this.properties = sourceEntity.getProperties();
-    this.internalProperties = sourceEntity.getInternalProperties();
-    this.entityVersion = sourceEntity.getEntityVersion();
-    this.grantRecordsVersion = sourceEntity.getGrantRecordsVersion();
+        sourceEntity.getName(),
+        sourceEntity.getSubType().getCode(),
+        sourceEntity.getCreateTimestamp(),
+        sourceEntity.getDropTimestamp(),
+        sourceEntity.getPurgeTimestamp(),
+        sourceEntity.getLastUpdateTimestamp(),
+        sourceEntity.getProperties(),
+        sourceEntity.getInternalProperties(),
+        sourceEntity.getGrantRecordsVersion(),
+        sourceEntity.getEntityVersion());
   }
 
   @JsonIgnore

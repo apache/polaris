@@ -31,74 +31,105 @@ public class PolarisEntityCore {
 
   // the id of the catalog associated to that entity. NULL_ID if this entity is top-level like
   // a catalog
-  protected long catalogId;
+  protected final long catalogId;
 
   // the id of the entity which was resolved
-  protected long id;
+  protected final long id;
 
   // the id of the parent of this entity, use 0 for a top-level entity whose parent is the account
-  protected long parentId;
+  protected final long parentId;
 
   // the type of the entity when it was resolved
-  protected int typeCode;
+  protected final int typeCode;
 
   // the name that this entity had when it was resolved
-  protected String name;
+  protected final String name;
 
   // the version that this entity had when it was resolved
-  protected int entityVersion;
+  protected final int entityVersion;
 
-  public PolarisEntityCore() {}
-
-  public PolarisEntityCore(
-      long catalogId, long id, long parentId, int typeCode, String name, int entityVersion) {
-    this.catalogId = catalogId;
-    this.id = id;
-    this.parentId = parentId;
-    this.typeCode = typeCode;
-    this.name = name;
-    this.entityVersion = entityVersion;
+  PolarisEntityCore(Builder<?, ?> builder) {
+    this.catalogId = builder.catalogId;
+    this.id = builder.id;
+    this.parentId = builder.parentId;
+    this.typeCode = builder.typeCode;
+    this.name = builder.name;
+    this.entityVersion = builder.entityVersion == 0 ? 1 : builder.entityVersion;
   }
 
-  public PolarisEntityCore(PolarisBaseEntity entity) {
-    this.catalogId = entity.getCatalogId();
-    this.id = entity.getId();
-    this.parentId = entity.getParentId();
-    this.typeCode = entity.getTypeCode();
-    this.name = entity.getName();
-    this.entityVersion = entity.getEntityVersion();
+  public static class Builder<T extends PolarisEntityCore, B extends Builder<T, B>> {
+    private long catalogId;
+    private long id;
+    private long parentId;
+    private int typeCode;
+    private String name;
+    private int entityVersion;
+
+    @SuppressWarnings("unchecked")
+    B self() {
+      return (B) this;
+    }
+
+    public B catalogId(long catalogId) {
+      this.catalogId = catalogId;
+      return self();
+    }
+
+    public B id(long id) {
+      this.id = id;
+      return self();
+    }
+
+    public B parentId(long parentId) {
+      this.parentId = parentId;
+      return self();
+    }
+
+    public B typeCode(int typeCode) {
+      this.typeCode = typeCode;
+      return self();
+    }
+
+    public B name(String name) {
+      this.name = name;
+      return self();
+    }
+
+    public B entityVersion(int entityVersion) {
+      this.entityVersion = entityVersion;
+      return self();
+    }
+
+    public Builder() {}
+
+    public Builder(PolarisEntityCore entityCore) {
+      this.catalogId = entityCore.catalogId;
+      this.id = entityCore.id;
+      this.parentId = entityCore.parentId;
+      this.typeCode = entityCore.typeCode;
+      this.name = entityCore.name;
+      this.entityVersion = entityCore.entityVersion;
+    }
+
+    public PolarisEntityCore build() {
+      return new PolarisEntityCore(this);
+    }
   }
 
   public long getId() {
     return id;
   }
 
-  public void setId(long id) {
-    this.id = id;
-  }
-
   public long getParentId() {
     return parentId;
-  }
-
-  public void setParentId(long parentId) {
-    this.parentId = parentId;
   }
 
   public int getTypeCode() {
     return typeCode;
   }
 
-  public void setTypeCode(int typeCode) {
-    this.typeCode = typeCode;
-  }
-
   public String getName() {
     return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
   }
 
   public int getEntityVersion() {
@@ -107,14 +138,6 @@ public class PolarisEntityCore {
 
   public long getCatalogId() {
     return catalogId;
-  }
-
-  public void setCatalogId(long catalogId) {
-    this.catalogId = catalogId;
-  }
-
-  public void setEntityVersion(int entityVersion) {
-    this.entityVersion = entityVersion;
   }
 
   /**
