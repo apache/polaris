@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -213,20 +212,30 @@ public class QueryGeneratorTest {
             + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location = ? OR location = ?"
             + " OR location = ? OR location = ? OR location = ? OR location LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/").sql());
-    Assertions
-      .assertThatCollection(QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/").parameters())
-      .containsExactly("realmId", -123L, "/", "//", "//bucket/", "//bucket/tmp/", "//bucket/tmp/location/", "//bucket/tmp/location/%");
+    Assertions.assertThatCollection(
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/")
+                .parameters())
+        .containsExactly(
+            "realmId",
+            -123L,
+            "/",
+            "//",
+            "//bucket/",
+            "//bucket/tmp/",
+            "//bucket/tmp/location/",
+            "//bucket/tmp/location/%");
 
     assertEquals(
-      "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
-        + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
-        + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-        + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location = ? OR location = ?"
-        + " OR location = ? OR location = ? OR location = ? OR location LIKE ?)",
-      QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").sql());
-    Assertions
-      .assertThatCollection(QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").parameters())
-      .containsExactly("realmId", -123L, "/", "//", "///", "///tmp/", "///tmp/location/", "///tmp/location/%");
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
+            + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
+            + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
+            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location = ? OR location = ?"
+            + " OR location = ? OR location = ? OR location = ? OR location LIKE ?)",
+        QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").sql());
+    Assertions.assertThatCollection(
+            QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").parameters())
+        .containsExactly(
+            "realmId", -123L, "/", "//", "///", "///tmp/", "///tmp/location/", "///tmp/location/%");
 
     assertEquals(
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
@@ -235,8 +244,10 @@ public class QueryGeneratorTest {
             + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location = ?"
             + " OR location = ? OR location = ? OR location = ? OR location LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/").sql());
-    Assertions
-      .assertThatCollection(QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/").parameters())
-      .containsExactly("realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+    Assertions.assertThatCollection(
+            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/")
+                .parameters())
+        .containsExactly(
+            "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
   }
 }
