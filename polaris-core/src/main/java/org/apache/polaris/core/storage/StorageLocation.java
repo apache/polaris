@@ -110,6 +110,9 @@ public class StorageLocation {
 
   /** Returns a string representation of the location but without a scheme */
   public String withoutScheme() {
+    if (location == null) {
+      return null;
+    }
     Matcher matcher = SCHEME_PATTERN.matcher(location);
     if (matcher.matches()) {
       String locationWithoutScheme = matcher.group(2);

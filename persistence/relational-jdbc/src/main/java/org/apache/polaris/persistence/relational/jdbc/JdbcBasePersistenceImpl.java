@@ -62,6 +62,7 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
@@ -664,12 +665,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             realmId, entity.getParentId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
-      if (results.isEmpty()) {
-        return Optional.of(Optional.empty());
-      } else {
-        return Optional.of(
-            Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocationWithoutScheme()));
+      if (!results.isEmpty()) {
+        StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+        for (PolarisBaseEntity result : results) {
+          StorageLocation potentialSiblingLocation =
+            StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
+          if (entityLocation.isChildOf(potentialSiblingLocation) ||
+            potentialSiblingLocation.isChildOf(entityLocation)) {
+            return Optional.of(Optional.of(potentialSiblingLocation.toString()));
+          }
+        }
       }
+      return Optional.of(Optional.empty());
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to retrieve location overlap for location {} due to {}",

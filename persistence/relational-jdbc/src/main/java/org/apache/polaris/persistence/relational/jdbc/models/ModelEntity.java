@@ -190,7 +190,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-            .locationWithoutScheme(r.getString("locationWithoutScheme"))
+            .locationWithoutScheme(r.getString("location_without_scheme"))
             .build();
 
     return toEntity(modelEntity);
@@ -337,13 +337,17 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
       if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
           || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-        builder.locationWithoutScheme(StorageLocation.of(
-          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION)).withoutScheme());
+        builder.locationWithoutScheme(
+            StorageLocation.of(
+                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+                .withoutScheme());
       }
     }
     if (entity.getType() == PolarisEntityType.NAMESPACE) {
-      builder.locationWithoutScheme(StorageLocation.of(
-        entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION)).withoutScheme());
+      builder.locationWithoutScheme(
+          StorageLocation.of(
+                  entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+              .withoutScheme());
     }
 
     return builder.build();
