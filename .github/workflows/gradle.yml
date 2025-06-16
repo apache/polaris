@@ -34,6 +34,16 @@ on:
 
 jobs:
 
+  # TODO remove this job in a future PR
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Always succeeds
+        run: echo "Success!"
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
