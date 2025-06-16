@@ -669,9 +669,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
         for (PolarisBaseEntity result : results) {
           StorageLocation potentialSiblingLocation =
-            StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
-          if (entityLocation.isChildOf(potentialSiblingLocation) ||
-            potentialSiblingLocation.isChildOf(entityLocation)) {
+              StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
+          if (entityLocation.isChildOf(potentialSiblingLocation)
+              || potentialSiblingLocation.isChildOf(entityLocation)) {
             return Optional.of(Optional.of(potentialSiblingLocation.toString()));
           }
         }
