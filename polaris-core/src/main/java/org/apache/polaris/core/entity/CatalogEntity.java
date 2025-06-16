@@ -336,6 +336,14 @@ public class CatalogEntity extends PolarisEntity {
       return this;
     }
 
+    public Builder setConnectionConfigInfoDpo(
+        @Nonnull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+      internalProperties.put(
+          PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
+          connectionConfigInfoDpo.serialize());
+      return this;
+    }
+
     @Override
     public CatalogEntity build() {
       return new CatalogEntity(buildBase());
