@@ -32,6 +32,7 @@ import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
@@ -43,6 +44,34 @@ import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkHudiIT extends SparkIntegrationBase {
+
+  @Override
+  protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
+    return builder
+            .config(
+                    "spark.sql.extensions",
+                    "org.apache.spark.sql.hudi.HoodieSparkSessionExtension")
+            .config(
+                    "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.hudi.catalog.HoodieCatalog")
+            .config(
+                    String.format("spark.sql.catalog.%s", catalogName),
+                    "org.apache.polaris.spark.SparkCatalog")
+            .config("spark.sql.warehouse.dir", warehouseDir.toString())
+            .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
+            .config(
+                    String.format("spark.sql.catalog.%s.uri", catalogName),
+                    endpoints.catalogApiEndpoint().toString())
+            .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
+            .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
+            .config(
+                    String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
+            .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
+            .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
+            .config(
+                    String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
+            .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+  }
+
   private String defaultNs;
   private String tableRootDir;
 
