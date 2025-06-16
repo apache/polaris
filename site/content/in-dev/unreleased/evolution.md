@@ -30,7 +30,7 @@ Polaris is primarily intended to be used as a Catalog of Tables and Views. As su
 it implements the Iceberg REST API, Polaris Management API and the Generic Tables API.
 
 Revisions of the Iceberg REST API are controlled by the [Apache Iceberg](https://iceberg.apache.org/)
-community. Polaris attempts to accurately implement this specification. However, there
+community. Polaris accurately implements this specification. However, there
 is no guarantee that Polaris releases always implement the latest version of the Iceberg
 REST Catalog API.
 
