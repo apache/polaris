@@ -74,7 +74,7 @@ Polaris produces several jars. These jars or custom builds of Polaris code may b
 downstream projects according to the terms of the license included into Polaris distributions.
 
 Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
-respect to java code and REST APIs.
+respect to Java code and REST APIs.
 
 This means that major version increments should be expected often (in the SemVer sense).
 
@@ -82,7 +82,7 @@ The minimal version of the JRE required by Polaris code (compilation target) may
 any release. Different Polaris jars may have different minimal JRE version requirements.
 
 This approach is not meant to discourage the use of Polaris code in downstream projects, but
-to allow more flexibility in evolving the codebase to support new Catalog-level features
+to allow more flexibility in evolving the codebase to support new catalog-level features
 and improve code efficiency. Maintainers of downstream projects are encouraged to join Polaris 
 mailing lists to monitor project changes, suggest improvements, and engage with the Polaris
 community in case of specific compatibility concerns.   
