@@ -62,6 +62,7 @@ dependencies {
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
+  testImplementation("org.apache.hudi:hudi-spark-datasource:0.15.0")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.core:jackson-annotations")
