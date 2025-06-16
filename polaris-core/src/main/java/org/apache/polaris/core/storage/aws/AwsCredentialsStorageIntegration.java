@@ -29,6 +29,8 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -41,6 +43,9 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
+
   private final StsClient stsClient;
 
   public AwsCredentialsStorageIntegration(StsClient stsClient) {
@@ -185,6 +190,10 @@ public class AwsCredentialsStorageIntegration
                         URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
                     + "*")
             .build());
+    LOGGER.debug(
+        "Generated AWS IAM policy for role {}: {}",
+        awsStorageConfigurationInfo.getRoleARN(),
+        policyBuilder.build().toJson());
     return policyBuilder.build();
   }
 
