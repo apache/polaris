@@ -16,16 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
-/**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
- */
-public interface PolarisEvent {
-    public static String createRequestId() {
-        return UUID.randomUUID().toString();
+/** Emitted when Polaris intends to create a table. */
+public final class BeforeCatalogCreatedEvent implements PolarisEvent {
+    private final String catalogName;
+    private final String requestId;
+    private final String user;
+
+    public BeforeCatalogCreatedEvent(
+            String catalogName, String requestId, AuthenticatedPolarisPrincipal principal) {
+        this.catalogName = catalogName;
+        this.requestId = requestId;
+        if (principal != null) {
+            this.user = principal.getName();
+        } else {
+            this.user = null;
+        }
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public String getCatalogName() {
+        return catalogName;
     }
 }
