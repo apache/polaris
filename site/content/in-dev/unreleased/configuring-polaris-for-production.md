@@ -215,3 +215,8 @@ polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
 ```
 Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
 
+### Upgrade Considerations
+
+The [Polaris Evolution](../evolution) page discusses backward compatibility and
+upgrade concerns.
+
