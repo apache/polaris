@@ -7,7 +7,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 /**
  * Event fired before a grant is added to a catalog role in Polaris.
  */
-public class BeforeAddGrantToCatalogRoleEvent {
+public class BeforeAddGrantToCatalogRoleEvent implements PolarisEvent {
     private final String catalogName;
     private final String catalogRoleName;
     private final AddGrantRequest grantRequest;
@@ -51,4 +51,3 @@ public class BeforeAddGrantToCatalogRoleEvent {
         return principal;
     }
 }
-

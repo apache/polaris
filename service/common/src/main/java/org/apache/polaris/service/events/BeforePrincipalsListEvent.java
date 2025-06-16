@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before the list of principals is retrieved in Polaris.
  */
-public class BeforePrincipalsListEvent {
+public class BeforePrincipalsListEvent implements PolarisEvent {
     private final String requestId;
     private final AuthenticatedPolarisPrincipal principal;
 
@@ -28,4 +28,3 @@ public class BeforePrincipalsListEvent {
         return principal;
     }
 }
-

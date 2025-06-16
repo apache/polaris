@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired after a principal role is revoked from a principal in Polaris.
  */
-public class AfterRevokePrincipalRoleEvent {
+public class AfterRevokePrincipalRoleEvent implements PolarisEvent {
     private final String principalName;
     private final String principalRoleName;
     private final String requestId;
@@ -42,4 +42,3 @@ public class AfterRevokePrincipalRoleEvent {
         return principal;
     }
 }
-

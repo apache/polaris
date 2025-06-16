@@ -7,7 +7,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 /**
  * Event fired after a grant is revoked from a catalog role in Polaris.
  */
-public class AfterRevokeGrantFromCatalogRoleEvent {
+public class AfterRevokeGrantFromCatalogRoleEvent implements PolarisEvent {
     private final String catalogName;
     private final String catalogRoleName;
     private final PolarisPrivilege privilege;
@@ -64,4 +64,3 @@ public class AfterRevokeGrantFromCatalogRoleEvent {
         return principal;
     }
 }
-

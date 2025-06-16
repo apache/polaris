@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired after the list of catalog roles for a principal role is retrieved in Polaris.
  */
-public class AfterListCatalogRolesForPrincipalRoleEvent {
+public class AfterListCatalogRolesForPrincipalRoleEvent implements PolarisEvent {
     private final String principalRoleName;
     private final String catalogName;
     private final String requestId;
@@ -42,4 +42,3 @@ public class AfterListCatalogRolesForPrincipalRoleEvent {
         return principal;
     }
 }
-

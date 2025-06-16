@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before a principal is deleted in Polaris.
  */
-public class BeforePrincipalDeleteEvent {
+public class BeforePrincipalDeleteEvent implements PolarisEvent {
     private final String principalName;
     private final String requestId;
     private final AuthenticatedPolarisPrincipal principal;

@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before a principal role is created in Polaris.
  */
-public class BeforePrincipalRoleCreateEvent {
+public class BeforePrincipalRoleCreateEvent implements PolarisEvent {
     private final String principalRoleName;
     private final String requestId;
     private final AuthenticatedPolarisPrincipal principal;
@@ -35,4 +35,3 @@ public class BeforePrincipalRoleCreateEvent {
         return principal;
     }
 }
-

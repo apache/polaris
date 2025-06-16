@@ -6,7 +6,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before the list of grants for a catalog role is retrieved in Polaris.
  */
-public class BeforeListGrantsForCatalogRoleEvent {
+public class BeforeListGrantsForCatalogRoleEvent implements PolarisEvent {
     private final String catalogName;
     private final String catalogRoleName;
     private final String requestId;
@@ -43,4 +43,3 @@ public class BeforeListGrantsForCatalogRoleEvent {
         return principal;
     }
 }
-

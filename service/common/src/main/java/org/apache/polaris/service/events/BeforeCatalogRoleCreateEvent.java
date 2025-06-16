@@ -6,7 +6,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before a catalog role is created in Polaris.
  */
-public class BeforeCatalogRoleCreateEvent {
+public class BeforeCatalogRoleCreateEvent implements PolarisEvent {
     private final String catalogName;
     private final String catalogRoleName;
     private final String requestId;
@@ -43,4 +43,3 @@ public class BeforeCatalogRoleCreateEvent {
         return principal;
     }
 }
-

@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired after a principal is retrieved in Polaris.
  */
-public class AfterPrincipalGetEvent {
+public class AfterPrincipalGetEvent implements PolarisEvent {
     private final String principalName;
     private final String requestId;
     private final AuthenticatedPolarisPrincipal principal;
@@ -35,4 +35,3 @@ public class AfterPrincipalGetEvent {
         return principal;
     }
 }
-

@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Emitted after a principal is created in Polaris.
  */
-public final class AfterPrincipalCreateEvent implements PolarisEvent {
+public class AfterPrincipalCreateEvent implements PolarisEvent {
     private final String principalName;
     private final String user;
 

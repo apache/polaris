@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before a catalog role is deleted in Polaris.
  */
-public class BeforeCatalogRoleDeleteEvent {
+public class BeforeCatalogRoleDeleteEvent implements PolarisEvent {
     private final String catalogName;
     private final String catalogRoleName;
     private final String requestId;
@@ -42,4 +42,3 @@ public class BeforeCatalogRoleDeleteEvent {
         return principal;
     }
 }
-

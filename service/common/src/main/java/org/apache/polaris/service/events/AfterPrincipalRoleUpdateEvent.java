@@ -6,7 +6,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired after a principal role is updated in Polaris.
  */
-public class AfterPrincipalRoleUpdateEvent {
+public class AfterPrincipalRoleUpdateEvent implements PolarisEvent {
     private final String principalRoleName;
     private final PrincipalRole updatedPrincipalRole;
     private final String requestId;
@@ -43,4 +43,3 @@ public class AfterPrincipalRoleUpdateEvent {
         return principal;
     }
 }
-

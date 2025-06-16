@@ -5,7 +5,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 /**
  * Event fired before credentials are rotated for a principal in Polaris.
  */
-public class BeforeCredentialsRotateEvent {
+public class BeforeCredentialsRotateEvent implements PolarisEvent {
     private final String principalName;
     private final String requestId;
     private final AuthenticatedPolarisPrincipal principal;
@@ -35,4 +35,3 @@ public class BeforeCredentialsRotateEvent {
         return principal;
     }
 }
-
