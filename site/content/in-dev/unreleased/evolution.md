@@ -74,10 +74,8 @@ as well. Service interruption (downtime) should be expected in those cases.
 Polaris produces several jars. These jars or custom builds of Polaris code may be used in
 downstream projects according to the terms of the license included into Polaris distributions.
 
-Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
-respect to Java code and REST APIs.
-
-This means that major version increments should be expected often (in the SemVer sense).
+This means that major version increments should be expected often (in the SemVer sense, see
+below).
 
 The minimal version of the JRE required by Polaris code (compilation target) may be updated in
 any release. Different Polaris jars may have different minimal JRE version requirements.
@@ -87,3 +85,36 @@ to allow more flexibility in evolving the codebase to support new catalog-level 
 and improve code efficiency. Maintainers of downstream projects are encouraged to join Polaris 
 mailing lists to monitor project changes, suggest improvements, and engage with the Polaris
 community in case of specific compatibility concerns.   
+
+## Semantic Versioning
+
+Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
+respect to Java code and REST APIs.
+
+The API surface for the purpose of Semantic Versioning is defined as follows.
+
+**Client-Facing API**
+
+* Iceberg REST Catalog API and Generic Tables API (refer to this [link](../polaris-catalog-service/)
+for their combined Open API definition).
+  * Note: Polaris implementing an optional Iceberg REST Catalog feature that was unimplemented
+  in the previous release is not considered a major change.
+  * Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
+  is not considered a major change.
+  * Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
+  compatible way is a major change.
+* [Polaris Management API](../polaris-management-service/)
+* [Polaris Policies](http://localhost:1313/in-dev/unreleased/policy/)
+* Configuration
+  * Public (not internal) properties inside Polaris [Entities](../entities/) that affect Polaris behaviour.
+  * Runtime [configuration](../configuration/) properties with the `polaris.` name prefix.
+
+**Build-Time Dependencies**
+
+* The `polaris-core` module (`public` classes and interfaces)
+
+**Non-API Modules**
+
+Build-time dependencies other than the `polaris-core` module are considered non-API 
+and are not subject to tracking in semantic version number changes. Their `public`
+Java interfaces may change without notice even in minor releases.
