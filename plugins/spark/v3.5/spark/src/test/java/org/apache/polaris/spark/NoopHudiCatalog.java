@@ -18,11 +18,14 @@
  */
 package org.apache.polaris.spark;
 
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
+import java.util.Map;
+import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
 import org.apache.spark.sql.connector.catalog.DelegatingCatalogExtension;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.Table;
-import org.apache.spark.sql.connector.catalog.TableChange;
+import org.apache.spark.sql.connector.expressions.Transform;
+import org.apache.spark.sql.types.StructType;
 
 /**
  * This is a fake hudi catalog class that is used for testing. This class is a noop class that
@@ -30,8 +33,12 @@ import org.apache.spark.sql.connector.catalog.TableChange;
  * DelegatingCatalogExtension.
  */
 public class NoopHudiCatalog extends DelegatingCatalogExtension {
+
   @Override
-  public Table alterTable(Identifier ident, TableChange... changes) throws NoSuchTableException {
-    return super.loadTable(ident);
+  public Table createTable(
+      Identifier ident, StructType schema, Transform[] partitions, Map<String, String> properties)
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
+    // currently hudi create table does not use delegate so for now mock by returning a null
+    return null;
   }
 }

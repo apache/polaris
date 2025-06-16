@@ -55,6 +55,7 @@ import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.hudi.catalog.HoodieInternalV2Table;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.internal.SessionState;
 import org.apache.spark.sql.types.StructType;
@@ -506,6 +507,11 @@ public class SparkCatalogTest {
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
 
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
+
       TableProvider deltaProvider = Mockito.mock(TableProvider.class);
       mockedStaticDS
           .when(() -> DataSource.lookupDataSourceV2(Mockito.eq("delta"), Mockito.any()))
@@ -568,7 +574,7 @@ public class SparkCatalogTest {
     catalog.invalidateTable(hudiIdent);
 
     Identifier[] tableIdents = catalog.listTables(defaultNS);
-    assertThat(tableIdents.length).isEqualTo(2);
+    assertThat(tableIdents.length).isEqualTo(3);
 
     // verify purge tables drops the table
     catalog.purgeTable(deltaIdent);
@@ -612,6 +618,11 @@ public class SparkCatalogTest {
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
 
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
+
       TableProvider provider = Mockito.mock(TableProvider.class);
       mockedStaticDS
           .when(() -> DataSource.lookupDataSourceV2(Mockito.eq(format), Mockito.any()))
@@ -632,6 +643,8 @@ public class SparkCatalogTest {
         // iceberg SparkTable is returned for iceberg tables
         assertThat(createdTable).isInstanceOf(SparkTable.class);
         assertThat(loadedTable).isInstanceOf(SparkTable.class);
+      } else if (PolarisCatalogUtils.useHudi(format)) {
+        assertThat(loadedTable).isInstanceOf(HoodieInternalV2Table.class);
       } else {
         // Spark V1 table is returned for non-iceberg tables
         assertThat(createdTable).isInstanceOf(V1Table.class);
