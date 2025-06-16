@@ -18,10 +18,7 @@
  */
 package org.apache.polaris.jpa.models;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 /**
@@ -45,6 +42,7 @@ public class ModelEntityDropped {
   @Id private int typeCode;
 
   // the name that this entity had when it was resolved
+  @Column(columnDefinition = "TEXT")
   @Id private String name;
 
   // the type of the entity when it was resolved

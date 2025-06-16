@@ -48,6 +48,7 @@ public class ModelEntity {
   private int typeCode;
 
   // the name that this entity had when it was resolved
+  @Column(columnDefinition = "TEXT")
   private String name;
 
   // the version that this entity had when it was resolved
