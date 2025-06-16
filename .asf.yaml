@@ -54,9 +54,9 @@ github:
         # of the job's `name` property if it's present.
         contexts:
           - markdown-link-check
-          - unit-tests
-          - quarkus-tests
-          - integration-tests
+          - "Unit Tests"
+          - "Quarkus Tests"
+          - "Integration Tests"
           - regtest
           - spark-plugin-regtest
           - site
