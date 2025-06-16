@@ -116,7 +116,7 @@ dependencies {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
-  archiveClassifier = null
+  archiveClassifier = "bundle"
   isZip64 = true
 
   // include the LICENSE and NOTICE files for the shadow Jar
@@ -148,11 +148,3 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.named("assemble") { dependsOn("shadowJar") }
 
 tasks.named("build") { dependsOn("shadowJar") }
-
-tasks.named<Jar>("jar") {
-  // retain the default jar job, and add a classifier to avoid conflict
-  // with the shadowJar task. This jar is needed by the task "test",
-  // which can not be switched to depends on shadow Jar task due to
-  // relocation of com.fasterxml.
-  archiveClassifier.set("internal")
-}

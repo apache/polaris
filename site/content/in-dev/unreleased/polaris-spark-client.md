@@ -130,20 +130,12 @@ The Polaris Spark client has the following functionality limitations:
 5) For other non-Iceberg tables like csv, it is not supported.
 
 ## Iceberg Spark Client compatibility with Polaris Spark Client
-The Polaris Spark client today is not designed to be used with Iceberg Spark client together. In other words,
-there is no guarantee provided if both `org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:<iceberg_version>` and 
-`org.apache.polaris:polaris-spark-3.5_2.12:<polaris_version>` are provided for the Spark `package` configuration.
-
-However, Polaris Spark client ships a version of Iceberg Spark client along with it, and IcebergSessionExtension 
-can be used without adding the Iceberg Spark client to the package. 
-The version information is described in the following table:
+The Polaris Spark client today depends on a specific Iceberg client version, and the version dependency is described
+in the following table:
 
 | Spark Client Version | Iceberg Spark Client Version |
 |----------------------|------------------------------|
 | 1.0.0                | 1.9.0                        |
 
-## Troubleshooting
-1. When starting Spark, sometimes it complains it failed to download a package, for example, 
-   `download failed: org.apache.commons#commons-compress;1.26.2!commons-compress.jar`. If that happens, you can explicitly
-    specify the package in the `package` configuration, for example, `--package org.apache.commons:commons-compress:1.27.1`
-
+The Iceberg dependency is automatically downloaded when the Polaris package is downloaded, so there is no need to
+add the Iceberg Spark client in the `packages` configuration.
