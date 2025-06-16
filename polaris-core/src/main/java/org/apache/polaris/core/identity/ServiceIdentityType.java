@@ -16,67 +16,65 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection;
+package org.apache.polaris.core.identity;
 
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 
 /**
- * The internal persistence-object counterpart to AuthenticationParameters.AuthenticationTypeEnum
+ * The internal persistence-object counterpart to ServiceIdentityTypeInfo.ServiceIdentityTypeEnum
  * defined in the API model. We define integer type codes in this enum for better compatibility
  * within persisted data in case the names of enum types are ever changed in place.
  *
  * <p>Important: Codes must be kept in-sync with JsonSubTypes annotated within {@link
- * AuthenticationParametersDpo}.
+ * ServiceIdentityInfoDpo}.
  */
-public enum AuthenticationType {
+public enum ServiceIdentityType {
   NULL_TYPE(0),
-  OAUTH(1),
-  BEARER(2),
-  IMPLICIT(3),
-  SIGV4(4),
+  AWS_IAM(1),
   ;
 
-  private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;
+  private static final ServiceIdentityType[] REVERSE_MAPPING_ARRAY;
 
   static {
     // find max array size
     int maxCode =
-        Arrays.stream(AuthenticationType.values())
-            .mapToInt(AuthenticationType::getCode)
+        Arrays.stream(ServiceIdentityType.values())
+            .mapToInt(ServiceIdentityType::getCode)
             .max()
             .orElse(0);
 
     // allocate mapping array
-    REVERSE_MAPPING_ARRAY = new AuthenticationType[maxCode + 1];
+    REVERSE_MAPPING_ARRAY = new ServiceIdentityType[maxCode + 1];
 
     // populate mapping array
-    for (AuthenticationType authType : AuthenticationType.values()) {
+    for (ServiceIdentityType authType : ServiceIdentityType.values()) {
       REVERSE_MAPPING_ARRAY[authType.code] = authType;
     }
   }
 
   private final int code;
 
-  AuthenticationType(int code) {
+  ServiceIdentityType(int code) {
     this.code = code;
   }
 
   /**
-   * Given the code associated to the type, return the associated AuthenticationType. Return
+   * Given the code associated with the type, return the associated ServiceIdentityType. Return
    * NULL_TYPE if not found
    *
-   * @param authTypeCode code associated to the authentication type
-   * @return AuthenticationType corresponding to that code or null if mapping not found
+   * @param identityTypeCode code associated to the service identity type
+   * @return ServiceIdentityType corresponding to that code or null if mapping not found
    */
-  public static @Nonnull AuthenticationType fromCode(int authTypeCode) {
+  public static @Nonnull ServiceIdentityType fromCode(int identityTypeCode) {
     // ensure it is within bounds
-    if (authTypeCode < 0 || authTypeCode >= REVERSE_MAPPING_ARRAY.length) {
+    if (identityTypeCode < 0 || identityTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return NULL_TYPE;
     }
 
     // get value
-    return REVERSE_MAPPING_ARRAY[authTypeCode];
+    return REVERSE_MAPPING_ARRAY[identityTypeCode];
   }
 
   public int getCode() {

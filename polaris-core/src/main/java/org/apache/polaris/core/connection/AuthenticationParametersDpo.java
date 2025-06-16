@@ -18,13 +18,16 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.secrets.UserSecretReference;
 
@@ -40,6 +43,7 @@ import org.apache.polaris.core.secrets.UserSecretReference;
   @JsonSubTypes.Type(value = OAuthClientCredentialsParametersDpo.class, name = "1"),
   @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
   @JsonSubTypes.Type(value = ImplicitAuthenticationParametersDpo.class, name = "3"),
+  @JsonSubTypes.Type(value = SigV4AuthenticationParametersDpo.class, name = "4"),
 })
 public abstract class AuthenticationParametersDpo implements IcebergCatalogPropertiesProvider {
 
@@ -58,7 +62,12 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
     return authenticationTypeCode;
   }
 
-  public abstract AuthenticationParameters asAuthenticationParametersModel();
+  @JsonIgnore
+  public AuthenticationType getAuthenticationType() {
+    return AuthenticationType.fromCode(authenticationTypeCode);
+  }
+
+  public abstract @Nonnull AuthenticationParameters asAuthenticationParametersModel();
 
   public static AuthenticationParametersDpo fromAuthenticationParametersModelWithSecrets(
       AuthenticationParameters authenticationParameters,
@@ -84,6 +93,18 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
         break;
       case IMPLICIT:
         config = new ImplicitAuthenticationParametersDpo();
+        break;
+      case SIGV4:
+        // SigV4 authentication is not secret-based
+        SigV4AuthenticationParameters sigV4AuthenticationParametersModel =
+            (SigV4AuthenticationParameters) authenticationParameters;
+        config =
+            new SigV4AuthenticationParametersDpo(
+                sigV4AuthenticationParametersModel.getRoleArn(),
+                sigV4AuthenticationParametersModel.getRoleSessionName(),
+                sigV4AuthenticationParametersModel.getExternalId(),
+                sigV4AuthenticationParametersModel.getSigningRegion(),
+                sigV4AuthenticationParametersModel.getSigningName());
         break;
       default:
         throw new IllegalStateException(
