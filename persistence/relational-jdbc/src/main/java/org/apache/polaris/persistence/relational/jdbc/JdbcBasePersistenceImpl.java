@@ -632,7 +632,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   private int loadVersion() {
-    String query = generateVersionQuery();
+    PreparedQuery query = QueryGenerator.generateVersionQuery();
     try {
       List<SchemaVersion> schemaVersion =
           datasourceOperations.executeSelect(query, new SchemaVersion());
@@ -659,7 +659,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return Optional.empty();
     }
 
-    String query = QueryGenerator.generateOverlapQuery(realmId, entity);
+    PreparedQuery query = QueryGenerator.generateOverlapQuery(
+      realmId, entity.getParentId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {

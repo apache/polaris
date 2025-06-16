@@ -48,7 +48,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "last_update_timestamp",
           "properties",
           "internal_properties",
-          "grant_records_version");
+          "grant_records_version",
+          "location_without_scheme");
 
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog

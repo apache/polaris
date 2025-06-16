@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 
@@ -211,32 +212,58 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  public static String generateVersionQuery() {
-    return "SELECT version_value FROM POLARIS_SCHEMA.VERSION";
+  public static PreparedQuery generateVersionQuery() {
+    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
+  /**
+   * Generate a SELECT query to find any entities that have a given realm & parent and that
+   * may with a given location. The check is performed without consideration for the scheme,
+   * so a path on one storage type may give a false positive for overlapping with another
+   * storage type. This should be combined with a check using `StorageLocation`.
+   *
+   * @param realmId A realm to search within
+   * @param parentId A parent entity to search within
+   * @param baseLocation The base location to look for overlap with, with or without a scheme
+   * @return The list of possibly overlapping entities that meet the criteria
+   */
   @VisibleForTesting
-  public static <T extends PolarisEntity & LocationBasedEntity> String generateOverlapQuery(
-      String realmId, T entity) {
-    String location = entity.getBaseLocation();
-    String[] components = location.split("/");
-    ArrayList<String> locationClauseComponents = new ArrayList<>();
-    StringBuilder pathBuilder = new StringBuilder();
-    for (String component : components) {
-      pathBuilder.append(component).append("/");
-      locationClauseComponents.add(String.format("location = '%s'", pathBuilder));
-    }
-    locationClauseComponents.add(String.format("location LIKE '%s%%'", location));
-    String query = "SELECT " + String.join(", ", new ModelEntity().toMap().keySet());
+  public static PreparedQuery generateOverlapQuery(
+      String realmId,
+      long parentId,
+      String baseLocation) {
+    StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
+    String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
-    // TODO harden against raw strings in this method and others
-    return query
-        + String.format(
-            " FROM %s WHERE realm_id = '%s' AND parent_id = %d AND (%s)",
-            getTableName(ModelEntity.class),
-            realmId,
-            entity.getParentId(),
-            String.join(" OR ", locationClauseComponents));
+    List<String> conditions = new ArrayList<>();
+    List<Object> parameters = new ArrayList<>();
+
+    String[] components = locationWithoutScheme.split("/");
+    StringBuilder pathBuilder = new StringBuilder();
+
+    for (String component: components) {
+      pathBuilder.append(component).append("/");
+      conditions.add("location = ?");
+      parameters.add(pathBuilder.toString());
+    }
+
+    // Add LIKE condition to match children
+    conditions.add("location LIKE ?");
+    parameters.add(locationWithoutScheme + "%");
+
+    String locationClause = String.join(" OR ", conditions);
+    String clause = "WHERE realm_id = ? AND parent_id = ? AND (" + locationClause + ")";
+
+    // realmId and parentId go first
+    List<Object> finalParams = new ArrayList<>();
+    finalParams.add(realmId);
+    finalParams.add(parentId);
+    finalParams.addAll(parameters);
+
+    QueryFragment where = new QueryFragment(clause, finalParams);
+    PreparedQuery query = generateSelectQuery(
+      ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql());
+    return new PreparedQuery(query.sql(), where.parameters());
   }
 
   private static String getFullyQualifiedTableName(String tableName) {
