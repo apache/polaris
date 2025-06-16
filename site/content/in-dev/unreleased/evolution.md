@@ -55,17 +55,18 @@ for some transition period to allow clients to migrate.
 Polaris stores its data in a database, which is sometimes referred to as "Meta Store" or
 "Persistence" in other docs.
 
-Several Persistence implementations may be supported by Polaris in each release.
-For example: "EclipseLink" (deprecated) and "JDBC" (current).
+Each Polaris release may support multiple Persistence implementations,
+for example, "EclipseLink" (deprecated) and "JDBC" (current).
 
 Each type of Persistence evolves individually. Within each Persistence type, Polaris
 attempts to support rolling upgrades (both version X and X + 1 servers running at the
 same time).
 
-However, users should not expect that a transition from "EclipseLink" to "JDBC" can be
-done in a rolling upgrade manner. Polaris provides tools for migrating between different
-catalogs and those tools may be used to migrate between different Persistence types.
-Service interruption (downtime) should be expected in those cases.
+However, migrating between different Persistence types is not supported in a rolling
+upgrade manner (for example, migrating from "EclipseLink" to "JDBC"). Polaris provides
+[tools](https://github.com/apache/polaris-tools/) for migrating between different
+catalogs and those tools may be used to migrate between different Persistence types
+as well. Service interruption (downtime) should be expected in those cases.
 
 ## Using Polaris as a Build-Time Dependency
 
