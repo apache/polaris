@@ -75,12 +75,6 @@ downstream projects according to the terms of the license included into Polaris 
 Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
 respect to java code and REST APIs.
 
-However, Polaris' focus as a project is not on ensuring ideal binary compatibility at the java 
-class level between releases. Maintainers try to keep binary compatibility on the "best effort"
-basis. The main goal being the implementation of Polaris capabilities for access via REST APIs.
-Even modules that have words like "core" or "api" in their names still follow the "best effort"
-strategy and may have non-backward compatible changes between releases.
-
 This means that major version increments should be expected often (in the SemVer sense).
 
 The minimal version of the JRE required by Polaris code (compilation target) may be updated in
