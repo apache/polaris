@@ -23,23 +23,23 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
 /** Emitted when Polaris intends to create a table. */
 public final class AfterCatalogListEvent implements PolarisEvent {
-    private final String requestId;
-    private final String user;
+  private final String requestId;
+  private final String user;
 
-    public AfterCatalogListEvent(String requestId, AuthenticatedPolarisPrincipal principal) {
-        this.requestId = requestId;
-        if (principal != null) {
-            this.user = principal.getName();
-        } else {
-            this.user = null;
-        }
+  public AfterCatalogListEvent(String requestId, AuthenticatedPolarisPrincipal principal) {
+    this.requestId = requestId;
+    if (principal != null) {
+      this.user = principal.getName();
+    } else {
+      this.user = null;
     }
+  }
 
-    public String getUser() {
-        return user;
-    }
+  public String getUser() {
+    return user;
+  }
 
-    public String getRequestId() {
-        return requestId;
-    }
+  public String getRequestId() {
+    return requestId;
+  }
 }

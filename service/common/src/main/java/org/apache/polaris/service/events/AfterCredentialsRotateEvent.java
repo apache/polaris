@@ -3,43 +3,45 @@ package org.apache.polaris.service.events;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
-/**
- * Event fired after credentials are rotated for a principal in Polaris.
- */
+/** Event fired after credentials are rotated for a principal in Polaris. */
 public class AfterCredentialsRotateEvent implements PolarisEvent {
-    private final String principalName;
-    private final PrincipalWithCredentials rotatedPrincipal;
-    private final String requestId;
-    private final AuthenticatedPolarisPrincipal principal;
+  private final String principalName;
+  private final PrincipalWithCredentials rotatedPrincipal;
+  private final String requestId;
+  private final AuthenticatedPolarisPrincipal principal;
 
-    /**
-     * Constructs a new AfterCredentialsRotateEvent.
-     *
-     * @param principalName     the name of the principal whose credentials were rotated
-     * @param rotatedPrincipal  the updated principal with new credentials
-     * @param requestId         the request ID for this operation
-     * @param principal         the authenticated principal performing the operation
-     */
-    public AfterCredentialsRotateEvent(String principalName, PrincipalWithCredentials rotatedPrincipal, String requestId, AuthenticatedPolarisPrincipal principal) {
-        this.principalName = principalName;
-        this.rotatedPrincipal = rotatedPrincipal;
-        this.requestId = requestId;
-        this.principal = principal;
-    }
+  /**
+   * Constructs a new AfterCredentialsRotateEvent.
+   *
+   * @param principalName the name of the principal whose credentials were rotated
+   * @param rotatedPrincipal the updated principal with new credentials
+   * @param requestId the request ID for this operation
+   * @param principal the authenticated principal performing the operation
+   */
+  public AfterCredentialsRotateEvent(
+      String principalName,
+      PrincipalWithCredentials rotatedPrincipal,
+      String requestId,
+      AuthenticatedPolarisPrincipal principal) {
+    this.principalName = principalName;
+    this.rotatedPrincipal = rotatedPrincipal;
+    this.requestId = requestId;
+    this.principal = principal;
+  }
 
-    public String getPrincipalName() {
-        return principalName;
-    }
+  public String getPrincipalName() {
+    return principalName;
+  }
 
-    public PrincipalWithCredentials getRotatedPrincipal() {
-        return rotatedPrincipal;
-    }
+  public PrincipalWithCredentials getRotatedPrincipal() {
+    return rotatedPrincipal;
+  }
 
-    public String getRequestId() {
-        return requestId;
-    }
+  public String getRequestId() {
+    return requestId;
+  }
 
-    public AuthenticatedPolarisPrincipal getPrincipal() {
-        return principal;
-    }
+  public AuthenticatedPolarisPrincipal getPrincipal() {
+    return principal;
+  }
 }

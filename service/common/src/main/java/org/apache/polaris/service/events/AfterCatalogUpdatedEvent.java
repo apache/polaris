@@ -24,36 +24,39 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
 /** Emitted when Polaris intends to create a table. */
 public final class AfterCatalogUpdatedEvent implements PolarisEvent {
-    private final String catalogName;
-    private final Catalog catalog;
-    private final String requestId;
-    private final String user;
+  private final String catalogName;
+  private final Catalog catalog;
+  private final String requestId;
+  private final String user;
 
-    public AfterCatalogUpdatedEvent(
-            String catalogName, Catalog catalog, String requestId, AuthenticatedPolarisPrincipal principal) {
-        this.catalogName = catalogName;
-        this.catalog = catalog;
-        this.requestId = requestId;
-        if (principal != null) {
-            this.user = principal.getName();
-        } else {
-            this.user = null;
-        }
+  public AfterCatalogUpdatedEvent(
+      String catalogName,
+      Catalog catalog,
+      String requestId,
+      AuthenticatedPolarisPrincipal principal) {
+    this.catalogName = catalogName;
+    this.catalog = catalog;
+    this.requestId = requestId;
+    if (principal != null) {
+      this.user = principal.getName();
+    } else {
+      this.user = null;
     }
+  }
 
-    public String getUser() {
-        return user;
-    }
+  public String getUser() {
+    return user;
+  }
 
-    public String getRequestId() {
-        return requestId;
-    }
+  public String getRequestId() {
+    return requestId;
+  }
 
-    public String getCatalogName() {
-        return catalogName;
-    }
+  public String getCatalogName() {
+    return catalogName;
+  }
 
-    public Catalog getCatalog() {
-        return catalog;
-    }
+  public Catalog getCatalog() {
+    return catalog;
+  }
 }
