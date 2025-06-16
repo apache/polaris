@@ -42,6 +42,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -127,11 +128,17 @@ public class QuarkusProducers {
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      EntityTransformationEngine entityTransformationEngine,
       Clock clock) {
     BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     return new PolarisCallContext(
-        realmContext, metaStoreSession, diagServices, configurationStore, clock);
+        realmContext,
+        metaStoreSession,
+        diagServices,
+        configurationStore,
+        entityTransformationEngine,
+        clock);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

@@ -55,6 +55,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -132,6 +133,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject EntityTransformationEngine entityTransformationEngine;
 
   private IcebergCatalog catalog;
 
@@ -174,6 +176,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
+            entityTransformationEngine,
             Clock.systemDefaultZone());
 
     PolarisEntityManager entityManager =

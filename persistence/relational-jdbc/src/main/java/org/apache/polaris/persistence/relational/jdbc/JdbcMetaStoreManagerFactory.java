@@ -38,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -75,6 +76,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject EntityTransformationEngine entityTransformationEngine;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -156,7 +158,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       BasePersistence session = getOrCreateSessionSupplier(realmContext).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
+      PolarisCallContext callContext =
+          new PolarisCallContext(realmContext, session, diagServices, entityTransformationEngine);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -229,7 +232,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         new PolarisCallContext(
             realmContext,
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+            diagServices,
+            entityTransformationEngine);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }
@@ -280,7 +284,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         new PolarisCallContext(
             realmContext,
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+            diagServices,
+            entityTransformationEngine);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }

@@ -68,6 +68,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
+import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -206,6 +208,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
+  protected EntityTransformationEngine entityTransformationEngine;
   protected UserSecretsManager userSecretsManager;
   protected TransactionalPersistence metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
@@ -232,6 +235,7 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+    entityTransformationEngine = new NoOpEntityTransformationEngine();
 
     polarisAuthorizer = new PolarisAuthorizerImpl(configurationStore);
 
@@ -241,6 +245,7 @@ public abstract class PolarisAuthzTestBase {
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
+            entityTransformationEngine,
             clock);
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 

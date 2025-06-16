@@ -39,6 +39,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
@@ -96,6 +97,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
             session,
             diagServices,
             new PolarisConfigurationStore() {},
+            new NoOpEntityTransformationEngine(),
             timeSource.withZone(ZoneId.systemDefault())));
   }
 

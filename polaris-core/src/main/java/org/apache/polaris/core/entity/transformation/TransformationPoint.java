@@ -17,21 +17,28 @@
  * under the License.
  */
 
-package org.apache.polaris.core.storage;
+package org.apache.polaris.core.entity.transformation;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
+/**
+ * Defines points in the entity lifecycle where {@link EntityTransformer} can be applied.
+ *
+ * <p>Each transformation point corresponds to a specific hook where transformers may be executed.
+ * Transformers can declare which points they support, allowing the engine to invoke only the
+ * relevant ones.
+ */
+public enum TransformationPoint {
 
-public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    return new PolarisCallContext(
-        () -> "realm",
-        Mockito.mock(BasePersistence.class),
-        Mockito.mock(PolarisDiagnostics.class),
-        new NoOpEntityTransformationEngine());
+  /** Applied before a catalog entity is persisted. */
+  CATALOG_PRE_PERSIST(0),
+  ;
+
+  private final int id;
+
+  TransformationPoint(int id) {
+    this.id = id;
+  }
+
+  public int id() {
+    return id;
   }
 }

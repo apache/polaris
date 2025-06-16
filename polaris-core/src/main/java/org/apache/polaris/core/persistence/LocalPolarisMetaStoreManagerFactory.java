@@ -33,6 +33,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
@@ -65,13 +66,16 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   private final PolarisDiagnostics diagnostics;
   private final PolarisConfigurationStore configurationStore;
+  private final EntityTransformationEngine entityTransformationEngine;
   private boolean bootstrap;
 
   protected LocalPolarisMetaStoreManagerFactory(
       @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisConfigurationStore configurationStore) {
+      @Nonnull PolarisConfigurationStore configurationStore,
+      @Nonnull EntityTransformationEngine entityTransformationEngine) {
     this.diagnostics = diagnostics;
     this.configurationStore = configurationStore;
+    this.entityTransformationEngine = entityTransformationEngine;
   }
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
@@ -139,7 +143,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       TransactionalPersistence session = getOrCreateSessionSupplier(realmContext).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
+      PolarisCallContext callContext =
+          new PolarisCallContext(realmContext, session, diagServices, entityTransformationEngine);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -214,7 +219,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         new PolarisCallContext(
             realmContext,
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+            diagServices,
+            entityTransformationEngine);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }
@@ -263,7 +269,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         new PolarisCallContext(
             realmContext,
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+            diagServices,
+            entityTransformationEngine);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }
