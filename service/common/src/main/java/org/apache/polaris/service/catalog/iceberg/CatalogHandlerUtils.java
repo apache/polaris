@@ -473,9 +473,9 @@ public class CatalogHandlerUtils {
                     throw new ValidationFailureException(e);
                   }
                   LOGGER.debug(
-                      "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}",
+                      "Attempting to Rollback replace operations for table={}, with current-snapshot-id={}",
                       base.uuid(),
-                      base.currentSnapshot());
+                      base.currentSnapshot().snapshotId());
                   UpdateRequirement.AssertRefSnapshotID assertRefSnapshotId =
                       findAssertRefSnapshotID(request);
                   MetadataUpdate.SetSnapshotRef setSnapshotRef = findSetSnapshotRefUpdate(request);
@@ -483,9 +483,9 @@ public class CatalogHandlerUtils {
                   if (assertRefSnapshotId == null || setSnapshotRef == null) {
                     // This implies the request was not trying to add a snapshot.
                     LOGGER.debug(
-                        "Giving up on to Rollback replace operation for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
+                        "Giving up on Rollback replace operations for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
                         base.uuid(),
-                        base.currentSnapshot());
+                        base.currentSnapshot().snapshotId());
                     throw new ValidationFailureException(e);
                   }
 
@@ -501,7 +501,7 @@ public class CatalogHandlerUtils {
                   LOGGER.info(
                       "Attempting to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
                       base.uuid(),
-                      base.currentSnapshot(),
+                      base.currentSnapshot().snapshotId(),
                       snapshotToBeAdded.snapshot().snapshotId());
 
                   List<MetadataUpdate> metadataUpdates =
@@ -528,9 +528,9 @@ public class CatalogHandlerUtils {
                   metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
                   newBase = setAppropriateLastSeqNumber(metadataBuilder.build());
                   LOGGER.info(
-                      "Successfully to Rollback replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
+                      "Successfully roll-backed replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
                       base.uuid(),
-                      base.currentSnapshot(),
+                      base.currentSnapshot().snapshotId(),
                       newBase.currentSnapshot().snapshotId());
                 }
                 // double check if the requirements passes now.
@@ -613,8 +613,8 @@ public class CatalogHandlerUtils {
         // reference either by branch or a tag.
         LOGGER.debug(
             "Giving up rolling back table {} to snapshot {}, snapshot to be removed referenced by another branch or tag ancestor",
-            snapshotId,
-            expectedSequenceNumber);
+            base.uuid(),
+            snapshotId);
         break;
       }
       snapshotsToRemove.add(snap.snapshotId());
