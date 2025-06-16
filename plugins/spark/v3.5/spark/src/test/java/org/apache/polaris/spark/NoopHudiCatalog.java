@@ -30,8 +30,8 @@ import org.apache.spark.sql.connector.catalog.TableChange;
  * DelegatingCatalogExtension.
  */
 public class NoopHudiCatalog extends DelegatingCatalogExtension {
-    @Override
-    public Table alterTable(Identifier ident, TableChange... changes) throws NoSuchTableException {
-        return super.loadTable(ident);
-    }
+  @Override
+  public Table alterTable(Identifier ident, TableChange... changes) throws NoSuchTableException {
+    return super.loadTable(ident);
+  }
 }
