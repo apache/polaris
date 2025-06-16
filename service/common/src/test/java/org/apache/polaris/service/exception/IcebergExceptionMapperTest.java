@@ -69,7 +69,8 @@ public class IcebergExceptionMapperTest {
                 new FileIOUnknownHostException(
                     "mybucket.blob.core.windows.net: Name or service not known",
                     new RuntimeException(new UnknownHostException())),
-                404)),
+                404),
+            Arguments.of(new RuntimeException("Error persisting entity"), 500)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
                 entry ->

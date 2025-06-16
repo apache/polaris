@@ -30,11 +30,15 @@ services:
       jaeger:
         condition: service_healthy
     environment:
-      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${CLIENT_ID},${CLIENT_SECRET}
       quarkus.otel.exporter.otlp.endpoint: http://jaeger:4317
       # Resource attributes (added to all traces)
       quarkus.otel.resource.attributes[0]: polaris.app=polaris-getting-started
       quarkus.otel.resource.attributes[1]: polaris.env=dev
+
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.readiness.ignore-severe-issues: "true"
       # Custom metrics (added to all requests)
       polaris.metrics.tags.app: polaris-getting-started
       polaris.metrics.tags.env: dev
@@ -55,8 +59,11 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+    environment:
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     volumes:
-      - ../assets/polaris/:/polaris
+      - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   prometheus:
@@ -78,7 +85,7 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/all-in-one:1.69.0
+    image: docker.io/jaegertracing/all-in-one:1.70.0
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"

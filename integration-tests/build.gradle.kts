@@ -67,6 +67,7 @@ dependencies {
   compileOnly("org.junit.jupiter:junit-jupiter-engine")
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
+  implementation(libs.awaitility)
 }
 
 copiedCodeChecks {

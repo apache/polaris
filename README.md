@@ -22,11 +22,11 @@
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
-Apache Spark™, StarRocks, and Trino.
+Apache Spark™, StarRocks, and Trino. 
 
-Documentation is available at https://polaris.apache.org, including
-[Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
-and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
+Documentation is available at https://polaris.apache.org. The REST OpenAPI specifications are available here:
+[Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
+and [Polaris Catalog API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
 [Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
 for contribution guidelines.
@@ -37,7 +37,7 @@ for contribution guidelines.
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Polaris Overview
-Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick overview of Polaris.
+Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
 
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.misc.types.memorysize;
 
-import static com.fasterxml.jackson.annotation.JsonFormat.*;
+import static com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import static java.lang.String.format;
 import static java.util.Locale.ROOT;
 

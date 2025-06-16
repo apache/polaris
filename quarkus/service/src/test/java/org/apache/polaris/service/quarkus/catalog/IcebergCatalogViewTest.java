@@ -179,8 +179,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
-            new InMemoryEntityCache(metaStoreManager));
+            new StorageCredentialCache(realmContext, configurationStore),
+            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     CallContext.setCurrentContext(polarisContext);
 
@@ -224,6 +224,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
                 .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                 .setDefaultBaseLocation("file://tmp")
                 .setStorageConfigurationInfo(
+                    polarisContext,
                     new FileStorageConfigInfo(
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")

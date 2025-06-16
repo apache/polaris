@@ -193,6 +193,8 @@ components:
           type: string
         format:
           type: string
+        base-location:
+          type: string
         doc:
           type: string
         properties:
@@ -205,13 +207,18 @@ components:
       description: >
         Generic Table information.
         
-        - `name` name for the generic table
+        - `name` (REQUIRED): name for the generic table
         
-        - `format` format for the generic table, i.e. "delta", "csv"
+        - `format` (REQUIRED): format for the generic table, i.e. "delta", "csv"
         
-        - `properties` properties for the generic table passed on creation
+        - `base-location` (OPTIONAL): table base location in URI format. For example: s3://<my-bucket>/path/to/table.
+          - The table base location is a location that includes all files for the table.
+          - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
+          - If no location is provided, clients or users are responsible for managing the location.
         
-        - `doc` comment or description for the generic table
+        - `properties` (OPTIONAL): properties for the generic table passed on creation
+        
+        - `doc` (OPTIONAL): comment or description for the generic table
       required:
         - name
         - format
@@ -219,6 +226,8 @@ components:
         name:
           type: string
         format:
+          type: string
+        base-location:
           type: string
         doc:
           type: string

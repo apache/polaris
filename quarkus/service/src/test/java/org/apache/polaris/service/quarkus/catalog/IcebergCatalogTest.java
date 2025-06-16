@@ -227,6 +227,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
 
+  protected String getRealmName() {
+    return realmName;
+  }
+
   @BeforeAll
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
@@ -259,7 +263,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
+            metaStoreManager,
+            new StorageCredentialCache(realmContext, configurationStore),
+            createEntityCache(metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -315,7 +321,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        polarisContext, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -425,12 +432,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+        return new StorageCredentialCache(realmContext, configurationStore);
       }
 
       @Override
       public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
       }
 
       @Override
@@ -1592,7 +1599,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 .addProperty(
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(
+                    polarisContext, noPurgeStorageConfigModel, storageLocation)
                 .build()
                 .asCatalog()));
     PolarisPassthroughResolutionView passthroughView =

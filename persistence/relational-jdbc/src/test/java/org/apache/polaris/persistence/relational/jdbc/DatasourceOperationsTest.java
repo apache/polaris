@@ -23,14 +23,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
@@ -47,38 +50,44 @@ public class DatasourceOperationsTest {
 
   @Mock private Connection mockConnection;
 
-  @Mock private Statement mockStatement;
+  @Mock private PreparedStatement mockPreparedStatement;
 
   @Mock private RelationalJdbcConfiguration relationalJdbcConfiguration;
+
+  @Mock private DatabaseMetaData mockDatabaseMetaData;
 
   @Mock Operation<String> mockOperation;
 
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() throws SQLException {
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.getMetaData()).thenReturn(mockDatabaseMetaData);
+    when(mockDatabaseMetaData.getDatabaseProductName()).thenReturn("h2");
     datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
   }
 
   @Test
   void testExecuteUpdate_success() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    String query = "UPDATE users SET active = true";
-    when(mockStatement.executeUpdate(query)).thenReturn(1);
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
 
     int result = datasourceOperations.executeUpdate(query);
 
     assertEquals(1, result);
-    verify(mockStatement).executeUpdate(query);
   }
 
   @Test
   void testExecuteUpdate_failure() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    String query = "INVALID SQL";
-    when(mockStatement.executeUpdate(query)).thenThrow(new SQLException("demo", "42P07"));
+    QueryGenerator.PreparedQuery query = new QueryGenerator.PreparedQuery("INVALID SQL", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+
+    when(mockPreparedStatement.executeUpdate()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
   }
@@ -86,9 +95,10 @@ public class DatasourceOperationsTest {
   @Test
   void testExecuteSelect_exception() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    String query = "SELECT * FROM users";
-    when(mockStatement.executeQuery(query)).thenThrow(new SQLException("demo", "42P07"));
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(
         SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
@@ -96,9 +106,10 @@ public class DatasourceOperationsTest {
 
   @Test
   void testRunWithinTransaction_commit() throws Exception {
+    // reset to ignore constructor interaction
+    reset(mockConnection);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    DatasourceOperations.TransactionCallback callback = statement -> true;
+    DatasourceOperations.TransactionCallback callback = connection -> true;
     when(mockConnection.getAutoCommit()).thenReturn(true);
     datasourceOperations.runWithinTransaction(callback);
     verify(mockConnection).setAutoCommit(true);
@@ -111,8 +122,7 @@ public class DatasourceOperationsTest {
   @Test
   void testRunWithinTransaction_rollback() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    DatasourceOperations.TransactionCallback callback = statement -> false;
+    DatasourceOperations.TransactionCallback callback = connection -> false;
 
     datasourceOperations.runWithinTransaction(callback);
 
@@ -122,9 +132,8 @@ public class DatasourceOperationsTest {
   @Test
   void testRunWithinTransaction_exceptionTriggersRollback() throws Exception {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
     DatasourceOperations.TransactionCallback callback =
-        statement -> {
+        connection -> {
           throw new SQLException("Boom");
         };
 

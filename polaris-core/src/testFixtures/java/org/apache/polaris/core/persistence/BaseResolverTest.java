@@ -468,7 +468,9 @@ public abstract class BaseResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new InMemoryEntityCache(metaStoreManager());
+      this.cache =
+          new InMemoryEntityCache(
+              callCtx().getRealmContext(), callCtx().getConfigurationStore(), metaStoreManager());
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =

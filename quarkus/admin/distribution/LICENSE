@@ -296,7 +296,7 @@ License: Apache License 2.0 - https://repository.jboss.org/licenses/apache-2.0.t
 
 Group: com.azure Name: azure-core Version: 1.55.3
 Group: com.azure Name: azure-core-http-netty Version: 1.15.11
-Group: com.azure Name: azure-identity Version: 1.15.4
+Group: com.azure Name: azure-identity Version: 1.16.1
 Group: com.azure Name: azure-json Version: 1.5.0
 Group: com.azure Name: azure-storage-blob Version: 12.30.0
 Group: com.azure Name: azure-storage-common Version: 12.29.0
@@ -339,7 +339,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.0
+Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.1
 Project URL: https://github.com/ben-manes/caffeine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -363,7 +363,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: api-common Version: 2.49.0
+Group: com.google.api Name: api-common Version: 2.50.0
 Project URL: https://github.com/googleapis/api-common-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc.
@@ -395,9 +395,9 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: gax Version: 2.66.0
-Group: com.google.api Name: gax-grpc Version: 2.66.0
-Group: com.google.api Name: gax-httpjson Version: 2.66.0
+Group: com.google.api Name: gax Version: 2.67.0
+Group: com.google.api Name: gax-grpc Version: 2.67.0
+Group: com.google.api Name: gax-httpjson Version: 2.67.0
 Project URL: https://github.com/googleapis/gax-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc. All rights reserved.
@@ -430,30 +430,30 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.52.3
-Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.52.3
+Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.53.0
+Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.53.0
 Group: com.google.api.grpc Name: proto-google-cloud-monitoring-v3 Version: 3.52.0
-Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.52.3
+Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.53.0
 Project URL: https://github.com/googleapis/java-storage
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
 Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.53.0
-Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.52.0
+Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.53.0
 Project URL: https://github.com/googleapis/sdk-platform-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250509-2.0.0
+Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250524-2.0.0
 Project URL: http://www.google.com
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.auth Name: google-auth-library-credentials Version: 1.35.0
-Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.35.0
+Group: com.google.auth Name: google-auth-library-credentials Version: 1.36.0
+Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.36.0
 Project URL: https://github.com/googleapis/google-auth-library-java
 License: BSD 3-Clause
 | Copyright 2014, Google Inc. All rights reserved.
@@ -493,11 +493,11 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.cloud Name: google-cloud-core Version: 2.56.0
-Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.56.0
-Group: com.google.cloud Name: google-cloud-core-http Version: 2.56.0
+Group: com.google.cloud Name: google-cloud-core Version: 2.57.0
+Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.57.0
+Group: com.google.cloud Name: google-cloud-core-http Version: 2.57.0
 Group: com.google.cloud Name: google-cloud-monitoring Version: 3.52.0
-Group: com.google.cloud Name: google-cloud-storage Version: 2.52.3
+Group: com.google.cloud Name: google-cloud-storage Version: 2.53.0
 Project URL: https://github.com/googleapis/google-cloud-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -547,7 +547,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.oauth-client Name: google-oauth-client Version: 1.37.0
+Group: com.google.oauth-client Name: google-oauth-client Version: 1.39.0
 Project URL: https://github.com/googleapis/google-oauth-java-client
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -592,7 +592,7 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.re2j Name: re2j Version: 1.7
+Group: com.google.re2j Name: re2j Version: 1.8
 Project URL: http://github.com/google/re2j
 License: Go License
 | This is a work derived from Russ Cox's RE2 in Go, whose license
@@ -630,7 +630,7 @@ License: Go License
 
 --------------------------------------------------------------------------------
 
-Group: com.microsoft.azure Name: msal4j Version: 1.19.1
+Group: com.microsoft.azure Name: msal4j Version: 1.20.1
 Group: com.microsoft.azure Name: msal4j-persistence-extension Version: 1.3.0
 Project URL: https://github.com/AzureAD/microsoft-authentication-library-for-java
 License: MIT License
@@ -749,9 +749,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.6
-Group: io.micrometer Name: micrometer-core Version: 1.14.6
-Group: io.micrometer Name: micrometer-observation Version: 1.14.6
+Group: io.micrometer Name: micrometer-commons Version: 1.15.1
+Group: io.micrometer Name: micrometer-core Version: 1.15.1
+Group: io.micrometer Name: micrometer-observation Version: 1.15.1
 Project URL: https://github.com/micrometer-metrics/micrometer
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -822,8 +822,8 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.6
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.6
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.7
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.7
 Project URL: https://github.com/reactor/reactor-netty
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1018,8 +1018,15 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 Group: org.checkerframework Name: checker-qual Version: 3.49.1
 Project URL: https://checkerframework.org/
 License: MIT License
-| The Checker Framework
-| Copyright 2004-present by the Checker Framework developers
+| The annotations are licensed under the MIT License.  (The text of this
+| license appears below.)  More specifically, all the parts of the Checker
+| Framework that you might want to include with your own program use the
+| MIT License.  This is the checker-qual.jar file and all the files that
+| appear in it:  every file in a qual/ directory, plus utility files such
+| as NullnessUtil.java, RegexUtil.java, SignednessUtil.java, etc.
+| In addition, the cleanroom implementations of third-party annotations,
+| which the Checker Framework recognizes as aliases for its own
+| annotations, are licensed under the MIT License.
 |
 | Permission is hereby granted, free of charge, to any person obtaining a copy
 | of this software and associated documentation files (the "Software"), to deal
@@ -1027,10 +1034,10 @@ License: MIT License
 | to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 | copies of the Software, and to permit persons to whom the Software is
 | furnished to do so, subject to the following conditions:
-| 
+|
 | The above copyright notice and this permission notice shall be included in
 | all copies or substantial portions of the Software.
-| 
+|
 | THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 | IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 | FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -1367,37 +1374,37 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.31.50
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.50
-Group: software.amazon.awssdk Name: arns Version: 2.31.50
-Group: software.amazon.awssdk Name: auth Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.50
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.50
-Group: software.amazon.awssdk Name: checksums Version: 2.31.50
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.50
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.50
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.50
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.50
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.50
-Group: software.amazon.awssdk Name: profiles Version: 2.31.50
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.50
-Group: software.amazon.awssdk Name: regions Version: 2.31.50
-Group: software.amazon.awssdk Name: retries Version: 2.31.50
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.50
-Group: software.amazon.awssdk Name: s3 Version: 2.31.50
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.50
-Group: software.amazon.awssdk Name: sts Version: 2.31.50
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.50
-Group: software.amazon.awssdk Name: utils Version: 2.31.50
+Group: software.amazon.awssdk Name: annotations Version: 2.31.59
+Group: software.amazon.awssdk Name: apache-client Version: 2.31.59
+Group: software.amazon.awssdk Name: arns Version: 2.31.59
+Group: software.amazon.awssdk Name: auth Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-core Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.59
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.59
+Group: software.amazon.awssdk Name: checksums Version: 2.31.59
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: crt-core Version: 2.31.59
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.59
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.59
+Group: software.amazon.awssdk Name: identity-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: json-utils Version: 2.31.59
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.59
+Group: software.amazon.awssdk Name: profiles Version: 2.31.59
+Group: software.amazon.awssdk Name: protocol-core Version: 2.31.59
+Group: software.amazon.awssdk Name: regions Version: 2.31.59
+Group: software.amazon.awssdk Name: retries Version: 2.31.59
+Group: software.amazon.awssdk Name: retries-spi Version: 2.31.59
+Group: software.amazon.awssdk Name: s3 Version: 2.31.59
+Group: software.amazon.awssdk Name: sdk-core Version: 2.31.59
+Group: software.amazon.awssdk Name: sts Version: 2.31.59
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.59
+Group: software.amazon.awssdk Name: utils Version: 2.31.59
 Project URL: https://aws.amazon.com/sdkforjava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 

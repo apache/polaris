@@ -25,7 +25,7 @@ import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -48,7 +48,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-class AwsCredentialsStorageIntegrationTest {
+class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   public static final Instant EXPIRE_TIME = Instant.now().plusMillis(3600_000);
 
@@ -83,7 +83,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                Mockito.mock(PolarisDiagnostics.class),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(warehouseDir),
@@ -231,7 +231,7 @@ class AwsCredentialsStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            Mockito.mock(PolarisDiagnostics.class),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 storageType,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -248,7 +248,7 @@ class AwsCredentialsStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    Mockito.mock(PolarisDiagnostics.class),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         storageType,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -349,7 +349,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                Mockito.mock(PolarisDiagnostics.class),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -444,7 +444,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                Mockito.mock(PolarisDiagnostics.class),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     storageType,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -509,7 +509,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                Mockito.mock(PolarisDiagnostics.class),
+                newCallContext(),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -549,7 +549,7 @@ class AwsCredentialsStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            Mockito.mock(PolarisDiagnostics.class),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -566,7 +566,7 @@ class AwsCredentialsStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    Mockito.mock(PolarisDiagnostics.class),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         PolarisStorageConfigurationInfo.StorageType.S3,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -604,7 +604,7 @@ class AwsCredentialsStorageIntegrationTest {
         EnumMap<StorageAccessProperty, String> credentials =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    Mockito.mock(PolarisDiagnostics.class),
+                    newCallContext(),
                     new AwsStorageConfigurationInfo(
                         PolarisStorageConfigurationInfo.StorageType.S3,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -622,7 +622,7 @@ class AwsCredentialsStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            Mockito.mock(PolarisDiagnostics.class),
+                            newCallContext(),
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),

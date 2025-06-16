@@ -203,8 +203,8 @@ public class PolicyCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
-            new InMemoryEntityCache(metaStoreManager));
+            new StorageCredentialCache(realmContext, configurationStore),
+            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     callContext = polarisContext;
 
@@ -259,7 +259,8 @@ public class PolicyCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(
+                        polarisContext, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -326,12 +327,12 @@ public class PolicyCatalogTest {
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache();
+        return new StorageCredentialCache(realmContext, configurationStore);
       }
 
       @Override
       public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(metaStoreManager);
+        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
       }
 
       @Override

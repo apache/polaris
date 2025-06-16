@@ -20,11 +20,24 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingRecord> {
+  public static final String TABLE_NAME = "POLICY_MAPPING_RECORD";
+
+  public static final List<String> ALL_COLUMNS =
+      List.of(
+          "target_catalog_id",
+          "target_id",
+          "policy_type_code",
+          "policy_catalog_id",
+          "policy_id",
+          "parameters");
+
   // id of the catalog where target entity resides
   private long targetCatalogId;
 
@@ -155,14 +168,18 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   }
 
   @Override
-  public Map<String, Object> toMap() {
-    Map<String, Object> map = new HashMap<>();
+  public Map<String, Object> toMap(DatabaseType databaseType) {
+    Map<String, Object> map = new LinkedHashMap<>();
     map.put("target_catalog_id", targetCatalogId);
     map.put("target_id", targetId);
     map.put("policy_type_code", policyTypeCode);
     map.put("policy_catalog_id", policyCatalogId);
     map.put("policy_id", policyId);
-    map.put("parameters", parameters);
+    if (databaseType.equals(DatabaseType.POSTGRES)) {
+      map.put("parameters", toJsonbPGobject(this.getParameters()));
+    } else {
+      map.put("parameters", this.getParameters());
+    }
     return map;
   }
 }

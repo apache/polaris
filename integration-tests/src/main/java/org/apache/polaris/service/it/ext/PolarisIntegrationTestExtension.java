@@ -26,7 +26,6 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
-import org.junit.jupiter.api.extension.ExtensionContext.Store.CloseableResource;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
@@ -86,7 +85,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     return context;
   }
 
-  private static class Env implements CloseableResource {
+  private static class Env implements AutoCloseable {
     private final Server server;
     private final PolarisApiEndpoints endpoints;
 
@@ -101,7 +100,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     }
 
     @Override
-    public void close() throws Throwable {
+    public void close() throws Exception {
       server.close();
     }
   }

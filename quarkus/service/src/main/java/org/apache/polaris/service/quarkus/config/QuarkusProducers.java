@@ -95,8 +95,9 @@ public class QuarkusProducers {
 
   @Produces
   @ApplicationScoped
-  public StorageCredentialCache storageCredentialCache() {
-    return new StorageCredentialCache();
+  public StorageCredentialCache storageCredentialCache(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    return new StorageCredentialCache(realmContext, configurationStore);
   }
 
   @Produces
