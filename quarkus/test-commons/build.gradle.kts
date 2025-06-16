@@ -24,9 +24,11 @@ plugins {
 }
 
 configurations.all {
-  exclude(group = "org.antlr", module = "antlr4-runtime")
-  exclude(group = "org.scala-lang", module = "scala-library")
-  exclude(group = "org.scala-lang", module = "scala-reflect")
+  if (name != "checkstyle") {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
 }
 
 dependencies {
