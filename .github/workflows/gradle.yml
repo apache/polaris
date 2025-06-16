@@ -52,9 +52,9 @@ jobs:
           validate-wrappers: false
       - name: Run unit tests
         run: |
-          ./gradlew check publishToMavenLocal sourceTarball \
-            -x :polaris-quarkus-server:test \
+          ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-quarkus-service:test \
+            -x :polaris-quarkus-admin:test \
             -x intTest --continue
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -83,8 +83,8 @@ jobs:
       - name: Run Quarkus tests
         run: |
           ./gradlew \
-            :polaris-quarkus-admin:test \
             :polaris-quarkus-service:test \
+            :polaris-quarkus-admin:test \
             --continue
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
