@@ -34,6 +34,7 @@ dependencies {
     implementation("io.airlift:aircompressor:0.27") { because("Vulnerability detected in 0.25") }
   }
 
+  implementation(files("../extension/fivetran-secred/jars/fivetran_secred_shaded.jar"))
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")

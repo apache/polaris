@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -236,7 +237,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(stsClient);
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+            isA(AwsStorageConfigurationInfo.class), anyString()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
   }
 

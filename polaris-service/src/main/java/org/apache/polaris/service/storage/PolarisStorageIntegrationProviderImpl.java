@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.fivetran.polaris.shaded.com.fivetran.secrets.common.CredentialServiceV2;
+import com.fivetran.polaris.shaded.com.fivetran.secrets.services.CredentialServiceFactory;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -39,23 +41,30 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.services.sts.StsClient;
+import com.fivetran.polaris.shaded.com.fivetran.globals.DeprecatedGlobals;
 
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final Supplier<StsClient> stsClientSupplier;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  private final CredentialServiceV2 credentialService;
 
   public PolarisStorageIntegrationProviderImpl(
       Supplier<StsClient> stsClientSupplier, Supplier<GoogleCredentials> gcpCredsProvider) {
     this.stsClientSupplier = stsClientSupplier;
     this.gcpCredsProvider = gcpCredsProvider;
+    //Explicitly setting the testing environment to false as mentioned by Team Bacon.
+    // We need to handle this on the SECRED client side.
+    DeprecatedGlobals.reset();
+    DeprecatedGlobals.TESTING.set(false);
+    this.credentialService = CredentialServiceFactory.createGlobalService();
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public <T extends PolarisStorageConfigurationInfo> @Nullable
       PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo, String catalogName) {
     if (polarisStorageConfigurationInfo == null) {
       return null;
     }
@@ -80,7 +89,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
       case AZURE:
         storageIntegration =
-            (PolarisStorageIntegration<T>) new AzureCredentialsStorageIntegration();
+            (PolarisStorageIntegration<T>)
+                new AzureCredentialsStorageIntegration(catalogName, credentialService);
         break;
       case FILE:
         storageIntegration =

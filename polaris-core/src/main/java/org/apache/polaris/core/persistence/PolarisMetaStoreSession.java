@@ -480,6 +480,7 @@ public interface PolarisMetaStoreSession {
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
+      String catalogName,
       PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**

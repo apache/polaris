@@ -19,7 +19,10 @@
 package org.apache.polaris.core.storage.azure;
 
 import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.storage.blob.BlobContainerClientBuilder;
@@ -35,6 +38,10 @@ import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
+import com.fivetran.polaris.shaded.com.fivetran.core.interfaces.setup.UnifiedDataLakeCredentials;
+import com.fivetran.polaris.shaded.com.fivetran.globals.SystemEnvironment;
+import com.fivetran.polaris.shaded.com.fivetran.secrets.common.CredentialServiceV2;
+import com.fivetran.polaris.shaded.com.fivetran.secrets.common.GroupCredentialType;
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -59,13 +66,45 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
+  final TokenCredential azureCredential;
   final DefaultAzureCredential defaultAzureCredential;
+
+  public AzureCredentialsStorageIntegration(
+      String catalogName, CredentialServiceV2 credentialService) {
+    super(AzureCredentialsStorageIntegration.class.getName());
+    // The DefaultAzureCredential will by default load the environment variables for client id,
+    // client secret, tenant id
+    defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
+    TokenCredential clientCredential = defaultAzureCredential;
+
+    // Try to fetch credentials from SECRED if Fivetran environment is set (e.g., for staging or
+    // prod)
+    if (System.getProperty(SystemEnvironment.FIVETRAN_ENV) != null
+        || System.getenv(SystemEnvironment.FIVETRAN_ENV) != null) {
+      try {
+        var credential =
+            credentialService.getGroupSecret(
+                catalogName, GroupCredentialType.WAREHOUSE, UnifiedDataLakeCredentials.class);
+        LOGGER.info("Credentials fetched from SECRED service for the catalog {} ", catalogName);
+        clientCredential =
+            new ClientSecretCredentialBuilder()
+                .tenantId(credential.tenantId)
+                .clientId(credential.clientId)
+                .clientSecret(credential.secretValue)
+                .build();
+      } catch (Exception e) {
+        LOGGER.warn("Exception while fetching credentials from SECRED Service", e);
+      }
+    }
+    azureCredential = clientCredential;
+  }
 
   public AzureCredentialsStorageIntegration() {
     super(AzureCredentialsStorageIntegration.class.getName());
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
+    azureCredential = defaultAzureCredential;
   }
 
   @Override
@@ -118,52 +157,70 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(storageConfig.getTenantId());
-    // Get user delegation key.
-    // Set the new generated user delegation key expiry to 7 days and minute 1 min
-    // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
-    // clock skew between the client and server,
-    OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
-    OffsetDateTime sanitizedEndTime =
-        start.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
-    LOGGER
-        .atDebug()
-        .addKeyValue("allowedListAction", allowListOperation)
-        .addKeyValue("allowedReadLoc", allowedReadLocations)
-        .addKeyValue("allowedWriteLoc", allowedWriteLocations)
-        .addKeyValue("location", loc)
-        .addKeyValue("storageAccount", location.getStorageAccount())
-        .addKeyValue("endpoint", location.getEndpoint())
-        .addKeyValue("container", location.getContainer())
-        .addKeyValue("filePath", filePath)
-        .log("Subscope Azure SAS");
-    String sasToken = "";
-    if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
-      sasToken =
-          getBlobUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              expiry,
-              storageDnsName,
-              location.getContainer(),
-              blobSasPermission,
-              Mono.just(accessToken));
-    } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
-      sasToken =
-          getAdlsUserDelegationSas(
-              startTime,
-              sanitizedEndTime,
-              expiry,
-              storageDnsName,
-              location.getContainer(),
-              pathSasPermission,
-              Mono.just(accessToken));
-    } else {
-      throw new RuntimeException(
-          String.format("Endpoint %s not supported", location.getEndpoint()));
+    /*
+     * This block attempts to generate a SAS token for an Azure Storage location using credentials
+     * fetched from the SECRED service. If the token generation fails with a 403 error,
+     * * it falls back to using Polaris environment credentials (Multi-tenant app).
+     */
+    boolean fallbackTried = false;
+
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      AccessToken accessToken = getAccessToken(storageConfig.getTenantId(), fallbackTried);
+      // Get user delegation key.
+      // Set the new generated user delegation key expiry to 7 days and minute 1 min
+      // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
+      // clock skew between the client and server,
+      OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
+      OffsetDateTime sanitizedEndTime =
+          start.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
+      LOGGER
+          .atDebug()
+          .addKeyValue("allowedListAction", allowListOperation)
+          .addKeyValue("allowedReadLoc", allowedReadLocations)
+          .addKeyValue("allowedWriteLoc", allowedWriteLocations)
+          .addKeyValue("location", loc)
+          .addKeyValue("storageAccount", location.getStorageAccount())
+          .addKeyValue("endpoint", location.getEndpoint())
+          .addKeyValue("container", location.getContainer())
+          .addKeyValue("filePath", filePath)
+          .log("Subscope Azure SAS");
+      String sasToken = "";
+      try {
+        if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
+          sasToken =
+              getBlobUserDelegationSas(
+                  startTime,
+                  sanitizedEndTime,
+                  expiry,
+                  storageDnsName,
+                  location.getContainer(),
+                  blobSasPermission,
+                  Mono.just(accessToken));
+        } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
+          sasToken =
+              getAdlsUserDelegationSas(
+                  startTime,
+                  sanitizedEndTime,
+                  expiry,
+                  storageDnsName,
+                  location.getContainer(),
+                  pathSasPermission,
+                  Mono.just(accessToken));
+        } else {
+          throw new RuntimeException(
+              String.format("Endpoint %s not supported", location.getEndpoint()));
+        }
+        credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
+        credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
+      } catch (HttpResponseException ex) {
+        LOGGER.warn("Exception occurred while generating SAS token", ex);
+        if (ex.getResponse().getStatusCode() != 403 || fallbackTried) {
+          throw ex;
+        }
+        LOGGER.info("Attempting fallback with environment credentials");
+        fallbackTried = true;
+      }
     }
-    credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
     return credentialMap;
   }
 
@@ -260,10 +317,13 @@ public class AzureCredentialsStorageIntegration
         });
   }
 
-  private AccessToken getAccessToken(String tenantId) {
+  private AccessToken getAccessToken(String tenantId, boolean shouldUseDefaultCredentials) {
     String scope = "https://storage.azure.com/.default";
+    TokenCredential credential =
+        shouldUseDefaultCredentials ? defaultAzureCredential : azureCredential;
+
     AccessToken accessToken =
-        defaultAzureCredential
+        credential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
             .blockOptional()
             .orElse(null);

@@ -31,6 +31,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
 
+  implementation(files("../extension/fivetran-secred/jars/fivetran_secred_shaded.jar"))
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")

@@ -1102,6 +1102,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
               callCtx,
               catalog.getCatalogId(),
               catalog.getId(),
+              catalog.getName(),
               PolarisStorageConfigurationInfo.deserialize(
                   callCtx.getDiagServices(), storageConfigInfoStr));
     } else {

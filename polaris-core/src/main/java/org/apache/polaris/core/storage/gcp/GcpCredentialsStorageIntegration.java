@@ -102,7 +102,7 @@ public class GcpCredentialsStorageIntegration
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
-        LOGGER.error("Error while refreshing GCP credentials", e);
+      LOGGER.error("Error while refreshing GCP credentials", e);
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 

@@ -28,5 +28,5 @@ public interface PolarisStorageIntegrationProvider {
   @SuppressWarnings("unchecked")
   <T extends PolarisStorageConfigurationInfo> @Nullable
       PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo, String catalogName);
 }

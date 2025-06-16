@@ -765,9 +765,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
+          String catalogName,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
+        polarisStorageConfigurationInfo, catalogName);
   }
 
   /** {@inheritDoc} */
@@ -777,7 +778,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         PolarisMetaStoreManagerImpl.readStorageConfiguration(callCtx, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return storageIntegrationProvider.getStorageIntegrationForConfig(
+        storageConfig, entity.getName());
   }
 
   @Override
