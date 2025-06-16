@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import com.fivetran.polaris.shaded.com.fivetran.globals.DeprecatedGlobals;
 import com.fivetran.polaris.shaded.com.fivetran.secrets.common.CredentialServiceV2;
 import com.fivetran.polaris.shaded.com.fivetran.secrets.services.CredentialServiceFactory;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -41,7 +42,6 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.services.sts.StsClient;
-import com.fivetran.polaris.shaded.com.fivetran.globals.DeprecatedGlobals;
 
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
@@ -53,7 +53,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       Supplier<StsClient> stsClientSupplier, Supplier<GoogleCredentials> gcpCredsProvider) {
     this.stsClientSupplier = stsClientSupplier;
     this.gcpCredsProvider = gcpCredsProvider;
-    //Explicitly setting the testing environment to false as mentioned by Team Bacon.
+    // Explicitly setting the testing environment to false as mentioned by Team Bacon.
     // We need to handle this on the SECRED client side.
     DeprecatedGlobals.reset();
     DeprecatedGlobals.TESTING.set(false);

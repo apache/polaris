@@ -44,7 +44,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private static final Logger LOGGER =
-          LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
+      LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
   private final StsClient stsClient;
 
@@ -191,7 +191,7 @@ public class AwsCredentialsStorageIntegration
                     + "*")
             .build());
     LOGGER.debug(
-        "Generated AWS policy for role {}: {}",
+        "Generated AWS IAM policy for role {}: {}",
         awsStorageConfigurationInfo.getRoleARN(),
         policyBuilder.build().toJson());
     return policyBuilder.build();
