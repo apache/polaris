@@ -80,37 +80,14 @@ public class PolarisCatalogUtils {
    * Load spark table using DataSourceV2.
    *
    * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
-   *     DeltaTableV2. For hudi it should return HoodieInternalV2Table
+   *     DeltaTableV2. For hudi it should return HoodieInternalV2Table.
    */
   public static Table loadSparkTable(GenericTable genericTable, Identifier identifier) {
-    SparkSession sparkSession = SparkSession.active();
-    if (genericTable.getFormat().toLowerCase(Locale.getDefault()).equals("hudi")) {
-      // Hudi does not use table provider interface so will need to catch it here
-      Map<String, String> tableProperties = Maps.newHashMap();
-      tableProperties.putAll(genericTable.getProperties());
-      tableProperties.put(
-          TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
-
-      TableIdentifier tableIdentifier =
-          new TableIdentifier(identifier.name(), Option.apply(identifier.namespace()[0]));
-
-      CatalogTable catalogTable = null;
-      try {
-        catalogTable = sparkSession.sessionState().catalog().getTableMetadata(tableIdentifier);
-      } catch (NoSuchDatabaseException e) {
-        throw new RuntimeException(
-            "No database found for the given tableIdentifier:" + tableIdentifier, e);
-      } catch (NoSuchTableException e) {
-        LOG.debug("No table currently exists, initial create table");
-      }
-
-      return new HoodieInternalV2Table(
-          sparkSession,
-          genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
-          Option.apply(catalogTable),
-          Option.apply(identifier.toString()),
-          new CaseInsensitiveStringMap(tableProperties));
+    if (genericTable.getFormat().equalsIgnoreCase("hudi")) {
+      // hudi does not implement table provider interface, so will need to catch it
+      return loadHudiSparkTable(genericTable, identifier);
     }
+    SparkSession sparkSession = SparkSession.active();
     TableProvider provider =
         DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
             .get();
@@ -128,6 +105,31 @@ public class PolarisCatalogUtils {
     }
     return DataSourceV2Utils.getTableFromProvider(
         provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());
+  }
+
+  public static Table loadHudiSparkTable(GenericTable genericTable, Identifier identifier) {
+    SparkSession sparkSession = SparkSession.active();
+    Map<String, String> tableProperties = Maps.newHashMap();
+    tableProperties.putAll(genericTable.getProperties());
+    tableProperties.put(
+            TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
+    String namespacePath = String.join(".", identifier.namespace());
+    TableIdentifier tableIdentifier = new TableIdentifier(identifier.name(), Option.apply(namespacePath));
+    CatalogTable catalogTable = null;
+    try {
+      catalogTable = sparkSession.sessionState().catalog().getTableMetadata(tableIdentifier);
+    } catch (NoSuchDatabaseException e) {
+      throw new RuntimeException(
+              "No database found for the given tableIdentifier:" + tableIdentifier, e);
+    } catch (NoSuchTableException e) {
+      LOG.debug("No table currently exists, as an initial create table");
+    }
+    return new HoodieInternalV2Table(
+            sparkSession,
+            genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
+            Option.apply(catalogTable),
+            Option.apply(identifier.toString()),
+            new CaseInsensitiveStringMap(tableProperties));
   }
 
   /**

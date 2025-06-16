@@ -193,7 +193,12 @@ public class SparkCatalog
         //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.alterTable(ident, changes);
+      } else if (PolarisCatalogUtils.useHudi(provider)) {
+        // check to see if this alters hudi metadata
+        TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
+        return hudiCatalog.alterTable(ident, changes);
       }
+
       return this.polarisSparkCatalog.alterTable(ident);
     }
   }
