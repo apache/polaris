@@ -22,7 +22,6 @@ import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

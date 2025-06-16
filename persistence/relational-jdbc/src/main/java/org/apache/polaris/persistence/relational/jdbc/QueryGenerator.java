@@ -28,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.entity.LocationBasedEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.storage.StorageLocation;
@@ -217,10 +215,10 @@ public class QueryGenerator {
   }
 
   /**
-   * Generate a SELECT query to find any entities that have a given realm & parent and that
-   * may with a given location. The check is performed without consideration for the scheme,
-   * so a path on one storage type may give a false positive for overlapping with another
-   * storage type. This should be combined with a check using `StorageLocation`.
+   * Generate a SELECT query to find any entities that have a given realm & parent and that may with
+   * a given location. The check is performed without consideration for the scheme, so a path on one
+   * storage type may give a false positive for overlapping with another storage type. This should
+   * be combined with a check using `StorageLocation`.
    *
    * @param realmId A realm to search within
    * @param parentId A parent entity to search within
@@ -229,9 +227,7 @@ public class QueryGenerator {
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId,
-      long parentId,
-      String baseLocation) {
+      String realmId, long parentId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -241,7 +237,7 @@ public class QueryGenerator {
     String[] components = locationWithoutScheme.split("/");
     StringBuilder pathBuilder = new StringBuilder();
 
-    for (String component: components) {
+    for (String component : components) {
       pathBuilder.append(component).append("/");
       conditions.add("location = ?");
       parameters.add(pathBuilder.toString());
@@ -252,7 +248,7 @@ public class QueryGenerator {
     parameters.add(locationWithoutScheme + "%");
 
     String locationClause = String.join(" OR ", conditions);
-    String clause = "WHERE realm_id = ? AND parent_id = ? AND (" + locationClause + ")";
+    String clause = " WHERE realm_id = ? AND parent_id = ? AND (" + locationClause + ")";
 
     // realmId and parentId go first
     List<Object> finalParams = new ArrayList<>();
@@ -261,8 +257,8 @@ public class QueryGenerator {
     finalParams.addAll(parameters);
 
     QueryFragment where = new QueryFragment(clause, finalParams);
-    PreparedQuery query = generateSelectQuery(
-      ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql());
+    PreparedQuery query =
+        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql());
     return new PreparedQuery(query.sql(), where.parameters());
   }
 

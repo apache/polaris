@@ -659,14 +659,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return Optional.empty();
     }
 
-    PreparedQuery query = QueryGenerator.generateOverlapQuery(
-      realmId, entity.getParentId(), entity.getBaseLocation());
+    PreparedQuery query =
+        QueryGenerator.generateOverlapQuery(
+            realmId, entity.getParentId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (results.isEmpty()) {
         return Optional.of(Optional.empty());
       } else {
-        return Optional.of(Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocationWithoutScheme()));
+        return Optional.of(
+            Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocationWithoutScheme()));
       }
     } catch (SQLException e) {
       LOGGER.error(

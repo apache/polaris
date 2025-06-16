@@ -27,6 +27,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
@@ -189,7 +190,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-            .location(r.getString("locationWithoutScheme"))
+            .locationWithoutScheme(r.getString("locationWithoutScheme"))
             .build();
 
     return toEntity(modelEntity);
@@ -218,7 +219,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       map.put("internal_properties", this.getInternalProperties());
     }
     map.put("grant_records_version", this.getGrantRecordsVersion());
-    map.put("locationWithoutScheme", this.getLocationWithoutScheme());
+    map.put("location_without_scheme", this.getLocationWithoutScheme());
     return map;
   }
 
@@ -304,7 +305,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
-    public Builder location(String location) {
+    public Builder locationWithoutScheme(String location) {
       entity.locationWithoutScheme = location;
       return this;
     }
@@ -336,13 +337,13 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
       if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
           || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-        builder.location(
-            entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
+        builder.locationWithoutScheme(StorageLocation.of(
+          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION)).withoutScheme());
       }
     }
     if (entity.getType() == PolarisEntityType.NAMESPACE) {
-      builder.location(
-          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
+      builder.locationWithoutScheme(StorageLocation.of(
+        entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION)).withoutScheme());
     }
 
     return builder.build();
@@ -385,7 +386,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     if (model.locationWithoutScheme != null) {
       if (subType == PolarisEntitySubType.ICEBERG_TABLE
           || entityType == PolarisEntityType.NAMESPACE) {
-        entity.addProperty(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.locationWithoutScheme);
+        entity.addProperty(
+            PolarisEntityConstants.ENTITY_BASE_LOCATION, model.locationWithoutScheme);
       }
     }
 

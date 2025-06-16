@@ -22,6 +22,7 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class SchemaVersion implements Converter<SchemaVersion> {
   private final int value;
@@ -47,7 +48,7 @@ public class SchemaVersion implements Converter<SchemaVersion> {
   }
 
   @Override
-  public Map<String, Object> toMap() {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     return Map.of("version_value", this.value);
   }
 }
