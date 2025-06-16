@@ -74,8 +74,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   // current version for that entity, will be monotonically incremented
   private int grantRecordsVersion;
 
-  // location for the entity, when applicable
-  private String location;
+  // location for the entity but without a scheme, when applicable
+  private String locationWithoutScheme;
 
   public long getId() {
     return id;
@@ -137,8 +137,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return grantRecordsVersion;
   }
 
-  public String getLocation() {
-    return location;
+  public String getLocationWithoutScheme() {
+    return locationWithoutScheme;
   }
 
   public static Builder builder() {
@@ -166,7 +166,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-            .location(r.getString("location"))
+            .location(r.getString("locationWithoutScheme"))
             .build();
 
     return toEntity(modelEntity);
@@ -190,7 +190,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("properties", this.getProperties());
     map.put("internal_properties", this.getInternalProperties());
     map.put("grant_records_version", this.getGrantRecordsVersion());
-    map.put("location", this.getLocation());
+    map.put("locationWithoutScheme", this.getLocationWithoutScheme());
     return map;
   }
 
@@ -277,7 +277,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     }
 
     public Builder location(String location) {
-      entity.location = location;
+      entity.locationWithoutScheme = location;
       return this;
     }
 
@@ -354,10 +354,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setInternalProperties(model.getInternalProperties());
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
 
-    if (model.location != null) {
+    if (model.locationWithoutScheme != null) {
       if (subType == PolarisEntitySubType.ICEBERG_TABLE
           || entityType == PolarisEntityType.NAMESPACE) {
-        entity.addProperty(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.location);
+        entity.addProperty(PolarisEntityConstants.ENTITY_BASE_LOCATION, model.locationWithoutScheme);
       }
     }
 

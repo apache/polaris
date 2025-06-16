@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS entities (
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
     grant_records_version INT NOT NULL,
-    location TEXT,
+    location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS entities (
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location)
-    WHERE location IS NOT NULL;
+    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
 

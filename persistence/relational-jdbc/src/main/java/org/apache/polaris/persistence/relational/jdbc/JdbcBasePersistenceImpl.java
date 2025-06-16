@@ -599,7 +599,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       if (results.isEmpty()) {
         return Optional.of(Optional.empty());
       } else {
-        return Optional.of(Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocation()));
+        return Optional.of(Optional.of(ModelEntity.fromEntity(results.getFirst()).getLocationWithoutScheme()));
       }
     } catch (SQLException e) {
       LOGGER.error(
