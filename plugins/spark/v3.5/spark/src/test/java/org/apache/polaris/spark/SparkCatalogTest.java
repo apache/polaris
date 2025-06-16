@@ -124,8 +124,7 @@ public class SparkCatalogTest {
     catalogConfig.put("cache-enabled", "false");
     catalogConfig.put(
         DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
-    catalogConfig.put(
-            HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
+    catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
@@ -431,7 +430,8 @@ public class SparkCatalogTest {
   @Test
   void testMixedTables() throws Exception {
     // create two iceberg tables, and three non-iceberg tables
-    String[] tableNames = new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2", "hudi1", "hudi2"};
+    String[] tableNames =
+        new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2", "hudi1", "hudi2"};
     String[] tableFormats = new String[] {"iceberg", null, "delta", "csv", "delta", "hudi", "hudi"};
     for (int i = 0; i < tableNames.length; i++) {
       Identifier identifier = Identifier.of(defaultNS, tableNames[i]);

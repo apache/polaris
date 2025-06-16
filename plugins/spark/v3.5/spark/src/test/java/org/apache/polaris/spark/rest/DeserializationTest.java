@@ -30,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -71,8 +70,8 @@ public class DeserializationTest {
 
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
-  public void testLoadGenericTableRESTResponse(String doc, Map<String, String> properties, String format)
-      throws JsonProcessingException {
+  public void testLoadGenericTableRESTResponse(
+      String doc, Map<String, String> properties, String format) throws JsonProcessingException {
     GenericTable table =
         GenericTable.builder()
             .setFormat(format)
@@ -92,8 +91,8 @@ public class DeserializationTest {
 
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
-  public void testCreateGenericTableRESTRequest(String doc, Map<String, String> properties, String format)
-      throws JsonProcessingException {
+  public void testCreateGenericTableRESTRequest(
+      String doc, Map<String, String> properties, String format) throws JsonProcessingException {
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(
             CreateGenericTableRequest.builder()

@@ -20,7 +20,6 @@ package org.apache.polaris.spark.utils;
 
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
-import java.util.Locale;
 import java.util.Map;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
@@ -112,24 +111,25 @@ public class PolarisCatalogUtils {
     Map<String, String> tableProperties = Maps.newHashMap();
     tableProperties.putAll(genericTable.getProperties());
     tableProperties.put(
-            TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
+        TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
     String namespacePath = String.join(".", identifier.namespace());
-    TableIdentifier tableIdentifier = new TableIdentifier(identifier.name(), Option.apply(namespacePath));
+    TableIdentifier tableIdentifier =
+        new TableIdentifier(identifier.name(), Option.apply(namespacePath));
     CatalogTable catalogTable = null;
     try {
       catalogTable = sparkSession.sessionState().catalog().getTableMetadata(tableIdentifier);
     } catch (NoSuchDatabaseException e) {
       throw new RuntimeException(
-              "No database found for the given tableIdentifier:" + tableIdentifier, e);
+          "No database found for the given tableIdentifier:" + tableIdentifier, e);
     } catch (NoSuchTableException e) {
       LOG.debug("No table currently exists, as an initial create table");
     }
     return new HoodieInternalV2Table(
-            sparkSession,
-            genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
-            Option.apply(catalogTable),
-            Option.apply(identifier.toString()),
-            new CaseInsensitiveStringMap(tableProperties));
+        sparkSession,
+        genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
+        Option.apply(catalogTable),
+        Option.apply(identifier.toString()),
+        new CaseInsensitiveStringMap(tableProperties));
   }
 
   /**
