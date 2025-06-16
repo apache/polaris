@@ -52,10 +52,10 @@ for some transition period to allow clients to migrate.
 
 ### Managing Polaris Database
 
-Polaris stores its data in a database, which is sometimes referred to as "Meta Store" or
+Polaris stores its data in a database, which is sometimes referred to as "Metastore" or
 "Persistence" in other docs.
 
-Each Polaris release may support multiple Persistence implementations,
+Each Polaris release may support multiple Persistence [implementations](../metastores),
 for example, "EclipseLink" (deprecated) and "JDBC" (current).
 
 Each type of Persistence evolves individually. Within each Persistence type, Polaris
