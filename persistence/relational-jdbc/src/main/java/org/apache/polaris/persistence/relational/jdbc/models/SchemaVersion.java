@@ -25,10 +25,10 @@ import java.util.Map;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class SchemaVersion implements Converter<SchemaVersion> {
-  private final int value;
+  private final Integer value;
 
   public SchemaVersion() {
-    this.value = -1;
+    this.value = null;
   }
 
   private SchemaVersion(int value) {
@@ -36,7 +36,7 @@ public class SchemaVersion implements Converter<SchemaVersion> {
   }
 
   public int getValue() {
-    if (value == -1) {
+    if (value == null) {
       throw new IllegalStateException("Schema version should be constructed via fromResultSet");
     }
     return value;

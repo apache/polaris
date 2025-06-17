@@ -210,7 +210,7 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  public static PreparedQuery generateVersionQuery() {
+  static PreparedQuery generateVersionQuery() {
     return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
@@ -239,12 +239,12 @@ public class QueryGenerator {
 
     for (String component : components) {
       pathBuilder.append(component).append("/");
-      conditions.add("location = ?");
+      conditions.add("location_without_scheme = ?");
       parameters.add(pathBuilder.toString());
     }
 
     // Add LIKE condition to match children
-    conditions.add("location LIKE ?");
+    conditions.add("location_without_scheme LIKE ?");
     parameters.add(locationWithoutScheme + "%");
 
     String locationClause = String.join(" OR ", conditions);
