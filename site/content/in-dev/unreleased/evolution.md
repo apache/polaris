@@ -79,7 +79,7 @@ The minimal version of the JRE required by Polaris code (compilation target) may
 any release. Different Polaris jars may have different minimal JRE version requirements.
 
 Changes in Java class should be expected at any time regardless of the module name or
-whether the class / method is `public` or `private`.
+whether the class / method is `public` or not.
 
 This approach is not meant to discourage the use of Polaris code in downstream projects, but
 to allow more flexibility in evolving the codebase to support new catalog-level features
