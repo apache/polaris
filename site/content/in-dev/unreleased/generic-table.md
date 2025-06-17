@@ -22,7 +22,7 @@ type: docs
 weight: 435
 ---
 
-The Generic Table in Apache Polaris provides the following capabilities for non-Iceberg tables:
+The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, csv etc. It currently provides the following capabilities:
 - Create a generic table under a namespace
 - Load a generic table 
 - Drop a generic table
@@ -40,7 +40,9 @@ A generic table in Polaris is an entity that defines the following fields:
   - The table base location is a location that includes all files for the table
   - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
   - If no location is provided, clients or users are responsible for managing the location.
-- **properties** (optional): Properties for the generic table passed on creation
+- **properties** (optional): Properties for the generic table passed on creation.
+  - Currently, there is no reserved property key defined.
+  - The property definition and interpretation is delegated to client or engine implementations.
 - **doc** (optional): Comment or description for the table
 
 ## Generic Table API Vs. Iceberg Table API
@@ -55,7 +57,8 @@ the Iceberg table entities.
 | Drop Table   | Drop an Iceberg table. Similar as load table, if the table to drop is a Generic table, a tableNotFoundException will be thrown.                                     | Drop a generic table. Drop an Iceberg table through Generic table endpoint will thrown an TableNotFound Exception             |
 | List Table   | List all Iceberg tables                                                                                                                                             | List all generic tables                                                                                                       |
 
-Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace.
+Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace. Furthermore, since
+there is currently no support for Update Generic Table, any update to the existing table requires a drop and re-create.
 
 ## Working with Generic Table
 
@@ -104,7 +107,7 @@ The REST endpoint for load a generic table is `GET /polaris/v1/{prefix}/namespac
 
 Here is an example to load the table `delta_table` using curl:
 ```shell
-GET /polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
+curl -X GET http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/delta_table
 ```
 And the response looks like the following:
 ```json
@@ -121,15 +124,13 @@ And the response looks like the following:
 }
 ```
 
-### List a Generic Table
-Here is the REST API for listing the generic tables under a given namespace:
-```shell
-GET /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/
-```
+### List Generic Tables
+The REST endpoint for listing the generic tables under a given 
+namespace is `GET /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/`.
 
-Following rest call lists all tables under namespace delta_namespace:
+Following curl command lists all tables under namespace delta_namespace:
 ```shell
-GET /polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/
+curl -X GET http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/
 ```
 Example Response:
 ```json
@@ -145,24 +146,20 @@ Example Response:
 ```
 
 ### Drop a Generic Table
-The drop generic table REST API is the following:
-```shell
-DELETE /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}
-```
+The drop generic table REST endpoint is `DELETE /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}`
 
-To drop the table `delat_table`, use the following:
+The following curl call drops the table `delat_table`:
 ```shell
-DELETE /polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
+curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
 ```
 
 ### API Reference
 
 For the complete and up-to-date API specification, see the [Catalog API Spec](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
-
 ## Limitations
 
-The Generic Table support today is very limited:
+Current limitations of Generic Table support:
 1) Limited spec information. Currently, there is no spec for information like Schema, Partition etc. 
 2) No commit coordination or update capability provided at the catalog service level.
 
