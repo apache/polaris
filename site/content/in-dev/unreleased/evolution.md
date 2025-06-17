@@ -27,19 +27,19 @@ This page discusses what can be expected from Apache Polaris as the project evol
 ## Using Polaris as a Catalog
 
 Polaris is primarily intended to be used as a Catalog of Tables and Views. As such, 
-it implements the [Iceberg REST API, Generic Tables API](../polaris-catalog-service/),
-and [Polaris Management API](../polaris-management-service/).
+it implements the Iceberg REST Catalog API and its own REST APIs
 
-Revisions of the Iceberg REST API are controlled by the [Apache Iceberg](https://iceberg.apache.org/)
+Revisions of the Iceberg REST Catalog API are controlled by the [Apache Iceberg](https://iceberg.apache.org/)
 community. Polaris attempts to accurately implement this specification. Nonetheless,
 optional REST Catalog features may or may not be supported immediately. In general,
 there is no guarantee that Polaris releases always implement the latest version of
 the Iceberg REST Catalog API.
 
-Any API under Polaris control (e.g. the Management API) is maintained as a versioned REST
-API. New releases of Polaris may include changes to the current version of the API. When
-that happens those changes are intended to be compatible with prior versions of Polaris 
-clients. Certain endpoints and parameters may be deprecated.
+Any API under Polaris control that is not in an "experimental" or "beta" state 
+(e.g. the Management API) is maintained as a versioned REST  API. New releases of Polaris
+may include changes to the current version of the API. When that happens those changes
+are intended to be compatible with prior versions of Polaris clients. Certain endpoints
+and parameters may be deprecated.
 
 In case a major change is required to the Management API that cannot be implemented in a
 backward-compatible way, new endpoints (URI paths) may be introduced. New URI "roots" may
