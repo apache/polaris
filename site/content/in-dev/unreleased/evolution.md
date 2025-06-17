@@ -97,19 +97,19 @@ The following are some examples of Polaris approach to SemVer in REST APIs / con
 These examples are for illustration purposes and should not be considered to be
 exhaustive.
 
-Polaris implementing an optional Iceberg REST Catalog feature that was unimplemented
+* Polaris implementing an optional Iceberg REST Catalog feature that was unimplemented
 in the previous release is not considered a major change.
 
-Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
+* Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
 is not considered a major change. Specifically, supporting new REST API prefixes (e.g. `v2`)
 is not a mojor change because it does not affect older clients.
 
-Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
+* Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
 compatible way (e.g. removing or renaming a request parameter) is a major change.
 
-Dropping support for a configuration property with the `polaris.` name prefix is a major change.
+* Dropping support for a configuration property with the `polaris.` name prefix is a major change.
 
-Dropping support for any previously defined [Policy](../policy/) type or property is a major change.
+* Dropping support for any previously defined [Policy](../policy/) type or property is a major change.
 
-Upgrading Quarkus Runtime to its next major version is a major change (because
+* Upgrading Quarkus Runtime to its next major version is a major change (because
 Quarkus-managed configuration may change).   
