@@ -39,6 +39,8 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
+import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -75,6 +77,7 @@ public record TestServices(
     IcebergRestConfigurationApi restConfigurationApi,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
+    EntityTransformationEngine entityTransformationEngine,
     RealmEntityManagerFactory entityManagerFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
@@ -152,9 +155,13 @@ public record TestServices(
               () -> stsClient,
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
+      EntityTransformationEngine entityTransformationEngine = new NoOpEntityTransformationEngine();
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics, configurationStore);
+              storageIntegrationProvider,
+              polarisDiagnostics,
+              configurationStore,
+              entityTransformationEngine);
       RealmEntityManagerFactory realmEntityManagerFactory =
           new RealmEntityManagerFactory(metaStoreManagerFactory) {};
       UserSecretsManagerFactory userSecretsManagerFactory =
@@ -168,6 +175,7 @@ public record TestServices(
               metaStoreSession,
               polarisDiagnostics,
               configurationStore,
+              entityTransformationEngine,
               Clock.systemUTC());
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
@@ -264,6 +272,7 @@ public record TestServices(
           restConfigurationApi,
           configurationStore,
           polarisDiagnostics,
+          entityTransformationEngine,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
           realmContext,

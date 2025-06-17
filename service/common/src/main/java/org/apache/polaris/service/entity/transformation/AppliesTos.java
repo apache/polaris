@@ -17,21 +17,23 @@
  * under the License.
  */
 
-package org.apache.polaris.core.storage;
+package org.apache.polaris.service.entity.transformation;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import org.apache.polaris.core.entity.transformation.EntityTransformer;
+import org.apache.polaris.core.entity.transformation.TransformationPoint;
 
-public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    return new PolarisCallContext(
-        () -> "realm",
-        Mockito.mock(BasePersistence.class),
-        Mockito.mock(PolarisDiagnostics.class),
-        new NoOpEntityTransformationEngine());
-  }
+/**
+ * Container annotation for repeating {@link AppliesTo}.
+ *
+ * <p>Allows an {@link EntityTransformer} to declare support for multiple {@link
+ * TransformationPoint}s.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface AppliesTos {
+  AppliesTo[] value();
 }

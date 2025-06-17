@@ -17,21 +17,23 @@
  * under the License.
  */
 
-package org.apache.polaris.core.storage;
+package org.apache.polaris.service.entity.transformation;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.transformation.EntityTransformer;
 
-public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    return new PolarisCallContext(
-        () -> "realm",
-        Mockito.mock(BasePersistence.class),
-        Mockito.mock(PolarisDiagnostics.class),
-        new NoOpEntityTransformationEngine());
+/**
+ * A no-op implementation of {@link EntityTransformer} that returns the entity unchanged.
+ *
+ * <p>This can be used as a placeholder or for testing purposes when no transformer is required.
+ */
+@ApplicationScoped
+@Identifier("no-op")
+public class NoOpEntityTransformer implements EntityTransformer {
+  @Override
+  public PolarisBaseEntity apply(PolarisBaseEntity entity) {
+    return entity;
   }
 }

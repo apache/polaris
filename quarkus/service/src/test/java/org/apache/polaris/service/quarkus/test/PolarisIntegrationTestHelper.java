@@ -24,6 +24,7 @@ import jakarta.inject.Singleton;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.junit.jupiter.api.TestInfo;
@@ -36,6 +37,7 @@ public class PolarisIntegrationTestHelper {
   @Inject ObjectMapper objectMapper;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject EntityTransformationEngine entityTransformationEngine;
   @Inject Clock clock;
 
   public PolarisIntegrationTestFixture createFixture(TestEnvironment testEnv, TestInfo testInfo) {

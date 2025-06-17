@@ -17,21 +17,11 @@
  * under the License.
  */
 
-package org.apache.polaris.core.storage;
+package org.apache.polaris.service.entity.transformation;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
+import java.util.List;
+import java.util.Optional;
 
-public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    return new PolarisCallContext(
-        () -> "realm",
-        Mockito.mock(BasePersistence.class),
-        Mockito.mock(PolarisDiagnostics.class),
-        new NoOpEntityTransformationEngine());
-  }
+public interface EntityTransformationConfiguration {
+  Optional<List<String>> transformers();
 }

@@ -31,6 +31,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
+import org.apache.polaris.core.entity.transformation.NoOpEntityTransformationEngine;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
@@ -47,11 +49,13 @@ public class CatalogEntityTest {
   public void setup() {
     MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
     RealmContext realmContext = () -> "realm";
+    EntityTransformationEngine entityTransformationEngine = new NoOpEntityTransformationEngine();
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
-            new PolarisDefaultDiagServiceImpl());
+            new PolarisDefaultDiagServiceImpl(),
+            entityTransformationEngine);
     this.callContext = polarisCallContext;
     CallContext.setCurrentContext(polarisCallContext);
   }

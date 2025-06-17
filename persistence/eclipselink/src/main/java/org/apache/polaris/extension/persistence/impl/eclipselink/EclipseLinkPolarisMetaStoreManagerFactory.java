@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.transformation.EntityTransformationEngine;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -45,15 +46,18 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject EntityTransformationEngine entityTransformationEngine;
 
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null, null, null);
   }
 
   @Inject
   protected EclipseLinkPolarisMetaStoreManagerFactory(
-      PolarisDiagnostics diagnostics, PolarisConfigurationStore configurationStore) {
-    super(diagnostics, configurationStore);
+      PolarisDiagnostics diagnostics,
+      PolarisConfigurationStore configurationStore,
+      EntityTransformationEngine entityTransformationEngine) {
+    super(diagnostics, configurationStore, entityTransformationEngine);
   }
 
   @Override
