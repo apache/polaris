@@ -41,7 +41,7 @@ may include changes to the current version of the API. When that happens those c
 are intended to be compatible with prior versions of Polaris clients. Certain endpoints
 and parameters may be deprecated.
 
-In case a major change is required to the Management API that cannot be implemented in a
+In case a major change is required to an API that cannot be implemented in a
 backward-compatible way, new endpoints (URI paths) may be introduced. New URI "roots" may
 be introduced too (e.g. `api/catalog/v2`). 
 
