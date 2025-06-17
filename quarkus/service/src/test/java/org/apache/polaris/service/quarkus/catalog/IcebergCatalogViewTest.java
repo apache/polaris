@@ -175,14 +175,13 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+    CallContext.setCurrentContext(polarisContext);
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(realmContext, configurationStore),
             new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
-
-    CallContext.setCurrentContext(polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
