@@ -75,11 +75,11 @@ as well. Service interruption (downtime) should be expected in those cases.
 Polaris produces several jars. These jars or custom builds of Polaris code may be used in
 downstream projects according to the terms of the license included into Polaris distributions.
 
-This means that major version increments should be expected often (in the SemVer sense, see
-below).
-
 The minimal version of the JRE required by Polaris code (compilation target) may be updated in
 any release. Different Polaris jars may have different minimal JRE version requirements.
+
+Changes in Java class should be expected at any time regardless of the module name or
+whether the class / method is `public` or `private`.
 
 This approach is not meant to discourage the use of Polaris code in downstream projects, but
 to allow more flexibility in evolving the codebase to support new catalog-level features
@@ -90,32 +90,26 @@ community in case of specific compatibility concerns.
 ## Semantic Versioning
 
 Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
-respect to Java code and REST APIs.
+respect REST APIs (beta and experimental APIs excepted), [Polaris Policies](../policy/)
+and user-facing [configuration](../configuration/).
 
-The API surface for the purpose of Semantic Versioning is defined as follows.
+The following are some examples of Polaris approach to SemVer in REST APIs / configuration.
+These examples are for illustration purposes and should not be considered to be
+exhaustive.
 
-**Client-Facing API**
+Polaris implementing an optional Iceberg REST Catalog feature that was unimplemented
+in the previous release is not considered a major change.
 
-* Iceberg REST Catalog API and Generic Tables API (refer to this [link](../polaris-catalog-service/)
-for their combined Open API definition).
-  * Note: Polaris implementing an optional Iceberg REST Catalog feature that was unimplemented
-  in the previous release is not considered a major change.
-  * Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
-  is not considered a major change.
-  * Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
-  compatible way is a major change.
-* [Polaris Management API](../polaris-management-service/)
-* [Polaris Policies](../policy/)
-* Configuration
-  * Public (not internal) properties inside Polaris [Entities](../entities/) that affect Polaris behaviour.
-  * Runtime [configuration](../configuration/) properties with the `polaris.` name prefix.
+Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
+is not considered a major change. Specifically, supporting new REST API prefixes (e.g. `v2`)
+is not a mojor change because it does not affect older clients.
 
-**Build-Time Dependencies**
+Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
+compatible way (e.g. removing or renaming a request parameter) is a major change.
 
-* The `polaris-core` module (`public` classes and interfaces)
+Dropping support for a configuration property with the `polaris.` name prefix is a major change.
 
-**Non-API Modules**
+Dropping support for any previously defined [Policy](../policy/) type or property is a major change.
 
-Build-time dependencies other than the `polaris-core` module are considered non-API 
-and are not subject to tracking in semantic version number changes. Their `public`
-Java interfaces may change without notice even in minor releases.
+Upgrading Quarkus Runtime to its next major version is a major change (because
+Quarkus-managed configuration may change).   
