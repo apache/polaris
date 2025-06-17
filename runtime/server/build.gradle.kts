@@ -24,7 +24,7 @@ plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
-  id("polaris-quarkus")
+  id("polaris-runtime")
   // id("polaris-license-report")
 }
 
@@ -43,7 +43,7 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
-  implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-runtime-service"))
 
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")

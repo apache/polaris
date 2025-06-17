@@ -31,9 +31,9 @@ Before running Polaris, ensure you have completed the following setup steps:
 ```shell
 cd ~/polaris
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild \
-  :polaris-quarkus-admin:assemble --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild \
+  :polaris-admin:assemble --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 ```
@@ -81,7 +81,7 @@ Run the following command to start Polaris:
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-runtime-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```

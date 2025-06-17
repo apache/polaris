@@ -53,8 +53,8 @@ sh ./kind-registry.sh
 # Build and deploy the server image
 echo "Building polaris image..."
 ./gradlew \
-  :polaris-quarkus-server:build \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:build \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   $ECLIPSE_LINK_DEPS \
   -Dquarkus.container-image.build=true \
   -Dquarkus.container-image.registry=localhost:5001

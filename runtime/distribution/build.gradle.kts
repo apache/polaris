@@ -26,8 +26,8 @@ plugins {
 
 description = "Apache Polaris Binary Distribution"
 
-val adminProject = project(":polaris-quarkus-admin")
-val serverProject = project(":polaris-quarkus-server")
+val adminProject = project(":polaris-admin")
+val serverProject = project(":polaris-server")
 
 // Configurations to resolve artifacts from other projects
 val adminDistribution by configurations.creating {
@@ -41,8 +41,8 @@ val serverDistribution by configurations.creating {
 }
 
 dependencies {
-    adminDistribution(project(":polaris-quarkus-admin", "distributionElements"))
-    serverDistribution(project(":polaris-quarkus-server", "distributionElements"))
+    adminDistribution(project(":polaris-admin", "distributionElements"))
+    serverDistribution(project(":polaris-server", "distributionElements"))
 }
 
 distributions {
