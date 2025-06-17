@@ -105,7 +105,7 @@ for their combined Open API definition).
   * Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
   compatible way is a major change.
 * [Polaris Management API](../polaris-management-service/)
-* [Polaris Policies](http://localhost:1313/in-dev/unreleased/policy/)
+* [Polaris Policies](../policy/)
 * Configuration
   * Public (not internal) properties inside Polaris [Entities](../entities/) that affect Polaris behaviour.
   * Runtime [configuration](../configuration/) properties with the `polaris.` name prefix.
