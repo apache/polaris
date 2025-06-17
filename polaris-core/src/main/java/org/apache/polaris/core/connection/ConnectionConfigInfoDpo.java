@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -38,6 +39,7 @@ import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,22 +68,29 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The authentication parameters for the connection
   private final AuthenticationParametersDpo authenticationParameters;
 
+  // The Polaris service identity info of the connection
+  private final ServiceIdentityInfoDpo serviceIdentity;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
-          AuthenticationParametersDpo authenticationParameters) {
-    this(connectionTypeCode, uri, authenticationParameters, true);
+          AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
+          ServiceIdentityInfoDpo serviceIdentity) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
   }
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
       @Nonnull String uri,
       @Nonnull AuthenticationParametersDpo authenticationParameters,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
+    this.serviceIdentity = serviceIdentity;
     if (validateUri) {
       validateUri(uri);
     }
@@ -91,12 +100,21 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return connectionTypeCode;
   }
 
+  @JsonIgnore
+  public ConnectionType getConnectionType() {
+    return ConnectionType.fromCode(connectionTypeCode);
+  }
+
   public String getUri() {
     return uri;
   }
 
   public AuthenticationParametersDpo getAuthenticationParameters() {
     return authenticationParameters;
+  }
+
+  public @Nullable ServiceIdentityInfoDpo getServiceIdentity() {
+    return serviceIdentity;
   }
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -157,6 +175,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
             new IcebergRestConnectionConfigInfoDpo(
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
+                null /*Service Identity Info*/,
                 icebergRestConfigModel.getRemoteCatalogName());
         break;
       case HADOOP:
@@ -169,6 +188,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
             new HadoopConnectionConfigInfoDpo(
                 hadoopConfigModel.getUri(),
                 authenticationParameters,
+                null /*Service Identity Info*/,
                 hadoopConfigModel.getWarehouse());
         break;
       default:
@@ -177,6 +197,15 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
     return config;
   }
+
+  /**
+   * Creates a new copy of the ConnectionConfigInfoDpo with the given service identity info.
+   *
+   * @param serviceIdentityInfo The service identity info to set.
+   * @return A new copy of the ConnectionConfigInfoDpo with the given service identity info.
+   */
+  public abstract ConnectionConfigInfoDpo withServiceIdentity(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
    * Produces the correponding API-model ConnectionConfigInfo for this persistence object; many
