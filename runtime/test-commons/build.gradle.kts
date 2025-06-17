@@ -20,10 +20,21 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
+}
+
+configurations.all {
+  if (name != "checkstyle") {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
 }
 
 dependencies {
-  compileOnly(libs.smallrye.config.core)
-  implementation(project(":polaris-relational-jdbc"))
+  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation("io.quarkus:quarkus-junit5")
+  implementation(platform(libs.testcontainers.bom))
+  implementation("org.testcontainers:testcontainers")
+  implementation("org.testcontainers:postgresql")
 }
