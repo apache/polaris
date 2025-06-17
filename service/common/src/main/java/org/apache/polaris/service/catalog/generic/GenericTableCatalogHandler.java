@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.ENABLED_READ_TABLE_FORMATS_KEY;
+import static org.apache.polaris.service.catalog.conversion.xtable.XTableConvertorConfigurations.TARGET_FORMAT_METADATA_PATH_KEY;
+
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -31,6 +34,11 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.conversion.xtable.RemoteXTableConvertor;
+import org.apache.polaris.service.catalog.conversion.xtable.TableFormat;
+import org.apache.polaris.service.catalog.conversion.xtable.XTableConversionUtils;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertTableResponse;
+import org.apache.polaris.service.catalog.conversion.xtable.models.ConvertedTable;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -57,6 +65,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
     this.genericTableCatalog.initialize(catalogName, Map.of());
+    initializeConversionServiceIfEnabled();
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
@@ -82,7 +91,6 @@ public class GenericTableCatalogHandler extends CatalogHandler {
             .setDoc(createdEntity.getDoc())
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
-
     return LoadGenericTableResponse.builder().setTable(createdTable).build();
   }
 
@@ -98,14 +106,32 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
+    // TODO adding this for now,
+    //  as there is a bug with polaris spark client not persisting table properties
+    // once bug is fixed we can get proper value for this key (i.e "ICEBERG", "HUDI", "DELTA")
+    Map<String, String> modifiedProps = loadedEntity.getPropertiesAsMap();
+    modifiedProps.put(ENABLED_READ_TABLE_FORMATS_KEY, TableFormat.ICEBERG.name());
     GenericTable loadedTable =
         GenericTable.builder()
             .setName(loadedEntity.getName())
             .setFormat(loadedEntity.getFormat())
             .setDoc(loadedEntity.getDoc())
-            .setProperties(loadedEntity.getPropertiesAsMap())
+            .setProperties(modifiedProps)
             .build();
 
+    convertIfRequired(loadedEntity, loadedTable);
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+  }
+
+  private void convertIfRequired(GenericTableEntity entity, GenericTable table) {
+    if (XTableConversionUtils.requiresConversion(callContext, table.getProperties())) {
+      ConvertTableResponse response = RemoteXTableConvertor.getInstance().execute(entity);
+      // TODO this can be multiple ConvertedTables,
+      //  for now since user is only specifying one format we can grab the first and only item
+      ConvertedTable convertedTable = response.getConvertedTables().get(0);
+      table
+          .getProperties()
+          .put(TARGET_FORMAT_METADATA_PATH_KEY, convertedTable.getTargetMetadataPath());
+    }
   }
 }
