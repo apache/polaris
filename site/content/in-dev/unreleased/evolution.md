@@ -90,7 +90,7 @@ community in case of specific compatibility concerns.
 ## Semantic Versioning
 
 Polaris strives to follow [Semantic Versioning](https://semver.org/) conventions both with
-respect REST APIs (beta and experimental APIs excepted), [Polaris Policies](../policy/)
+respect to REST APIs (beta and experimental APIs excepted), [Polaris Policies](../policy/)
 and user-facing [configuration](../configuration/).
 
 The following are some examples of Polaris approach to SemVer in REST APIs / configuration.
