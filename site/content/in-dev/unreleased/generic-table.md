@@ -66,11 +66,10 @@ There are two ways to work with Polaris Generic Tables today:
 ### Create a Generic Table
 
 To create a generic table, you need to provide the corresponding fields as described in [What is a Generic Table](#what-is-a-generic-table).
-Following is the REST API for creating a generic Table:
 
-```shell
-POST /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables
-```
+The REST API for creating a generic Table is `POST /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables`, and the
+request body looks like the following:
+
 ```json
 {
   "name": "<table_name>",
@@ -84,31 +83,26 @@ POST /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables
 ```
 
 Here is an example to create a generic table with name `delta_table` and format as `delta` under a namespace `delta_ns` 
-for catalog `delta_catalog`:
+for catalog `delta_catalog` using curl:
 
 ```shell
-POST /polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables
-```
-```json
-{
-  "name": "delta_table",
-  "format": "delta",
-  "base-location": "s3://<my-bucket>/path/to/table",
-  "doc": "delta table example",
-  "properties": {
-    "key1": "value1"
-  }
-}
+curl -X POST http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "delta_table",
+    "format": "delta",
+    "base-location": "s3://<my-bucket>/path/to/table",
+    "doc": "delta table example",
+    "properties": {
+      "key1": "value1"
+    }
+  }'
 ```
 
 ### Load a Generic Table
-The REST API for load a generic table is the following:
+The REST endpoint for load a generic table is `GET /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}`.
 
-```shell
-GET /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}
-```
-
-Here is an example to load the table `delta_table`:
+Here is an example to load the table `delta_table` using curl:
 ```shell
 GET /polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
 ```
