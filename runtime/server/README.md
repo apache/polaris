@@ -28,15 +28,15 @@ Building this module will create a zip/tar distribution with the Polaris server.
 To build the distribution, you can use the following command:
 
 ```shell
-./gradlew :polaris-quarkus-server:build
+./gradlew :polaris-server:build
 ```
 
 You can manually unpack and run the distribution archives:
 
 ```shell
-cd quarkus/server/build/distributions
-unzip polaris-quarkus-server-<version>.zip
-cd polaris-quarkus-server-<version>
+cd runtime/server/build/distributions
+unzip polaris-server-<version>.zip
+cd polaris-server-<version>
 java -jar quarkus-run.jar
 ```
 
@@ -47,8 +47,8 @@ required):
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 ```
 
@@ -57,8 +57,8 @@ following command:
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true \
   -Dquarkus.container-image.registry=localhost:5001 \
   -Dquarkus.container-image.group=apache \

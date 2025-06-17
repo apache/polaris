@@ -28,7 +28,7 @@ This distribution contains both the Polaris Server and Admin Tool.
 ## Directory Structure
 
 ```
-polaris-quarkus-distribution-@version@/
+polaris-distribution-@version@/
 ├── LICENSE
 ├── NOTICE
 ├── README.md

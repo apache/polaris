@@ -20,21 +20,22 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
-}
-
-configurations.all {
-  if (name != "checkstyle") {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
+  id("polaris-runtime")
 }
 
 dependencies {
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:postgresql")
+
+  // The dependencies below are included merely to allow IDEs to provide
+  // support for Quarkus in this module.
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-logging-json")
+  compileOnly("io.quarkus:quarkus-rest-jackson")
+  compileOnly("io.quarkus:quarkus-reactive-routes")
+  compileOnly("io.quarkus:quarkus-hibernate-validator")
+  compileOnly("io.quarkus:quarkus-smallrye-health")
+  compileOnly("io.quarkus:quarkus-micrometer")
+  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
+  compileOnly("io.quarkus:quarkus-oidc")
+  compileOnly("io.quarkus:quarkus-opentelemetry")
+  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
 }

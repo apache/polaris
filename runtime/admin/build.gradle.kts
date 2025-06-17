@@ -21,7 +21,7 @@ plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
-  id("polaris-quarkus")
+  id("polaris-runtime")
   // id("polaris-license-report")
 }
 
@@ -42,10 +42,10 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
-  implementation(project(":polaris-quarkus-common"))
+  implementation(project(":polaris-runtime-common"))
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
-  testImplementation(project(":polaris-quarkus-test-commons"))
+  testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
