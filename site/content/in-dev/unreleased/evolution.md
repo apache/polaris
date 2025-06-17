@@ -102,7 +102,7 @@ in the previous release is not considered a major change.
 
 * Supporting a new revision of the Iceberg REST Catalog spec in a backward-compatible way
 is not considered a major change. Specifically, supporting new REST API prefixes (e.g. `v2`)
-is not a mojor change because it does not affect older clients.
+is not a major change because it does not affect older clients.
 
 * Changing the implementation of an Iceberg REST Catalog feature / endpoint in a non-backward
 compatible way (e.g. removing or renaming a request parameter) is a major change.
