@@ -133,7 +133,7 @@ def root_token(
         client_id=client_id,
         client_secret=client_secret,
         grant_type="client_credentials",
-        _headers={"realm": "default-realm"},
+        _headers={"realm": "POLARIS"},
     )
     return token
 

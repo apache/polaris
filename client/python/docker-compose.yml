@@ -27,8 +27,8 @@ services:
       AWS_REGION: us-west-2
       AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
       AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-      POLARIS_BOOTSTRAP_CREDENTIALS: default-realm,root,s3cr3t
-      polaris.realm-context.realms: default-realm
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      polaris.realm-context.realms: POLARIS
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
       polaris.features."DROP_WITH_PURGE_ENABLED": "true"
