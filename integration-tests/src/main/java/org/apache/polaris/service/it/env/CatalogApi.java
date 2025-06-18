@@ -50,7 +50,7 @@ import org.apache.iceberg.rest.responses.OAuthTokenResponse;
  * @see PolarisClient#catalogApi(ClientCredentials)
  */
 public class CatalogApi extends RestApi {
-  CatalogApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
+  public CatalogApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }
 

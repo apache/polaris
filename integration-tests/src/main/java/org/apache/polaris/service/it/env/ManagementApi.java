@@ -53,7 +53,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
  * @see PolarisClient#managementApi(ClientCredentials)
  */
 public class ManagementApi extends RestApi {
-  ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
+  public ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }
 

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.rest.GenericTable;
 
 public interface PolarisCatalog {
   List<TableIdentifier> listGenericTables(Namespace ns);
