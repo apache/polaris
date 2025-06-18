@@ -48,6 +48,25 @@ class PrincipalType(Enum):
     SERVICE = 'service'
 
 
+class ConnectionType(Enum):
+    """
+    Represents a ConnectionType for an EXTERNAL catalog -- see ConnectionConfigInfo in the spec
+    """
+
+    HADOOP = 'hadoop'
+    HIVE = 'hive'
+
+
+class AuthenticationType(Enum):
+    """
+    Represents a AuthenticationType for an EXTERNAL catalog -- see AuthenticationParameters in the spec
+    """
+
+    OAUTH = 'oauth'
+    BEARER = 'bearer'
+    SIGV4 = 'sigv4'
+
+
 class Commands:
     """
     Represents the various commands available in the CLI
@@ -136,6 +155,18 @@ class Arguments:
     REGION = 'region'
     PROFILE = 'profile'
     PROXY = 'proxy'
+    CATALOG_CONNECTION_TYPE = 'catalog_connection_type'
+    CATALOG_AUTHENTICATION_TYPE = 'catalog_authentication_type'
+    CATALOG_TOKEN_URI = 'catalog_token_uri'
+    CATALOG_CLIENT_ID = 'catalog_client_id'
+    CATALOG_CLIENT_SECRET = 'catalog_client_secret'
+    CATALOG_CLIENT_SCOPE = 'catalog_client_scope'
+    CATALOG_BEARER_TOKEN = 'catalog_bearer_token'
+    CATALOG_ROLE_ARN = 'catalog_role_arn'
+    CATALOG_ROLE_SESSION_NAME = 'catalog_role_session_name'
+    CATALOG_EXTERNAL_ID = 'catalog_role_external_id'
+    CATALOG_SIGNING_REGION = 'catalog_signing_region'
+    CATALOG_SIGNING_NAME = 'catalog_signing_name'
 
 
 class Hints:
@@ -179,6 +210,31 @@ class Hints:
 
         class Update:
             DEFAULT_BASE_LOCATION = 'A new default base location for the catalog'
+
+        class External:
+            CATALOG_CONNECTION_TYPE = 'The type of external catalog in [ICEBERG, HADOOP].'
+            CATALOG_AUTHENTICATION_TYPE = 'The type of authentication in [OAUTH, BEARER, SIGV4]'
+
+            CATALOG_TOKEN_URI = '(For authentication type OAUTH) Token server URI'
+            CATALOG_CLIENT_ID = '(For authentication type OAUTH) oauth client id'
+            CATALOG_CLIENT_SECRET = '(For authentication type OAUTH) oauth client secret (input-only)'
+            CATALOG_CLIENT_SCOPE = ('(For authentication type OAUTH) oauth scopes to specify when exchanging '
+                                    'for a short-lived access token. Multiple can be provided by specifying'
+                                    ' this option more than once')
+
+            CATALOG_BEARER_TOKEN = '(For authentication type BEARER) Bearer token (input-only)'
+
+            CATALOG_ROLE_ARN = ('(For authentication type SIGV4) The aws IAM role arn assumed by polaris '
+                                'userArn when signing requests')
+            CATALOG_ROLE_SESSION_NAME = ('(For authentication type SIGV4) The role session name to be used '
+                                         'by the SigV4 protocol for signing requests')
+            CATALOG_EXTERNAL_ID = ('(For authentication type SIGV4) An optional external id used to establish '
+                                   'a trust relationship with AWS in the trust policy')
+            CATALOG_SIGNING_REGION = ('(For authentication type SIGV4) Region to be used by the SigV4 protocol '
+                                      'for signing requests')
+            CATALOG_SIGNING_NAME = ('(For authentication type SIGV4) The service name to be used by the SigV4 '
+                                    'protocol for signing requests, the default signing name is "execute-api" '
+                                    'is if not provided')
 
     class Principals:
         class Create:

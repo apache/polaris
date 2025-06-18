@@ -19,7 +19,7 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions
+from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, ConnectionType, AuthenticationType
 
 
 @dataclass
@@ -74,6 +74,26 @@ class OptionTree:
         Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
     ]
 
+    _FEDERATION_ARGS = [
+        Argument(Arguments.CATALOG_CONNECTION_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_CONNECTION_TYPE, lower=True,
+                 choices=[ct.value for ct in ConnectionType]),
+        Argument(Arguments.CATALOG_AUTHENTICATION_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_AUTHENTICATION_TYPE, lower=True,
+                 choices=[at.value for at in AuthenticationType]),
+        Argument(Arguments.CATALOG_TOKEN_URI, str, Hints.Catalogs.External.CATALOG_TOKEN_URI),
+        Argument(Arguments.CATALOG_CLIENT_ID, str, Hints.Catalogs.External.CATALOG_CLIENT_ID),
+        Argument(Arguments.CATALOG_CLIENT_SECRET, str, Hints.Catalogs.External.CATALOG_CLIENT_SECRET),
+        Argument(Arguments.CATALOG_CLIENT_SCOPE, str,
+                 Hints.Catalogs.External.CATALOG_CLIENT_SCOPE, allow_repeats=True),
+        Argument(Arguments.CATALOG_BEARER_TOKEN, str, Hints.Catalogs.External.CATALOG_BEARER_TOKEN),
+        Argument(Arguments.CATALOG_ROLE_ARN, str, Hints.Catalogs.External.CATALOG_ROLE_ARN),
+        Argument(Arguments.CATALOG_ROLE_SESSION_NAME, str, Hints.Catalogs.External.CATALOG_ROLE_SESSION_NAME),
+        Argument(Arguments.CATALOG_EXTERNAL_ID, str, Hints.Catalogs.External.CATALOG_EXTERNAL_ID),
+        Argument(Arguments.CATALOG_SIGNING_REGION, str, Hints.Catalogs.External.CATALOG_SIGNING_REGION),
+        Argument(Arguments.CATALOG_SIGNING_NAME, str, Hints.Catalogs.External.CATALOG_SIGNING_NAME, lower=True)
+    ]
+
     @staticmethod
     def get_tree() -> List[Option]:
         return [
@@ -94,7 +114,7 @@ class OptionTree:
                     Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
                     Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
-                ], input_name=Arguments.CATALOG),
+                ] + OptionTree._FEDERATION_ARGS, input_name=Arguments.CATALOG),
                 Option(Subcommands.DELETE, input_name=Arguments.CATALOG),
                 Option(Subcommands.GET, input_name=Arguments.CATALOG),
                 Option(Subcommands.LIST, args=[
@@ -107,7 +127,7 @@ class OptionTree:
                     Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
-                ], input_name=Arguments.CATALOG)
+                ] + OptionTree._FEDERATION_ARGS, input_name=Arguments.CATALOG)
             ]),
             Option(Commands.PRINCIPALS, 'manage principals', children=[
                 Option(Subcommands.CREATE, args=[
