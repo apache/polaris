@@ -19,7 +19,10 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins { id("polaris-client") }
+plugins {
+  id("polaris-client")
+  id("com.gradleup.shadow")
+}
 
 // get version information
 val sparkMajorVersion = "3.5"
@@ -112,7 +115,7 @@ dependencies {
   }
 }
 
-tasks.register<ShadowJar>("createPolarisSparkJar") {
+tasks.named<ShadowJar>("shadowJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
@@ -135,8 +138,11 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
     exclude(dependency("org.apache.avro:avro*.*"))
   }
 
-  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
+  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml")
   relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
 }
 
-tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
+// ensure the shadowJar job is run for both `assemble` and `build` task
+tasks.named("assemble") { dependsOn("shadowJar") }
+
+tasks.named("build") { dependsOn("shadowJar") }
