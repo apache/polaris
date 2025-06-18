@@ -63,4 +63,17 @@ public interface UserSecretsManager {
    * @param secretReference Reference object for retrieving the original secret
    */
   void deleteSecret(@Nonnull UserSecretReference secretReference);
+
+  /**
+   * Builds a URN string from the given secret manager type and type-specific identifier.
+   *
+   * @param typeSpecificIdentifier The type-specific identifier (colon-separated alphanumeric
+   *     components with underscores and hyphens).
+   * @return The constructed URN string.
+   */
+  @Nonnull
+  default String buildUrn(
+      @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
+    return UserSecretReference.buildUrnString(secretManagerType, typeSpecificIdentifier);
+  }
 }
