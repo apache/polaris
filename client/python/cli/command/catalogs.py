@@ -22,7 +22,7 @@ from typing import Dict, Optional, List
 from pydantic import StrictStr
 
 from cli.command import Command
-from cli.constants import StorageType, CatalogType, Subcommands, Arguments
+from cli.constants import StorageType, CatalogType, Subcommands, Arguments, AuthenticationType
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, Catalog, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
@@ -74,12 +74,31 @@ class CatalogsCommand(Command):
 
     def validate(self):
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if not self.storage_type:
-                raise Exception(f'Missing required argument:'
-                                f' {Argument.to_flag_name(Arguments.STORAGE_TYPE)}')
-            if not self.default_base_location:
-                raise Exception(f'Missing required argument:'
-                                f' {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}')
+            if self.catalog_type != CatalogType.EXTERNAL.value:
+                if not self.storage_type:
+                    raise Exception(f'Missing required argument:'
+                                    f' {Argument.to_flag_name(Arguments.STORAGE_TYPE)}')
+                if not self.default_base_location:
+                    raise Exception(f'Missing required argument:'
+                                    f' {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}')
+            else:
+                if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+                    if not self.catalog_token_uri or not self.catalog_client_id \
+                            or not self.catalog_client_secret or len(self.catalog_client_scopes) == 0:
+                        raise Exception(f"Authentication type 'OAUTH' requires"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_TOKEN_URI)},"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_ID)},"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_SECRET)},"
+                                f" and at least one {Argument.to_flag_name(Arguments.CATALOG_CLIENT_SCOPE)}.")
+                elif self.catalog_authentication_type == AuthenticationType.BEARER.value:
+                    if not self.catalog_bearer_token:
+                        raise Exception(f"Missing required argument for authentication type 'BEARER':"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}")
+                elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
+                    if not self.catalog_role_arn or not self.catalog_role_session_name:
+                        raise Exception(f"Authentication type 'SIGV4 requires"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
+                                f" and {Argument.to_flag_name(Arguments.CATALOG_ROLE_SESSION_NAME)}")
 
         if self.storage_type == StorageType.S3.value:
             if not self.role_arn:
@@ -150,7 +169,25 @@ class CatalogsCommand(Command):
         return config
 
     def _build_connection_config_info(self):
-        pass
+        auth_params = None
+        if self.catalog_authentication_type == StorageType.S3.value:
+            auth_params = AuthenicationParameters(
+                storage_type=self.storage_type.upper(),
+                allowed_locations=self.allowed_locations,
+                role_arn=self.role_arn,
+                external_id=self.external_id,
+                user_arn=self.user_arn,
+                region=self.region
+            )
+        elif self.storage_type == StorageType.AZURE.value:
+            config = AzureStorageConfigInfo(
+                storage_type=self.storage_type.upper(),
+                allowed_locations=self.allowed_locations,
+                tenant_id=self.tenant_id,
+                multi_tenant_app_name=self.multi_tenant_app_name,
+                consent_url=self.consent_url,
+            )
+        return config
 
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
