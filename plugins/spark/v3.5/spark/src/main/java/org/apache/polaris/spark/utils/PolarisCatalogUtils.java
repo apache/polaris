@@ -20,7 +20,12 @@ package org.apache.polaris.spark.utils;
 
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -34,6 +39,7 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchDatabaseException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.catalog.CatalogTable;
 import org.apache.spark.sql.connector.catalog.Identifier;
+import org.apache.spark.sql.connector.catalog.NamespaceChange;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableProvider;
@@ -63,6 +69,13 @@ public class PolarisCatalogUtils {
 
   public static boolean useHudi(String provider) {
     return "hudi".equalsIgnoreCase(provider);
+  }
+
+  public static boolean isHudiExtensionEnabled() {
+    SparkSession spark = SparkSession.active();
+    String extensions = spark.conf().get("spark.sql.extensions", null);
+    return extensions != null
+        && extensions.contains("org.apache.spark.sql.hudi.HoodieSparkSessionExtension");
   }
 
   /**
@@ -163,5 +176,102 @@ public class PolarisCatalogUtils {
     } catch (Exception e) {
       throw new RuntimeException("Failed to get the catalogAuth from the Iceberg SparkCatalog", e);
     }
+  }
+
+  /**
+   * Converts a NamespaceChange object to equivalent SQL command for session catalog sync.
+   *
+   * @param namespace The namespace name (already joined with dots)
+   * @param change The NamespaceChange to convert
+   * @return SQL command string or null if change type is not supported
+   */
+  public static String convertNamespaceChangeToSQL(String namespace, NamespaceChange change) {
+    if (change instanceof NamespaceChange.SetProperty) {
+      NamespaceChange.SetProperty setProp = (NamespaceChange.SetProperty) change;
+      return String.format(
+          "ALTER NAMESPACE spark_catalog.%s SET PROPERTIES ('%s' = '%s')",
+          namespace, setProp.property(), setProp.value());
+    } else if (change instanceof NamespaceChange.RemoveProperty) {
+      NamespaceChange.RemoveProperty removeProp = (NamespaceChange.RemoveProperty) change;
+      return String.format(
+          "ALTER NAMESPACE spark_catalog.%s UNSET PROPERTIES ('%s')",
+          namespace, removeProp.property());
+    }
+    // Other change types not supported or don't need session catalog sync
+    return null;
+  }
+
+  /**
+   * Set of namespace properties that are reserved by Spark and cannot be set via DBPROPERTIES.
+   * These properties are managed by Spark internally and will cause errors if included in CREATE
+   * NAMESPACE ... WITH DBPROPERTIES statements.
+   */
+  private static final Set<String> SPARK_RESERVED_NAMESPACE_PROPERTIES =
+      Set.of(
+          "owner", // Automatically set to current user
+          "location", // Managed by Spark for database location
+          "comment" // May have special handling in some contexts
+          );
+
+  /**
+   * Filters out Spark reserved properties from metadata map to prevent SQL errors.
+   *
+   * @param metadata The original metadata map
+   * @return Filtered metadata map without reserved properties
+   */
+  public static Map<String, String> filterReservedProperties(Map<String, String> metadata) {
+    if (metadata == null || metadata.isEmpty()) {
+      return metadata;
+    }
+
+    Map<String, String> filtered = new HashMap<>();
+    List<String> filteredOut = new ArrayList<>();
+
+    for (Map.Entry<String, String> entry : metadata.entrySet()) {
+      String key = entry.getKey();
+      if (SPARK_RESERVED_NAMESPACE_PROPERTIES.contains(key.toLowerCase(Locale.ROOT))) {
+        filteredOut.add(key);
+      } else {
+        filtered.put(key, entry.getValue());
+      }
+    }
+
+    if (!filteredOut.isEmpty()) {
+      LOG.info(
+          "Filtered out reserved namespace properties for Hudi compatibility: {}", filteredOut);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Formats metadata properties for SQL DBPROPERTIES clause with proper escaping. Automatically
+   * filters out reserved properties that Spark doesn't allow.
+   *
+   * @param metadata The metadata map to format
+   * @return Formatted DBPROPERTIES clause or empty string if no properties
+   */
+  public static String formatPropertiesForSQL(Map<String, String> metadata) {
+    Map<String, String> filteredMetadata = filterReservedProperties(metadata);
+
+    if (filteredMetadata == null || filteredMetadata.isEmpty()) {
+      return "";
+    }
+
+    StringBuilder props = new StringBuilder();
+    props.append(" WITH DBPROPERTIES (");
+
+    List<String> propertyList = new ArrayList<>();
+    for (Map.Entry<String, String> entry : filteredMetadata.entrySet()) {
+      // Escape single quotes in keys and values
+      String key = entry.getKey().replace("'", "''");
+      String value = entry.getValue().replace("'", "''");
+      propertyList.add(String.format("'%s' = '%s'", key, value));
+    }
+
+    props.append(String.join(", ", propertyList));
+    props.append(")");
+
+    return props.toString();
   }
 }

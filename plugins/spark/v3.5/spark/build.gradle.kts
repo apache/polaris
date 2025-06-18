@@ -85,8 +85,8 @@ dependencies {
   }
 
   implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
-  compileOnly("org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0")
-  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0")
+  compileOnly("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:0.15.0")
+  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:0.15.0")
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"

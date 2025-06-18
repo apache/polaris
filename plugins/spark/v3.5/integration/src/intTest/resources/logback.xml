@@ -32,6 +32,9 @@ out the configuration if you would like ot see all spark debug log during the ru
     </encoder>
   </appender>
 
+  <!-- Hudi-specific loggers for test -->
+  <logger name="org.apache.hudi" level="INFO"/>
+
   <root level="ERROR">
     <appender-ref ref="CONSOLE"/>
   </root>

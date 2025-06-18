@@ -60,13 +60,51 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-core")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+
+  // Add spark-hive for Hudi integration - provides HiveExternalCatalog that Hudi needs
+  testImplementation("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}") {
+    // exclude log4j dependencies to match spark-sql exclusions
+    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+    exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.apache.logging.log4j", "log4j-core")
+    exclude("org.slf4j", "jul-to-slf4j")
+    // exclude old slf4j 1.x to log4j 2.x bridge that conflicts with slf4j 2.x bridge
+    exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
+  }
   // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
   // of spark-sql dependency
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.24.3")
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
-  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0")
+  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:0.15.0") {
+    // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
+    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+    exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.apache.logging.log4j", "log4j-core")
+    exclude("org.slf4j", "jul-to-slf4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("log4j", "log4j")
+    // exclude old slf4j 1.x to log4j 2.x bridge that conflicts with slf4j 2.x bridge
+    exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
+  }
+
+  // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
+  // manageable
+  // This matches what Spark 3.5 distribution provides (hive-exec-2.3.9-core.jar)
+  testImplementation("org.apache.hive:hive-exec:2.3.9:core") {
+    // Exclude conflicting dependencies to use Spark's versions
+    exclude("org.apache.hadoop", "*")
+    exclude("org.apache.commons", "*")
+    exclude("org.slf4j", "*")
+    exclude("log4j", "*")
+    exclude("org.apache.logging.log4j", "*")
+    exclude("org.pentaho", "*")
+    exclude("org.apache.calcite", "*")
+    exclude("org.apache.tez", "*")
+  }
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")

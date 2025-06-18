@@ -30,6 +30,7 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.HudiCatalogUtils;
 import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
@@ -194,7 +195,6 @@ public class SparkCatalog
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.alterTable(ident, changes);
       } else if (PolarisCatalogUtils.useHudi(provider)) {
-        // check to see if this alters hudi metadata
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.alterTable(ident, changes);
       }
@@ -286,18 +286,24 @@ public class SparkCatalog
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
     this.icebergsSparkCatalog.createNamespace(namespace, metadata);
+    HudiCatalogUtils.createNamespace(namespace, metadata);
   }
 
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
     this.icebergsSparkCatalog.alterNamespace(namespace, changes);
+    HudiCatalogUtils.alterNamespace(namespace, changes);
   }
 
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
-    return this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
+    boolean result = this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
+    if (result) {
+      HudiCatalogUtils.dropNamespace(namespace, cascade);
+    }
+    return result;
   }
 
   @Override

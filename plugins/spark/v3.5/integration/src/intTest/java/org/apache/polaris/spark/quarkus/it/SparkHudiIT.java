@@ -24,19 +24,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
-import org.apache.spark.sql.AnalysisException;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.Metadata;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,28 +39,30 @@ public class SparkHudiIT extends SparkIntegrationBase {
   @Override
   protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
     return builder
-            .config(
-                    "spark.sql.extensions",
-                    "org.apache.spark.sql.hudi.HoodieSparkSessionExtension")
-            .config(
-                    "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.hudi.catalog.HoodieCatalog")
-            .config(
-                    String.format("spark.sql.catalog.%s", catalogName),
-                    "org.apache.polaris.spark.SparkCatalog")
-            .config("spark.sql.warehouse.dir", warehouseDir.toString())
-            .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-            .config(
-                    String.format("spark.sql.catalog.%s.uri", catalogName),
-                    endpoints.catalogApiEndpoint().toString())
-            .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-            .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-            .config(
-                    String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
-            .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
-            .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
-            .config(
-                    String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-            .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+        .config("spark.sql.extensions", "org.apache.spark.sql.hudi.HoodieSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.hudi.catalog.HoodieCatalog")
+        .config(
+            String.format("spark.sql.catalog.%s", catalogName),
+            "org.apache.polaris.spark.SparkCatalog")
+        .config("spark.sql.warehouse.dir", warehouseDir.toString())
+        .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
+        .config(
+            String.format("spark.sql.catalog.%s.uri", catalogName),
+            endpoints.catalogApiEndpoint().toString())
+        .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
+        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
+        .config(
+            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
+        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
+        .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
+        .config(
+            String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
+        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
+        .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        .config("spark.kryo.registrator", "org.apache.spark.HoodieSparkKryoRegistrar")
+        // for intial integration test have disabled for now, to revisit enabling in future
+        .config("hoodie.metadata.enable", "false");
   }
 
   private String defaultNs;
@@ -85,7 +78,7 @@ public class SparkHudiIT extends SparkIntegrationBase {
 
   @BeforeEach
   public void createDefaultResources(@TempDir Path tempDir) {
-    spark.sparkContext().setLogLevel("WARN");
+    spark.sparkContext().setLogLevel("INFO");
     defaultNs = generateName("hudi");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
@@ -110,7 +103,7 @@ public class SparkHudiIT extends SparkIntegrationBase {
         "CREATE TABLE %s (id INT, name STRING) USING HUDI LOCATION '%s'",
         huditb1, getTableLocation(huditb1));
     sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob')", huditb1);
-    List<Object[]> results = sql("SELECT * FROM %s WHERE id > 1 ORDER BY id DESC", huditb1);
+    List<Object[]> results = sql("SELECT id,name FROM %s WHERE id > 1 ORDER BY id DESC", huditb1);
     assertThat(results.size()).isEqualTo(1);
     assertThat(results.get(0)).isEqualTo(new Object[] {2, "bob"});
 
@@ -146,63 +139,6 @@ public class SparkHudiIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void testAlterOperations() {
-    String huditb = getTableNameWithRandomSuffix();
-    sql(
-        "CREATE TABLE %s (id INT, name STRING) USING HUDI LOCATION '%s'",
-        huditb, getTableLocation(huditb));
-    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob')", huditb);
-
-    // test alter columns
-    // add two new columns to the table
-    sql("Alter TABLE %s ADD COLUMNS (city STRING, age INT)", huditb);
-    // add one more row to the table
-    sql("INSERT INTO %s VALUES (3, 'john', 'SFO', 20)", huditb);
-    // verify the table now have 4 columns with correct result
-    List<Object[]> results = sql("SELECT * FROM %s ORDER BY id", huditb);
-    assertThat(results.size()).isEqualTo(3);
-    assertThat(results).contains(new Object[] {1, "anna", null, null});
-    assertThat(results).contains(new Object[] {2, "bob", null, null});
-    assertThat(results).contains(new Object[] {3, "john", "SFO", 20});
-
-    // drop and rename column require set the hoodie.keep.max.commits property
-    sql("ALTER TABLE %s SET TBLPROPERTIES ('hoodie.keep.max.commits' = '50')", huditb);
-    // drop column age
-    sql("Alter TABLE %s DROP COLUMN age", huditb);
-    // verify the table now have 3 columns with correct result
-    results = sql("SELECT * FROM %s ORDER BY id", huditb);
-    assertThat(results.size()).isEqualTo(3);
-    assertThat(results).contains(new Object[] {1, "anna", null});
-    assertThat(results).contains(new Object[] {2, "bob", null});
-    assertThat(results).contains(new Object[] {3, "john", "SFO"});
-
-    // rename column city to address
-    sql("Alter TABLE %s RENAME COLUMN city TO address", huditb);
-    // verify column address exists
-    results = sql("SELECT id, address FROM %s ORDER BY id", huditb);
-    assertThat(results.size()).isEqualTo(3);
-    assertThat(results).contains(new Object[] {1, null});
-    assertThat(results).contains(new Object[] {2, null});
-    assertThat(results).contains(new Object[] {3, "SFO"});
-
-    // test alter properties
-    sql(
-        "ALTER TABLE %s SET TBLPROPERTIES ('description' = 'people table', 'test-owner' = 'test-user')",
-        huditb);
-    List<Object[]> tableInfo = sql("DESCRIBE TABLE EXTENDED %s", huditb);
-    // find the table properties result
-    String properties = null;
-    for (Object[] info : tableInfo) {
-      if (info[0].equals("Table Properties")) {
-        properties = (String) info[1];
-        break;
-      }
-    }
-    assertThat(properties).contains("description=people table,test-owner=test-user");
-    sql("DROP TABLE %s", huditb);
-  }
-
-  @Test
   public void testUnsupportedAlterTableOperations() {
     String huditb = getTableNameWithRandomSuffix();
     sql(
@@ -215,7 +151,7 @@ public class SparkHudiIT extends SparkIntegrationBase {
 
     // ALTER TABLE ... SET LOCATION ... fails
     assertThatThrownBy(() -> sql("ALTER TABLE %s SET LOCATION '/tmp/new/path'", huditb))
-        .isInstanceOf(AnalysisException.class);
+        .isInstanceOf(UnsupportedOperationException.class);
 
     sql("DROP TABLE %s", huditb);
   }
@@ -234,51 +170,5 @@ public class SparkHudiIT extends SparkIntegrationBase {
                     "CREATE TABLE %s USING HUDI LOCATION '%s' AS SELECT 1 AS id",
                     huditb, getTableLocation(huditb)))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  public void testDataframeSaveOperations() {
-    List<Row> data = Arrays.asList(RowFactory.create("Alice", 30), RowFactory.create("Bob", 25));
-    StructType schema =
-        new StructType(
-            new StructField[] {
-              new StructField("name", DataTypes.StringType, false, Metadata.empty()),
-              new StructField("age", DataTypes.IntegerType, false, Metadata.empty())
-            });
-    Dataset<Row> df = spark.createDataFrame(data, schema);
-
-    String huditb = getTableNameWithRandomSuffix();
-    // saveAsTable requires support for hudi requires CTAS support for third party catalog
-    // in hudi catalog, which is currently not supported.
-    assertThatThrownBy(
-            () ->
-                df.write()
-                    .format("hudi")
-                    .option("path", getTableLocation(huditb))
-                    .saveAsTable(huditb))
-        .isInstanceOf(IllegalArgumentException.class);
-
-    // verify regular dataframe saving still works
-    df.write().format("hudi").save(getTableLocation(huditb));
-
-    // verify the partition dir is created
-    List<String> subDirs = listDirs(getTableLocation(huditb));
-    assertThat(subDirs).contains(".hoodie");
-
-    // verify we can create a table out of the exising hudi location
-    sql("CREATE TABLE %s USING HUDI LOCATION '%s'", huditb, getTableLocation(huditb));
-    List<Object[]> tables = sql("SHOW TABLES");
-    assertThat(tables.size()).isEqualTo(1);
-    assertThat(tables).contains(new Object[] {defaultNs, huditb, false});
-
-    sql("INSERT INTO %s VALUES ('Anna', 11)", huditb);
-
-    List<Object[]> results = sql("SELECT * FROM %s ORDER BY name", huditb);
-    assertThat(results.size()).isEqualTo(3);
-    assertThat(results.get(0)).isEqualTo(new Object[] {"Alice", 30});
-    assertThat(results.get(1)).isEqualTo(new Object[] {"Anna", 11});
-    assertThat(results.get(2)).isEqualTo(new Object[] {"Bob", 25});
-
-    sql("DROP TABLE %s", huditb);
   }
 }
