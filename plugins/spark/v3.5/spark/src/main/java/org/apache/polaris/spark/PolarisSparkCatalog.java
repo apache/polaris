@@ -22,6 +22,10 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.spark.Spark3Util;
+// Use the spec class defined at client side under the rest package.
+// The spec classes used at client side and server side are different in
+// terms of import, where the client side uses the shaded jackson library
+// from iceberg-spark-runtime.
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
