@@ -38,11 +38,13 @@ A shadowJar task is added to build a jar for the Polaris Spark plugin, the jar i
 
 The result jar is located at plugins/spark/v3.5/build/<scala_version>/libs after the build.
 
+The shadowJar task is also executed automatically when you run the `gradlew assemble` or `gradlew build`.
+
 # Start Spark with Local Polaris Service using built Jar
 Once the jar is built, we can manually test it with Spark and a local Polaris service.
 
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
-realm `POLARIS` and root credentials `root:secret`:./gr
+realm `POLARIS` and root credentials `root:secret`:
 ```shell
 ./gradlew run
 ```
