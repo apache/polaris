@@ -48,13 +48,13 @@ class PrincipalType(Enum):
     SERVICE = 'service'
 
 
-class ConnectionType(Enum):
+class CatalogConnectionType(Enum):
     """
     Represents a ConnectionType for an EXTERNAL catalog -- see ConnectionConfigInfo in the spec
     """
 
     HADOOP = 'hadoop'
-    HIVE = 'hive'
+    ICEBERG = 'iceberg'
 
 
 class AuthenticationType(Enum):
@@ -155,6 +155,8 @@ class Arguments:
     REGION = 'region'
     PROFILE = 'profile'
     PROXY = 'proxy'
+    HADOOP_WAREHOUSE = 'hadoop_warehouse'
+    ICEBERG_REMOTE_CATALOG_NAME = 'iceberg_remote_catalog_name'
     CATALOG_CONNECTION_TYPE = 'catalog_connection_type'
     CATALOG_AUTHENTICATION_TYPE = 'catalog_authentication_type'
     CATALOG_TOKEN_URI = 'catalog_token_uri'
@@ -214,6 +216,9 @@ class Hints:
         class External:
             CATALOG_CONNECTION_TYPE = 'The type of external catalog in [ICEBERG, HADOOP].'
             CATALOG_AUTHENTICATION_TYPE = 'The type of authentication in [OAUTH, BEARER, SIGV4]'
+
+            HADOOP_WAREHOUSE = 'The warehouse to use when federating to a HADOOP catalog'
+            ICEBERG_REMOTE_CATALOG_NAME = 'The remote catalog name when federating to an Iceberg REST catalog'
 
             CATALOG_TOKEN_URI = '(For authentication type OAUTH) Token server URI'
             CATALOG_CLIENT_ID = '(For authentication type OAUTH) oauth client id'

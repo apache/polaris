@@ -19,14 +19,16 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional, List
 
-from pydantic import StrictStr
+from pydantic import StrictStr, SecretStr
 
 from cli.command import Command
-from cli.constants import StorageType, CatalogType, Subcommands, Arguments, AuthenticationType
+from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subcommands, Arguments, AuthenticationType
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, Catalog, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
-    PolarisCatalog, CatalogProperties
+    PolarisCatalog, CatalogProperties, AuthenticationParameters, BearerAuthenticationParameters, \
+    OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
+    IcebergRestConnectionConfigInfo
 
 
 @dataclass
@@ -59,6 +61,8 @@ class CatalogsCommand(Command):
     properties: Dict[str, StrictStr]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
+    hadoop_warehouse: str
+    iceberg_remote_catalog_name: str
     catalog_connection_type: str
     catalog_authentication_type: str
     catalog_token_uri: str
@@ -95,10 +99,10 @@ class CatalogsCommand(Command):
                         raise Exception(f"Missing required argument for authentication type 'BEARER':"
                                 f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}")
                 elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
-                    if not self.catalog_role_arn or not self.catalog_role_session_name:
+                    if not self.catalog_role_arn or not self.catalog_signing_region:
                         raise Exception(f"Authentication type 'SIGV4 requires"
                                 f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
-                                f" and {Argument.to_flag_name(Arguments.CATALOG_ROLE_SESSION_NAME)}")
+                                f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}")
 
         if self.storage_type == StorageType.S3.value:
             if not self.role_arn:
@@ -170,23 +174,50 @@ class CatalogsCommand(Command):
 
     def _build_connection_config_info(self):
         auth_params = None
-        if self.catalog_authentication_type == StorageType.S3.value:
-            auth_params = AuthenicationParameters(
-                storage_type=self.storage_type.upper(),
-                allowed_locations=self.allowed_locations,
-                role_arn=self.role_arn,
-                external_id=self.external_id,
-                user_arn=self.user_arn,
-                region=self.region
+        if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+            auth_params = OAuthClientCredentialsParameters(
+                token_uri=self.catalog_token_uri,
+                client_id=self.catalog_client_id,
+                client_secret=StrictStr(self.catalog_client_secret),
+                scopes=[SecretStr(s) for s in self.catalog_client_scopes]
             )
-        elif self.storage_type == StorageType.AZURE.value:
-            config = AzureStorageConfigInfo(
-                storage_type=self.storage_type.upper(),
-                allowed_locations=self.allowed_locations,
-                tenant_id=self.tenant_id,
-                multi_tenant_app_name=self.multi_tenant_app_name,
-                consent_url=self.consent_url,
+        elif self.storage_type == AuthenticationType.BEARER.value:
+            auth_params = BearerAuthenticationParameters(
+                bearer_token=SecretStr(self.catalog_bearer_token)
             )
+        elif self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+            auth_params = SigV4AuthenticationParameters(
+                role_arn=self.catalog_role_arn,
+                role_session_name=self.catalog_role_session_name,
+                external_id=self.catalog_external_id,
+                signing_region=self.catalog_signing_region,
+                signing_name=self.catalog_signing_name,
+            )
+        else:
+            raise Exception("Unknown authentication type:", self.catalog_authentication_type)
+
+        """
+        connection_type: StrictStr = Field(description="The type of remote catalog service represented by this connection", alias="connectionType")
+        uri: Optional[StrictStr] = Field(default=None, description="URI to the remote catalog service")
+        authentication_parameters: Optional[AuthenticationParameters] = Field(default=None, alias="authenticationParameters")
+        service_identity: Optional[ServiceIdentityInfo] = Field(default=None, alias="serviceIdentity")
+        __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters", "serviceIdentity"]
+
+        """
+        config = None
+        if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
+            config = HadoopConnectionConfigInfo(
+                connection_type=self.catalog_connection_type,
+
+                warehouse=self.hadoop_warehouse,
+                
+            )
+        elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
+            config = IcebergRestConnectionConfigInfo(
+                remote_catalog_name=self.iceberg_remote_catalog_name,
+            )
+        else:
+            raise Exception("Unknown catalog connection type:", self.catalog_connection_type)
         return config
 
     def execute(self, api: PolarisDefaultApi) -> None:
@@ -210,7 +241,7 @@ class CatalogsCommand(Command):
                     catalog=PolarisCatalog(
                         type=self.catalog_type.upper(),
                         name=self.catalog_name,
-                        storage_config_info=config,
+                        storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
                             additional_properties=self.properties

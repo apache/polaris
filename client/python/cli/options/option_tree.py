@@ -19,7 +19,7 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, ConnectionType, AuthenticationType
+from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, CatalogConnectionType, AuthenticationType
 
 
 @dataclass
@@ -77,7 +77,11 @@ class OptionTree:
     _FEDERATION_ARGS = [
         Argument(Arguments.CATALOG_CONNECTION_TYPE, str,
                  Hints.Catalogs.External.CATALOG_CONNECTION_TYPE, lower=True,
-                 choices=[ct.value for ct in ConnectionType]),
+                 choices=[ct.value for ct in CatalogConnectionType]),
+        Argument(Arguments.ICEBERG_REMOTE_CATALOG_NAME, str,
+                 Hints.Catalogs.External.ICEBERG_REMOTE_CATALOG_NAME),
+        Argument(Arguments.HADOOP_WAREHOUSE, str,
+                 Hints.Catalogs.External.HADOOP_WAREHOUSE),
         Argument(Arguments.CATALOG_AUTHENTICATION_TYPE, str,
                  Hints.Catalogs.External.CATALOG_AUTHENTICATION_TYPE, lower=True,
                  choices=[at.value for at in AuthenticationType]),

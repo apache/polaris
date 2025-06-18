@@ -62,6 +62,8 @@ class Command(ABC):
                 catalog_name=options_get(Arguments.CATALOG),
                 properties={} if properties is None else properties,
                 set_properties={} if set_properties is None else set_properties,
+                hadoop_warehouse=options_get(Arguments.HADOOP_WAREHOUSE),
+                iceberg_remote_catalog_name=options_get(Arguments.ICEBERG_REMOTE_CATALOG_NAME),
                 remove_properties=[] if remove_properties is None else remove_properties,
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(Arguments.CATALOG_AUTHENTICATION_TYPE),
