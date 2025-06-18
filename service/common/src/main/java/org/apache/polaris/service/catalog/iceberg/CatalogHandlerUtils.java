@@ -115,7 +115,8 @@ public class CatalogHandlerUtils {
 
   static {
     try {
-      LAST_SEQUENCE_NUMBER_FIELD = TableMetadata.class.getDeclaredField("lastSequenceNumber");
+      LAST_SEQUENCE_NUMBER_FIELD =
+          TableMetadata.Builder.class.getDeclaredField("lastSequenceNumber");
       LAST_SEQUENCE_NUMBER_FIELD.setAccessible(true);
     } catch (NoSuchFieldException e) {
       throw new RuntimeException("Unable to access field", e);
@@ -461,7 +462,7 @@ public class CatalogHandlerUtils {
               2.0 /* exponential */)
           .onlyRetryOn(CommitFailedException.class)
           .run(
-              (taskOps) -> {
+              taskOps -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
 
                 TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
@@ -470,6 +471,7 @@ public class CatalogHandlerUtils {
                   request.requirements().forEach((requirement) -> requirement.validate(base));
                 } catch (CommitFailedException e) {
                   if (!isRollbackCompactionEnabled()) {
+                    // wrap and rethrow outside of tasks to avoid unnecessary retry
                     throw new ValidationFailureException(e);
                   }
                   LOGGER.debug(
@@ -486,6 +488,7 @@ public class CatalogHandlerUtils {
                         "Giving up on Rollback replace operations for table={}, with current-snapshot-id={}, as operation doesn't attempts to add a single snapshot",
                         base.uuid(),
                         base.currentSnapshot().snapshotId());
+                    // wrap and rethrow outside of tasks to avoid unnecessary retry
                     throw new ValidationFailureException(e);
                   }
 
@@ -495,6 +498,7 @@ public class CatalogHandlerUtils {
                   MetadataUpdate.AddSnapshot snapshotToBeAdded = findAddSnapshotUpdate(request);
                   if (snapshotToBeAdded == null) {
                     // Re-throw if, there's no snapshot data to be added.
+                    // wrap and rethrow outside of tasks to avoid unnecessary retry
                     throw new ValidationFailureException(e);
                   }
 
@@ -512,6 +516,7 @@ public class CatalogHandlerUtils {
                     // Nothing can be done as this implies that there were not all
                     // No-op snapshots (REPLACE) between expectedCurrentSnapshotId and
                     // currentSnapshotId. hence re-throw the exception caught.
+                    // wrap and rethrow outside of tasks to avoid unnecessary retry
                     throw new ValidationFailureException(e);
                   }
                   // Set back the ref we wanted to set, back to the snapshot-id
@@ -522,11 +527,17 @@ public class CatalogHandlerUtils {
                   // apply the remove snapshots update in the current metadata.
                   // NOTE: we need to setRef to expectedCurrentSnapshotId first and then apply
                   // remove, as otherwise the remove will drop the reference.
-                  // NOTE: we can skip removing the now orphan base. Its not a hard requirement.
+                  // NOTE: we can skip removing the now orphan base. It's not a hard requirement.
                   // just something good to do, and not leave for Remove Orphans.
                   // Ref rolled back update correctly to snapshot to be committed parent now.
                   metadataUpdates.forEach((update -> update.applyTo(metadataBuilder)));
-                  newBase = setAppropriateLastSeqNumber(metadataBuilder.build());
+                  newBase =
+                      setAppropriateLastSeqNumber(
+                              metadataBuilder,
+                              base.uuid(),
+                              base.lastSequenceNumber(),
+                              base.snapshot(expectedCurrentSnapshotId).sequenceNumber())
+                          .build();
                   LOGGER.info(
                       "Successfully roll-backed replace operation for table={}, with current-snapshot-id={}, to snapshot={}",
                       base.uuid(),
@@ -540,13 +551,17 @@ public class CatalogHandlerUtils {
                       .requirements()
                       .forEach((requirement) -> requirement.validate(baseWithRemovedSnaps));
                 } catch (CommitFailedException e) {
+                  // wrap and rethrow outside of tasks to avoid unnecessary retry
                   throw new ValidationFailureException(e);
                 }
 
                 TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
                 request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
                 TableMetadata updated = newMetadataBuilder.build();
-                // always commit this
+                if (updated.changes().isEmpty()) {
+                  // do not commit if the metadata has not changed
+                  return;
+                }
                 taskOps.commit(base, updated);
               });
     } catch (ValidationFailureException e) {
@@ -595,19 +610,20 @@ public class CatalogHandlerUtils {
     Long snapshotId = base.ref(updateRefName).snapshotId(); // current tip of the given branch
     // ensure this branch has the latest sequence number.
     long expectedSequenceNumber = base.lastSequenceNumber();
+    // Unexpected state as table's current sequence number is not equal to the
+    // most recent snapshot the ref points to.
+    if (expectedSequenceNumber != base.snapshot(snapshotId).sequenceNumber()) {
+      LOGGER.debug(
+          "Giving up rolling back table {} to snapshot {}, ref current snapshot sequence number {} is not equal expected sequence number {}",
+          base.uuid(),
+          snapshotId,
+          base.snapshot(snapshotId).sequenceNumber(),
+          expectedSequenceNumber);
+      return null;
+    }
     Set<Long> snapshotsToRemove = new LinkedHashSet<>();
     while (snapshotId != null && !Objects.equals(snapshotId, expectedCurrentSnapshotId)) {
       Snapshot snap = base.snapshot(snapshotId);
-      // catch un-expected state the commit sequence number are
-      // not continuous can happen for a table with multiple branches.
-      if (expectedSequenceNumber != snap.sequenceNumber()) {
-        LOGGER.debug(
-            "Giving up rolling back table {} to snapshot {}, Sequence Number are not continuous from {}",
-            base.uuid(),
-            snapshotId,
-            expectedSequenceNumber);
-        break;
-      }
       if (!isRollbackSnapshot(snap) || idsToRetain.contains(snapshotId)) {
         // Either encountered a non no-op snapshot or the snapshot is being referenced by any other
         // reference either by branch or a tag.
@@ -619,8 +635,6 @@ public class CatalogHandlerUtils {
       }
       snapshotsToRemove.add(snap.snapshotId());
       snapshotId = snap.parentId();
-      // we need continuous sequence number to correctly rollback
-      expectedSequenceNumber--;
     }
 
     boolean wasExpectedSnapshotReached = Objects.equals(snapshotId, expectedCurrentSnapshotId);
@@ -665,7 +679,11 @@ public class CatalogHandlerUtils {
     return total != 1 ? null : addSnapshot;
   }
 
-  private TableMetadata setAppropriateLastSeqNumber(TableMetadata newBase) {
+  private TableMetadata.Builder setAppropriateLastSeqNumber(
+      TableMetadata.Builder metadataBuilder,
+      String tableUUID,
+      long currentSequenceNumber,
+      long expectedSequenceNumber) {
     // TODO: Get rid of the reflection call once TableMetadata have API for it.
     // move the lastSequenceNumber back, to apply snapshot properly on the
     // current-metadata Seq number are considered increasing monotonically
@@ -673,19 +691,18 @@ public class CatalogHandlerUtils {
     // the sequence number can't be changed for a snapshot the only possible option
     // then is to change the sequenceNumber tracked by metadata.json
     try {
-      long lastSeqNumber = newBase.lastSequenceNumber();
       // this should point to the sequence number that current tip of the
       // branch belongs to, as the new commit will be applied on top of this.
-      LAST_SEQUENCE_NUMBER_FIELD.set(newBase, newBase.currentSnapshot().sequenceNumber());
+      LAST_SEQUENCE_NUMBER_FIELD.set(metadataBuilder, expectedSequenceNumber);
       LOGGER.info(
-          "Setting table :{} last sequence number from {} to {}",
-          newBase.uuid(),
-          lastSeqNumber,
-          newBase.lastSequenceNumber());
+          "Setting table uuid:{} last sequence number from:{} to {}",
+          tableUUID,
+          currentSequenceNumber,
+          expectedSequenceNumber);
     } catch (IllegalAccessException ex) {
       throw new RuntimeException(ex);
     }
-    return newBase;
+    return metadataBuilder;
   }
 
   private BaseView asBaseView(View view) {

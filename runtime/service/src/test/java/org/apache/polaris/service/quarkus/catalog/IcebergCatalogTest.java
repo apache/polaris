@@ -647,7 +647,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
       when(mockCatalogHandleUtils.maxCommitRetries()).thenReturn(5);
       mockCatalogHandleUtils.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
     } catch (Exception e) {
-      fail("Rollback Compaction on conflict feature failed : " + e.getMessage());
+      fail("Rollback Compaction on conflict feature failed : " + e);
     }
 
     table.refresh();
