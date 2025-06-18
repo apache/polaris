@@ -59,6 +59,18 @@ class CatalogsCommand(Command):
     properties: Dict[str, StrictStr]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
+    catalog_connection_type: str
+    catalog_authentication_type: str
+    catalog_token_uri: str
+    catalog_client_id: str
+    catalog_client_secret: str
+    catalog_client_scopes: List[str]
+    catalog_bearer_token: str
+    catalog_role_arn: str
+    catalog_role_session_name: str
+    catalog_external_id: str
+    catalog_signing_region: str
+    catalog_signing_name: str
 
     def validate(self):
         if self.catalogs_subcommand == Subcommands.CREATE:
@@ -137,15 +149,19 @@ class CatalogsCommand(Command):
             )
         return config
 
+    def _build_connection_config_info(self):
+        pass
+
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
-            config = self._build_storage_config_info()
+            storage_config = self._build_storage_config_info()
+            connection_config = self._build_connection_config_info()
             if self.catalog_type == CatalogType.EXTERNAL.value:
                 request = CreateCatalogRequest(
                     catalog=ExternalCatalog(
                         type=self.catalog_type.upper(),
                         name=self.catalog_name,
-                        storage_config_info=config,
+                        storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
                             additional_properties=self.properties
