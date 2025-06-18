@@ -50,10 +50,7 @@ dependencies {
   )
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
-  testImplementation(project(":polaris-api-management-model")) {
-    // exclude the iceberg
-    exclude("org.apache.iceberg", "iceberg-core")
-  }
+  testImplementation(project(":polaris-api-management-model"))
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
