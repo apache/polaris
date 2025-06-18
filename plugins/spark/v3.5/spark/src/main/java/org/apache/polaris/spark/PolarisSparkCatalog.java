@@ -22,7 +22,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.spark.Spark3Util;
-import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;

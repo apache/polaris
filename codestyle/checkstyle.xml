@@ -39,13 +39,5 @@
     <property name="optional" value="true"/>
   </module>
 
-  <module name="TreeWalker">
-    <!-- Checks for imports                            -->
-    <!-- See http://checkstyle.org/config_imports.html -->
-    <module name="IllegalImport">
-      <property name="illegalPkgs" value=".*\.shaded\..*, .*\.relocated\..*"/>
-      <property name="regexp" value="true"/>
-    </module>
 
-  </module>
 </module>

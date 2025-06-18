@@ -45,8 +45,15 @@ dependencies {
 
   implementation(project(":polaris-runtime-service"))
 
-  testImplementation(project(":polaris-api-management-model"))
+  testImplementation(
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+  )
   testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
+
+  testImplementation(project(":polaris-api-management-model")) {
+    // exclude the iceberg
+    exclude("org.apache.iceberg", "iceberg-core")
+  }
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
@@ -64,13 +71,7 @@ dependencies {
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-annotations")
-  testImplementation("com.fasterxml.jackson.core:jackson-core")
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
-
-  testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
+  testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
 
   testImplementation(testFixtures(project(":polaris-runtime-service")))
 
