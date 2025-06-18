@@ -32,14 +32,14 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
-import org.apache.polaris.service.it.ext.PolarisServerManager;
 
 /**
- * RestClient used 
+ * That class provides rest client that is can be used to talk to Polaris Management service and
+ * auth token endpoint. This class is currently used by Spark Client tests for commands that can not
+ * be issued through spark command, such as createCatalog etc.
  */
 public final class PolarisManagementClient implements AutoCloseable {
   private final PolarisApiEndpoints endpoints;
@@ -68,12 +68,7 @@ public final class PolarisManagementClient implements AutoCloseable {
     return new PolarisManagementClient(endpoints);
   }
 
-  /**
-   * This method should be used by test code to make top-level entity names. The purpose of this
-   * method is two-fold:
-   * <li>Identify top-level entities for latger clean-up by {@link #cleanUp(ClientCredentials)}.
-   * <li>Allow {@link PolarisServerManager}s to customize top-level entities per environment.
-   */
+  /** This method should be used by test code to make top-level entity names. */
   public String newEntityName(String hint) {
     return polarisServerManager().transformEntityName(hint + "_" + clientId);
   }
@@ -84,11 +79,6 @@ public final class PolarisManagementClient implements AutoCloseable {
 
   public ManagementApi managementApi(ClientCredentials credentials) {
     return managementApi(obtainToken(credentials));
-  }
-
-  public CatalogApi catalogApi(ClientCredentials credentials) {
-    return new CatalogApi(
-        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
   }
 
   /** Requests an access token from the Polaris server for the given {@link ClientCredentials}. */

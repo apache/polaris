@@ -38,7 +38,6 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
@@ -64,7 +63,6 @@ public abstract class SparkIntegrationBase {
   protected PolarisApiEndpoints endpoints;
   protected PolarisManagementClient client;
   protected ManagementApi managementApi;
-  protected CatalogApi catalogApi;
   protected String catalogName;
   protected String sparkToken;
 
@@ -87,7 +85,6 @@ public abstract class SparkIntegrationBase {
     client = PolarisManagementClient.managementClient(endpoints);
     sparkToken = client.obtainToken(credentials);
     managementApi = client.managementApi(credentials);
-    catalogApi = client.catalogApi(credentials);
 
     warehouseDir = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("spark-warehouse");
 

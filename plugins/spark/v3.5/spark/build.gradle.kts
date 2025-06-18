@@ -103,9 +103,7 @@ tasks.named<ShadowJar>("shadowJar") {
   // Optimization: Minimize the JAR (remove unused classes from dependencies)
   // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
   // therefore excluded from the optimization.
-  minimize {
-    exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
-  }
+  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
 }
 
 // ensure the shadowJar job is run for both `assemble` and `build` task
