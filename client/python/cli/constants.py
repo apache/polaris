@@ -54,7 +54,7 @@ class CatalogConnectionType(Enum):
     """
 
     HADOOP = 'hadoop'
-    ICEBERG = 'iceberg'
+    ICEBERG = 'iceberg-rest'
 
 
 class AuthenticationType(Enum):
@@ -177,7 +177,7 @@ class Arguments:
     CATALOG_BEARER_TOKEN = 'catalog_bearer_token'
     CATALOG_ROLE_ARN = 'catalog_role_arn'
     CATALOG_ROLE_SESSION_NAME = 'catalog_role_session_name'
-    CATALOG_EXTERNAL_ID = 'catalog_role_external_id'
+    CATALOG_EXTERNAL_ID = 'catalog_external_id'
     CATALOG_SIGNING_REGION = 'catalog_signing_region'
     CATALOG_SIGNING_NAME = 'catalog_signing_name'
 

@@ -182,23 +182,26 @@ class CatalogsCommand(Command):
         return config
 
     def _build_connection_config_info(self):
-        if self.catalog_type != CatalogType.EXTERNAL:
+        if self.catalog_type != CatalogType.EXTERNAL.value:
             return None
 
         auth_params = None
         if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
             auth_params = OAuthClientCredentialsParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
                 token_uri=self.catalog_token_uri,
                 client_id=self.catalog_client_id,
                 client_secret=SecretStr(self.catalog_client_secret),
-                scopes=[SecretStr(s) for s in self.catalog_client_scopes]
+                scopes=self.catalog_client_scopes
             )
-        elif self.storage_type == AuthenticationType.BEARER.value:
+        elif self.catalog_authentication_type == AuthenticationType.BEARER.value:
             auth_params = BearerAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
                 bearer_token=SecretStr(self.catalog_bearer_token)
             )
-        elif self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+        elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
             auth_params = SigV4AuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
                 role_arn=self.catalog_role_arn,
                 role_session_name=self.catalog_role_session_name,
                 external_id=self.catalog_external_id,
@@ -228,7 +231,7 @@ class CatalogsCommand(Command):
             )
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
             config = IcebergRestConnectionConfigInfo(
-                connection_type=self.catalog_connection_type.upper(),
+                connection_type=self.catalog_connection_type.upper().replace('-', '_'),
                 uri=self.catalog_uri,
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
