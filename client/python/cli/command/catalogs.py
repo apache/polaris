@@ -22,13 +22,14 @@ from typing import Dict, Optional, List
 from pydantic import StrictStr, SecretStr
 
 from cli.command import Command
-from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subcommands, Arguments, AuthenticationType
+from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subcommands, Arguments, AuthenticationType, \
+    ServiceIdentityType
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, Catalog, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
     PolarisCatalog, CatalogProperties, AuthenticationParameters, BearerAuthenticationParameters, \
     OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
-    IcebergRestConnectionConfigInfo
+    IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 
 
 @dataclass
@@ -65,6 +66,9 @@ class CatalogsCommand(Command):
     iceberg_remote_catalog_name: str
     catalog_connection_type: str
     catalog_authentication_type: str
+    catalog_service_identity_type: str
+    catalog_service_identity_iam_arn: str
+    catalog_uri: str
     catalog_token_uri: str
     catalog_client_id: str
     catalog_client_secret: str
@@ -103,6 +107,11 @@ class CatalogsCommand(Command):
                         raise Exception(f"Authentication type 'SIGV4 requires"
                                 f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
                                 f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}")
+
+        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
+            if not self.catalog_service_identity_iam_arn:
+                        raise Exception(f"Missing required argument for service identity type 'AWS_IAM':"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN)}")
 
         if self.storage_type == StorageType.S3.value:
             if not self.role_arn:
@@ -178,7 +187,7 @@ class CatalogsCommand(Command):
             auth_params = OAuthClientCredentialsParameters(
                 token_uri=self.catalog_token_uri,
                 client_id=self.catalog_client_id,
-                client_secret=StrictStr(self.catalog_client_secret),
+                client_secret=SecretStr(self.catalog_client_secret),
                 scopes=[SecretStr(s) for s in self.catalog_client_scopes]
             )
         elif self.storage_type == AuthenticationType.BEARER.value:
@@ -193,28 +202,34 @@ class CatalogsCommand(Command):
                 signing_region=self.catalog_signing_region,
                 signing_name=self.catalog_signing_name,
             )
-        else:
+        elif self.catalog_authentication_type is not None:
             raise Exception("Unknown authentication type:", self.catalog_authentication_type)
 
-        """
-        connection_type: StrictStr = Field(description="The type of remote catalog service represented by this connection", alias="connectionType")
-        uri: Optional[StrictStr] = Field(default=None, description="URI to the remote catalog service")
-        authentication_parameters: Optional[AuthenticationParameters] = Field(default=None, alias="authenticationParameters")
-        service_identity: Optional[ServiceIdentityInfo] = Field(default=None, alias="serviceIdentity")
-        __properties: ClassVar[List[str]] = ["connectionType", "uri", "authenticationParameters", "serviceIdentity"]
+        service_identity = None
+        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM:
+            service_identity = AwsIamServiceIdentityInfo(
+                identity_type=self.catalog_service_identity_type,
+                iam_arn=self.catalog_service_identity_iam_arn
+            )
+        elif self.catalog_service_identity_type is not None:
+            raise Exception("Unknown service identity type:", self.catalog_service_identity_type)
 
-        """
         config = None
         if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
             config = HadoopConnectionConfigInfo(
                 connection_type=self.catalog_connection_type,
-
-                warehouse=self.hadoop_warehouse,
-                
+                uri=self.catalog_uri,
+                authentication_parameters=auth_params,
+                service_identity=service_identity,
+                warehouse=self.hadoop_warehouse
             )
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
             config = IcebergRestConnectionConfigInfo(
-                remote_catalog_name=self.iceberg_remote_catalog_name,
+                connection_type=self.catalog_connection_type,
+                uri=self.catalog_uri,
+                authentication_parameters=auth_params,
+                service_identity=service_identity,
+                remote_catalog_name=self.iceberg_remote_catalog_name
             )
         else:
             raise Exception("Unknown catalog connection type:", self.catalog_connection_type)

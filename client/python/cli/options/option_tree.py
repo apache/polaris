@@ -19,7 +19,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, CatalogConnectionType, AuthenticationType
+from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, \
+    CatalogConnectionType, AuthenticationType, ServiceIdentityType
 
 
 @dataclass
@@ -85,6 +86,12 @@ class OptionTree:
         Argument(Arguments.CATALOG_AUTHENTICATION_TYPE, str,
                  Hints.Catalogs.External.CATALOG_AUTHENTICATION_TYPE, lower=True,
                  choices=[at.value for at in AuthenticationType]),
+        Argument(Arguments.CATALOG_SERVICE_IDENTITY_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_SERVICE_IDENTITY_TYPE, lower=True,
+                 choices=[st.value for st in ServiceIdentityType]),
+        Argument(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN, str,
+                 Hints.Catalogs.External.CATALOG_SERVICE_IDENTITY_IAM_ARN),
+        Argument(Arguments.CATALOG_URI, str, Hints.Catalogs.External.CATALOG_URI),
         Argument(Arguments.CATALOG_TOKEN_URI, str, Hints.Catalogs.External.CATALOG_TOKEN_URI),
         Argument(Arguments.CATALOG_CLIENT_ID, str, Hints.Catalogs.External.CATALOG_CLIENT_ID),
         Argument(Arguments.CATALOG_CLIENT_SECRET, str, Hints.Catalogs.External.CATALOG_CLIENT_SECRET),

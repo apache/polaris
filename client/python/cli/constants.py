@@ -67,6 +67,14 @@ class AuthenticationType(Enum):
     SIGV4 = 'sigv4'
 
 
+class ServiceIdentityType(Enum):
+    """
+    Represents a Service Identity Type for an EXTERNAL catalog -- see ServiceIdentityInfo in the spec
+    """
+
+    AWS_IAM = 'aws_iam'
+
+
 class Commands:
     """
     Represents the various commands available in the CLI
@@ -159,6 +167,9 @@ class Arguments:
     ICEBERG_REMOTE_CATALOG_NAME = 'iceberg_remote_catalog_name'
     CATALOG_CONNECTION_TYPE = 'catalog_connection_type'
     CATALOG_AUTHENTICATION_TYPE = 'catalog_authentication_type'
+    CATALOG_SERVICE_IDENTITY_TYPE = 'catalog_service_identity_type'
+    CATALOG_SERVICE_IDENTITY_IAM_ARN = 'catalog_service_identity_iam_arn'
+    CATALOG_URI = 'catalog_uri'
     CATALOG_TOKEN_URI = 'catalog_token_uri'
     CATALOG_CLIENT_ID = 'catalog_client_id'
     CATALOG_CLIENT_SECRET = 'catalog_client_secret'
@@ -216,9 +227,16 @@ class Hints:
         class External:
             CATALOG_CONNECTION_TYPE = 'The type of external catalog in [ICEBERG, HADOOP].'
             CATALOG_AUTHENTICATION_TYPE = 'The type of authentication in [OAUTH, BEARER, SIGV4]'
+            CATALOG_SERVICE_IDENTITY_TYPE = 'The type of service identity in [AWS_IAM]'
 
+            CATALOG_SERVICE_IDENTITY_IAM_ARN = ('When using the AWS_IAM service identity type, this is the ARN '
+                                                'of the IAM user or IAM role Polaris uses to assume roles and '
+                                                'then access external resources.')
+
+            CATALOG_URI = 'The URI of the external catalog'
             HADOOP_WAREHOUSE = 'The warehouse to use when federating to a HADOOP catalog'
             ICEBERG_REMOTE_CATALOG_NAME = 'The remote catalog name when federating to an Iceberg REST catalog'
+
 
             CATALOG_TOKEN_URI = '(For authentication type OAUTH) Token server URI'
             CATALOG_CLIENT_ID = '(For authentication type OAUTH) oauth client id'
