@@ -208,7 +208,7 @@ class CatalogsCommand(Command):
         service_identity = None
         if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM:
             service_identity = AwsIamServiceIdentityInfo(
-                identity_type=self.catalog_service_identity_type,
+                identity_type=self.catalog_service_identity_type.upper(),
                 iam_arn=self.catalog_service_identity_iam_arn
             )
         elif self.catalog_service_identity_type is not None:
@@ -217,7 +217,7 @@ class CatalogsCommand(Command):
         config = None
         if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
             config = HadoopConnectionConfigInfo(
-                connection_type=self.catalog_connection_type,
+                connection_type=self.catalog_connection_type.upper(),
                 uri=self.catalog_uri,
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
@@ -225,7 +225,7 @@ class CatalogsCommand(Command):
             )
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
             config = IcebergRestConnectionConfigInfo(
-                connection_type=self.catalog_connection_type,
+                connection_type=self.catalog_connection_type.upper(),
                 uri=self.catalog_uri,
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
@@ -248,7 +248,8 @@ class CatalogsCommand(Command):
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
                             additional_properties=self.properties
-                        )
+                        ),
+                        connection_config_info=connection_config
                     )
                 )
             else:
@@ -260,7 +261,8 @@ class CatalogsCommand(Command):
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
                             additional_properties=self.properties
-                        )
+                        ),
+                        connection_config_info=connection_config
                     )
                 )
             api.create_catalog(request)

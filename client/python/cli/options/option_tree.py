@@ -138,7 +138,7 @@ class OptionTree:
                     Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
-                ] + OptionTree._FEDERATION_ARGS, input_name=Arguments.CATALOG)
+                ], input_name=Arguments.CATALOG)
             ]),
             Option(Commands.PRINCIPALS, 'manage principals', children=[
                 Option(Subcommands.CREATE, args=[
