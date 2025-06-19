@@ -182,6 +182,9 @@ class CatalogsCommand(Command):
         return config
 
     def _build_connection_config_info(self):
+        if self.catalog_type != CatalogType.EXTERNAL:
+            return None
+
         auth_params = None
         if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
             auth_params = OAuthClientCredentialsParameters(
@@ -231,7 +234,7 @@ class CatalogsCommand(Command):
                 service_identity=service_identity,
                 remote_catalog_name=self.iceberg_remote_catalog_name
             )
-        else:
+        elif self.catalog_connection_type is not None:
             raise Exception("Unknown catalog connection type:", self.catalog_connection_type)
         return config
 
