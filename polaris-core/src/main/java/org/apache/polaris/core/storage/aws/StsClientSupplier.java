@@ -16,31 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.storage;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithName;
-import java.time.Duration;
+package org.apache.polaris.core.storage.aws;
+
+import jakarta.annotation.Nullable;
+import java.net.URI;
 import java.util.Optional;
-import org.apache.polaris.service.storage.StorageConfiguration;
-import org.apache.polaris.service.storage.aws.S3AccessConfig;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
+import software.amazon.awssdk.services.sts.StsClient;
 
-@ConfigMapping(prefix = "polaris.storage")
-public interface QuarkusStorageConfiguration extends StorageConfiguration, S3AccessConfig {
+public interface StsClientSupplier {
 
-  @WithName("aws.access-key")
-  @Override
-  Optional<String> awsAccessKey();
+  StsClient stsClient(StsDestination destination);
 
-  @WithName("aws.secret-key")
-  @Override
-  Optional<String> awsSecretKey();
+  @PolarisImmutable
+  interface StsDestination {
+    @Value.Parameter(order = 1)
+    Optional<URI> endpoint();
 
-  @WithName("gcp.token")
-  @Override
-  Optional<String> gcpAccessToken();
+    @Value.Parameter(order = 2)
+    Optional<String> region();
 
-  @WithName("gcp.lifespan")
-  @Override
-  Optional<Duration> gcpAccessTokenLifespan();
+    static StsDestination of(@Nullable URI endpoint, @Nullable String region) {
+      return ImmutableStsDestination.of(Optional.ofNullable(endpoint), Optional.ofNullable(region));
+    }
+  }
 }

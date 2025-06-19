@@ -38,28 +38,29 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.StsClientSupplier;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.services.sts.StsClient;
 
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final Supplier<StsClient> stsClientSupplier;
+  private final StsClientSupplier stsClientSupplier;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
 
   @Inject
-  public PolarisStorageIntegrationProviderImpl(StorageConfiguration storageConfiguration) {
+  public PolarisStorageIntegrationProviderImpl(
+      StorageConfiguration storageConfiguration, StsClientSupplier stsClientSupplier) {
     this(
-        storageConfiguration.stsClientSupplier(false),
+        stsClientSupplier,
         Optional.ofNullable(storageConfiguration.stsCredentials()),
         storageConfiguration.gcpCredentialsSupplier());
   }
 
   public PolarisStorageIntegrationProviderImpl(
-      Supplier<StsClient> stsClientSupplier,
+      StsClientSupplier stsClientSupplier,
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider) {
     this.stsClientSupplier = stsClientSupplier;
@@ -80,7 +81,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3:
         storageIntegration =
             (PolarisStorageIntegration<T>)
-                new AwsCredentialsStorageIntegration(stsClientSupplier.get(), stsCredentials);
+                new AwsCredentialsStorageIntegration(stsClientSupplier, stsCredentials);
         break;
       case GCS:
         storageIntegration =
