@@ -98,6 +98,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.mockito.Mockito;
+import software.amazon.awssdk.services.sts.StsClient;
 
 /** Base class for shared test setup logic used by various Polaris authz-related tests. */
 public abstract class PolarisAuthzTestBase {
@@ -218,9 +219,10 @@ public abstract class PolarisAuthzTestBase {
 
   @BeforeAll
   public static void setUpMocks() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            Mockito::mock,
+            destination -> stsClient,
             Optional.empty(),
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
