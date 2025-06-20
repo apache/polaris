@@ -32,7 +32,7 @@ import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import org.apache.polaris.core.storage.aws.StsClientSupplier;
+import org.apache.polaris.core.storage.aws.StsClientProvider;
 import software.amazon.awssdk.endpoints.Endpoint;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -40,7 +40,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 /** Maintains a pool of STS clients. */
-public class StsClientsPool implements StsClientSupplier {
+public class StsClientsPool implements StsClientProvider {
   // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
 
   private static final String CACHE_NAME = "sts-clients";
