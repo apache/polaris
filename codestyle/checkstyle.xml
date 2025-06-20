@@ -26,6 +26,7 @@
   <property name="severity" value="warning"/>
   <property name="fileExtensions" value="java, properties, xml"/>
 
+  <!-- https://checkstyle.org/config_filters.html#SuppressionFilter -->
   <module name="SuppressionFilter">
     <property name="file" value="${checkstyle.suppression.file}"/>
   </module>
@@ -34,13 +35,6 @@
   <!-- See https://checkstyle.org/config_filefilters.html -->
   <module name="BeforeExecutionExclusionFileFilter">
     <property name="fileNamePattern" value="module\-info\.java$"/>
-  </module>
-
-  <!-- https://checkstyle.org/config_filters.html#SuppressionFilter -->
-  <module name="SuppressionFilter">
-    <property name="file" value="${org.checkstyle.google.suppressionfilter.config}"
-      default="checkstyle-suppressions.xml" />
-    <property name="optional" value="true"/>
   </module>
 
   <module name="TreeWalker">
