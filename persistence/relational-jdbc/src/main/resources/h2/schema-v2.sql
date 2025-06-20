@@ -59,8 +59,7 @@ CREATE TABLE IF NOT EXISTS entities (
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
-DROP INDEX IF EXISTS idx_locations;
-CREATE INDEX idx_locations ON entities(realm_id, parent_id, location_without_scheme);
+CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, parent_id, location_without_scheme);
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
