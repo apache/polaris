@@ -115,3 +115,4 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.named("assemble") { dependsOn("shadowJar") }
 
 tasks.named("build") { dependsOn("shadowJar") }
+
