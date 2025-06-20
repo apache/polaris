@@ -386,15 +386,6 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     entity.setProperties(model.getProperties());
     entity.setInternalProperties(model.getInternalProperties());
     entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
-
-    if (model.locationWithoutScheme != null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE
-          || entityType == PolarisEntityType.NAMESPACE) {
-        entity.addProperty(
-            PolarisEntityConstants.ENTITY_BASE_LOCATION, model.locationWithoutScheme);
-      }
-    }
-
     return entity;
   }
 }
