@@ -129,12 +129,11 @@ public class CatalogHandlerUtils {
   @Inject
   public CatalogHandlerUtils(
       RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    this.maxCommitRetries =
+    this(
         configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
-    this.rollbackCompactionEnabled =
+            realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES),
         configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
+            realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS));
   }
 
   @VisibleForTesting
