@@ -37,7 +37,7 @@ val scalaLibraryVersion =
 // the spark client relies on the shaded libraries from iceberg-spark-runtime, and therefore
 // uses imports like org.apache.iceberg.shaded.*. Use checkstyle_no_illegalimport.xml to allow
 // the import from shaded libraries for spark client.
-checkstyle { configFile = rootProject.file("codestyle/checkstyle_no_illegalimport.xml") }
+// checkstyle { configFile = rootProject.file("codestyle/checkstyle_no_illegalimport.xml") }
 
 dependencies {
   // TODO: extract a polaris-rest module as a thin layer for

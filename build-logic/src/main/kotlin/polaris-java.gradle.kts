@@ -47,6 +47,11 @@ checkstyle {
       .requiredVersion
   toolVersion = checkstyleVersion
   configFile = rootProject.file("codestyle/checkstyle.xml")
+  configProperties =
+    mapOf(
+      "checkstyle.suppression.file" to
+        rootProject.file("codestyle/checkstyle_suppressions.xml").absolutePath
+    )
   isIgnoreFailures = false
   maxErrors = 0
   maxWarnings = 0
