@@ -334,7 +334,7 @@ public class PolarisApplicationIntegrationTest {
           .isNotNull()
           .isNotEmpty()
           .containsEntry(
-              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1");
+              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1/");
     }
   }
 

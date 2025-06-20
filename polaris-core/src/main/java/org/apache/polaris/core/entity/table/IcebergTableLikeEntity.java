@@ -23,6 +23,7 @@ import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -33,7 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
  * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
  * locations. This includes both Iceberg tables and Iceberg views.
  */
-public class IcebergTableLikeEntity extends TableLikeEntity {
+public class IcebergTableLikeEntity extends TableLikeEntity implements LocationBasedEntity {
   // For applicable types, this key on the "internalProperties" map will return the location
   // of the internalProperties JSON file.
   public static final String METADATA_LOCATION_KEY = "metadata-location";
@@ -67,6 +68,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
         .map(Long::parseLong);
   }
 
+  @Override
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);

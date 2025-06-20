@@ -44,6 +44,6 @@ public enum DatabaseType {
   }
 
   public String getInitScriptResource() {
-    return String.format("%s/schema-v1.sql", this.getDisplayName());
+    return String.format("%s/schema-v2.sql", this.getDisplayName());
   }
 }

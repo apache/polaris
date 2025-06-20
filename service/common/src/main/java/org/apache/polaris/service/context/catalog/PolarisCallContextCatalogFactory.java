@@ -99,7 +99,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
-    String defaultBaseLocation = catalog.getDefaultBaseLocation();
+    String defaultBaseLocation = catalog.getBaseLocation();
     LOGGER.debug(
         "Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
 
