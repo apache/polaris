@@ -23,34 +23,16 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+/**
+ * Configuration interface containing parameters for clients accessing S3 services from Polaris
+ * servers.
+ *
+ * <p>Currently, this configuration does not apply to all of Polaris code, but only to select
+ * services.
+ */
 public interface S3AccessConfig {
-  /** Default value for {@link #sessionCacheMaxSize()}. */
-  int DEFAULT_MAX_SESSION_CREDENTIAL_CACHE_ENTRIES = 1000;
-
   /** Default value for {@link #clientsCacheMaxSize()}. */
   int DEFAULT_MAX_STS_CLIENT_CACHE_ENTRIES = 50;
-
-  /** Default value for {@link #sessionGracePeriod()}. */
-  Duration DEFAULT_SESSION_REFRESH_GRACE_PERIOD = Duration.ofMinutes(5);
-
-  /**
-   * The time period to subtract from the S3 session credentials (assumed role credentials) expiry
-   * time to define the time when those credentials become eligible for refreshing.
-   */
-  Optional<Duration> sessionGracePeriod();
-
-  default Duration effectiveSessionGracePeriod() {
-    return sessionGracePeriod().orElse(DEFAULT_SESSION_REFRESH_GRACE_PERIOD);
-  }
-
-  /**
-   * Maximum number of entries to keep in the session credentials cache (assumed role credentials).
-   */
-  OptionalInt sessionCacheMaxSize();
-
-  default int effectiveSessionCacheMaxSize() {
-    return sessionCacheMaxSize().orElse(DEFAULT_MAX_SESSION_CREDENTIAL_CACHE_ENTRIES);
-  }
 
   /** Maximum number of entries to keep in the STS clients cache. */
   OptionalInt clientsCacheMaxSize();
