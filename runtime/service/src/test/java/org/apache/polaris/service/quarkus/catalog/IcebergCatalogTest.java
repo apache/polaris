@@ -636,16 +636,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     try {
       // Now call IRC server to commit delete operation.
-      PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
-      PolarisConfigurationStore mockedPc = Mockito.spy(pc);
-      when(mockedPc.getConfiguration(
-              null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
-          .thenReturn(true);
-      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
-      CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
-      when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
-      when(mockCatalogHandleUtils.maxCommitRetries()).thenReturn(5);
-      mockCatalogHandleUtils.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
+      catalogHandlerUtils.commit(((BaseTable) catalog.loadTable(TABLE)).operations(), request);
     } catch (Exception e) {
       fail("Rollback Compaction on conflict feature failed : " + e);
     }
@@ -749,16 +741,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     // commit FILE_C
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
-    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
-    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
-    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
-        .thenReturn(true);
-    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
-    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
-    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
     Assertions.assertThatThrownBy(
             () ->
-                mockCatalogHandleUtils.commit(
+                catalogHandlerUtils.commit(
                     ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
@@ -830,16 +816,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .commit();
     // now add more files to non-main branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
-    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
-    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
-    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
-        .thenReturn(true);
-    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
-    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
-    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
     Assertions.assertThatThrownBy(
             () ->
-                mockCatalogHandleUtils.commit(
+                catalogHandlerUtils.commit(
                     ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
@@ -912,16 +892,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // now add more files to non-main branch, this will make sequence number non monotonic for main
     // branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
-    PolarisConfigurationStore pc = new PolarisConfigurationStore() {};
-    PolarisConfigurationStore mockedPc = Mockito.spy(pc);
-    when(mockedPc.getConfiguration(null, "polaris.config.rollback.compaction.on-conflicts.enabled"))
-        .thenReturn(true);
-    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(null, mockedPc);
-    CatalogHandlerUtils mockCatalogHandleUtils = Mockito.spy(catalogHandlerUtils);
-    when(mockCatalogHandleUtils.isRollbackCompactionEnabled()).thenReturn(true);
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
     Assertions.assertThatThrownBy(
             () ->
-                mockCatalogHandleUtils.commit(
+                catalogHandlerUtils.commit(
                     ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");

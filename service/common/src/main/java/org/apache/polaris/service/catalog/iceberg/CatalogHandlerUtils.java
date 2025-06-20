@@ -123,14 +123,24 @@ public class CatalogHandlerUtils {
     }
   }
 
-  private final RealmContext realmContext;
-  private final PolarisConfigurationStore configurationStore;
+  private final int maxCommitRetries;
+  private final boolean rollbackCompactionEnabled;
 
   @Inject
   public CatalogHandlerUtils(
       RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    this.realmContext = realmContext;
-    this.configurationStore = configurationStore;
+    this.maxCommitRetries =
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
+    this.rollbackCompactionEnabled =
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
+  }
+
+  @VisibleForTesting
+  public CatalogHandlerUtils(int maxCommitRetries, boolean rollbackCompactionEnabled) {
+    this.maxCommitRetries = maxCommitRetries;
+    this.rollbackCompactionEnabled = rollbackCompactionEnabled;
   }
 
   /**
@@ -454,7 +464,7 @@ public class CatalogHandlerUtils {
     AtomicBoolean isRetry = new AtomicBoolean(false);
     try {
       Tasks.foreach(ops)
-          .retry(maxCommitRetries())
+          .retry(maxCommitRetries)
           .exponentialBackoff(
               COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
@@ -470,7 +480,7 @@ public class CatalogHandlerUtils {
                 try {
                   request.requirements().forEach((requirement) -> requirement.validate(base));
                 } catch (CommitFailedException e) {
-                  if (!isRollbackCompactionEnabled()) {
+                  if (!rollbackCompactionEnabled) {
                     // wrap and rethrow outside of tasks to avoid unnecessary retry
                     throw new ValidationFailureException(e);
                   }
@@ -804,7 +814,7 @@ public class CatalogHandlerUtils {
     AtomicBoolean isRetry = new AtomicBoolean(false);
     try {
       Tasks.foreach(ops)
-          .retry(maxCommitRetries())
+          .retry(maxCommitRetries)
           .exponentialBackoff(
               COMMIT_MIN_RETRY_WAIT_MS_DEFAULT,
               COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
@@ -844,17 +854,5 @@ public class CatalogHandlerUtils {
     }
 
     return ops.current();
-  }
-
-  @VisibleForTesting
-  public int maxCommitRetries() {
-    return configurationStore.getConfiguration(
-        realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES);
-  }
-
-  @VisibleForTesting
-  public boolean isRollbackCompactionEnabled() {
-    return configurationStore.getConfiguration(
-        realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS);
   }
 }
