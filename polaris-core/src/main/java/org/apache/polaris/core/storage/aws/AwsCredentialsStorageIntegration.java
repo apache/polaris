@@ -32,7 +32,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.core.storage.aws.StsClientSupplier.StsDestination;
+import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
@@ -46,21 +46,21 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
-  private final StsClientSupplier stsClientSupplier;
+  private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
   public AwsCredentialsStorageIntegration(StsClient fixedClient) {
     this((destination) -> fixedClient);
   }
 
-  public AwsCredentialsStorageIntegration(StsClientSupplier stsClientSupplier) {
-    this(stsClientSupplier, Optional.empty());
+  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
+    this(stsClientProvider, Optional.empty());
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClientSupplier stsClientSupplier, Optional<AwsCredentialsProvider> credentialsProvider) {
+      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
     super(AwsCredentialsStorageIntegration.class.getName());
-    this.stsClientSupplier = stsClientSupplier;
+    this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
   }
 
@@ -95,7 +95,7 @@ public class AwsCredentialsStorageIntegration
 
     @SuppressWarnings("resource")
     StsClient stsClient =
-        stsClientSupplier.stsClient(StsDestination.of(null, storageConfig.getRegion()));
+        stsClientProvider.stsClient(StsDestination.of(null, storageConfig.getRegion()));
 
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
     EnumMap<StorageAccessProperty, String> credentialMap =
