@@ -24,17 +24,31 @@ import java.net.URI;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sts.StsBaseClientBuilder;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.endpoints.StsEndpointProvider;
 
-public interface StsClientSupplier {
+public interface StsClientProvider {
 
+  /**
+   * Returns an STS client for the given destination (endpoint + region). The returned client may
+   * not be a fresh instance for every call, however the client is reusable for multiple concurrent
+   * requests from multiple threads. If the endpoint or region parameters are not specified, AWS SDK
+   * defaults will be used.
+   *
+   * @param destination Endpoint and Region data for the client. Both values are optional.
+   */
   StsClient stsClient(StsDestination destination);
 
   @PolarisImmutable
   interface StsDestination {
+    /** Corresponds to {@link StsBaseClientBuilder#endpointProvider(StsEndpointProvider)} */
     @Value.Parameter(order = 1)
     Optional<URI> endpoint();
 
+    /** Corresponds to {@link AwsClientBuilder#region(Region)} */
     @Value.Parameter(order = 2)
     Optional<String> region();
 

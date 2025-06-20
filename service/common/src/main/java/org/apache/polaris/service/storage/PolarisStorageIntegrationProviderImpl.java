@@ -38,7 +38,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.aws.StsClientSupplier;
+import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -46,24 +46,24 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final StsClientSupplier stsClientSupplier;
+  private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
 
   @Inject
   public PolarisStorageIntegrationProviderImpl(
-      StorageConfiguration storageConfiguration, StsClientSupplier stsClientSupplier) {
+      StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider) {
     this(
-        stsClientSupplier,
+        stsClientProvider,
         Optional.ofNullable(storageConfiguration.stsCredentials()),
         storageConfiguration.gcpCredentialsSupplier());
   }
 
   public PolarisStorageIntegrationProviderImpl(
-      StsClientSupplier stsClientSupplier,
+      StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider) {
-    this.stsClientSupplier = stsClientSupplier;
+    this.stsClientProvider = stsClientProvider;
     this.stsCredentials = stsCredentials;
     this.gcpCredsProvider = gcpCredsProvider;
   }
@@ -81,7 +81,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3:
         storageIntegration =
             (PolarisStorageIntegration<T>)
-                new AwsCredentialsStorageIntegration(stsClientSupplier, stsCredentials);
+                new AwsCredentialsStorageIntegration(stsClientProvider, stsCredentials);
         break;
       case GCS:
         storageIntegration =
