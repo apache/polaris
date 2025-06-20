@@ -37,8 +37,9 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 
 /**
- * This class provides a REST client for the Polaris Management service endpoints and its auth-token endpoint,
- * which is used in Spark client tests to run commands that Spark SQL can’t issue directly (e.g., createCatalog).
+ * This class provides a REST client for the Polaris Management service endpoints and its auth-token
+ * endpoint, which is used in Spark client tests to run commands that Spark SQL can’t issue directly
+ * (e.g., createCatalog).
  */
 public final class PolarisManagementClient implements AutoCloseable {
   private final PolarisApiEndpoints endpoints;
