@@ -193,7 +193,7 @@ public class PolarisEntityResolver {
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    this(callCtx, ms, catalogPath, new PolarisEntityCore(entity), null);
+    this(callCtx, ms, catalogPath, new PolarisEntityCore.Builder<>(entity).build(), null);
   }
 
   /**
