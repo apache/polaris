@@ -28,6 +28,9 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
   protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
     return builder
         .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.warehouse.dir", warehouseDir.toString())

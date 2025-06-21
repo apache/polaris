@@ -46,9 +46,9 @@ import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
-import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
+import org.apache.polaris.spark.rest.CreateGenericTableRequest;
+import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 
