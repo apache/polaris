@@ -44,7 +44,7 @@ export CLIENT_SECRET=s3cr3t
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of1 Polaris! For details on how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
+Congrats, you now have a running instance of1 Polaris! For details on how to use Polaris, check out the [Using Polaris]({{% relref "../using-polaris" %}}) page.
 
 ## Cleanup Instructions
 To shut down the Polaris server, run the following commands:
