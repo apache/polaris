@@ -108,7 +108,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
 }
 
-// ensure the shadowJar job is run for both `assemble` and `build` task
+// ensure the ShadowJar job is run for both `assemble` and `build` task
 tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
 
 tasks.named("build") { dependsOn("createPolarisSparkJar") }
