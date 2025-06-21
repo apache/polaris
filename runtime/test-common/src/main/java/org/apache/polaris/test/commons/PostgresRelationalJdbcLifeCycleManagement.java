@@ -18,11 +18,12 @@
  */
 package org.apache.polaris.test.commons;
 
+import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.Map;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 public class PostgresRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
@@ -41,7 +42,10 @@ public class PostgresRelationalJdbcLifeCycleManagement
   @SuppressWarnings("resource")
   public Map<String, String> start() {
     postgres =
-        new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"))
+        new PostgreSQLContainer<>(
+                containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
+                    .dockerImageName(null)
+                    .asCompatibleSubstituteFor("postgres"))
             .withDatabaseName("polaris_db")
             .withUsername("polaris")
             .withPassword("polaris");
@@ -58,7 +62,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
         "polaris.persistence.relational.jdbc.max-retries",
         "2",
         "quarkus.datasource.db-kind",
-        "pgsql",
+        "postgresql",
         "quarkus.datasource.jdbc.url",
         postgres.getJdbcUrl(),
         "quarkus.datasource.username",

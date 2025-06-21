@@ -37,4 +37,5 @@ dependencies {
   implementation(platform(libs.testcontainers.bom))
   implementation("org.testcontainers:testcontainers")
   implementation("org.testcontainers:postgresql")
+  implementation(project(":polaris-container-spec-helper"))
 }
