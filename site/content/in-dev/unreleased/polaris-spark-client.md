@@ -128,14 +128,3 @@ The Polaris Spark client has the following functionality limitations:
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
 5) For other non-Iceberg tables like csv, it is not supported.
-
-## Iceberg Spark Client compatibility with Polaris Spark Client
-The Polaris Spark client today depends on a specific Iceberg client version, and the version dependency is described
-in the following table:
-
-| Spark Client Version | Iceberg Spark Client Version |
-|----------------------|------------------------------|
-| 1.0.0                | 1.9.0                        |
-
-The Iceberg dependency is automatically downloaded when the Polaris package is downloaded, so there is no need to
-add the Iceberg Spark client in the `packages` configuration.

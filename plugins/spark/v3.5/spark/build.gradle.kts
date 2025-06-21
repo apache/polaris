@@ -19,10 +19,7 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
-  id("polaris-client")
-  id("com.gradleup.shadow")
-}
+plugins { id("polaris-client") }
 
 // get version information
 val sparkMajorVersion = "3.5"
@@ -91,7 +88,7 @@ dependencies {
   }
 }
 
-tasks.named<ShadowJar>("shadowJar") {
+tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
@@ -112,7 +109,7 @@ tasks.named<ShadowJar>("shadowJar") {
 }
 
 // ensure the shadowJar job is run for both `assemble` and `build` task
-tasks.named("assemble") { dependsOn("shadowJar") }
+tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
 
-tasks.named("build") { dependsOn("shadowJar") }
+tasks.named("build") { dependsOn("createPolarisSparkJar") }
 
