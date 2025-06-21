@@ -51,6 +51,7 @@ dependencies {
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
   testFixturesApi("io.quarkus:quarkus-junit5")
 
+  testFixturesApi(project(":polaris-container-spec-helper"))
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")

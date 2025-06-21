@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.admintool;
 
+import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.io.IOException;
@@ -27,9 +29,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
-public class PostgresTestResourceLifecycleManager
+public class PostgresEclipselinkTestResourceLifecycleManager
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
 
   public static final String INIT_SCRIPT = "init-script";
@@ -53,7 +54,11 @@ public class PostgresTestResourceLifecycleManager
   @SuppressWarnings("resource")
   public Map<String, String> start() {
     postgres =
-        new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"))
+        new PostgreSQLContainer<>(
+                containerSpecHelper(
+                        "postgres", PostgresEclipselinkTestResourceLifecycleManager.class)
+                    .dockerImageName(null)
+                    .asCompatibleSubstituteFor("postgres"))
             .withDatabaseName("polaris_realm1")
             .withUsername("polaris")
             .withPassword("polaris");
@@ -63,6 +68,12 @@ public class PostgresTestResourceLifecycleManager
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
     return Map.of(
+        "quarkus.datasource.postgresql.jdbc.url",
+        postgres.getJdbcUrl(),
+        "quarkus.datasource.username",
+        postgres.getUsername(),
+        "quarkus.datasource.password",
+        postgres.getPassword(),
         "polaris.persistence.type",
         "eclipse-link",
         "polaris.persistence.eclipselink.configuration-file",
