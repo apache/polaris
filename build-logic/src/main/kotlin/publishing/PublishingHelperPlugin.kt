@@ -133,6 +133,11 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
 
                 suppressPomMetadataWarningsFor("testFixturesApiElements")
                 suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
+
+                if (project.tasks.findByName("createPolarisSparkJar") != null) {
+                  // if the project contains spark client jar, also publish the jar to maven
+                  artifact(project.tasks.named("createPolarisSparkJar").get())
+                }
               }
 
               if (
