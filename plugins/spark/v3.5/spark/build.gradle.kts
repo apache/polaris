@@ -19,10 +19,7 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
-  id("polaris-client")
-  id("com.gradleup.shadow")
-}
+plugins { id("polaris-client") }
 
 checkstyle {
   configProperties =
@@ -91,7 +88,7 @@ dependencies {
   }
 }
 
-tasks.named<ShadowJar>("shadowJar") {
+tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
