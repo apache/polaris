@@ -35,6 +35,7 @@ import org.apache.iceberg.spark.actions.DeleteReachableFilesSparkAction;
 import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
@@ -54,6 +55,7 @@ import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.hudi.catalog.HoodieInternalV2Table;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.internal.SessionState;
 import org.apache.spark.sql.types.StructType;
@@ -104,6 +106,7 @@ public class SparkCatalogTest {
       this.polarisSparkCatalog.initialize(name, options);
 
       this.deltaHelper = new DeltaHelper(options);
+      this.hudiHelper = new HudiHelper(options);
     }
   }
 
@@ -122,6 +125,7 @@ public class SparkCatalogTest {
     catalogConfig.put("cache-enabled", "false");
     catalogConfig.put(
         DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
+    catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
@@ -402,7 +406,7 @@ public class SparkCatalogTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"delta", "csv"})
+  @ValueSource(strings = {"delta", "hudi", "csv"})
   void testCreateAndLoadGenericTable(String format) throws Exception {
     Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
     createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, format);
@@ -418,7 +422,6 @@ public class SparkCatalogTest {
             () -> catalog.createTable(identifier, defaultSchema, new Transform[0], newProperties))
         .isInstanceOf(TableAlreadyExistsException.class);
 
-    // drop the iceberg table
     catalog.dropTable(identifier);
     assertThatThrownBy(() -> catalog.loadTable(identifier))
         .isInstanceOf(NoSuchTableException.class);
@@ -428,8 +431,9 @@ public class SparkCatalogTest {
   @Test
   void testMixedTables() throws Exception {
     // create two iceberg tables, and three non-iceberg tables
-    String[] tableNames = new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2"};
-    String[] tableFormats = new String[] {"iceberg", null, "delta", "csv", "delta"};
+    String[] tableNames =
+        new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2", "hudi1", "hudi2"};
+    String[] tableFormats = new String[] {"iceberg", null, "delta", "csv", "delta", "hudi", "hudi"};
     for (int i = 0; i < tableNames.length; i++) {
       Identifier identifier = Identifier.of(defaultNS, tableNames[i]);
       createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, tableFormats[i]);
@@ -445,8 +449,9 @@ public class SparkCatalogTest {
     // drop iceberg2 and delta1 table
     catalog.dropTable(Identifier.of(defaultNS, "iceberg2"));
     catalog.dropTable(Identifier.of(defaultNS, "delta2"));
+    catalog.dropTable(Identifier.of(defaultNS, "hudi2"));
 
-    String[] remainingTableNames = new String[] {"iceberg1", "delta1", "csv1"};
+    String[] remainingTableNames = new String[] {"iceberg1", "delta1", "csv1", "hudi1"};
     Identifier[] remainingTableIndents = catalog.listTables(defaultNS);
     assertThat(remainingTableIndents.length).isEqualTo(remainingTableNames.length);
     for (String name : remainingTableNames) {
@@ -465,12 +470,15 @@ public class SparkCatalogTest {
     String icebergTableName = "iceberg-table";
     String deltaTableName = "delta-table";
     String csvTableName = "csv-table";
+    String hudiTableName = "hudi-table";
     Identifier icebergIdent = Identifier.of(defaultNS, icebergTableName);
     Identifier deltaIdent = Identifier.of(defaultNS, deltaTableName);
     Identifier csvIdent = Identifier.of(defaultNS, csvTableName);
+    Identifier hudiIdent = Identifier.of(defaultNS, hudiTableName);
     createAndValidateGenericTableWithLoad(catalog, icebergIdent, defaultSchema, "iceberg");
     createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
     createAndValidateGenericTableWithLoad(catalog, csvIdent, defaultSchema, "csv");
+    createAndValidateGenericTableWithLoad(catalog, hudiIdent, defaultSchema, "hudi");
 
     // verify alter iceberg table
     Table newIcebergTable =
@@ -498,6 +506,11 @@ public class SparkCatalogTest {
       SessionState mockedState = Mockito.mock(SessionState.class);
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
 
       TableProvider deltaProvider = Mockito.mock(TableProvider.class);
       mockedStaticDS
@@ -551,18 +564,21 @@ public class SparkCatalogTest {
   void testPurgeInvalidateTable() throws Exception {
     Identifier icebergIdent = Identifier.of(defaultNS, "iceberg-table");
     Identifier deltaIdent = Identifier.of(defaultNS, "delta-table");
+    Identifier hudiIdent = Identifier.of(defaultNS, "hudi-table");
     createAndValidateGenericTableWithLoad(catalog, icebergIdent, defaultSchema, "iceberg");
     createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
-
+    createAndValidateGenericTableWithLoad(catalog, hudiIdent, defaultSchema, "hudi");
     // test invalidate table is a no op today
     catalog.invalidateTable(icebergIdent);
     catalog.invalidateTable(deltaIdent);
+    catalog.invalidateTable(hudiIdent);
 
     Identifier[] tableIdents = catalog.listTables(defaultNS);
-    assertThat(tableIdents.length).isEqualTo(2);
+    assertThat(tableIdents.length).isEqualTo(3);
 
     // verify purge tables drops the table
     catalog.purgeTable(deltaIdent);
+    catalog.purgeTable(hudiIdent);
     assertThat(catalog.listTables(defaultNS).length).isEqualTo(1);
 
     // purge iceberg table triggers file deletion
@@ -588,7 +604,7 @@ public class SparkCatalogTest {
     properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, format);
     properties.put(
         TableCatalog.PROP_LOCATION,
-        String.format("file:///tmp/delta/path/to/table/%s/", identifier.name()));
+        String.format("file:///tmp/%s/path/to/table/%s/", format, identifier.name()));
 
     SQLConf conf = new SQLConf();
     try (MockedStatic<SparkSession> mockedStaticSparkSession =
@@ -601,6 +617,11 @@ public class SparkCatalogTest {
       SessionState mockedState = Mockito.mock(SessionState.class);
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
 
       TableProvider provider = Mockito.mock(TableProvider.class);
       mockedStaticDS
@@ -622,6 +643,8 @@ public class SparkCatalogTest {
         // iceberg SparkTable is returned for iceberg tables
         assertThat(createdTable).isInstanceOf(SparkTable.class);
         assertThat(loadedTable).isInstanceOf(SparkTable.class);
+      } else if (PolarisCatalogUtils.useHudi(format)) {
+        assertThat(loadedTable).isInstanceOf(HoodieInternalV2Table.class);
       } else {
         // Spark V1 table is returned for non-iceberg tables
         assertThat(createdTable).isInstanceOf(V1Table.class);
