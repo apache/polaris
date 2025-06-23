@@ -36,10 +36,6 @@ A generic table in Polaris is an entity that defines the following fields:
 
 - **name** (required): A unique identifier for the table within a namespace
 - **format** (required): The format for the generic table, i.e. "delta", "csv"
-- **base-location** (optional): Table base location in URI format. For example: s3://<my-bucket>/path/to/table
-  - The table base location is a location that includes all files for the table
-  - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
-  - If no location is provided, clients or users are responsible for managing the location.
 - **properties** (optional): Properties for the generic table passed on creation.
   - Currently, there is no reserved property key defined.
   - The property definition and interpretation is delegated to client or engine implementations.
@@ -77,7 +73,6 @@ request body looks like the following:
 {
   "name": "<table_name>",
   "format": "<table_format>",
-  "base-location": "<table_base_location>",
   "doc": "<comment or description for table>",
   "properties": {
     "<property-key>": "<property-value>"
@@ -94,7 +89,6 @@ curl -X POST http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespac
   -d '{
     "name": "delta_table",
     "format": "delta",
-    "base-location": "s3://<my-bucket>/path/to/table",
     "doc": "delta table example",
     "properties": {
       "key1": "value1"
@@ -115,7 +109,6 @@ And the response looks like the following:
   "table": {
     "name": "delta_table",
     "format": "delta",
-    "base-location": "s3://<my-bucket>/path/to/table",
     "doc": "delta table example",
     "properties": {
       "key1": "value1"
