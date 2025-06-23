@@ -29,4 +29,11 @@
   <root level="${log.level.console:-INFO}">
     <appender-ref ref="console"/>
   </root>
+
+  <!--
+  Prevent the 'The Agroal dependency is present but no JDBC datasources have been defined.' build-time warning.
+  See https://github.com/quarkusio/quarkus/blob/2fbc20f445fad43aaf4f3f984b9ac8319c7c7f0a/extensions/agroal/deployment/src/main/java/io/quarkus/agroal/deployment/AgroalProcessor.java#L111
+  THIS IS A TECHNICAL NECESSITY, because of the
+  -->
+  <logger name="io.quarkus.agroal.deployment" level="ERROR"/>
 </configuration>

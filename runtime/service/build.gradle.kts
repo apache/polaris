@@ -134,6 +134,7 @@ dependencies {
 }
 
 tasks.withType(Test::class.java).configureEach {
+  forkEvery = 1
   systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
@@ -147,10 +148,12 @@ tasks.withType(Test::class.java).configureEach {
   systemProperty("java.security.manager", "allow")
 }
 
+tasks.withType(Test::class.java).configureEach {
+  forkEvery = 1
+}
+
 tasks.named<Test>("test").configure {
   maxParallelForks = 4
-  // enlarge the max heap size to avoid out of memory error
-  maxHeapSize = "4g"
   // Silence the 'OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader
   // classes because bootstrap classpath has been appended' warning from OpenJDK.
   jvmArgs("-Xshare:off")
