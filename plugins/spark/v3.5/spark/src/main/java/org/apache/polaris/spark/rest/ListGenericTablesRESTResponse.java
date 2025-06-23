@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.spark.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTResponse;
-import org.apache.polaris.service.types.ListGenericTablesResponse;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * RESTResponse definition for ListGenericTable which extends the iceberg RESTResponse. This is
