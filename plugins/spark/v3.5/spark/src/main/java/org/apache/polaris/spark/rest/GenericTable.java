@@ -26,10 +26,6 @@ import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 // TODO: auto generate the class based on spec
-@jakarta.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",
-    date = "2025-06-16T22:51:23.661280-07:00[America/Los_Angeles]",
-    comments = "Generator version: 7.12.0")
 public class GenericTable {
 
   @NotNull private final String name;

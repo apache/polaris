@@ -23,7 +23,10 @@ plugins { id("polaris-client") }
 
 checkstyle {
   configProperties =
-    mapOf("org.checkstyle.google.suppressionfilter.config" to project.file("checkstyle_suppressions.xml").absolutePath)
+    mapOf(
+      "org.checkstyle.google.suppressionfilter.config" to
+        project.file("checkstyle_suppressions.xml").absolutePath
+    )
 }
 
 // get version information
