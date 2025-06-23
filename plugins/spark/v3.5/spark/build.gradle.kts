@@ -24,6 +24,11 @@ plugins {
   id("com.gradleup.shadow")
 }
 
+checkstyle {
+  configProperties =
+    mapOf("checkstyle.suppression.file" to project.file("checkstyle_suppressions.xml").absolutePath)
+}
+
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
