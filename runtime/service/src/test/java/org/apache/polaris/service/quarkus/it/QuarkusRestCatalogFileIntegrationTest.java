@@ -22,11 +22,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
 
 @QuarkusTest
-@TestProfile(QuarkusRestCatalogIntegrationTest.Profile.class)
-public class QuarkusRestCatalogIntegrationTest extends PolarisRestCatalogIntegrationTest {
+@TestProfile(QuarkusRestCatalogFileIntegrationTest.Profile.class)
+public class QuarkusRestCatalogFileIntegrationTest extends PolarisRestCatalogFileIntegrationTest {
 
   public static class Profile implements QuarkusTestProfile {
 

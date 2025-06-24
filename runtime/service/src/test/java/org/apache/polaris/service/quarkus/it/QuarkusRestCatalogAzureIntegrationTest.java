@@ -18,8 +18,20 @@
  */
 package org.apache.polaris.service.quarkus.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAzureIntegrationTest;
 
-@QuarkusIntegrationTest
-public class QuarkusRestCatalogIT extends PolarisRestCatalogIntegrationTest {}
+@QuarkusTest
+@TestProfile(QuarkusRestCatalogAzureIntegrationTest.Profile.class)
+public class QuarkusRestCatalogAzureIntegrationTest extends PolarisRestCatalogAzureIntegrationTest {
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"AZURE\"]");
+    }
+  }
+}

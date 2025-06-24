@@ -16,13 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it.relational.jdbc;
+package org.apache.polaris.service.quarkus.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+import java.util.Map;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAwsIntegrationTest;
 
-@TestProfile(RelationalJdbcProfile.class)
-@QuarkusIntegrationTest
-public class JdbcRestCatalogIT extends PolarisRestCatalogFileIntegrationTest {}
+@QuarkusTest
+@TestProfile(QuarkusRestCatalogAwsIntegrationTest.Profile.class)
+public class QuarkusRestCatalogAwsIntegrationTest extends PolarisRestCatalogAwsIntegrationTest {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"S3\"]");
+    }
+  }
+}
