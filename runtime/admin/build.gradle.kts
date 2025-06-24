@@ -51,6 +51,7 @@ dependencies {
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
   testFixturesApi("io.quarkus:quarkus-junit5")
 
+  testFixturesApi(project(":polaris-container-spec-helper"))
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")
@@ -88,8 +89,13 @@ artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
 
-tasks.named<Test>("test").configure {
+tasks.withType(Test::class.java).configureEach {
   maxParallelForks = 4
+  forkEvery = 1
+  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
+}
+
+tasks.named<Test>("test").configure {
   // enlarge the max heap size to avoid out of memory error
   maxHeapSize = "4g"
   // Silence the 'OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader
