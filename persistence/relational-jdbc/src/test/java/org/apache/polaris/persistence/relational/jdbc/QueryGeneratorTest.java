@@ -209,7 +209,7 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location_without_scheme = ?"
+            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/").sql());
@@ -230,7 +230,7 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
+            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").sql());
     Assertions.assertThatCollection(
@@ -242,7 +242,7 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme"
-            + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND parent_id = ? AND (location_without_scheme = ?"
+            + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/").sql());
     Assertions.assertThatCollection(

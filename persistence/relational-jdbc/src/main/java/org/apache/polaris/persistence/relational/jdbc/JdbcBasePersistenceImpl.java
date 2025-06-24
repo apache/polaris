@@ -662,7 +662,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     PreparedQuery query =
         QueryGenerator.generateOverlapQuery(
-            realmId, entity.getParentId(), entity.getBaseLocation());
+            realmId, entity.getCatalogId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity());
       if (!results.isEmpty()) {

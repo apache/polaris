@@ -18,8 +18,8 @@
 --
 
 -- Changes from v1:
---  * Added a `location` column to entities
---  * Added an index `idx_locations` over (realm_id, parent_id, location) in entities
+--  * Added a `location_without_scheme` column to entities
+--  * Added an index `idx_locations` over (realm_id, catalog_id, location_without_scheme) in entities
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS entities (
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, parent_id, location_without_scheme);
+CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, location_without_scheme);
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);

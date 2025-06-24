@@ -221,13 +221,13 @@ public class QueryGenerator {
    * be combined with a check using `StorageLocation`.
    *
    * @param realmId A realm to search within
-   * @param parentId A parent entity to search within
+   * @param catalogId A catalog entity to search within
    * @param baseLocation The base location to look for overlap with, with or without a scheme
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, long parentId, String baseLocation) {
+      String realmId, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -248,12 +248,12 @@ public class QueryGenerator {
     parameters.add(locationWithoutScheme + "%");
 
     String locationClause = String.join(" OR ", conditions);
-    String clause = " WHERE realm_id = ? AND parent_id = ? AND (" + locationClause + ")";
+    String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
 
     // realmId and parentId go first
     List<Object> finalParams = new ArrayList<>();
     finalParams.add(realmId);
-    finalParams.add(parentId);
+    finalParams.add(catalogId);
     finalParams.addAll(parameters);
 
     QueryFragment where = new QueryFragment(clause, finalParams);
