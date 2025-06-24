@@ -104,6 +104,7 @@ distZip.configure { finalizedBy(digestDistZip) }
 
 if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
     signing {
+        useGpgCmd();
         sign(distTar.get())
         sign(distZip.get())
     }
