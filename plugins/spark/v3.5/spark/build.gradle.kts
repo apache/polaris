@@ -55,6 +55,15 @@ dependencies {
     exclude("io.smallrye.common", "*")
     exclude("io.swagger", "*")
     exclude("org.apache.commons", "*")
+    exclude("com.fasterxml.jackson", "*")
+    exclude("com.fasterxml.jackson.core", "*")
+    exclude("jakarta.inject", "*")
+    exclude("jakarta.validation", "*")
+    exclude("jakarta.ws.rs", "")
+    exclude("com.github.ben-manes.caffeine", "*")
+    exclude("commons-codec", "*")
+    exclude("com.google.guava", "*")
+    exclude("org.apache.polaris", "polaris-api-management-model")
   }
 
   implementation(
