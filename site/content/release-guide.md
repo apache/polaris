@@ -39,6 +39,12 @@ gpg --armor --export <YOUR KEY ID HERE> >> KEYS # append public key block
 svn commit -m "add key for <YOUR NAME HERE>"
 ```
 
+To send the key to the Ubuntu key-server, Apache Nexus needs it to validate published artifacts:
+```
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys <YOUR KEY ID HERE>
+
+```
+
 ### Dist repository
 
 The Apache dist repository (dist.apache.org) is used to populate download.apache.org and archives.apache.org. There are two spaces on dist:
@@ -55,8 +61,8 @@ Apache uses Nexus as Maven repository (repository.apache.org) where releases are
 You have to use Apache credentials on Nexus, configured in `~/.gradle/gradle.properties` file using `mavenUser` and `mavenPassword`:
 
 ```
-mavenUser=yourApacheId
-mavenPassword=yourPassword
+apacheUsername=yourApacheId
+apachePassword=yourPassword
 ```
 
 Note: an alternative is to use `ORG_GRADLE_PROJECT_apacheUsername` and `ORG_GRADLE_PROJECT_apachePassword` environment variables:
@@ -101,7 +107,7 @@ If it's the first RC for the release, you have to create a release branch:
 
 ```
 git branch release/x.y.z
-git push apache/release/x.y.z
+git push apache release/x.y.z
 ```
 
 Go in the branch, and set the target release version:
@@ -121,7 +127,7 @@ On the release branch, you create a tag for the RC:
 
 ```
 git tag apache-polaris-x.y.z-rci
-git push apache/apache-polaris-x.y.z-rci
+git push apache apache-polaris-x.y.z-rci
 ```
 
 Switch to the tag:
@@ -145,14 +151,13 @@ It's also welcome to verify the regression tests (see [regtests/README.md](https
 You can now build the source distribution:
 
 ```
-./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+./gradlew build sourceTarball -Prelease -PuseGpgAgent -PsignArtifacts -x test -x intTest
 ```
 
 The source distribution archives are available in `build/distribution` folder.
 
 The binary distributions (for convenience) are available in:
-* `quarkus/admin/build/distribution`
-* `quarkus/server/build/distribution`
+* `runtime/distribution/build/distributions`
 
 Now, we can stage the artifacts to dist dev repository:
 
@@ -161,10 +166,10 @@ svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
 cd polaris-dist-dev
 mkdir apache-polaris-x.y.z
 cp /path/to/polaris/github/clone/repo/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/server/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/admin/build/distribution/* apache-polaris-x.y.z
+cp /path/to/polaris/github/clone/repo/runtime/distribution/build/distributions/* apache-polaris-x.y.z
 cp -r /path/to/polaris/gitbub/clone/repo/helm/polaris helm-chart/x.y.z 
-svn commit
+svn add apache-polaris-x.y.z
+svn commit -m"Stage Apache Polaris x.y.z RCx"
 ```
 
 ### Build and stage Maven artifacts
