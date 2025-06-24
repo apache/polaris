@@ -699,16 +699,9 @@ public class PolarisAdminService {
   /**
    * @see #extractSecretReferences
    */
-  private boolean requiresSecretReferenceExtraction(CreateCatalogRequest catalogRequest) {
-    Catalog catalog = catalogRequest.getCatalog();
-    if (catalog instanceof ExternalCatalog externalCatalog) {
-      if (externalCatalog.getConnectionConfigInfo() != null) {
-        // TODO: Make this more targeted once we have connection configs that don't involve
-        // processing of inline secrets.
-        return true;
-      }
-    }
-    return false;
+  private boolean requiresSecretReferenceExtraction(ConnectionConfigInfo connectionConfigInfo) {
+    return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
+        != AuthenticationParameters.AuthenticationTypeEnum.NO_AUTH;
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
@@ -733,24 +726,34 @@ public class PolarisAdminService {
             .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
-    if (requiresSecretReferenceExtraction(catalogRequest)) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("catalogName", entity.getName())
-          .log("Extracting secret references to create federated catalog");
-      FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-      // For fields that contain references to secrets, we'll separately process the secrets from
-      // the original request first, and then populate those fields with the extracted secret
-      // references as part of the construction of the internal persistence entity.
-      Map<String, UserSecretReference> processedSecretReferences =
-          extractSecretReferences(catalogRequest, entity);
-      entity =
-          new CatalogEntity.Builder(entity)
-              .setConnectionConfigInfoDpoWithSecrets(
-                  ((ExternalCatalog) catalogRequest.getCatalog()).getConnectionConfigInfo(),
-                  processedSecretReferences)
-              .build();
+    Catalog catalog = catalogRequest.getCatalog();
+    if (catalog instanceof ExternalCatalog externalCatalog) {
+      ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
+
+      if (connectionConfigInfo != null) {
+        LOGGER
+            .atDebug()
+            .addKeyValue("catalogName", entity.getName())
+            .log("Creating a federated catalog");
+        FeatureConfiguration.enforceFeatureEnabledOrThrow(
+            callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+        Map<String, UserSecretReference> processedSecretReferences = Map.of();
+        if (requiresSecretReferenceExtraction(connectionConfigInfo)) {
+          // For fields that contain references to secrets, we'll separately process the secrets
+          // from the original request first, and then populate those fields with the extracted
+          // secret references as part of the construction of the internal persistence entity.
+          processedSecretReferences = extractSecretReferences(catalogRequest, entity);
+        } else {
+          // Support no-auth catalog federation only when the feature is enabled.
+          FeatureConfiguration.enforceFeatureEnabledOrThrow(
+              callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION_NO_AUTH);
+        }
+        entity =
+            new CatalogEntity.Builder(entity)
+                .setConnectionConfigInfoDpoWithSecrets(
+                    connectionConfigInfo, processedSecretReferences)
+                .build();
+      }
     }
 
     CreateCatalogResult catalogResult =

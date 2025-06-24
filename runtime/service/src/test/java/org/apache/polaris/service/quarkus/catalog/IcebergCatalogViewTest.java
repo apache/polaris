@@ -217,6 +217,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
         new CreateCatalogRequest(
             new CatalogEntity.Builder()
                 .setName(CATALOG_NAME)
+                .setCatalogType("INTERNAL")
                 .addProperty(
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
