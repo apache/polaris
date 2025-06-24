@@ -41,7 +41,7 @@ if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
   if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
     -d "grant_type=client_credentials" \
     -d "client_id=root" \
-    -d "client_secret=secret" \
+    -d "client_secret=s3cr3t" \
     -d "scope=PRINCIPAL_ROLE:ALL"); then
     logred "Error: Failed to retrieve bearer token"
     exit 1

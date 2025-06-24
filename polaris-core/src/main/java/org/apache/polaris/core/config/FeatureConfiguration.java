@@ -288,24 +288,35 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
+  public static final FeatureConfiguration<Boolean> ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS =
       PolarisConfiguration.<Boolean>builder()
-          .key("ADD_TRAILING_SLASH_TO_LOCATION")
-          .catalogConfig("polaris.config.add-trailing-slash-to-location")
+          .key("ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS")
+          .catalogConfig("polaris.config.rollback.compaction.on-conflicts.enabled")
           .description(
-              "When set, the base location for a table or namespace will have `/` appended to it")
-          .defaultValue(true)
-          .buildFeatureConfiguration();
-
-  public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
-      PolarisConfiguration.<Boolean>builder()
-          .key("OPTIMIZED_SIBLING_CHECK")
-          .description(
-              "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
-                  + "locations will be checked against previous ones based on components, so the new location "
-                  + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
-                  + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
-                  + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+              "Rollback replace snapshots created by compaction which have "
+                  + "polaris.internal.conflict-resolution.by-operation-type.replace property set to rollback "
+                  + "in their snapshot summary")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
+    PolarisConfiguration.<Boolean>builder()
+      .key("ADD_TRAILING_SLASH_TO_LOCATION")
+      .catalogConfig("polaris.config.add-trailing-slash-to-location")
+      .description(
+        "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
+      .defaultValue(true)
+      .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
+    PolarisConfiguration.<Boolean>builder()
+      .key("OPTIMIZED_SIBLING_CHECK")
+      .description(
+        "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
+          + "locations will be checked against previous ones based on components, so the new location "
+          + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
+          + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
+          + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+      .defaultValue(false)
+      .buildFeatureConfiguration();
 }
