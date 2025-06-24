@@ -169,6 +169,7 @@ cp /path/to/polaris/github/clone/repo/build/distribution/* apache-polaris-x.y.z
 cp /path/to/polaris/github/clone/repo/runtime/distribution/build/distributions/* apache-polaris-x.y.z
 cp -r /path/to/polaris/github/clone/repo/helm/polaris helm-chart/x.y.z 
 svn add apache-polaris-x.y.z
+svn add helm-chart/x.y.z
 svn commit -m"Stage Apache Polaris x.y.z RCx"
 ```
 
