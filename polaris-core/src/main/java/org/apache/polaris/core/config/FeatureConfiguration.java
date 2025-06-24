@@ -300,23 +300,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
-    PolarisConfiguration.<Boolean>builder()
-      .key("ADD_TRAILING_SLASH_TO_LOCATION")
-      .catalogConfig("polaris.config.add-trailing-slash-to-location")
-      .description(
-        "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
-      .defaultValue(true)
-      .buildFeatureConfiguration();
+      PolarisConfiguration.<Boolean>builder()
+          .key("ADD_TRAILING_SLASH_TO_LOCATION")
+          .catalogConfig("polaris.config.add-trailing-slash-to-location")
+          .description(
+              "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
-    PolarisConfiguration.<Boolean>builder()
-      .key("OPTIMIZED_SIBLING_CHECK")
-      .description(
-        "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
-          + "locations will be checked against previous ones based on components, so the new location "
-          + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
-          + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
-          + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
-      .defaultValue(false)
-      .buildFeatureConfiguration();
+      PolarisConfiguration.<Boolean>builder()
+          .key("OPTIMIZED_SIBLING_CHECK")
+          .description(
+              "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
+                  + "locations will be checked against previous ones based on components, so the new location "
+                  + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
+                  + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
+                  + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
