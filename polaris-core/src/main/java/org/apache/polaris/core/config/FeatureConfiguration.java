@@ -20,6 +20,7 @@ package org.apache.polaris.core.config;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
@@ -259,6 +260,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
           .description("The list of supported catalog connection types for federation")
           .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>> SUPPORTED_FEDERATION_AUTHENTICATION_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_FEDERATION_AUTHENTICATION_TYPES")
+          .description("The list of supported authentication types for catalog federation")
+          .defaultValue(
+              List.of(
+                  AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
+                  AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
