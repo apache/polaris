@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -189,8 +190,8 @@ public class IcebergCatalogAdapter
     }
   }
 
-  private IcebergCatalogHandler newHandlerWrapper(
-      SecurityContext securityContext, String catalogName) {
+  @VisibleForTesting
+  IcebergCatalogHandler newHandlerWrapper(SecurityContext securityContext, String catalogName) {
     validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
