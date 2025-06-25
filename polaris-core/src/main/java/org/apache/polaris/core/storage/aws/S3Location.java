@@ -27,7 +27,7 @@ import org.apache.polaris.core.storage.StorageLocation;
 public class S3Location extends StorageLocation {
   private static final Pattern URI_PATTERN = Pattern.compile("^(s3a?)://(.+)$");
   private final String scheme;
-  private final String object_key_w_bucket;
+  private final String objectKeyWBucket;
 
   public S3Location(@Nonnull String location) {
     super(location);
@@ -36,7 +36,7 @@ public class S3Location extends StorageLocation {
       throw new IllegalArgumentException("Invalid S3 location uri " + location);
     }
     this.scheme = matcher.group(1);
-    this.object_key_w_bucket = matcher.group(2);
+    this.objectKeyWBucket = matcher.group(2);
   }
 
   public static boolean isS3Location(String location) {
@@ -51,8 +51,8 @@ public class S3Location extends StorageLocation {
   public boolean isChildOf(StorageLocation potentialParent) {
     // Given that S3 and S3A are to be treated similarly, the parent check ignores the prefix
     if (potentialParent instanceof S3Location) {
-      return this.object_key_w_bucket.startsWith(
-          ((S3Location) potentialParent).object_key_w_bucket);
+      return this.objectKeyWBucket.startsWith(
+          ((S3Location) potentialParent).objectKeyWBucket);
     } else {
       return false;
     }
