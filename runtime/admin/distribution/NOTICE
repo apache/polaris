@@ -107,9 +107,9 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.15.1
-Group: io.micrometer Name: micrometer-core Version: 1.15.1
-Group: io.micrometer Name: micrometer-observation Version: 1.15.1
+Group: io.micrometer Name: micrometer-commons Version: 1.14.6
+Group: io.micrometer Name: micrometer-core Version: 1.14.6
+Group: io.micrometer Name: micrometer-observation Version: 1.14.6
 
 NOTICE:
 | Micrometer
