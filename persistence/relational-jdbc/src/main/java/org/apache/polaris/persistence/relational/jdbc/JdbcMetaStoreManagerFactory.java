@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
@@ -43,7 +44,11 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -93,8 +98,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private void initializeForRealm(
-      RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap);
+      RealmContext realmContext,
+      RootCredentialsSet rootCredentialsSet,
+      Optional<SchemaOptions> schemaOptions) {
+    DatasourceOperations databaseOperations = getDatasourceOperations(schemaOptions);
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
@@ -108,18 +115,19 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(boolean isBootstrap) {
+  private DatasourceOperations getDatasourceOperations(Optional<SchemaOptions> schemaOptions) {
     DatasourceOperations databaseOperations;
     try {
       databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);
     }
-    if (isBootstrap) {
+    // If this is set, we are bootstrapping
+    if (schemaOptions.isPresent()) {
       try {
         // Run the set-up script to create the tables.
         databaseOperations.executeScript(
-            databaseOperations.getDatabaseType().getInitScriptResource());
+            databaseOperations.getDatabaseType().getInitScriptResource(schemaOptions.get()));
       } catch (SQLException e) {
         throw new RuntimeException(
             String.format("Error executing sql script: %s", e.getMessage()), e);
@@ -131,12 +139,31 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
+    SchemaOptions schemaOptions = ImmutableSchemaOptions
+      .builder()
+      .build();
+
+    BootstrapOptions bootstrapOptions = ImmutableBootstrapOptions
+      .builder()
+      .realms(realms)
+      .rootCredentialsSet(rootCredentialsSet)
+      .schemaOptions(schemaOptions)
+      .build();
+
+    return bootstrapRealms(bootstrapOptions);
+  }
+
+  @Override
+  public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(BootstrapOptions bootstrapOptions) {
     Map<String, PrincipalSecretsResult> results = new HashMap<>();
 
-    for (String realm : realms) {
+    for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        initializeForRealm(realmContext, rootCredentialsSet, true);
+        initializeForRealm(
+          realmContext,
+          bootstrapOptions.rootCredentialsSet(),
+          Optional.of(bootstrapOptions.schemaOptions()));
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realm));
@@ -172,7 +199,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, false);
+      initializeForRealm(realmContext, null, Optional.empty());
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
@@ -183,7 +210,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized Supplier<BasePersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, false);
+      initializeForRealm(realmContext, null, Optional.empty());
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     } else {
