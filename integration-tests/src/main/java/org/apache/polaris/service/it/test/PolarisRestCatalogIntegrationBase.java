@@ -121,6 +121,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RESTCatalog> {
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
+  // subpath shouldn't start with a slash, as it is appended to the base URI
+  private static final String CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_CATALOG_LOCATION_SUBPATH"))
+          .orElse("path/to/data");
+  private static final String EXTERNAL_CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_EXTERNAL_CATALOG_LOCATION_SUBPATH"))
+          .orElse("external-catalog");
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -212,15 +219,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
     StorageConfigInfo storageConfig = getStorageConfigInfo();
-    catalogBaseLocation =
-        storageConfig.getAllowedLocations().getFirst()
-            + "/"
-            + System.getenv("USER")
-            + "/path/to/data";
-
     URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
-    URI bucketBase = testRuntimeURI.resolve("my-bucket");
-    externalCatalogBase = testRuntimeURI.resolve("external-catalog");
+    catalogBaseLocation = testRuntimeURI.resolve(CATALOG_LOCATION_SUBPATH).toString();
+
+    externalCatalogBase = testRuntimeURI.resolve(EXTERNAL_CATALOG_LOCATION_SUBPATH);
 
     Optional<CatalogConfig> catalogConfig =
         Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
@@ -233,7 +235,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
-    if (!bucketBase.getScheme().equals("file")) {
+    if (!testRuntimeURI.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
     }
