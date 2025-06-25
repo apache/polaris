@@ -51,8 +51,7 @@ public class S3Location extends StorageLocation {
   public boolean isChildOf(StorageLocation potentialParent) {
     // Given that S3 and S3A are to be treated similarly, the parent check ignores the prefix
     if (potentialParent instanceof S3Location) {
-      return this.objectKeyWBucket.startsWith(
-          ((S3Location) potentialParent).objectKeyWBucket);
+      return this.objectKeyWBucket.startsWith(((S3Location) potentialParent).objectKeyWBucket);
     } else {
       return false;
     }
