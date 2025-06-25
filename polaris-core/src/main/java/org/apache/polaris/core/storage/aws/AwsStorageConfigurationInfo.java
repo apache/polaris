@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.net.URI;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,14 +54,24 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonProperty(value = "region")
   private @Nullable String region = null;
 
+  /** User ARN for the service principal */
+  @JsonProperty(value = "endpoint")
+  private @Nullable String endpoint;
+
   @JsonCreator
   public AwsStorageConfigurationInfo(
       @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
       @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations,
       @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
-      @JsonProperty(value = "region", required = false) @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, null, region);
+      @JsonProperty(value = "externalId") @Nullable String externalId,
+      @JsonProperty(value = "region", required = false) @Nullable String region,
+      @JsonProperty(value = "endpoint") @Nullable String endpoint) {
+    super(storageType, allowedLocations);
+    this.roleARN = roleARN;
+    this.externalId = externalId;
+    this.region = region;
+    this.endpoint = endpoint;
   }
 
   public AwsStorageConfigurationInfo(
@@ -69,10 +80,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull String roleARN,
       @Nullable String externalId,
       @Nullable String region) {
-    super(storageType, allowedLocations);
-    this.roleARN = roleARN;
-    this.externalId = externalId;
-    this.region = region;
+    this(storageType, allowedLocations, roleARN, externalId, region, null);
   }
 
   @Override
@@ -119,6 +127,12 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   public void setRegion(@Nullable String region) {
     this.region = region;
+  }
+
+  @JsonIgnore
+  @Nullable
+  public URI getEndpointUri() {
+    return endpoint == null ? null : URI.create(endpoint);
   }
 
   @JsonIgnore

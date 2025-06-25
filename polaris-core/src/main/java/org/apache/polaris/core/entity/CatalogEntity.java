@@ -273,7 +273,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion());
+                    awsConfigModel.getRegion(),
+                    awsConfigModel.getEndpoint());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;

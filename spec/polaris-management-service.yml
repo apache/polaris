@@ -1039,6 +1039,10 @@ components:
               type: string
               description: the aws region where data is stored
               example: "us-east-2"
+            endpoint:
+              type: string
+              description: endpoint for S3 and STS requests (optional)
+              example: "https://example.com"
           required:
             - roleArn
 

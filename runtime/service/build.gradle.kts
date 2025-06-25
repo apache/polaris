@@ -104,6 +104,8 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(testFixtures(project(":polaris-service-common")))
 
+  testImplementation(project(":polaris-minio-testcontainer"))
+
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 

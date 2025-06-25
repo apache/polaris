@@ -93,9 +93,10 @@ public class AwsCredentialsStorageIntegration
     credentialsProvider.ifPresent(
         cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
+    URI endpointUri = storageConfig.getEndpointUri();
     @SuppressWarnings("resource")
     StsClient stsClient =
-        stsClientProvider.stsClient(StsDestination.of(null, storageConfig.getRegion()));
+        stsClientProvider.stsClient(StsDestination.of(endpointUri, storageConfig.getRegion()));
 
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
     EnumMap<StorageAccessProperty, String> credentialMap =
@@ -116,6 +117,10 @@ public class AwsCredentialsStorageIntegration
 
     if (storageConfig.getRegion() != null) {
       credentialMap.put(StorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
+    }
+
+    if (endpointUri != null) {
+      credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
 
     if (storageConfig.getAwsPartition().equals("aws-us-gov")
