@@ -130,10 +130,10 @@ public class BootstrapCommand extends BaseCommand {
       final SchemaOptions schemaOptions;
       if (inputOptions.schemaInputOptions != null) {
         schemaOptions =
-          ImmutableSchemaOptions.builder()
-            .schemaFile(inputOptions.schemaInputOptions.schemaFile)
-            .schemaVersion(inputOptions.schemaInputOptions.schemaVersion)
-            .build();
+            ImmutableSchemaOptions.builder()
+                .schemaFile(inputOptions.schemaInputOptions.schemaFile)
+                .schemaVersion(inputOptions.schemaInputOptions.schemaVersion)
+                .build();
       } else {
         schemaOptions = ImmutableSchemaOptions.builder().build();
       }
