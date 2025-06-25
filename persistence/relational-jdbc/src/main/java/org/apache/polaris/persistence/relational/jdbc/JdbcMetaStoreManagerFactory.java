@@ -98,15 +98,14 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private void initializeForRealm(
+      DatasourceOperations datasourceOperations,
       RealmContext realmContext,
-      RootCredentialsSet rootCredentialsSet,
-      Optional<SchemaOptions> schemaOptions) {
-    DatasourceOperations databaseOperations = getDatasourceOperations(schemaOptions);
+      RootCredentialsSet rootCredentialsSet) {
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         () ->
             new JdbcBasePersistenceImpl(
-                databaseOperations,
+                datasourceOperations,
                 secretsGenerator(realmContext, rootCredentialsSet),
                 storageIntegrationProvider,
                 realmContext.getRealmIdentifier()));
@@ -115,23 +114,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  private DatasourceOperations getDatasourceOperations(Optional<SchemaOptions> schemaOptions) {
+  public DatasourceOperations getDatasourceOperations() {
     DatasourceOperations databaseOperations;
     try {
       databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);
-    }
-    // If this is set, we are bootstrapping
-    if (schemaOptions.isPresent()) {
-      try {
-        // Run the set-up script to create the tables.
-        databaseOperations.executeScript(
-            databaseOperations.getDatabaseType().getInitScriptResource(schemaOptions.get()));
-      } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Error executing sql script: %s", e.getMessage()), e);
-      }
     }
     return databaseOperations;
   }
@@ -159,10 +147,19 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
+        DatasourceOperations datasourceOperations = getDatasourceOperations();
+        try {
+          // Run the set-up script to create the tables.
+          datasourceOperations.executeScript(
+            datasourceOperations.getDatabaseType().getInitScriptResource(bootstrapOptions.schemaOptions()));
+        } catch (SQLException e) {
+          throw new RuntimeException(
+            String.format("Error executing sql script: %s", e.getMessage()), e);
+        }
         initializeForRealm(
+          datasourceOperations,
             realmContext,
-            bootstrapOptions.rootCredentialsSet(),
-            Optional.of(bootstrapOptions.schemaOptions()));
+            bootstrapOptions.rootCredentialsSet());
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realm));
@@ -198,7 +195,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, Optional.empty());
+      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
@@ -209,7 +207,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized Supplier<BasePersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, Optional.empty());
+      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     } else {
