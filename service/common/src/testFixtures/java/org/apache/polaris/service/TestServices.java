@@ -73,6 +73,7 @@ public record TestServices(
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
     IcebergRestConfigurationApi restConfigurationApi,
+    IcebergCatalogAdapter catalogAdapter,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
@@ -197,7 +198,7 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils =
           new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
 
-      IcebergCatalogAdapter service =
+      IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
               realmContext,
               callContext,
@@ -210,8 +211,9 @@ public record TestServices(
               reservedProperties,
               catalogHandlerUtils);
 
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
-      IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
+      IcebergRestConfigurationApi restConfigurationApi =
+          new IcebergRestConfigurationApi(catalogService);
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -262,6 +264,7 @@ public record TestServices(
           catalogsApi,
           restApi,
           restConfigurationApi,
+          catalogService,
           configurationStore,
           polarisDiagnostics,
           realmEntityManagerFactory,

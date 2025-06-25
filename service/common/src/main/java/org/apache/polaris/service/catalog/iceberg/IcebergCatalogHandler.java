@@ -190,8 +190,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else {
-      return catalogHandlerUtils.listNamespaces(
-          namespaceCatalog, parent, pageToken, String.valueOf(pageSize));
+      return catalogHandlerUtils.listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
     }
   }
 
@@ -351,8 +350,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else {
-      return catalogHandlerUtils.listTables(
-          baseCatalog, namespace, pageToken, String.valueOf(pageSize));
+      return catalogHandlerUtils.listTables(baseCatalog, namespace, pageToken, pageSize);
     }
   }
 
@@ -1017,8 +1015,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .nextPageToken(results.pageToken.toTokenString())
           .build();
     } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
-      return catalogHandlerUtils.listViews(
-          viewCatalog, namespace, pageToken, String.valueOf(pageSize));
+      return catalogHandlerUtils.listViews(viewCatalog, namespace, pageToken, pageSize);
     } else {
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
