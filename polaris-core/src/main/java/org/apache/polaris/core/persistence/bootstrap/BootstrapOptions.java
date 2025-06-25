@@ -19,6 +19,7 @@
 
 package org.apache.polaris.core.persistence.bootstrap;
 
+import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 @PolarisImmutable

@@ -19,10 +19,19 @@
 
 package org.apache.polaris.core.persistence.bootstrap;
 
+import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface SchemaOptions {
-  String schemaVersion();
+  public static final String LATEST = "LATEST";
+
+  @Value.Default
+  default String schemaVersion() {
+    return LATEST;
+  }
+
+  @Nullable
   String schemaFile();
 }

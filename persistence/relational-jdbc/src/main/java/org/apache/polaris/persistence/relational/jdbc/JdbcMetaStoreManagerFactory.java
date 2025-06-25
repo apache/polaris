@@ -139,31 +139,30 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
-    SchemaOptions schemaOptions = ImmutableSchemaOptions
-      .builder()
-      .build();
+    SchemaOptions schemaOptions = ImmutableSchemaOptions.builder().build();
 
-    BootstrapOptions bootstrapOptions = ImmutableBootstrapOptions
-      .builder()
-      .realms(realms)
-      .rootCredentialsSet(rootCredentialsSet)
-      .schemaOptions(schemaOptions)
-      .build();
+    BootstrapOptions bootstrapOptions =
+        ImmutableBootstrapOptions.builder()
+            .realms(realms)
+            .rootCredentialsSet(rootCredentialsSet)
+            .schemaOptions(schemaOptions)
+            .build();
 
     return bootstrapRealms(bootstrapOptions);
   }
 
   @Override
-  public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(BootstrapOptions bootstrapOptions) {
+  public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
+      BootstrapOptions bootstrapOptions) {
     Map<String, PrincipalSecretsResult> results = new HashMap<>();
 
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
         initializeForRealm(
-          realmContext,
-          bootstrapOptions.rootCredentialsSet(),
-          Optional.of(bootstrapOptions.schemaOptions()));
+            realmContext,
+            bootstrapOptions.rootCredentialsSet(),
+            Optional.of(bootstrapOptions.schemaOptions()));
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realm));

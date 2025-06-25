@@ -19,9 +19,8 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
-
 import java.util.Locale;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public enum DatabaseType {
   POSTGRES("postgres"),
@@ -48,15 +47,16 @@ public enum DatabaseType {
 
   public String getInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
     final String schemaFile;
-    if (!schemaOptions.schemaFile().isEmpty()) {
+    if (schemaOptions.schemaFile() != null) {
       schemaFile = schemaOptions.schemaFile();
     } else {
       String schemaSuffix;
       switch (schemaOptions.schemaVersion()) {
-        case "LATEST" -> schemaSuffix = "schema-v1.sql";
+        case SchemaOptions.LATEST -> schemaSuffix = "schema-v1.sql";
         case "1" -> schemaSuffix = "schema-v1.sql";
         default ->
-          throw new IllegalArgumentException("Unknown schema version " + schemaOptions.schemaVersion());
+            throw new IllegalArgumentException(
+                "Unknown schema version " + schemaOptions.schemaVersion());
       }
       schemaFile = this.getDisplayName() + "/" + schemaSuffix;
     }
