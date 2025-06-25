@@ -643,7 +643,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return schemaVersion.getFirst().getValue();
     } catch (SQLException e) {
       LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to retrieve schema version", e);
+      throw new IllegalStateException("Failed to retrieve schema version", e);
     }
   }
 

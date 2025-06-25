@@ -20,7 +20,7 @@
 package org.apache.polaris.core.entity;
 
 /**
- * An interface for entity types that represent data stored at some location. These entities provide
+ * An interface for entity types that correspond to some storage location. These entities provide
  * a method `getBaseLocation` to retrieve that location.
  */
 public interface LocationBasedEntity {
