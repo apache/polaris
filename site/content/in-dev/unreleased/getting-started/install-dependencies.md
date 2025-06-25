@@ -114,7 +114,7 @@ Ensure that `java --version` and `javac` both return non-zero responses.
 
 ## jq
 
-Most Polaris Quickstart scripts require [jq]((https://jqlang.org/download/)). You can install jq using [homebrew](https://brew.sh/) on MacOS:
+Most Polaris Quickstart scripts require [jq]((https://jqlang.org/download/)). You can install jq using [homebrew](https://brew.sh/):
 ```shell
 brew install jq
 ```
