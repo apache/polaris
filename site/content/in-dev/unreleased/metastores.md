@@ -33,7 +33,6 @@ environment variables or JVM -D flags at startup. For more information, refer to
 ```
 POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-QUARKUS_DATASOURCE_DB_KIND=postgresql
 QUARKUS_DATASOURCE_USERNAME=<your-username>
 QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
