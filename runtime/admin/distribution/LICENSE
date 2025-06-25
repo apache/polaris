@@ -339,7 +339,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.1
+Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.0
 Project URL: https://github.com/ben-manes/caffeine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -749,9 +749,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.15.1
-Group: io.micrometer Name: micrometer-core Version: 1.15.1
-Group: io.micrometer Name: micrometer-observation Version: 1.15.1
+Group: io.micrometer Name: micrometer-commons Version: 1.14.6
+Group: io.micrometer Name: micrometer-core Version: 1.14.6
+Group: io.micrometer Name: micrometer-observation Version: 1.14.6
 Project URL: https://github.com/micrometer-metrics/micrometer
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -829,7 +829,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.6
+Group: io.projectreactor Name: reactor-core Version: 3.7.7
 Project URL: https://github.com/reactor/reactor-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
