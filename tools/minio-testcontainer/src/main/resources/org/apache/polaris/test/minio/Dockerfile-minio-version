@@ -1,0 +1,3 @@
+# Dockerfile to provide the image name and tag to a test.
+# Version is managed by Renovate - do not edit.
+FROM quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
