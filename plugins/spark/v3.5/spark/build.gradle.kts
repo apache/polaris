@@ -45,17 +45,7 @@ val scalaLibraryVersion =
 dependencies {
   // TODO: extract a polaris-rest module as a thin layer for
   //  client to depends on.
-  implementation(project(":polaris-core")) {
-    exclude("org.apache.iceberg", "*")
-    exclude("com.azure", "*")
-    exclude("software.amazon.awssdk", "*")
-    exclude("com.google.cloud", "*")
-    exclude("io.airlift", "*")
-    exclude("io.smallrye", "*")
-    exclude("io.smallrye.common", "*")
-    exclude("io.swagger", "*")
-    exclude("org.apache.commons", "*")
-  }
+  implementation(project(":polaris-core")) { isTransitive = false }
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
