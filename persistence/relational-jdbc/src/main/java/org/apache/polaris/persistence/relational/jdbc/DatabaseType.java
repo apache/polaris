@@ -19,6 +19,10 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import jakarta.annotation.Nonnull;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Locale;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
@@ -45,12 +49,15 @@ public enum DatabaseType {
     };
   }
 
-  public String getInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
-    final String schemaFile;
+  public InputStream getInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
     if (schemaOptions.schemaFile() != null) {
-      schemaFile = schemaOptions.schemaFile();
+      try{
+        return new FileInputStream(schemaOptions.schemaFile());
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
+      }
     } else {
-      String schemaSuffix;
+      final String schemaSuffix;
       switch (schemaOptions.schemaVersion()) {
         case SchemaOptions.LATEST -> schemaSuffix = "schema-v1.sql";
         case "1" -> schemaSuffix = "schema-v1.sql";
@@ -58,8 +65,9 @@ public enum DatabaseType {
             throw new IllegalArgumentException(
                 "Unknown schema version " + schemaOptions.schemaVersion());
       }
-      schemaFile = this.getDisplayName() + "/" + schemaSuffix;
+      ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+      return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
     }
-    return schemaFile;
+
   }
 }

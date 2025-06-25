@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -80,15 +81,14 @@ public class DatasourceOperations {
    * @param scriptFilePath : Path of SQL script.
    * @throws SQLException : Exception while executing the script.
    */
-  public void executeScript(String scriptFilePath) throws SQLException {
-    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+  public void executeScript(InputStream scriptInputStream) throws SQLException {
     runWithinTransaction(
         connection -> {
           try (Statement statement = connection.createStatement()) {
             BufferedReader reader =
                 new BufferedReader(
                     new InputStreamReader(
-                        Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)),
+                        Objects.requireNonNull(scriptInputStream),
                         UTF_8));
             StringBuilder sqlBuffer = new StringBuilder();
             String line;
