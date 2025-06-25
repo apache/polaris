@@ -403,8 +403,9 @@ public interface PolarisMetaStoreManager
    *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
    *     this operation
    */
-  default <T extends PolarisEntity & LocationBasedEntity> Optional<Optional<String>> hasOverlappingSiblings(
-      @Nonnull PolarisCallContext callContext, T entity) {
+  default <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
     return Optional.empty();
   }
 
