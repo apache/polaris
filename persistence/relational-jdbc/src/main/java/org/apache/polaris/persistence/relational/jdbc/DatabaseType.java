@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import jakarta.annotation.Nonnull;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +50,7 @@ public enum DatabaseType {
 
   public InputStream getInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
     if (schemaOptions.schemaFile() != null) {
-      try{
+      try {
         return new FileInputStream(schemaOptions.schemaFile());
       } catch (IOException e) {
         throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
@@ -68,6 +67,5 @@ public enum DatabaseType {
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
       return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
     }
-
   }
 }

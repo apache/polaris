@@ -87,9 +87,7 @@ public class DatasourceOperations {
           try (Statement statement = connection.createStatement()) {
             BufferedReader reader =
                 new BufferedReader(
-                    new InputStreamReader(
-                        Objects.requireNonNull(scriptInputStream),
-                        UTF_8));
+                    new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8));
             StringBuilder sqlBuffer = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
