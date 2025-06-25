@@ -26,7 +26,6 @@ import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
@@ -151,15 +150,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         try {
           // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
-            datasourceOperations.getDatabaseType().getInitScriptResource(bootstrapOptions.schemaOptions()));
+              datasourceOperations
+                  .getDatabaseType()
+                  .getInitScriptResource(bootstrapOptions.schemaOptions()));
         } catch (SQLException e) {
           throw new RuntimeException(
-            String.format("Error executing sql script: %s", e.getMessage()), e);
+              String.format("Error executing sql script: %s", e.getMessage()), e);
         }
         initializeForRealm(
-          datasourceOperations,
-            realmContext,
-            bootstrapOptions.rootCredentialsSet());
+            datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realm));
