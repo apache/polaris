@@ -32,8 +32,9 @@ Before running Polaris, ensure you have completed the following setup steps:
 cd ~/polaris
 ./gradlew \
   :polaris-server:assemble \
-  :polaris-server:quarkusAppPartsBuild \
-  :polaris-admin:assemble --rerun \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 ```
