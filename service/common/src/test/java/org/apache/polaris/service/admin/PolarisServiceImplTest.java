@@ -77,10 +77,10 @@ public class PolarisServiceImplTest {
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(polarisCallContext.getConfigurationStore()).thenReturn(configurationStore);
     when(configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+            realmContext, FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES))
         .thenReturn(List.of("ICEBERG_REST"));
     when(configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.SUPPORTED_FEDERATION_AUTHENTICATION_TYPES))
+            realmContext, FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("OAUTH"));
 
     polarisService =

@@ -255,22 +255,24 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
-      PolarisConfiguration.<List<String>>builder()
-          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
-          .description("The list of supported catalog connection types for federation")
-          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
-          .buildFeatureConfiguration();
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES")
+              .description("The list of supported catalog connection types for federation")
+              .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+              .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<List<String>> SUPPORTED_FEDERATION_AUTHENTICATION_TYPES =
-      PolarisConfiguration.<List<String>>builder()
-          .key("SUPPORTED_FEDERATION_AUTHENTICATION_TYPES")
-          .description("The list of supported authentication types for catalog federation")
-          .defaultValue(
-              List.of(
-                  AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
-                  AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
-          .buildFeatureConfiguration();
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES")
+              .description("The list of supported authentication types for catalog federation")
+              .defaultValue(
+                  List.of(
+                      AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
+              .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
       PolarisConfiguration.<Integer>builder()

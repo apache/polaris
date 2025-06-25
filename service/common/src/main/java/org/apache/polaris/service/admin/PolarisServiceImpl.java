@@ -192,7 +192,7 @@ public class PolarisServiceImpl
             .getConfigurationStore()
             .getConfiguration(
                 callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES)
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
@@ -210,7 +210,10 @@ public class PolarisServiceImpl
             .getConfigurationStore()
             .getConfiguration(
                 callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_FEDERATION_AUTHENTICATION_TYPES);
+                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+            .stream()
+            .map(s -> s.toUpperCase(Locale.ROOT))
+            .toList();
     if (!supportedAuthenticationTypes.contains(authenticationType)) {
       throw new IllegalStateException("Unsupported authentication type: " + authenticationType);
     }
