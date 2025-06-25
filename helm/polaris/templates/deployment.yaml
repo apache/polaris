@@ -72,11 +72,20 @@ spec:
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          {{ if or .Values.storage.secret.name .Values.extraEnv -}}
+          {{ if or .Values.storage.secret.name .Values.persistence.relationalJdbc.secret.name .Values.extraEnv -}}
           env:
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | indent 12 -}}
+            {{- if and ( eq .Values.persistence.type "relational-jdbc" ) .Values.persistence.relationalJdbc.secret.name }}
+            {{- range $key := list "username" "password" "jdbc_url" }}
+            - name: QUARKUS_DATASOURCE_{{ $key | upper }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.persistence.relationalJdbc.secret.name }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.extraEnv -}}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 -}}
             {{- end -}}
