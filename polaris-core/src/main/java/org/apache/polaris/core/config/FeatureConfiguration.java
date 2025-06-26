@@ -349,4 +349,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_KMS_SUPPORT_FOR_S3 =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_KMS_SUPPORT_FOR_S3")
+          .description("If true, enables KMS support for S3 storage integration")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

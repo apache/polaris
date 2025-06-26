@@ -29,6 +29,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -222,28 +225,28 @@ public class AwsCredentialsStorageIntegration
 
     policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
 
-    policyBuilder.addStatement(
-        IamStatement.builder()
-            .effect(IamEffect.ALLOW)
-            .addAction("kms:GenerateDataKey")
-            .addAction("kms:Decrypt")
-            .addAction("kms:DescribeKey")
-            .addResource("arn:aws:kms:" + region + ":" + awsAccountId + ":key/*")
-            .addCondition(IamConditionOperator.STRING_EQUALS, "aws:PrincipalArn", roleARN)
-            .addCondition(
-                IamConditionOperator.STRING_LIKE,
-                "kms:EncryptionContext:aws:s3:arn",
-                getArnPrefixFor(roleARN)
-                    + StorageUtil.getBucket(
-                        URI.create(
-                            awsStorageConfigurationInfo.getAllowedLocations().getFirst()))
-                    + "/*")
-            .addCondition(
-                IamConditionOperator.STRING_EQUALS,
-                "kms:ViaService",
-                "s3." + region + ".amazonaws.com")
-            .build());
-
+    if (isKMSSupported()) {
+      policyBuilder.addStatement(
+          IamStatement.builder()
+              .effect(IamEffect.ALLOW)
+              .addAction("kms:GenerateDataKey")
+              .addAction("kms:Decrypt")
+              .addAction("kms:DescribeKey")
+              .addResource("arn:aws:kms:" + region + ":" + awsAccountId + ":key/*")
+              .addCondition(IamConditionOperator.STRING_EQUALS, "aws:PrincipalArn", roleARN)
+              .addCondition(
+                  IamConditionOperator.STRING_LIKE,
+                  "kms:EncryptionContext:aws:s3:arn",
+                  getArnPrefixFor(roleARN)
+                      + StorageUtil.getBucket(
+                          URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
+                      + "/*")
+              .addCondition(
+                  IamConditionOperator.STRING_EQUALS,
+                  "kms:ViaService",
+                  "s3." + region + ".amazonaws.com")
+              .build());
+    }
     return policyBuilder.build();
   }
 
@@ -268,5 +271,9 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
+  }
+
+  private boolean isKMSSupported() {
+    return PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3);
   }
 }

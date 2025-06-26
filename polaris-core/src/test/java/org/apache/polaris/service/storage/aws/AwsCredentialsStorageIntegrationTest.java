@@ -20,6 +20,7 @@ package org.apache.polaris.service.storage.aws;
 
 import static org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType.S3;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
@@ -27,6 +28,10 @@ import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -36,6 +41,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import software.amazon.awssdk.policybuilder.iam.IamAction;
 import software.amazon.awssdk.policybuilder.iam.IamCondition;
@@ -306,6 +312,213 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         break;
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+    try (MockedStatic<PolarisConfiguration> configMock =
+        Mockito.mockStatic(PolarisConfiguration.class, CALLS_REAL_METHODS)) {
+      configMock
+          .when(
+              () -> PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3))
+          .thenReturn(true);
+      String roleARN;
+      String region;
+      String accountId = "012345678901";
+      switch (awsPartition) {
+        case AWS_PARTITION:
+          roleARN = "arn:aws:iam::012345678901:role/jdoe";
+          region = "us-east-1";
+          break;
+        case "aws-cn":
+          roleARN = "arn:aws-cn:iam::012345678901:role/jdoe";
+          region = "Beijing";
+          break;
+        case "aws-us-gov":
+          roleARN = "arn:aws-us-gov:iam::012345678901:role/jdoe";
+          region = "us-gov-west-1";
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+      }
+      StsClient stsClient = Mockito.mock(StsClient.class);
+      String externalId = "externalId";
+      String bucket = "bucket";
+      String warehouseKeyPrefix = "path/to/warehouse";
+      String firstPath = warehouseKeyPrefix + "/namespace/table";
+      String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+      Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+          .thenAnswer(
+              invocation -> {
+                assertThat(invocation.getArguments()[0])
+                    .isInstanceOf(AssumeRoleRequest.class)
+                    .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                    .extracting(AssumeRoleRequest::policy)
+                    .extracting(IamPolicy::fromJson)
+                    .satisfies(
+                        policy -> {
+                          assertThat(policy)
+                              .extracting(IamPolicy::statements)
+                              .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                              .hasSize(5)
+                              .satisfiesExactly(
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamResource.create(
+                                                      s3Arn(awsPartition, bucket, firstPath))),
+                                              IamStatement::resources)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:PutObject"),
+                                                  IamAction.create("s3:DeleteObject")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamResource.create(
+                                                      s3Arn(awsPartition, bucket, null))),
+                                              IamStatement::resources)
+                                          .returns(
+                                              List.of(IamAction.create("s3:ListBucket")),
+                                              IamStatement::actions)
+                                          .returns(
+                                              List.of(
+                                                  IamResource.create(
+                                                      s3Arn(awsPartition, bucket, null))),
+                                              IamStatement::resources)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.conditions())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamCondition.builder()
+                                                              .operator(
+                                                                  IamConditionOperator.STRING_LIKE)
+                                                              .key("s3:prefix")
+                                                              .value(secondPath + "/*")
+                                                              .build(),
+                                                          IamCondition.builder()
+                                                              .operator(
+                                                                  IamConditionOperator.STRING_LIKE)
+                                                              .key("s3:prefix")
+                                                              .value(firstPath + "/*")
+                                                              .build())),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .contains(
+                                                          IamResource.create(
+                                                              s3Arn(awsPartition, bucket, null))))
+                                          .returns(
+                                              List.of(IamAction.create("s3:GetBucketLocation")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  awsPartition, bucket, firstPath)),
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  awsPartition,
+                                                                  bucket,
+                                                                  secondPath))))
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:GetObject"),
+                                                  IamAction.create("s3:GetObjectVersion")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("kms:GenerateDataKey"),
+                                                  IamAction.create("kms:Decrypt"),
+                                                  IamAction.create("kms:DescribeKey")),
+                                              IamStatement::actions)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              "arn:aws:kms:"
+                                                                  + region
+                                                                  + ":"
+                                                                  + accountId
+                                                                  + ":key/*")))
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.conditions())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "aws:PrincipalArn",
+                                                              roleARN),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "kms:ViaService",
+                                                              "s3." + region + ".amazonaws.com"),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_LIKE,
+                                                              "kms:EncryptionContext:aws:s3:arn",
+                                                              s3Arn(awsPartition, bucket, null)
+                                                                  + "/*"))));
+                        });
+                return ASSUME_ROLE_RESPONSE;
+              });
+      switch (awsPartition) {
+        case "aws-cn":
+          Assertions.assertThatThrownBy(
+                  () ->
+                      new AwsCredentialsStorageIntegration(stsClient)
+                          .getSubscopedCreds(
+                              Mockito.mock(PolarisDiagnostics.class),
+                              new AwsStorageConfigurationInfo(
+                                  storageType,
+                                  List.of(s3Path(bucket, warehouseKeyPrefix)),
+                                  roleARN,
+                                  externalId,
+                                  region),
+                              true,
+                              Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
+                              Set.of(s3Path(bucket, firstPath))))
+              .isInstanceOf(IllegalArgumentException.class);
+          break;
+        case AWS_PARTITION:
+        case "aws-us-gov":
+          EnumMap<PolarisCredentialProperty, String> credentials =
+              new AwsCredentialsStorageIntegration(stsClient)
+                  .getSubscopedCreds(
+                      Mockito.mock(PolarisDiagnostics.class),
+                      new AwsStorageConfigurationInfo(
+                          storageType,
+                          List.of(s3Path(bucket, warehouseKeyPrefix)),
+                          roleARN,
+                          externalId,
+                          region),
+                      true,
+                      Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
+                      Set.of(s3Path(bucket, firstPath)));
+          assertThat(credentials)
+              .isNotEmpty()
+              .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
+              .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
+              .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+              .containsEntry(
+                  PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  String.valueOf(EXPIRE_TIME.toEpochMilli()));
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+      }
     }
   }
 
@@ -442,6 +655,145 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    try (MockedStatic<PolarisConfiguration> configMock =
+        Mockito.mockStatic(PolarisConfiguration.class, CALLS_REAL_METHODS)) {
+      configMock
+          .when(
+              () -> PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3))
+          .thenReturn(true);
+      String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+      String externalId = "externalId";
+      String bucket = "bucket";
+      String region = "us-east-2";
+      String accountId = "012345678901";
+      String warehouseKeyPrefix = "path/to/warehouse";
+      String firstPath = warehouseKeyPrefix + "/namespace/table";
+      String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+      Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+          .thenAnswer(
+              invocation -> {
+                assertThat(invocation.getArguments()[0])
+                    .isInstanceOf(AssumeRoleRequest.class)
+                    .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                    .extracting(AssumeRoleRequest::policy)
+                    .extracting(IamPolicy::fromJson)
+                    .satisfies(
+                        policy -> {
+                          assertThat(policy)
+                              .extracting(IamPolicy::statements)
+                              .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                              .hasSize(4)
+                              .satisfiesExactly(
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamResource.create(
+                                                      s3Arn(AWS_PARTITION, bucket, firstPath))),
+                                              IamStatement::resources)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:PutObject"),
+                                                  IamAction.create("s3:DeleteObject")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .contains(
+                                                          IamResource.create(
+                                                              s3Arn(AWS_PARTITION, bucket, null))))
+                                          .returns(
+                                              List.of(IamAction.create("s3:GetBucketLocation")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  AWS_PARTITION,
+                                                                  bucket,
+                                                                  firstPath)),
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  AWS_PARTITION,
+                                                                  bucket,
+                                                                  secondPath))))
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:GetObject"),
+                                                  IamAction.create("s3:GetObjectVersion")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("kms:GenerateDataKey"),
+                                                  IamAction.create("kms:Decrypt"),
+                                                  IamAction.create("kms:DescribeKey")),
+                                              IamStatement::actions)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              "arn:aws:kms:"
+                                                                  + region
+                                                                  + ":"
+                                                                  + accountId
+                                                                  + ":key/*")))
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.conditions())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "aws:PrincipalArn",
+                                                              roleARN),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "kms:ViaService",
+                                                              "s3." + region + ".amazonaws.com"),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_LIKE,
+                                                              "kms:EncryptionContext:aws:s3:arn",
+                                                              s3Arn(AWS_PARTITION, bucket, null)
+                                                                  + "/*"))));
+                        });
+                return ASSUME_ROLE_RESPONSE;
+              });
+      PolarisStorageConfigurationInfo.StorageType storageType =
+          PolarisStorageConfigurationInfo.StorageType.S3;
+      EnumMap<PolarisCredentialProperty, String> credentials =
+          new AwsCredentialsStorageIntegration(stsClient)
+              .getSubscopedCreds(
+                  Mockito.mock(PolarisDiagnostics.class),
+                  new AwsStorageConfigurationInfo(
+                      PolarisStorageConfigurationInfo.StorageType.S3,
+                      List.of(s3Path(bucket, warehouseKeyPrefix)),
+                      roleARN,
+                      externalId,
+                      region),
+                  false, /* allowList = false*/
+                  Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
+                  Set.of(s3Path(bucket, firstPath)));
+      assertThat(credentials)
+          .isNotEmpty()
+          .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
+          .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
+          .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+          .containsEntry(
+              PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+              String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    }
   }
 
   @Test
@@ -575,6 +927,143 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    try (MockedStatic<PolarisConfiguration> configMock =
+        Mockito.mockStatic(PolarisConfiguration.class, CALLS_REAL_METHODS)) {
+      configMock
+          .when(
+              () -> PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3))
+          .thenReturn(true);
+      String accountId = "012345678901";
+      String roleARN = "arn:aws:iam::" + accountId + ":role/jdoe";
+      String externalId = "externalId";
+      String bucket = "bucket";
+      String region = "us-east-2";
+      String warehouseKeyPrefix = "path/to/warehouse";
+      String firstPath = warehouseKeyPrefix + "/namespace/table";
+      String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+      Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+          .thenAnswer(
+              invocation -> {
+                assertThat(invocation.getArguments()[0])
+                    .isInstanceOf(AssumeRoleRequest.class)
+                    .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                    .extracting(AssumeRoleRequest::policy)
+                    .extracting(IamPolicy::fromJson)
+                    .satisfies(
+                        policy -> {
+                          assertThat(policy)
+                              .extracting(IamPolicy::statements)
+                              .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                              .hasSize(4)
+                              .satisfiesExactly(
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamResource.create(
+                                                      s3Arn(AWS_PARTITION, bucket, null))),
+                                              IamStatement::resources)
+                                          .returns(
+                                              List.of(IamAction.create("s3:ListBucket")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .contains(
+                                                          IamResource.create(
+                                                              s3Arn(AWS_PARTITION, bucket, null))))
+                                          .returns(
+                                              List.of(IamAction.create("s3:GetBucketLocation")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  AWS_PARTITION,
+                                                                  bucket,
+                                                                  firstPath)),
+                                                          IamResource.create(
+                                                              s3Arn(
+                                                                  AWS_PARTITION,
+                                                                  bucket,
+                                                                  secondPath))))
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:GetObject"),
+                                                  IamAction.create("s3:GetObjectVersion")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("kms:GenerateDataKey"),
+                                                  IamAction.create("kms:Decrypt"),
+                                                  IamAction.create("kms:DescribeKey")),
+                                              IamStatement::actions)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              "arn:aws:kms:"
+                                                                  + region
+                                                                  + ":"
+                                                                  + accountId
+                                                                  + ":key/*")))
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.conditions())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "aws:PrincipalArn",
+                                                              roleARN),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "kms:ViaService",
+                                                              "s3." + region + ".amazonaws.com"),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_LIKE,
+                                                              "kms:EncryptionContext:aws:s3:arn",
+                                                              s3Arn(AWS_PARTITION, bucket, null)
+                                                                  + "/*"))));
+                        });
+                return ASSUME_ROLE_RESPONSE;
+              });
+      PolarisStorageConfigurationInfo.StorageType storageType =
+          PolarisStorageConfigurationInfo.StorageType.S3;
+      EnumMap<PolarisCredentialProperty, String> credentials =
+          new AwsCredentialsStorageIntegration(stsClient)
+              .getSubscopedCreds(
+                  Mockito.mock(PolarisDiagnostics.class),
+                  new AwsStorageConfigurationInfo(
+                      storageType,
+                      List.of(s3Path(bucket, warehouseKeyPrefix)),
+                      roleARN,
+                      externalId,
+                      region),
+                  true, /* allowList = true */
+                  Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
+                  Set.of());
+      assertThat(credentials)
+          .isNotEmpty()
+          .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
+          .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
+          .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+          .containsEntry(
+              PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+              String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    }
   }
 
   @Test
@@ -678,6 +1167,111 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    try (MockedStatic<PolarisConfiguration> configMock =
+        Mockito.mockStatic(PolarisConfiguration.class, CALLS_REAL_METHODS)) {
+      configMock
+          .when(
+              () -> PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3))
+          .thenReturn(true);
+      String accountId = "012345678901";
+      String roleARN = "arn:aws:iam::" + accountId + ":role/jdoe";
+      String externalId = "externalId";
+      String bucket = "bucket";
+      String warehouseKeyPrefix = "path/to/warehouse";
+      String region = "us-east-2";
+      Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+          .thenAnswer(
+              invocation -> {
+                assertThat(invocation.getArguments()[0])
+                    .isInstanceOf(AssumeRoleRequest.class)
+                    .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                    .extracting(AssumeRoleRequest::policy)
+                    .extracting(IamPolicy::fromJson)
+                    .satisfies(
+                        policy -> {
+                          assertThat(policy)
+                              .extracting(IamPolicy::statements)
+                              .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                              .hasSize(3)
+                              .satisfiesExactly(
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(List.of(), IamStatement::resources)
+                                          .returns(
+                                              List.of(IamAction.create("s3:ListBucket")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .satisfies(
+                                              st -> assertThat(st.resources()).containsExactly())
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("s3:GetObject"),
+                                                  IamAction.create("s3:GetObjectVersion")),
+                                              IamStatement::actions),
+                                  statement ->
+                                      assertThat(statement)
+                                          .returns(IamEffect.ALLOW, IamStatement::effect)
+                                          .returns(
+                                              List.of(
+                                                  IamAction.create("kms:GenerateDataKey"),
+                                                  IamAction.create("kms:Decrypt"),
+                                                  IamAction.create("kms:DescribeKey")),
+                                              IamStatement::actions)
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.resources())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamResource.create(
+                                                              "arn:aws:kms:"
+                                                                  + region
+                                                                  + ":"
+                                                                  + accountId
+                                                                  + ":key/*")))
+                                          .satisfies(
+                                              st ->
+                                                  assertThat(st.conditions())
+                                                      .containsExactlyInAnyOrder(
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "aws:PrincipalArn",
+                                                              roleARN),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_EQUALS,
+                                                              "kms:ViaService",
+                                                              "s3." + region + ".amazonaws.com"),
+                                                          IamCondition.create(
+                                                              IamConditionOperator.STRING_LIKE,
+                                                              "kms:EncryptionContext:aws:s3:arn",
+                                                              s3Arn(AWS_PARTITION, bucket, null)
+                                                                  + "/*"))));
+                        });
+                return ASSUME_ROLE_RESPONSE;
+              });
+      EnumMap<PolarisCredentialProperty, String> credentials =
+          new AwsCredentialsStorageIntegration(stsClient)
+              .getSubscopedCreds(
+                  Mockito.mock(PolarisDiagnostics.class),
+                  new AwsStorageConfigurationInfo(
+                      PolarisStorageConfigurationInfo.StorageType.S3,
+                      List.of(s3Path(bucket, warehouseKeyPrefix)),
+                      roleARN,
+                      externalId,
+                      region),
+                  true, /* allowList = true */
+                  Set.of(),
+                  Set.of());
+      assertThat(credentials)
+          .isNotEmpty()
+          .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
+          .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
+          .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+          .containsEntry(
+              PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+              String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    }
   }
 
   @ParameterizedTest
