@@ -271,6 +271,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>>
+      SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES")
+              .description("The list of supported external catalog connection types for federation")
+              .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>>
       SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES =
           PolarisConfiguration.<List<String>>builder()
               .key("SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES")
