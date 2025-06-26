@@ -266,7 +266,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
-          .description("The list of supported catalog connection types for federation")
+          .description("(Deprecated) The list of supported catalog connection types for federation")
           .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
           .buildFeatureConfiguration();
 
