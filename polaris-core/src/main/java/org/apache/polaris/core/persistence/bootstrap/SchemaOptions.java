@@ -27,11 +27,16 @@ import org.immutables.value.Value;
 public interface SchemaOptions {
   public static final String LATEST = "LATEST";
 
-  @Value.Default
-  default String schemaVersion() {
-    return LATEST;
-  }
+  @Nullable
+  String schemaVersion();
 
   @Nullable
   String schemaFile();
+
+  @Value.Check
+  default void validate() {
+    if (schemaVersion() != null && schemaFile() != null) {
+      throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
+    }
+  }
 }
