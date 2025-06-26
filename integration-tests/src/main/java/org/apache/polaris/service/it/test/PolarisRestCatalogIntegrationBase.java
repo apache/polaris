@@ -220,9 +220,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     currentCatalogName = client.newEntityName(method.getName());
     StorageConfigInfo storageConfig = getStorageConfigInfo();
     URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
-    catalogBaseLocation = testRuntimeURI.resolve(CATALOG_LOCATION_SUBPATH).toString();
-
-    externalCatalogBase = testRuntimeURI.resolve(EXTERNAL_CATALOG_LOCATION_SUBPATH);
+    catalogBaseLocation = testRuntimeURI + "/" + CATALOG_LOCATION_SUBPATH;
+    externalCatalogBase = URI.create(testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH);
 
     Optional<CatalogConfig> catalogConfig =
         Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
@@ -700,12 +699,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
       Invocation invocation =
@@ -744,12 +743,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation registerInvocation =
@@ -787,12 +786,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation createInvocation =
