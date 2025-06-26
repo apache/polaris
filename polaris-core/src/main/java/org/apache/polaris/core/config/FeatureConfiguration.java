@@ -256,13 +256,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ENABLE_CATALOG_FEDERATION_NO_AUTH =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ENABLE_CATALOG_FEDERATION_NO_AUTH")
-          .description("If true, allows federation to remote catalogs without authentication.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> ENABLE_POLICY_STORE =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_POLICY_STORE")

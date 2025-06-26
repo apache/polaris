@@ -19,6 +19,7 @@
 package org.apache.polaris.service.admin;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -699,9 +701,10 @@ public class PolarisAdminService {
   /**
    * @see #extractSecretReferences
    */
-  private boolean requiresSecretReferenceExtraction(ConnectionConfigInfo connectionConfigInfo) {
+  private boolean requiresSecretReferenceExtraction(
+      @NotNull ConnectionConfigInfo connectionConfigInfo) {
     return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
-        != AuthenticationParameters.AuthenticationTypeEnum.NO_AUTH;
+        != AuthenticationParameters.AuthenticationTypeEnum.NONE;
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
@@ -738,15 +741,35 @@ public class PolarisAdminService {
         FeatureConfiguration.enforceFeatureEnabledOrThrow(
             callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
         Map<String, UserSecretReference> processedSecretReferences = Map.of();
+        List<String> supportedAuthenticationTypes =
+            callContext
+                .getPolarisCallContext()
+                .getConfigurationStore()
+                .getConfiguration(
+                    callContext.getRealmContext(),
+                    FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+                .stream()
+                .map(s -> s.toUpperCase(Locale.ROOT))
+                .toList();
         if (requiresSecretReferenceExtraction(connectionConfigInfo)) {
           // For fields that contain references to secrets, we'll separately process the secrets
           // from the original request first, and then populate those fields with the extracted
           // secret references as part of the construction of the internal persistence entity.
+          checkState(
+              supportedAuthenticationTypes.contains(
+                  connectionConfigInfo
+                      .getAuthenticationParameters()
+                      .getAuthenticationType()
+                      .name()),
+              "Authentication type %s is not supported.",
+              connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
           processedSecretReferences = extractSecretReferences(catalogRequest, entity);
         } else {
           // Support no-auth catalog federation only when the feature is enabled.
-          FeatureConfiguration.enforceFeatureEnabledOrThrow(
-              callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION_NO_AUTH);
+          checkState(
+              supportedAuthenticationTypes.contains(
+                  AuthenticationParameters.AuthenticationTypeEnum.NONE.name()),
+              "Authentication-less catalog federation is not supported.");
         }
         entity =
             new CatalogEntity.Builder(entity)
