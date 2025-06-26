@@ -79,6 +79,9 @@ public class PolarisServiceImplTest {
             realmContext, FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
         .thenReturn(List.of("ICEBERG_REST"));
     when(configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES))
+        .thenReturn(List.of("ICEBERG_REST"));
+    when(configurationStore.getConfiguration(
             realmContext, FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("OAUTH"));
 

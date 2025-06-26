@@ -186,7 +186,7 @@ public class PolarisServiceImpl
   private void validateConnectionConfigInfo(ConnectionConfigInfo connectionConfigInfo) {
 
     String connectionType = connectionConfigInfo.getConnectionType().name();
-    List<String> supportedConnectionTypes =
+    List<String> legacySupportedConnectionTypes =
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
@@ -196,7 +196,18 @@ public class PolarisServiceImpl
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
-    if (!supportedConnectionTypes.contains(connectionType)) {
+    List<String> supportedConnectionTypes =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(),
+                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES)
+            .stream()
+            .map(s -> s.toUpperCase(Locale.ROOT))
+            .toList();
+    if (!supportedConnectionTypes.contains(connectionType)
+        && !legacySupportedConnectionTypes.contains(connectionType)) {
       throw new IllegalStateException("Unsupported connection type: " + connectionType);
     }
   }
