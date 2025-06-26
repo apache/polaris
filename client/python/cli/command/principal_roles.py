@@ -25,7 +25,7 @@ from cli.command import Command
 from cli.constants import Subcommands, Arguments
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
-    GrantCatalogRoleRequest, CatalogRole, GrantPrincipalRoleRequest
+    GrantPrincipalRoleRequest
 
 
 @dataclass
