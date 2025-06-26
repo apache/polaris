@@ -21,11 +21,13 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,11 +45,19 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -275,5 +285,67 @@ public class ManagementServiceTest {
     assertThatThrownBy(
             () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
         .isInstanceOf(ValidationException.class);
+  }
+
+  /** Simulates the case when a catalog is dropped after being found while listing all catalogs. */
+  @Test
+  public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
+    TestPolarisMetaStoreManager metaStoreManager = new TestPolarisMetaStoreManager();
+    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    CreateCatalogResult catalog1 =
+        metaStoreManager.createCatalog(
+            callContext,
+            new PolarisBaseEntity(
+                PolarisEntityConstants.getNullId(),
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                PolarisEntityType.CATALOG,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntityConstants.getRootEntityId(),
+                "my-catalog-1"),
+            List.of());
+    CreateCatalogResult catalog2 =
+        metaStoreManager.createCatalog(
+            callContext,
+            new PolarisBaseEntity(
+                PolarisEntityConstants.getNullId(),
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                PolarisEntityType.CATALOG,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntityConstants.getRootEntityId(),
+                "my-catalog-2"),
+            List.of());
+
+    metaStoreManager.setFakeEntityNotFoundIds(Set.of(catalog1.getCatalog().getId()));
+    List<PolarisEntity> catalogs = polarisAdminService.listCatalogs();
+    assertThat(catalogs.size()).isEqualTo(1);
+    assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
+  }
+
+  /**
+   * Intended to be a delegate to TransactionalMetaStoreManagerImpl with the ability to inject
+   * faults. Currently, you can force loadEntity() to return ENTITY_NOT_FOUND for a set of entity
+   * IDs.
+   */
+  public static class TestPolarisMetaStoreManager extends TransactionalMetaStoreManagerImpl {
+    private Set<Long> fakeEntityNotFoundIds = new HashSet<>();
+
+    public void setFakeEntityNotFoundIds(Set<Long> ids) {
+      fakeEntityNotFoundIds = new HashSet<>(ids);
+    }
+
+    @Override
+    public @Nonnull EntityResult loadEntity(
+        @Nonnull PolarisCallContext callCtx,
+        long entityCatalogId,
+        long entityId,
+        @Nonnull PolarisEntityType entityType) {
+      if (fakeEntityNotFoundIds.contains(entityId)) {
+        return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
+      }
+      return super.loadEntity(callCtx, entityCatalogId, entityId, entityType);
+    }
   }
 }
