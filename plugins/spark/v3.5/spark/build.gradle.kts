@@ -121,8 +121,8 @@ tasks.register("addLicenseFilesToJar") {
       throw GradleException("Project NOTICE file not found at: ${projectNoticeFile.absolutePath}")
     }
 
-    println("Processing jar: ${jarFile.absolutePath}")
-    println("Using temp directory: ${tempDir.absolutePath}")
+    logger.info("Processing jar: ${jarFile.absolutePath}")
+    logger.info("Using temp directory: ${tempDir.absolutePath}")
 
     // Clean up temp directory
     if (tempDir.exists()) {
@@ -144,7 +144,7 @@ tasks.register("addLicenseFilesToJar") {
         include("META-INF/NOTICE*")
       }
       .forEach { file ->
-        println("Removing license file: ${file.relativeTo(tempDir)}")
+        logger.info("Removing license file: ${file.relativeTo(tempDir)}")
         file.delete()
       }
 
@@ -153,13 +153,13 @@ tasks.register("addLicenseFilesToJar") {
       from(projectLicenseFile)
       into(tempDir)
     }
-    println("Added project LICENSE file")
+    logger.info("Added project LICENSE file")
 
     copy {
       from(projectNoticeFile)
       into(tempDir)
     }
-    println("Added project NOTICE file")
+    logger.info("Added project NOTICE file")
 
     // Delete the original jar
     jarFile.delete()
@@ -169,7 +169,7 @@ tasks.register("addLicenseFilesToJar") {
       "jar"("destfile" to jarFile.absolutePath) { "fileset"("dir" to tempDir.absolutePath) }
     }
 
-    println("Recreated jar with only project LICENSE and NOTICE files")
+    logger.info("Recreated jar with only project LICENSE and NOTICE files")
 
     // Clean up temp directory
     tempDir.deleteRecursively()
