@@ -201,4 +201,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " requires experimentation in the specific deployment environment")
           .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_KMS_SUPPORT_FOR_S3 =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_KMS_SUPPORT_FOR_S3")
+          .description("If true, enables KMS support for S3 storage integration")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
