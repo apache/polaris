@@ -533,6 +533,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String warehouseKeyPrefix = "path/to/warehouse";
     String firstPath = warehouseKeyPrefix + "/namespace/table";
     String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -807,6 +809,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String warehouseKeyPrefix = "path/to/warehouse";
     String firstPath = warehouseKeyPrefix + "/namespace/table";
     String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -1074,6 +1078,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     String region = "us-east-2";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(

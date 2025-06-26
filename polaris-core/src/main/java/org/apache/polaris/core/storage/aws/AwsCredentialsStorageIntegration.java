@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
@@ -84,10 +85,11 @@ public class AwsCredentialsStorageIntegration
             .roleSessionName("PolarisAwsCredentialsStorageIntegration")
             .policy(
                 policyString(
-                        storageConfig.getRoleARN(),
+                        storageConfig,
                         allowListOperation,
                         allowedReadLocations,
-                        allowedWriteLocations)
+                        allowedWriteLocations,
+                        callContext)
                     .toJson())
             .durationSeconds(storageCredentialDurationSeconds);
     credentialsProvider.ifPresent(
@@ -148,7 +150,8 @@ public class AwsCredentialsStorageIntegration
       AwsStorageConfigurationInfo awsStorageConfigurationInfo,
       boolean allowList,
       Set<String> readLocations,
-      Set<String> writeLocations) {
+      Set<String> writeLocations,
+      CallContext callContext) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -225,7 +228,7 @@ public class AwsCredentialsStorageIntegration
 
     policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
 
-    if (isKMSSupported()) {
+    if (isKMSSupported(callContext)) {
       policyBuilder.addStatement(
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
@@ -273,7 +276,10 @@ public class AwsCredentialsStorageIntegration
     return path;
   }
 
-  private boolean isKMSSupported() {
-    return PolarisConfiguration.loadConfig(FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3);
+  private boolean isKMSSupported(CallContext callContext) {
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(callContext.getRealmContext(), ENABLE_KMS_SUPPORT_FOR_S3);
   }
 }
