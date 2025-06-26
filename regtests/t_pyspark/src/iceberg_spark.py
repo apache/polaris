@@ -74,10 +74,8 @@ class IcebergSparkSession:
     """Initial method for Iceberg Spark session. Creates a Spark session with specified configs.
     """
     packages = [
-      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1",
-      "org.apache.hadoop:hadoop-aws:3.4.0",
-      "software.amazon.awssdk:bundle:2.23.19",
-      "software.amazon.awssdk:url-connection-client:2.23.19",
+      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0",
+      "org.apache.iceberg:iceberg-aws-bundle:1.9.0",
     ]
     excludes = ["org.checkerframework:checker-qual", "com.google.errorprone:error_prone_annotations"]
 

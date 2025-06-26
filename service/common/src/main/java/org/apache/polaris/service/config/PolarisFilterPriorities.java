@@ -22,7 +22,5 @@ import jakarta.ws.rs.Priorities;
 
 public final class PolarisFilterPriorities {
   public static final int REALM_CONTEXT_FILTER = Priorities.AUTHENTICATION - 100;
-  public static final int AUTHENTICATOR_FILTER = Priorities.AUTHENTICATION;
-  public static final int ROLES_PROVIDER_FILTER = Priorities.AUTHENTICATION + 1;
   public static final int RATE_LIMITER_FILTER = Priorities.USER;
 }

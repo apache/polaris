@@ -38,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -87,26 +88,27 @@ public class DefaultFileIOFactory implements FileIOFactory {
     properties = new HashMap<>(properties);
     Optional<PolarisEntity> storageInfoEntity =
         FileIOUtil.findStorageInfoFromHierarchy(resolvedEntityPath);
-    Map<String, String> credentialsMap =
-        storageInfoEntity
-            .map(
-                storageInfo ->
-                    FileIOUtil.refreshCredentials(
-                        callContext,
-                        entityManager,
-                        credentialVendor,
-                        configurationStore,
-                        identifier,
-                        tableLocations,
-                        storageActions,
-                        storageInfo))
-            .orElse(Map.of());
+    Optional<AccessConfig> accessConfig =
+        storageInfoEntity.map(
+            storageInfo ->
+                FileIOUtil.refreshAccessConfig(
+                    callContext,
+                    entityManager,
+                    credentialVendor,
+                    configurationStore,
+                    identifier,
+                    tableLocations,
+                    storageActions,
+                    storageInfo));
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    properties.putAll(credentialsMap);
+    if (accessConfig.isPresent()) {
+      properties.putAll(accessConfig.get().credentials());
+      properties.putAll(accessConfig.get().extraProperties());
+    }
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

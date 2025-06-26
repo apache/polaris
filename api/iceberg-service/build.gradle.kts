@@ -45,6 +45,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {
@@ -64,7 +66,6 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
@@ -118,3 +119,5 @@ sourceSets {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("processResources") { dependsOn("openApiGenerate") }
+
+tasks.named("openApiGenerate") { outputs.cacheIf { false } }

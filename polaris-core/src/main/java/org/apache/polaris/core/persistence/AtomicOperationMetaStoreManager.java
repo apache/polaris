@@ -62,14 +62,15 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
-import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,6 +193,31 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     final List<PolarisGrantRecord> grantsOnSecurable =
         ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
     ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
+
+    if (entity.getType() == PolarisEntityType.POLICY
+        || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
+      // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
+      // records related
+      // TODO: Support some more formal garbage-collection mechanism similar to grant records case
+      // above
+      try {
+        final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? ms.loadAllTargetsOnPolicy(
+                    callCtx,
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolicyEntity.of(entity).getPolicyTypeCode())
+                : List.of();
+        final List<PolarisPolicyMappingRecord> mappingOnTarget =
+            (entity.getType() == PolarisEntityType.POLICY)
+                ? List.of()
+                : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
+        ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
+      } catch (UnsupportedOperationException e) {
+        // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
+    }
 
     // Now determine the set of entities on the other side of the grants we just removed. Grants
     // from/to these entities has been removed, hence we need to update the grant version of
@@ -667,7 +693,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType) {
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -679,15 +706,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         catalogPath == null || catalogPath.size() == 0
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
-    List<EntityNameLookupRecord> toreturnList =
-        ms.listEntities(callCtx, catalogId, parentId, entityType);
+    Page<EntityNameLookupRecord> resultPage =
+        ms.listEntities(callCtx, catalogId, parentId, entityType, pageToken);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      toreturnList =
-          toreturnList.stream()
-              .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-              .collect(Collectors.toList());
+      resultPage =
+          pageToken.buildNextPage(
+              resultPage.items.stream()
+                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
+                  .collect(Collectors.toList()));
     }
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
@@ -697,7 +725,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // in-flight request (the cache-based resolution follows a different path entirely).
 
     // done
-    return new ListEntitiesResult(toreturnList);
+    return ListEntitiesResult.fromPage(resultPage);
   }
 
   /** {@inheritDoc} */
@@ -1156,13 +1184,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
           ms.listEntities(
-              callCtx,
-              catalogId,
-              catalogId,
-              PolarisEntityType.CATALOG_ROLE,
-              2,
-              entity -> true,
-              Function.identity());
+                  callCtx,
+                  catalogId,
+                  catalogId,
+                  PolarisEntityType.CATALOG_ROLE,
+                  entity -> true,
+                  Function.identity(),
+                  PageToken.fromLimit(2))
+              .items;
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1179,6 +1208,21 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           callCtx, null, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId())) {
         return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
+    } else if (refreshEntityToDrop.getType() == PolarisEntityType.POLICY && !cleanup) {
+      try {
+        //  need to check if the policy is attached to any entity
+        List<PolarisPolicyMappingRecord> records =
+            ms.loadAllTargetsOnPolicy(
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                PolicyEntity.of(refreshEntityToDrop).getPolicyTypeCode());
+        if (!records.isEmpty()) {
+          return new DropEntityResult(BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS, null);
+        }
+      } catch (UnsupportedOperationException e) {
+        // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
     }
 
     // simply delete that entity. Will be removed from entities_active, added to the
@@ -1188,7 +1232,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
-    if (cleanup) {
+    if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
       PolarisBaseEntity taskEntity =
           new PolarisEntity.Builder()
               .setId(ms.generateNewId(callCtx))
@@ -1456,17 +1500,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     BasePersistence ms = callCtx.getMetaStore();
 
     // find all available tasks
-    List<PolarisBaseEntity> availableTasks =
+    Page<PolarisBaseEntity> availableTasks =
         ms.listEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
-            limit,
             entity -> {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
@@ -1474,18 +1517,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   callCtx
                       .getConfigurationStore()
                       .getConfiguration(
-                          callCtx,
+                          callCtx.getRealmContext(),
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
                   || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
-            Function.identity());
+            Function.identity(),
+            pageToken);
 
     List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
-    availableTasks.forEach(
+    availableTasks.items.forEach(
         task -> {
           PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
@@ -1522,7 +1566,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       throw new RetryOnConcurrencyException(
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
-    return new EntitiesResult(loadedTasks);
+    return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
   /** {@inheritDoc} */
@@ -1573,9 +1617,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
-      EnumMap<PolarisCredentialProperty, String> creds =
+      EnumMap<StorageAccessProperty, String> creds =
           storageIntegration.getSubscopedCreds(
-              callCtx.getDiagServices(),
+              callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
@@ -1585,59 +1629,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
     }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull ValidateAccessResult validateAccessToLocations(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      @Nonnull Set<PolarisStorageActions> actions,
-      @Nonnull Set<String> locations) {
-    // get meta store we should be using
-    BasePersistence ms = callCtx.getMetaStore();
-    callCtx
-        .getDiagServices()
-        .check(
-            !actions.isEmpty() && !locations.isEmpty(),
-            "locations_and_operations_privileges_are_required");
-    // reload the entity, error out if not found
-    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ValidateAccessResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // get storage integration, expect not null
-    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            storageIntegration,
-            "storage_integration_not_exists",
-            "catalogId={}, entityId={}",
-            catalogId,
-            entityId);
-
-    // validate access
-    PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
-    Map<String, String> validateLocationAccess =
-        storageIntegration
-            .validateAccessToLocations(storageConfigurationInfo, actions, locations)
-            .entrySet()
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey,
-                    e -> PolarisObjectMapperUtil.serialize(callCtx, e.getValue())));
-
-    // done, return result
-    return new ValidateAccessResult(validateLocationAccess);
   }
 
   /**

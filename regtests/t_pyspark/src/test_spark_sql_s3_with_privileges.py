@@ -148,11 +148,11 @@ def snowman_catalog_client(polaris_catalog_url, snowman):
   :return:
   """
   client = CatalogApiClient(Configuration(username=snowman.principal.client_id,
-                                          password=snowman.credentials.client_secret,
+                                          password=snowman.credentials.client_secret.get_secret_value(),
                                           host=polaris_catalog_url))
   oauth_api = IcebergOAuth2API(client)
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=snowman.principal.client_id,
-                              client_secret=snowman.credentials.client_secret,
+                              client_secret=snowman.credentials.client_secret.get_secret_value(),
                               grant_type='client_credentials',
                               _headers={'realm': 'POLARIS'})
 
@@ -169,11 +169,11 @@ def creator_catalog_client(polaris_catalog_url, creator):
   :return:
   """
   client = CatalogApiClient(Configuration(username=creator.principal.client_id,
-                                          password=creator.credentials.client_secret,
+                                          password=creator.credentials.client_secret.get_secret_value(),
                                           host=polaris_catalog_url))
   oauth_api = IcebergOAuth2API(client)
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=creator.principal.client_id,
-                              client_secret=creator.credentials.client_secret,
+                              client_secret=creator.credentials.client_secret.get_secret_value(),
                               grant_type='client_credentials',
                               _headers={'realm': 'POLARIS'})
 
@@ -224,11 +224,11 @@ def reader_catalog_client(polaris_catalog_url, reader):
   :return:
   """
   client = CatalogApiClient(Configuration(username=reader.principal.client_id,
-                                          password=reader.credentials.client_secret,
+                                          password=reader.credentials.client_secret.get_secret_value(),
                                           host=polaris_catalog_url))
   oauth_api = IcebergOAuth2API(client)
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=reader.principal.client_id,
-                              client_secret=reader.credentials.client_secret,
+                              client_secret=reader.credentials.client_secret.get_secret_value(),
                               grant_type='client_credentials',
                               _headers={'realm': 'POLARIS'})
 
@@ -250,7 +250,7 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -269,7 +269,7 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
     assert count == 3
 
   # switch users to the reader. we can query, show namespaces, but we can't insert
-  with IcebergSparkSession(credentials=f'{reader.principal.client_id}:{reader.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{reader.principal.client_id}:{reader.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -288,7 +288,7 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
       print("Exception caught attempting to write without permission")
 
   # switch back to delete stuff
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -314,7 +314,7 @@ def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowfla
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_location = snowflake_catalog.properties.default_base_location + '/db1/outside_schema/table_outside_namespace'
@@ -345,7 +345,7 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     namespace_location = snowflake_catalog.properties.default_base_location + '/db1/custom_location'
@@ -384,7 +384,7 @@ def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_cat
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_location = snowflake_catalog.properties.default_base_location + '/db1/custom_schema_location/table_outside_namespace'
@@ -414,7 +414,7 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_location = snowflake_catalog.properties.default_base_location + '/db1/schema/table_dir'
@@ -450,7 +450,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
@@ -520,7 +520,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     attempts = 0
 
     # watch the data directory. metadata will be deleted first, so if data directory is clear, we can expect
-    # metadatat diretory to be clear also
+    # metadata directory to be clear also
     while 'Contents' in objects and len(objects['Contents']) > 0 and attempts < 60:
       time.sleep(1)  # seconds, not milliseconds ;)
       objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
@@ -559,7 +559,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
                              update_catalog_request=UpdateCatalogRequest(
                                properties=snowflake_catalog.properties.to_dict(),
                                current_entity_version=snowflake_catalog.entity_version))
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
@@ -661,7 +661,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
   :param reader:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
@@ -758,7 +758,7 @@ def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_u
   :param snowman:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
@@ -818,7 +818,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
   :param reader_catalog_client:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -882,7 +882,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
   except botocore.exceptions.ClientError as error:
     print(error)
 
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -911,7 +911,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
   :param reader_catalog_client:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -972,7 +972,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
   except botocore.exceptions.ClientError as error:
     print(error)
 
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -1026,11 +1026,11 @@ def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
   principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
 
   token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
-                                                  password=principal_result.credentials.client_secret,
+                                                  password=principal_result.credentials.client_secret.get_secret_value(),
                                                   host=polaris_catalog_url))
   oauth_api = IcebergOAuth2API(token_client)
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
-                                client_secret=principal_result.credentials.client_secret,
+                                client_secret=principal_result.credentials.client_secret.get_secret_value(),
                                 grant_type='client_credentials',
                                 _headers={'realm': 'POLARIS'})
   rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
@@ -1056,7 +1056,7 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
   :param reader_catalog_client:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -1108,7 +1108,7 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
     assert 'CommonPrefixes' in objects, f'list prefixes failed in prefix: {prefix}/'
     assert len(objects['CommonPrefixes']) > 0
 
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
@@ -1129,7 +1129,7 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
   :param snowflake_catalog:
   :return:
   """
-  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
                            catalog_name=snowflake_catalog.name,
                            polaris_url=polaris_catalog_url) as spark:
     table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
@@ -1148,6 +1148,84 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
     spark.sql(f"drop table {table_name}_t1 PURGE")
     spark.sql(f"drop table {table_name}_t2 PURGE")
 
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
+                    reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, snowflake_catalog, polaris_catalog_url,
+                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
+    """
+    Create a using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
+    for the first table.
+    Delete the metadata directory and try to access the table using the vended credentials.
+    It should throw 404 exception
+    :param root_client:
+    :param snowflake_catalog:
+    :param polaris_catalog_url:
+    :param snowman_catalog_client:
+    :param reader_catalog_client:
+    :return:
+    """
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('CREATE NAMESPACE db1')
+        spark.sql('CREATE NAMESPACE db1.schema')
+        spark.sql('USE db1.schema')
+        spark.sql('CREATE TABLE iceberg_table (col1 int, col2 string)')
+
+    response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                        "iceberg_table",
+                                                        "vended-credentials")
+    assert response.config is not None
+    assert 's3.access-key-id' in response.config
+    assert 's3.secret-access-key' in response.config
+    assert 's3.session-token' in response.config
+
+    s3 = boto3.client('s3',
+                      aws_access_key_id=response.config['s3.access-key-id'],
+                      aws_secret_access_key=response.config['s3.secret-access-key'],
+                      aws_session_token=response.config['s3.session-token'])
+
+    # Get metadata files
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+    assert objects is not None
+    assert 'Contents' in objects
+    assert len(objects['Contents']) > 0
+
+    # Verify metadata content
+    metadata_file = next(f for f in objects['Contents'] if f['Key'].endswith('metadata.json'))
+    assert metadata_file is not None
+
+    metadata_contents = s3.get_object(Bucket=test_bucket, Key=metadata_file['Key'])
+    assert metadata_contents is not None
+    assert metadata_contents['ContentLength'] > 0
+
+    # Delete metadata files
+    objects_to_delete = [{'Key': obj['Key']} for obj in objects['Contents']]
+    s3.delete_objects(Bucket=test_bucket,
+                      Delete={'Objects': objects_to_delete})
+
+    try:
+        response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                                                     "iceberg_table",
+                                                     "vended-credentials")
+    except Exception as e:
+        # 400 error(BadRequest) is thrown when metadata file is missing
+        assert '400' in str(e)
+
+
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret.get_secret_value()}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        # Spark drop table triggers load table underneath, which fails due to missing metadata file.
+        # Directly call drop_table api to drop the table entity.
+        snowman_catalog_client.drop_table(snowflake_catalog.name, unquote('db1%1Fschema'),
+                            "iceberg_table")
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('DROP NAMESPACE db1.schema')
+        spark.sql('DROP NAMESPACE db1')
 
 def create_catalog_role(api, catalog, role_name):
   catalog_role = CatalogRole(name=role_name)

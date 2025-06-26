@@ -26,7 +26,7 @@ export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 if [ -z "${SPARK_HOME}" ]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
-export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
+export PYTHONPATH="${SCRIPT_DIR}/../client/python:${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 export SPARK_LOCAL_HOSTNAME=localhost # avoid VPN messing up driver local IP address binding
 
 FMT_RED='\033[0;31m'
@@ -44,6 +44,8 @@ function logred() {
 }
 
 REGTEST_HOME=$(dirname $(realpath $0))
+
+cd "${SCRIPT_DIR}/.." && ./gradlew regeneratePythonClient
 cd ${REGTEST_HOME}
 
 ./setup.sh
@@ -72,7 +74,7 @@ if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
   if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
     -d "grant_type=client_credentials" \
     -d "client_id=root" \
-    -d "client_secret=secret" \
+    -d "client_secret=s3cr3t" \
     -d "scope=PRINCIPAL_ROLE:ALL"); then
     logred "Error: Failed to retrieve bearer token"
     exit 1

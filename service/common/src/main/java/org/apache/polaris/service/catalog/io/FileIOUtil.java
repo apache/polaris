@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -29,6 +28,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -75,7 +75,7 @@ public class FileIOUtil {
    *       and read/write metadata JSON files.
    * </ul>
    */
-  public static Map<String, String> refreshCredentials(
+  public static AccessConfig refreshAccessConfig(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisCredentialVendor credentialVendor,
@@ -87,7 +87,7 @@ public class FileIOUtil {
 
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
             FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {
@@ -95,7 +95,7 @@ public class FileIOUtil {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
-      return Map.of();
+      return AccessConfig.builder().build();
     }
 
     boolean allowList =
@@ -107,7 +107,7 @@ public class FileIOUtil {
                 || storageActions.contains(PolarisStorageActions.ALL)
             ? tableLocations
             : Set.of();
-    Map<String, String> credentialsMap =
+    AccessConfig accessConfig =
         entityManager
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
@@ -120,11 +120,12 @@ public class FileIOUtil {
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", credentialsMap.keySet())
+        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
+        .addKeyValue("extraProperties", accessConfig.extraProperties())
         .log("Loaded scoped credentials for table");
-    if (credentialsMap.isEmpty()) {
+    if (accessConfig.credentials().isEmpty()) {
       LOGGER.debug("No credentials found for table");
     }
-    return credentialsMap;
+    return accessConfig;
   }
 }

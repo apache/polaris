@@ -25,7 +25,7 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
-import org.apache.polaris.core.policy.content.maintenance.SnapshotRetentionPolicyContent;
+import org.apache.polaris.core.policy.content.maintenance.SnapshotExpiryPolicyContent;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.validator.maintenance.BaseMaintenancePolicyValidator;
 import org.slf4j.Logger;
@@ -60,8 +60,8 @@ public class PolicyValidators {
       case METADATA_COMPACTION:
         MetadataCompactionPolicyContent.fromString(policy.getContent());
         break;
-      case SNAPSHOT_RETENTION:
-        SnapshotRetentionPolicyContent.fromString(policy.getContent());
+      case SNAPSHOT_EXPIRY:
+        SnapshotExpiryPolicyContent.fromString(policy.getContent());
         break;
       case ORPHAN_FILE_REMOVAL:
         OrphanFileRemovalPolicyContent.fromString(policy.getContent());
@@ -94,7 +94,7 @@ public class PolicyValidators {
     switch (policyType) {
       case DATA_COMPACTION:
       case METADATA_COMPACTION:
-      case SNAPSHOT_RETENTION:
+      case SNAPSHOT_EXPIRY:
       case ORPHAN_FILE_REMOVAL:
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
 

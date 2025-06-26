@@ -57,13 +57,21 @@ public class TestPolarisVersion {
   @Order(1)
   public void versionAvailable() {
     soft.assertThat(polarisVersionString()).isEqualTo(System.getProperty("polarisVersion"));
-    soft.assertThat(isReleaseBuild()).isFalse();
-    soft.assertThat(getBuildReleasedVersion()).isEmpty();
-    soft.assertThat(getBuildTimestamp()).isEmpty();
-    soft.assertThat(getBuildGitHead()).isEmpty();
-    soft.assertThat(getBuildGitTag()).isEmpty();
-    soft.assertThat(getBuildSystem()).isEmpty();
-    soft.assertThat(getBuildJavaVersion()).isEmpty();
+    if (isReleaseBuild()) {
+      soft.assertThat(getBuildReleasedVersion()).isNotEmpty();
+      soft.assertThat(getBuildTimestamp()).isNotEmpty();
+      soft.assertThat(getBuildGitHead()).isNotEmpty();
+      soft.assertThat(getBuildGitTag()).isNotEmpty();
+      soft.assertThat(getBuildSystem()).isNotEmpty();
+      soft.assertThat(getBuildJavaVersion()).isNotEmpty();
+    } else {
+      soft.assertThat(getBuildReleasedVersion()).isEmpty();
+      soft.assertThat(getBuildTimestamp()).isEmpty();
+      soft.assertThat(getBuildGitHead()).isEmpty();
+      soft.assertThat(getBuildGitTag()).isEmpty();
+      soft.assertThat(getBuildSystem()).isEmpty();
+      soft.assertThat(getBuildJavaVersion()).isEmpty();
+    }
   }
 
   /**

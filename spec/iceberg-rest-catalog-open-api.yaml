@@ -19,10 +19,10 @@
 
 # CODE_COPIED_TO_POLARIS
 
-# Apache Iceberg Version: 1.7.1
+# Apache Iceberg Version: 1.8.1
 
 ---
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Apache Iceberg REST Catalog API
   license:
@@ -260,6 +260,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/prefix'
         - name: parent
           in: query
           description:
@@ -510,6 +511,8 @@ paths:
       description: Return all table identifiers under this namespace
       operationId: listTables
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:
@@ -556,6 +559,8 @@ paths:
         table state.
       operationId: createTable
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/data-access'
       requestBody:
         required: true
@@ -933,7 +938,19 @@ paths:
         for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration
         key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/table'
         - $ref: '#/components/parameters/data-access'
+        - name: If-None-Match
+          in: header
+          description:
+            An optional header that allows the server to return 304 (Not Modified) if the metadata
+            is current. The content is the value of the ETag received in a CreateTableResponse or
+            LoadTableResponse.
+          required: false
+          schema:
+            type: string
         - in: query
           name: snapshots
           description:
@@ -949,6 +966,10 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/LoadTableResponse'
+        304:
+          description:
+            Not Modified - Based on the content of the 'If-None-Match' header the table metadata has
+            not changed since.
         400:
           $ref: '#/components/responses/BadRequestErrorResponse'
         401:
@@ -1434,6 +1455,8 @@ paths:
       description: Return all view identifiers under this namespace
       operationId: listViews
       parameters:
+        - $ref: '#/components/parameters/prefix'
+        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:
@@ -1877,6 +1900,14 @@ components:
         type: integer
         minimum: 1
 
+    etag:
+      name: ETag
+      in: header
+      description: Identifies a unique version of the table metadata.
+      required: false
+      schema:
+        type: string
+
   ##############################
   # Application Schema Objects #
   ##############################
@@ -2052,6 +2083,10 @@ components:
           type: boolean
         doc:
           type: string
+        initial-default:
+          $ref: "#/components/schemas/PrimitiveTypeValue"
+        write-default:
+          $ref: "#/components/schemas/PrimitiveTypeValue"
 
     StructType:
       type: object
@@ -2061,7 +2096,7 @@ components:
       properties:
         type:
           type: string
-          enum: ["struct"]
+          const: "struct"
         fields:
           type: array
           items:
@@ -2077,7 +2112,7 @@ components:
       properties:
         type:
           type: string
-          enum: ["list"]
+          const: "list"
         element-id:
           type: integer
         element:
@@ -2097,7 +2132,7 @@ components:
       properties:
         type:
           type: string
-          enum: ["map"]
+          const: "map"
         key-id:
           type: integer
         key:
@@ -2169,7 +2204,7 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/ExpressionType'
-          enum: ["true"]
+          const: "true"
 
     FalseExpression:
       type: object
@@ -2178,7 +2213,7 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/ExpressionType'
-          enum: ["false"]
+          const: "false"
 
     AndOrExpression:
       type: object
@@ -2203,7 +2238,7 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/ExpressionType'
-          enum: ["not"]
+          const: "not"
         child:
           $ref: '#/components/schemas/Expression'
 
@@ -2273,7 +2308,7 @@ components:
       properties:
         type:
           type: string
-          enum: ["transform"]
+          const: "transform"
         transform:
           $ref: '#/components/schemas/Transform'
         term:
@@ -2648,6 +2683,7 @@ components:
           set-partition-statistics: '#/components/schemas/SetPartitionStatisticsUpdate'
           remove-partition-statistics: '#/components/schemas/RemovePartitionStatisticsUpdate'
           remove-partition-specs: '#/components/schemas/RemovePartitionSpecsUpdate'
+          enable-row-lineage: '#/components/schemas/EnableRowLineageUpdate'
       type: object
       required:
         - action
@@ -2660,12 +2696,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - uuid
       properties:
         action:
           type: string
-          enum: ["assign-uuid"]
+          const: "assign-uuid"
         uuid:
           type: string
 
@@ -2673,12 +2708,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - format-version
       properties:
         action:
           type: string
-          enum: ["upgrade-format-version"]
+          const: "upgrade-format-version"
         format-version:
           type: integer
 
@@ -2686,28 +2720,32 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - schema
       properties:
         action:
           type: string
-          enum: ["add-schema"]
+          const: "add-schema"
         schema:
           $ref: '#/components/schemas/Schema'
         last-column-id:
           type: integer
-          description: The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side.
+          deprecated: true
+          description:
+            This optional field is **DEPRECATED for REMOVAL** since it more safe to handle this internally,
+            and shouldn't be exposed to the clients.
+
+            The highest assigned column ID for the table. This is used to ensure columns are always
+            assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side.
 
     SetCurrentSchemaUpdate:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - schema-id
       properties:
         action:
           type: string
-          enum: ["set-current-schema"]
+          const: "set-current-schema"
         schema-id:
           type: integer
           description: Schema ID to set as current, or -1 to set last added schema
@@ -2716,12 +2754,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - spec
       properties:
         action:
           type: string
-          enum: ["add-spec"]
+          const: "add-spec"
         spec:
           $ref: '#/components/schemas/PartitionSpec'
 
@@ -2729,12 +2766,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - spec-id
       properties:
         action:
           type: string
-          enum: [ "set-default-spec" ]
+          const: "set-default-spec"
         spec-id:
           type: integer
           description: Partition spec ID to set as the default, or -1 to set last added spec
@@ -2743,12 +2779,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - sort-order
       properties:
         action:
           type: string
-          enum: [ "add-sort-order" ]
+          const: "add-sort-order"
         sort-order:
           $ref: '#/components/schemas/SortOrder'
 
@@ -2756,12 +2791,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - sort-order-id
       properties:
         action:
           type: string
-          enum: [ "set-default-sort-order" ]
+          const: "set-default-sort-order"
         sort-order-id:
           type: integer
           description: Sort order ID to set as the default, or -1 to set last added sort order
@@ -2770,12 +2804,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - snapshot
       properties:
         action:
           type: string
-          enum: [ "add-snapshot" ]
+          const: "add-snapshot"
         snapshot:
           $ref: '#/components/schemas/Snapshot'
 
@@ -2784,12 +2817,11 @@ components:
         - $ref: '#/components/schemas/BaseUpdate'
         - $ref: '#/components/schemas/SnapshotReference'
       required:
-        - action
         - ref-name
       properties:
         action:
           type: string
-          enum: [ "set-snapshot-ref" ]
+          const: "set-snapshot-ref"
         ref-name:
           type: string
 
@@ -2797,12 +2829,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - snapshot-ids
       properties:
         action:
           type: string
-          enum: [ "remove-snapshots" ]
+          const: "remove-snapshots"
         snapshot-ids:
           type: array
           items:
@@ -2813,12 +2844,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - ref-name
       properties:
         action:
           type: string
-          enum: [ "remove-snapshot-ref" ]
+          const: "remove-snapshot-ref"
         ref-name:
           type: string
 
@@ -2826,12 +2856,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - location
       properties:
         action:
           type: string
-          enum: [ "set-location" ]
+          const: "set-location"
         location:
           type: string
 
@@ -2839,12 +2868,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - updates
       properties:
         action:
           type: string
-          enum: [ "set-properties" ]
+          const: "set-properties"
         updates:
           type: object
           additionalProperties:
@@ -2854,12 +2882,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - removals
       properties:
         action:
           type: string
-          enum: [ "remove-properties" ]
+          const: "remove-properties"
         removals:
           type: array
           items:
@@ -2869,12 +2896,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - view-version
       properties:
         action:
           type: string
-          enum: [ "add-view-version" ]
+          const: "add-view-version"
         view-version:
           $ref: '#/components/schemas/ViewVersion'
 
@@ -2882,12 +2908,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - view-version-id
       properties:
         action:
           type: string
-          enum: [ "set-current-view-version" ]
+          const: "set-current-view-version"
         view-version-id:
           type: integer
           description: The view version id to set as current, or -1 to set last added view version id
@@ -2896,16 +2921,18 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
-        - snapshot-id
         - statistics
       properties:
         action:
           type: string
-          enum: [ "set-statistics" ]
+          const: "set-statistics"
         snapshot-id:
           type: integer
           format: int64
+          deprecated: true
+          description:
+            This optional field is **DEPRECATED for REMOVAL** since it contains redundant information.
+            Clients should use the `statistics.snapshot-id` field instead.
         statistics:
           $ref: '#/components/schemas/StatisticsFile'
 
@@ -2913,12 +2940,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - snapshot-id
       properties:
         action:
           type: string
-          enum: [ "remove-statistics" ]
+          const: "remove-statistics"
         snapshot-id:
           type: integer
           format: int64
@@ -2927,12 +2953,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - partition-statistics
       properties:
         action:
           type: string
-          enum: [ "set-partition-statistics" ]
+          const: "set-partition-statistics"
         partition-statistics:
           $ref: '#/components/schemas/PartitionStatisticsFile'
 
@@ -2940,12 +2965,11 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
       required:
-        - action
         - snapshot-id
       properties:
         action:
           type: string
-          enum: [ "remove-partition-statistics" ]
+          const: "remove-partition-statistics"
         snapshot-id:
           type: integer
           format: int64
@@ -2958,11 +2982,20 @@ components:
       properties:
         action:
           type: string
-          enum: [ "remove-partition-specs" ]
+          const: "remove-partition-specs"
         spec-ids:
           type: array
           items:
             type: integer
+
+    # Disabling Row Lineage is Forbidden
+    EnableRowLineageUpdate:
+      allOf:
+        - $ref: '#/components/schemas/BaseUpdate'
+      properties:
+        action:
+          type: string
+          const: "enable-row-lineage"
 
     TableUpdate:
       anyOf:
@@ -2984,6 +3017,7 @@ components:
         - $ref: '#/components/schemas/SetStatisticsUpdate'
         - $ref: '#/components/schemas/RemoveStatisticsUpdate'
         - $ref: '#/components/schemas/RemovePartitionSpecsUpdate'
+        - $ref: '#/components/schemas/EnableRowLineageUpdate'
 
     ViewUpdate:
       anyOf:
@@ -3009,35 +3043,35 @@ components:
           assert-last-assigned-partition-id: '#/components/schemas/AssertLastAssignedPartitionId'
           assert-default-spec-id: '#/components/schemas/AssertDefaultSpecId'
           assert-default-sort-order-id: '#/components/schemas/AssertDefaultSortOrderId'
-      oneOf:
-        - $ref: '#/components/schemas/AssertCreate'
-        - $ref: '#/components/schemas/AssertTableUUID'
-        - $ref: '#/components/schemas/AssertRefSnapshotId'
-        - $ref: '#/components/schemas/AssertLastAssignedFieldId'
-        - $ref: '#/components/schemas/AssertCurrentSchemaId'
-        - $ref: '#/components/schemas/AssertLastAssignedPartitionId'
-        - $ref: '#/components/schemas/AssertDefaultSpecId'
-        - $ref: '#/components/schemas/AssertDefaultSortOrderId'
+      properties:
+        type:
+          type: string
+      required:
+        - type
 
     AssertCreate:
       type: object
       description: The table must not already exist; used for create transactions
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
         - type
       properties:
         type:
           type: string
-          enum: ["assert-create"]
+          const: "assert-create"
 
     AssertTableUUID:
       description: The table UUID must match the requirement's `uuid`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
         - type
         - uuid
       properties:
         type:
           type: string
-          enum: ["assert-table-uuid"]
+          const: "assert-table-uuid"
         uuid:
           type: string
 
@@ -3045,14 +3079,15 @@ components:
       description:
         The table branch or tag identified by the requirement's `ref` must reference the requirement's `snapshot-id`;
         if `snapshot-id` is `null` or missing, the ref must not already exist
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - ref
         - snapshot-id
       properties:
         type:
           type: string
-          enum: [ "assert-ref-snapshot-id" ]
+          const: "assert-ref-snapshot-id"
         ref:
           type: string
         snapshot-id:
@@ -3062,65 +3097,70 @@ components:
     AssertLastAssignedFieldId:
       description:
         The table's last assigned column id must match the requirement's `last-assigned-field-id`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - last-assigned-field-id
       properties:
         type:
           type: string
-          enum: [ "assert-last-assigned-field-id" ]
+          const: "assert-last-assigned-field-id"
         last-assigned-field-id:
           type: integer
 
     AssertCurrentSchemaId:
       description:
         The table's current schema id must match the requirement's `current-schema-id`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - current-schema-id
       properties:
         type:
           type: string
-          enum: [ "assert-current-schema-id" ]
+          const: "assert-current-schema-id"
         current-schema-id:
           type: integer
 
     AssertLastAssignedPartitionId:
       description:
         The table's last assigned partition id must match the requirement's `last-assigned-partition-id`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - last-assigned-partition-id
       properties:
         type:
           type: string
-          enum: [ "assert-last-assigned-partition-id" ]
+          const: "assert-last-assigned-partition-id"
         last-assigned-partition-id:
           type: integer
 
     AssertDefaultSpecId:
       description:
         The table's default spec id must match the requirement's `default-spec-id`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - default-spec-id
       properties:
         type:
           type: string
-          enum: [ "assert-default-spec-id" ]
+          const: "assert-default-spec-id"
         default-spec-id:
           type: integer
 
     AssertDefaultSortOrderId:
       description:
         The table's default sort order id must match the requirement's `default-sort-order-id`
+      allOf:
+        - $ref: '#/components/schemas/TableRequirement'
       required:
-        - type
         - default-sort-order-id
       properties:
         type:
           type: string
-          enum: [ "assert-default-sort-order-id" ]
+          const: "assert-default-sort-order-id"
         default-sort-order-id:
           type: integer
 
@@ -3141,7 +3181,7 @@ components:
       properties:
         type:
           type: string
-          enum: [ "assert-view-uuid" ]
+          const: "assert-view-uuid"
         uuid:
           type: string
 
@@ -3196,6 +3236,7 @@ components:
          - `s3.secret-access-key`: secret for credentials that provide access to data in S3 
          - `s3.session-token`: if present, this value should be used for as the session token 
          - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `s3-signer-open-api.yaml` specification
+         - `s3.cross-region-access-enabled`: if `true`, S3 Cross-Region bucket access is enabled
 
         ## Storage Credentials
 
@@ -3264,7 +3305,7 @@ components:
           properties:
             status:
               $ref: '#/components/schemas/PlanStatus'
-              enum: ["completed"]
+              const: "completed"
 
     CompletedPlanningWithIDResult:
       type: object
@@ -3287,7 +3328,7 @@ components:
           properties:
             status:
               $ref: '#/components/schemas/PlanStatus'
-              enum: ["failed"]
+              const: "failed"
 
     AsyncPlanningResult:
       type: object
@@ -3296,7 +3337,7 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/PlanStatus'
-          enum: ["submitted"]
+          const: "submitted"
         plan-id:
           description: ID used to track a planning request
           type: string
@@ -4136,6 +4177,7 @@ components:
         - avro
         - orc
         - parquet
+        - puffin
 
     ContentFile:
       discriminator:
@@ -4200,7 +4242,7 @@ components:
       properties:
         content:
           type: string
-          enum: [ "data" ]
+          const: "data"
         column-sizes:
           allOf:
             - $ref: '#/components/schemas/CountMap'
@@ -4244,7 +4286,15 @@ components:
       properties:
         content:
           type: string
-          enum: [ "position-deletes" ]
+          const: "position-deletes"
+        content-offset:
+          type: integer
+          format: int64
+          description: Offset within the delete file of delete content
+        content-size-in-bytes:
+          type: integer
+          format: int64
+          description: Length, in bytes, of the delete content; required if content-offset is present
 
     EqualityDeleteFile:
       allOf:
@@ -4254,7 +4304,7 @@ components:
       properties:
         content:
           type: string
-          enum: [ "equality-deletes" ]
+          const: "equality-deletes"
         equality-ids:
           type: array
           items:
@@ -4576,6 +4626,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadTableResult'
+      headers:
+        etag:
+          $ref: '#/components/parameters/etag'
 
     PlanTableScanResponse:
       description: Result of submitting a table scan to plan
@@ -4604,6 +4657,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadTableResult'
+      headers:
+        etag:
+          $ref: '#/components/parameters/etag'
 
     LoadViewResponse:
       description: View metadata result when loading a view

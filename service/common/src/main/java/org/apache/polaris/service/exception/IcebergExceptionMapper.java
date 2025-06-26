@@ -57,6 +57,7 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
+import org.eclipse.microprofile.faulttolerance.exceptions.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -191,6 +192,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case IllegalArgumentException e -> Status.BAD_REQUEST.getStatusCode();
       case UnsupportedOperationException e -> Status.NOT_ACCEPTABLE.getStatusCode();
       case WebApplicationException e -> e.getResponse().getStatus();
+      case TimeoutException e -> Status.REQUEST_TIMEOUT.getStatusCode();
       default -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
     };
   }

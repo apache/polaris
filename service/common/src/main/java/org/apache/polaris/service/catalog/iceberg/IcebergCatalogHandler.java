@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -36,6 +37,7 @@ import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -43,6 +45,7 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
@@ -51,7 +54,9 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.rest.CatalogHandlers;
+import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -72,6 +77,10 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -82,10 +91,14 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -111,7 +124,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
   private final PolarisMetaStoreManager metaStoreManager;
+  private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
+  private final ReservedProperties reservedProperties;
+  private final CatalogHandlerUtils catalogHandlerUtils;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -119,27 +135,26 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
 
+  public static final String SNAPSHOTS_ALL = "all";
+  public static final String SNAPSHOTS_REFS = "refs";
+
   public IcebergCatalogHandler(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
+      UserSecretsManager userSecretsManager,
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
-      PolarisAuthorizer authorizer) {
+      PolarisAuthorizer authorizer,
+      ReservedProperties reservedProperties,
+      CatalogHandlerUtils catalogHandlerUtils) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
+    this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
-  }
-
-  @Override
-  protected void initializeCatalog() {
-    this.baseCatalog =
-        catalogFactory.createCallContextCatalog(
-            callContext, authenticatedPrincipal, securityContext, resolutionManifest);
-    this.namespaceCatalog =
-        (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
-    this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+    this.reservedProperties = reservedProperties;
+    this.catalogHandlerUtils = catalogHandlerUtils;
   }
 
   /**
@@ -163,11 +178,85 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return isCreate;
   }
 
+  public ListNamespacesResponse listNamespaces(
+      Namespace parent, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<Namespace> results = polarisCatalog.listNamespaces(parent, pageToken, pageSize);
+      return ListNamespacesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return catalogHandlerUtils.listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+    }
+  }
+
+  private UserSecretsManager getUserSecretsManager() {
+    return userSecretsManager;
+  }
+
+  @Override
+  protected void initializeCatalog() {
+    CatalogEntity resolvedCatalogEntity =
+        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    ConnectionConfigInfoDpo connectionConfigInfoDpo =
+        resolvedCatalogEntity.getConnectionConfigInfoDpo();
+    if (connectionConfigInfoDpo != null) {
+      LOGGER
+          .atInfo()
+          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .log("Initializing federated catalog");
+      FeatureConfiguration.enforceFeatureEnabledOrThrow(
+          callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+
+      Catalog federatedCatalog;
+      ConnectionType connectionType =
+          ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+
+      switch (connectionType) {
+        case ICEBERG_REST:
+          SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
+          federatedCatalog =
+              new RESTCatalog(
+                  context,
+                  (config) ->
+                      HTTPClient.builder(config)
+                          .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                          .build());
+          federatedCatalog.initialize(
+              ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          break;
+        case HADOOP:
+          federatedCatalog = new HadoopCatalog();
+          federatedCatalog.initialize(
+              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Connection type not supported: " + connectionType);
+      }
+      this.baseCatalog = federatedCatalog;
+    } else {
+      LOGGER.atInfo().log("Initializing non-federated catalog");
+      this.baseCatalog =
+          catalogFactory.createCallContextCatalog(
+              callContext, authenticatedPrincipal, securityContext, resolutionManifest);
+    }
+    this.namespaceCatalog =
+        (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
+    this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+  }
+
   public ListNamespacesResponse listNamespaces(Namespace parent) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
-    return CatalogHandlers.listNamespaces(namespaceCatalog, parent);
+    return catalogHandlerUtils.listNamespaces(namespaceCatalog, parent);
   }
 
   public CreateNamespaceResponse createNamespace(CreateNamespaceRequest request) {
@@ -190,30 +279,34 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // For CreateNamespace, we consider this a special case in that the creator is able to
       // retrieve the latest namespace metadata for the duration of the CreateNamespace
       // operation, even if the entityVersion and/or grantsVersion update in the interim.
-      namespaceCatalog.createNamespace(namespace, request.properties());
-      return CreateNamespaceResponse.builder()
-          .withNamespace(namespace)
-          .setProperties(
+      namespaceCatalog.createNamespace(
+          namespace, reservedProperties.removeReservedProperties(request.properties()));
+      Map<String, String> filteredProperties =
+          reservedProperties.removeReservedProperties(
               resolutionManifest
                   .getPassthroughResolvedPath(namespace)
                   .getRawLeafEntity()
-                  .getPropertiesAsMap())
+                  .getPropertiesAsMap());
+      return CreateNamespaceResponse.builder()
+          .withNamespace(namespace)
+          .setProperties(filteredProperties)
           .build();
     } else {
-      return CatalogHandlers.createNamespace(namespaceCatalog, request);
+      return catalogHandlerUtils.createNamespace(namespaceCatalog, request);
     }
   }
 
-  private static boolean isExternal(CatalogEntity catalog) {
+  private static boolean isStaticFacade(CatalogEntity catalog) {
     return org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL.equals(
-        catalog.getCatalogType());
+            catalog.getCatalogType())
+        && !catalog.isPassthroughFacade();
   }
 
   public GetNamespaceResponse loadNamespaceMetadata(Namespace namespace) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    return CatalogHandlers.loadNamespace(namespaceCatalog, namespace);
+    return catalogHandlerUtils.loadNamespace(namespaceCatalog, namespace);
   }
 
   public void namespaceExists(Namespace namespace) {
@@ -228,14 +321,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     // TODO: Just skip CatalogHandlers for this one maybe
-    CatalogHandlers.loadNamespace(namespaceCatalog, namespace);
+    catalogHandlerUtils.loadNamespace(namespaceCatalog, namespace);
   }
 
   public void dropNamespace(Namespace namespace) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_NAMESPACE;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    CatalogHandlers.dropNamespace(namespaceCatalog, namespace);
+    catalogHandlerUtils.dropNamespace(namespaceCatalog, namespace);
   }
 
   public UpdateNamespacePropertiesResponse updateNamespaceProperties(
@@ -243,14 +336,29 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_NAMESPACE_PROPERTIES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    return CatalogHandlers.updateNamespaceProperties(namespaceCatalog, namespace, request);
+    return catalogHandlerUtils.updateNamespaceProperties(namespaceCatalog, namespace, request);
+  }
+
+  public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listTables(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else {
+      return catalogHandlerUtils.listTables(baseCatalog, namespace, pageToken, pageSize);
+    }
   }
 
   public ListTablesResponse listTables(Namespace namespace) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    return CatalogHandlers.listTables(baseCatalog, namespace);
+    return catalogHandlerUtils.listTables(baseCatalog, namespace);
   }
 
   /**
@@ -271,10 +379,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot create table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    return CatalogHandlers.createTable(baseCatalog, namespace, request);
+    CreateTableRequest requestWithoutReservedProperties =
+        CreateTableRequest.builder()
+            .withName(request.name())
+            .withLocation(request.location())
+            .withPartitionSpec(request.spec())
+            .withSchema(request.schema())
+            .withWriteOrder(request.writeOrder())
+            .setProperties(reservedProperties.removeReservedProperties(request.properties()))
+            .build();
+    return catalogHandlerUtils.createTable(
+        baseCatalog, namespace, requestWithoutReservedProperties);
   }
 
   /**
@@ -297,8 +415,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot create table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
     request.validate();
 
@@ -309,7 +427,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     Table table =
         baseCatalog
@@ -328,7 +446,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST))
+                  PolarisStorageActions.LIST),
+              SNAPSHOTS_ALL)
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -348,7 +467,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-    properties.putAll(request.properties());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
     String location;
     if (request.location() != null) {
@@ -392,8 +511,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot create table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
     return LoadTableResponse.builder().withTableMetadata(metadata).build();
@@ -412,14 +531,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot create table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-            ident, metadata, Set.of(PolarisStorageActions.ALL))
+            ident, metadata, Set.of(PolarisStorageActions.ALL), SNAPSHOTS_ALL)
         .build();
   }
 
@@ -435,7 +554,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
-    return CatalogHandlers.registerTable(baseCatalog, namespace, request);
+    return catalogHandlerUtils.registerTable(baseCatalog, namespace, request);
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -454,7 +573,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       extraPassthroughNamespaces.add(nsLevel);
     }
     authorizeBasicNamespaceOperationOrThrow(
-        op, Namespace.empty(), extraPassthroughNamespaces, extraPassthroughTableLikes);
+        op, Namespace.empty(), extraPassthroughNamespaces, extraPassthroughTableLikes, null);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -528,7 +647,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
     }
 
-    return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+    LoadTableResponse rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
+    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -583,14 +703,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     LOGGER.info(
         "allow external catalog credential vending: {}",
         configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             catalogEntity,
             FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
         && !configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
+            callContext.getRealmContext(),
             catalogEntity,
             FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
       throw new ForbiddenException(
@@ -627,7 +747,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableMetadata tableMetadata = baseTable.operations().current();
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested)
+                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
               .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -640,7 +760,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> actions) {
+      Set<PolarisStorageActions> actions,
+      String snapshots) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -649,9 +770,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
-      Map<String, String> credentialConfig =
-          credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
+      AccessConfig accessConfig =
+          credentialDelegation.getAccessConfig(tableIdentifier, tableMetadata, actions);
+      Map<String, String> credentialConfig = accessConfig.credentials();
       responseBuilder.addAllConfig(credentialConfig);
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
       if (!credentialConfig.isEmpty()) {
         responseBuilder.addCredential(
             ImmutableCredential.builder()
@@ -699,10 +822,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot update table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    return CatalogHandlers.updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+    return catalogHandlerUtils.updateTable(
+        baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
   public LoadTableResponse updateTableForStagedCreate(
@@ -716,10 +840,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot update table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
-    return CatalogHandlers.updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+    return catalogHandlerUtils.updateTable(
+        baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }
 
   public void dropTableWithoutPurge(TableIdentifier tableIdentifier) {
@@ -727,7 +852,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    CatalogHandlers.dropTable(baseCatalog, tableIdentifier);
+    catalogHandlerUtils.dropTable(baseCatalog, tableIdentifier);
   }
 
   public void dropTableWithPurge(TableIdentifier tableIdentifier) {
@@ -741,10 +866,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot drop table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot drop table on static-facade external catalogs.");
     }
-    CatalogHandlers.purgeTable(baseCatalog, tableIdentifier);
+    catalogHandlerUtils.purgeTable(baseCatalog, tableIdentifier);
   }
 
   public void tableExists(TableIdentifier tableIdentifier) {
@@ -753,7 +878,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
-    CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -767,10 +892,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot rename table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot rename table on static-facade external catalogs.");
     }
-    CatalogHandlers.renameTable(baseCatalog, request);
+    catalogHandlerUtils.renameTable(baseCatalog, request);
   }
 
   public void commitTransaction(CommitTransactionRequest commitTransactionRequest) {
@@ -791,8 +916,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot update table on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
 
     if (!(baseCatalog instanceof IcebergCatalog)) {
@@ -845,7 +970,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                                   .getPolarisCallContext()
                                   .getConfigurationStore()
                                   .getConfiguration(
-                                      callContext.getPolarisCallContext(),
+                                      callContext.getRealmContext(),
                                       FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
@@ -879,11 +1004,30 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
   }
 
+  public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
+    authorizeBasicNamespaceOperationOrThrow(op, namespace);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      Page<TableIdentifier> results = polarisCatalog.listViews(namespace, pageToken, pageSize);
+      return ListTablesResponse.builder()
+          .addAll(results.items)
+          .nextPageToken(results.pageToken.toTokenString())
+          .build();
+    } else if (baseCatalog instanceof ViewCatalog viewCatalog) {
+      return catalogHandlerUtils.listViews(viewCatalog, namespace, pageToken, pageSize);
+    } else {
+      throw new BadRequestException(
+          "Unsupported operation: listViews with baseCatalog type: %s",
+          baseCatalog.getClass().getName());
+    }
+  }
+
   public ListTablesResponse listViews(Namespace namespace) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    return CatalogHandlers.listViews(viewCatalog, namespace);
+    return catalogHandlerUtils.listViews(viewCatalog, namespace);
   }
 
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {
@@ -897,17 +1041,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot create view on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot create view on static-facade external catalogs.");
     }
-    return CatalogHandlers.createView(viewCatalog, namespace, request);
+    return catalogHandlerUtils.createView(viewCatalog, namespace, request);
   }
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    return CatalogHandlers.loadView(viewCatalog, viewIdentifier);
+    return catalogHandlerUtils.loadView(viewCatalog, viewIdentifier);
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
@@ -920,17 +1064,17 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot replace view on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot replace view on static-facade external catalogs.");
     }
-    return CatalogHandlers.updateView(viewCatalog, viewIdentifier, applyUpdateFilters(request));
+    return catalogHandlerUtils.updateView(viewCatalog, viewIdentifier, applyUpdateFilters(request));
   }
 
   public void dropView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    CatalogHandlers.dropView(viewCatalog, viewIdentifier);
+    catalogHandlerUtils.dropView(viewCatalog, viewIdentifier);
   }
 
   public void viewExists(TableIdentifier viewIdentifier) {
@@ -938,7 +1082,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
-    CatalogHandlers.loadView(viewCatalog, viewIdentifier);
+    catalogHandlerUtils.loadView(viewCatalog, viewIdentifier);
   }
 
   public void renameView(RenameTableRequest request) {
@@ -952,10 +1096,35 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .getResolvedReferenceCatalogEntity()
                 .getResolvedLeafEntity()
                 .getEntity());
-    if (isExternal(catalog)) {
-      throw new BadRequestException("Cannot rename view on external catalogs.");
+    if (isStaticFacade(catalog)) {
+      throw new BadRequestException("Cannot rename view on static-facade external catalogs.");
     }
-    CatalogHandlers.renameView(viewCatalog, request);
+    catalogHandlerUtils.renameView(viewCatalog, request);
+  }
+
+  private @Nonnull LoadTableResponse filterResponseToSnapshots(
+      LoadTableResponse loadTableResponse, String snapshots) {
+    if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
+      return loadTableResponse;
+    } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
+      TableMetadata metadata = loadTableResponse.tableMetadata();
+
+      Set<Long> referencedSnapshotIds =
+          metadata.refs().values().stream()
+              .map(SnapshotRef::snapshotId)
+              .collect(Collectors.toSet());
+
+      TableMetadata filteredMetadata =
+          metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+
+      return LoadTableResponse.builder()
+          .withTableMetadata(filteredMetadata)
+          .addAllConfig(loadTableResponse.config())
+          .addAllCredentials(loadTableResponse.credentials())
+          .build();
+    } else {
+      throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
   }
 
   @Override

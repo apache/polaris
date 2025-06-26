@@ -75,6 +75,7 @@ cascade:
 [cols="4,1,3"]
 |===
 
+| https://github.com/ajantha-bhat[Ajantha Bhat] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/adutra[Alex Dutra] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PPMC Member | link:https://www.google.com/[Google]
@@ -87,8 +88,11 @@ cascade:
 | https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
 | https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
 | https://github.com/vvcephei[John Roesler] | PPMC Member | link:https://www.confluent.io/[Confluent]
+| https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Kent Yao | Mentor |
 | https://github.com/collado-mike[Michael Collado] | Committer | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
+| https://github.com/singhpk234[Prashant Singh] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/snazy[Robert Stupp] | PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |

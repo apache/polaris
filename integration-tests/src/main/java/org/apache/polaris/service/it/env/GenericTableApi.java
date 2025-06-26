@@ -89,7 +89,12 @@ public class GenericTableApi extends RestApi {
                 "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
                 Map.of("cat", catalog, "ns", ns))
             .post(
-                Entity.json(new CreateGenericTableRequest(id.name(), format, "doc", properties)))) {
+                Entity.json(
+                    CreateGenericTableRequest.builder()
+                        .setName(id.name())
+                        .setFormat(format)
+                        .setDoc("doc")
+                        .setProperties(properties)))) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();
     }
   }

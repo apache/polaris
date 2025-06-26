@@ -114,7 +114,7 @@ menu:
 
     - name: "Downloads"
       identifier: "downloads"
-      url: "/downloads" 
+      url: "/downloads"
       weight: 200
 
     - name: "Community"
@@ -144,6 +144,10 @@ menu:
       parent: "community"
       url: "/community/contributing-guidelines"
       weight: 60
+    - name: "Release Guide"
+      parent: "community"
+      url: "/community/release-guide"
+      wieght: 70
 
     - name: "ASF"
       pre: "<i class='fa-solid fa-feather'></i>"
@@ -236,6 +240,9 @@ markup:
     noHl: false
     style: 'monokai'
     tabWidth: 4
+  goldmark:
+    renderer:
+      unsafe: true
 
 security:
   exec:
@@ -255,4 +262,3 @@ privacy:
     simple: true
   youtube:
     privacyEnhanced: true
-

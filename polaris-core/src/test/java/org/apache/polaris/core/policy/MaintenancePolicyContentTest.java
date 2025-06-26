@@ -28,7 +28,7 @@ import org.apache.polaris.core.policy.content.maintenance.BaseMaintenancePolicyC
 import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
-import org.apache.polaris.core.policy.content.maintenance.SnapshotRetentionPolicyContent;
+import org.apache.polaris.core.policy.content.maintenance.SnapshotExpiryPolicyContent;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -52,8 +52,8 @@ public class MaintenancePolicyContentTest {
         return MetadataCompactionPolicyContent::fromString;
       case ORPHAN_FILE_REMOVAL:
         return OrphanFileRemovalPolicyContent::fromString;
-      case SNAPSHOT_RETENTION:
-        return SnapshotRetentionPolicyContent::fromString;
+      case SNAPSHOT_EXPIRY:
+        return SnapshotExpiryPolicyContent::fromString;
       default:
         throw new IllegalArgumentException("Unknown policy type: " + policyType);
     }

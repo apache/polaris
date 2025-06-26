@@ -20,13 +20,15 @@ package org.apache.polaris.service;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -37,24 +39,30 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.util.TriFunction;
@@ -65,6 +73,7 @@ public record TestServices(
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
     IcebergRestConfigurationApi restConfigurationApi,
+    IcebergCatalogAdapter catalogAdapter,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
@@ -72,7 +81,8 @@ public record TestServices(
     RealmContext realmContext,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
-    TaskExecutor taskExecutor) {
+    TaskExecutor taskExecutor,
+    PolarisEventListener polarisEventListener) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -84,6 +94,21 @@ public record TestServices(
           MetaStoreManagerFactory,
           PolarisConfigurationStore,
           FileIOFactory> {}
+
+  private static class MockedConfigurationStore implements PolarisConfigurationStore {
+    private final Map<String, Object> defaults;
+
+    public MockedConfigurationStore(Map<String, Object> defaults) {
+      this.defaults = Map.copyOf(defaults);
+    }
+
+    @Override
+    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+      @SuppressWarnings("unchecked")
+      T confgValue = (T) defaults.get(configName);
+      return confgValue;
+    }
+  }
 
   public static Builder builder() {
     return new Builder();
@@ -118,7 +143,7 @@ public record TestServices(
     }
 
     public TestServices build() {
-      DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
+      PolarisConfigurationStore configurationStore = new MockedConfigurationStore(config);
       PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
@@ -126,41 +151,31 @@ public record TestServices(
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
               () -> stsClient,
+              Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics);
+              storageIntegrationProvider, polarisDiagnostics, configurationStore);
       RealmEntityManagerFactory realmEntityManagerFactory =
           new RealmEntityManagerFactory(metaStoreManagerFactory) {};
+      UserSecretsManagerFactory userSecretsManagerFactory =
+          new UnsafeInMemorySecretsManagerFactory();
 
-      TransactionalPersistence metaStoreSession =
+      BasePersistence metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
       CallContext callContext =
-          new CallContext() {
-            @Override
-            public RealmContext getRealmContext() {
-              return realmContext;
-            }
-
-            @Override
-            public PolarisCallContext getPolarisCallContext() {
-              return new PolarisCallContext(
-                  metaStoreSession,
-                  polarisDiagnostics,
-                  configurationStore,
-                  Mockito.mock(Clock.class));
-            }
-
-            @Override
-            public Map<String, Object> contextVariables() {
-              return new HashMap<>();
-            }
-          };
-      CallContext.setCurrentContext(callContext);
+          new PolarisCallContext(
+              realmContext,
+              metaStoreSession,
+              polarisDiagnostics,
+              configurationStore,
+              Clock.systemUTC());
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      UserSecretsManager userSecretsManager =
+          userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
@@ -168,22 +183,37 @@ public record TestServices(
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
+      PolarisEventListener polarisEventListener = new TestPolarisEventListener();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
-              realmEntityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
+              realmEntityManagerFactory,
+              metaStoreManagerFactory,
+              userSecretsManagerFactory,
+              taskExecutor,
+              fileIOFactory,
+              polarisEventListener);
 
-      IcebergCatalogAdapter service =
+      ReservedProperties reservedProperties = ReservedProperties.NONE;
+
+      CatalogHandlerUtils catalogHandlerUtils =
+          new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
+
+      IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
               realmContext,
               callContext,
               callContextFactory,
               entityManager,
               metaStoreManager,
+              userSecretsManager,
               authorizer,
-              new DefaultCatalogPrefixParser());
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              catalogHandlerUtils);
 
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
-      IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
+      IcebergRestConfigurationApi restConfigurationApi =
+          new IcebergRestConfigurationApi(catalogService);
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -223,12 +253,18 @@ public record TestServices(
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
-                  realmEntityManagerFactory, metaStoreManagerFactory, authorizer, callContext));
+                  realmEntityManagerFactory,
+                  metaStoreManagerFactory,
+                  userSecretsManagerFactory,
+                  authorizer,
+                  callContext,
+                  reservedProperties));
 
       return new TestServices(
           catalogsApi,
           restApi,
           restConfigurationApi,
+          catalogService,
           configurationStore,
           polarisDiagnostics,
           realmEntityManagerFactory,
@@ -236,7 +272,8 @@ public record TestServices(
           realmContext,
           securityContext,
           fileIOFactory,
-          taskExecutor);
+          taskExecutor,
+          polarisEventListener);
     }
   }
 }

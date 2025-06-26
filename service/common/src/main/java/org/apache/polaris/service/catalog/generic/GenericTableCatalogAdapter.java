@@ -23,15 +23,16 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -44,36 +45,47 @@ public class GenericTableCatalogAdapter
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogAdapter.class);
 
+  private final RealmContext realmContext;
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
+  private final ReservedProperties reservedProperties;
+  private final CatalogPrefixParser prefixParser;
 
   @Inject
   public GenericTableCatalogAdapter(
+      RealmContext realmContext,
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisAuthorizer polarisAuthorizer) {
+      PolarisAuthorizer polarisAuthorizer,
+      CatalogPrefixParser prefixParser,
+      ReservedProperties reservedProperties) {
+    this.realmContext = realmContext;
     this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
+    this.prefixParser = prefixParser;
+    this.reservedProperties = reservedProperties;
+
+    // FIXME: This is a hack to set the current context for downstream calls.
+    CallContext.setCurrentContext(callContext);
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(
-      SecurityContext securityContext, String catalogName) {
-    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
+      SecurityContext securityContext, String prefix) {
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        callContext, FeatureConfiguration.ENABLE_GENERIC_TABLES);
+    validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(
         callContext,
         entityManager,
         metaStoreManager,
         securityContext,
-        catalogName,
+        prefixParser.prefixToCatalogName(realmContext, prefix),
         polarisAuthorizer);
   }
 
@@ -90,7 +102,7 @@ public class GenericTableCatalogAdapter
             TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getDoc(),
-            createGenericTableRequest.getProperties());
+            reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()));
 
     return Response.ok(response).build();
   }

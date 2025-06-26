@@ -22,7 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 public interface TransactionalPolicyMappingPersistence {
   /** See {@link PolicyMappingPersistence#writeToPolicyMappingRecords} */
@@ -54,7 +54,7 @@ public interface TransactionalPolicyMappingPersistence {
   /** See {@link PolicyMappingPersistence#deleteAllEntityPolicyMappingRecords} */
   default void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
+      @Nonnull PolarisBaseEntity entity,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
       @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     throw new UnsupportedOperationException("Not Implemented");
@@ -92,7 +92,10 @@ public interface TransactionalPolicyMappingPersistence {
   /** See {@link PolicyMappingPersistence#loadAllTargetsOnPolicy} */
   @Nonnull
   default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+      @Nonnull PolarisCallContext callCtx,
+      long policyCatalogId,
+      long policyId,
+      int policyTypeCode) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 }

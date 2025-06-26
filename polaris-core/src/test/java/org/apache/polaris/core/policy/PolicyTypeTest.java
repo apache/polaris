@@ -31,7 +31,7 @@ public class PolicyTypeTest {
         Arguments.of(0, "system.data-compaction", true),
         Arguments.of(1, "system.metadata-compaction", true),
         Arguments.of(2, "system.orphan-file-removal", true),
-        Arguments.of(3, "system.snapshot-retention", true));
+        Arguments.of(3, "system.snapshot-expiry", true));
   }
 
   @ParameterizedTest

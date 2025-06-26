@@ -20,9 +20,16 @@ package org.apache.polaris.service.it.test;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
+import com.google.common.collect.ImmutableMap;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.view.BaseView;
+import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -31,21 +38,24 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -57,6 +67,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
+  static {
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+  }
+
+  public static Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
+      Map.of(
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1", "catalog-default-key1",
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2", "catalog-default-key2",
+          org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key3", "catalog-default-key3",
+          org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3",
+              "catalog-override-key3",
+          org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4",
+              "catalog-override-key4");
 
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
@@ -80,7 +103,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    Assumptions.assumeFalse(shouldSkip());
+    Assumptions.assumeThat(shouldSkip()).isFalse();
 
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
@@ -104,6 +127,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
             .build();
     Catalog catalog =
         PolarisCatalog.builder()
@@ -116,15 +140,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     restCatalog =
         IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            catalogName,
-            Map.of(
-                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
-                "catalog-default-key1",
-                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
-                "catalog-default-key2"));
+            client, endpoints, principalCredentials, catalogName, DEFAULT_REST_CATALOG_CONFIG);
   }
 
   @AfterEach
@@ -168,15 +184,81 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
-  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1273 */
   @Override
   @Test
-  @Disabled(
-      """
-      Disabled because the behavior is not applicable to Polaris.
-      To unblock, update this to expect an exception and add a Polaris-specific test.
-      """)
   public void createViewWithCustomMetadataLocation() {
-    super.createViewWithCustomMetadataLocation();
+    Assertions.assertThatThrownBy(super::createViewWithCustomMetadataLocation)
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Forbidden: Invalid locations");
+  }
+
+  @Test
+  public void createViewWithCustomMetadataLocationUsingPolaris(@TempDir Path tempDir) {
+    TableIdentifier identifier = TableIdentifier.of("ns", "view");
+
+    String location = Paths.get(tempDir.toUri().toString()).toString();
+    String customLocation = Paths.get(tempDir.toUri().toString(), "custom-location").toString();
+    String customLocation2 = Paths.get(tempDir.toUri().toString(), "custom-location2").toString();
+    String customLocationChild =
+        Paths.get(tempDir.toUri().toString(), "custom-location/child").toString();
+
+    catalog()
+        .createNamespace(
+            identifier.namespace(),
+            ImmutableMap.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, location));
+
+    Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
+
+    // CAN create a view with a custom metadata location `baseLocation/customLocation`,
+    // as long as the location is within the parent namespace's `write.metadata.path=baseLocation`
+    View view =
+        catalog()
+            .buildView(identifier)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(identifier.namespace())
+            .withDefaultCatalog(catalog().name())
+            .withQuery("spark", "select * from ns.tbl")
+            .withProperty(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customLocation)
+            .withLocation(location)
+            .create();
+
+    Assertions.assertThat(view).isNotNull();
+    Assertions.assertThat(catalog().viewExists(identifier)).as("View should exist").isTrue();
+    Assertions.assertThat(view.properties()).containsEntry("write.metadata.path", customLocation);
+    Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
+        .isNotNull()
+        .startsWith(customLocation);
+
+    // CANNOT update the view with a new metadata location `baseLocation/customLocation2`,
+    // even though the new location is still under the parent namespace's
+    // `write.metadata.path=baseLocation`.
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog()
+                    .loadView(identifier)
+                    .updateProperties()
+                    .set(
+                        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                        customLocation2)
+                    .commit())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Forbidden: Invalid locations");
+
+    // CANNOT update the view with a child metadata location `baseLocation/customLocation/child`,
+    // even though it is a subpath of the original view's
+    // `write.metadata.path=baseLocation/customLocation`.
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog()
+                    .loadView(identifier)
+                    .updateProperties()
+                    .set(
+                        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                        customLocationChild)
+                    .commit())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Forbidden: Invalid locations");
   }
 }

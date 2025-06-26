@@ -18,12 +18,33 @@
  */
 package org.apache.polaris.service.auth;
 
-public interface DecodedToken {
-  Long getPrincipalId();
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * A specialized {@link PrincipalAuthInfo} used for internal authentication, when Polaris is the
+ * identity provider.
+ */
+public interface DecodedToken extends PrincipalAuthInfo {
 
   String getClientId();
 
   String getSub();
 
   String getScope();
+
+  @Override
+  default String getPrincipalName() {
+    // Polaris stores the principal ID in the "sub" claim as a string,
+    // and in the "principal_id" claim as a numeric value. It doesn't store
+    // the principal name in the token, so we return null here.
+    return null;
+  }
+
+  @Override
+  default Set<String> getPrincipalRoles() {
+    // Polaris stores the principal roles in the "scope" claim
+    return Arrays.stream(getScope().split(" ")).collect(Collectors.toSet());
+  }
 }

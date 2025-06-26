@@ -22,6 +22,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -36,13 +37,15 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
     extends InMemoryPolarisMetaStoreManagerFactory {
 
   public InMemoryAtomicOperationMetaStoreManagerFactory() {
-    super(null, null);
+    super(null, null, null);
   }
 
   @Inject
   public InMemoryAtomicOperationMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
-    super(storageIntegration, diagnostics);
+      PolarisStorageIntegrationProvider storageIntegration,
+      PolarisDiagnostics diagnostics,
+      PolarisConfigurationStore configurationStore) {
+    super(storageIntegration, diagnostics, configurationStore);
   }
 
   @Override

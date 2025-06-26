@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -45,7 +44,9 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.*;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -120,36 +121,28 @@ public class FileIOFactoryTest {
 
     testServices =
         TestServices.builder()
-            .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
+            .config(
+                Map.of(
+                    "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                    true,
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3"),
+                    "DROP_WITH_PURGE_ENABLED",
+                    true))
             .realmContext(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
     callContext =
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return testServices.realmContext();
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return new PolarisCallContext(
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                testServices.polarisDiagnostics(),
-                testServices.configurationStore(),
-                Mockito.mock(Clock.class));
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return new HashMap<>();
-          }
-        };
+        new PolarisCallContext(
+            realmContext,
+            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.polarisDiagnostics(),
+            testServices.configurationStore(),
+            Clock.systemUTC());
   }
 
   @AfterEach
@@ -184,7 +177,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
@@ -244,7 +237,8 @@ public class FileIOFactoryTest {
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),
-            services.fileIOFactory());
+            services.fileIOFactory(),
+            services.polarisEventListener());
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

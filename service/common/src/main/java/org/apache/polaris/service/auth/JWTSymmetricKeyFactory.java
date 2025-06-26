@@ -27,38 +27,49 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 
 @ApplicationScoped
 @Identifier("symmetric-key")
 public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final Duration maxTokenGeneration;
-  private final Supplier<String> secretSupplier;
+  private final AuthenticationConfiguration authenticationConfiguration;
+
+  private final ConcurrentMap<String, JWTSymmetricKeyBroker> tokenBrokers =
+      new ConcurrentHashMap<>();
 
   @Inject
   public JWTSymmetricKeyFactory(
       MetaStoreManagerFactory metaStoreManagerFactory,
       AuthenticationConfiguration authenticationConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.maxTokenGeneration = authenticationConfiguration.tokenBroker().maxTokenGeneration();
+    this.authenticationConfiguration = authenticationConfiguration;
+  }
+
+  @Override
+  public TokenBroker apply(RealmContext realmContext) {
+    return tokenBrokers.computeIfAbsent(
+        realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
+  }
+
+  private JWTSymmetricKeyBroker createTokenBroker(RealmContext realmContext) {
+    AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
+    Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
     SymmetricKeyConfiguration symmetricKeyConfiguration =
-        authenticationConfiguration
+        config
             .tokenBroker()
             .symmetricKey()
             .orElseThrow(() -> new IllegalStateException("Symmetric key configuration is missing"));
     String secret = symmetricKeyConfiguration.secret().orElse(null);
     Path file = symmetricKeyConfiguration.file().orElse(null);
     checkState(secret != null || file != null, "Either file or secret must be set");
-    this.secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
-  }
-
-  @Override
-  public TokenBroker apply(RealmContext realmContext) {
+    Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
     return new JWTSymmetricKeyBroker(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         (int) maxTokenGeneration.toSeconds(),

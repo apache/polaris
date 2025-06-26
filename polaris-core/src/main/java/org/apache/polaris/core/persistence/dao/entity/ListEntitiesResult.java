@@ -23,13 +23,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.Optional;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /** the return the result for a list entities call */
 public class ListEntitiesResult extends BaseResult {
 
   // null if not success. Else the list of entities being returned
   private final List<EntityNameLookupRecord> entities;
+  private final Optional<PageToken> pageTokenOpt;
+
+  /** Create a {@link ListEntitiesResult} from a {@link Page} */
+  public static ListEntitiesResult fromPage(Page<EntityNameLookupRecord> page) {
+    return new ListEntitiesResult(page.items, Optional.ofNullable(page.pageToken));
+  }
 
   /**
    * Constructor for an error
@@ -37,9 +46,13 @@ public class ListEntitiesResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public ListEntitiesResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public ListEntitiesResult(
+      @Nonnull ReturnStatus errorCode,
+      @Nullable String extraInformation,
+      @Nonnull Optional<PageToken> pageTokenOpt) {
     super(errorCode, extraInformation);
     this.entities = null;
+    this.pageTokenOpt = pageTokenOpt;
   }
 
   /**
@@ -47,21 +60,29 @@ public class ListEntitiesResult extends BaseResult {
    *
    * @param entities list of entities being returned, implies success
    */
-  public ListEntitiesResult(@Nonnull List<EntityNameLookupRecord> entities) {
+  public ListEntitiesResult(
+      @Nonnull List<EntityNameLookupRecord> entities, @Nonnull Optional<PageToken> pageTokenOpt) {
     super(ReturnStatus.SUCCESS);
     this.entities = entities;
+    this.pageTokenOpt = pageTokenOpt;
   }
 
   @JsonCreator
   private ListEntitiesResult(
       @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("entities") List<EntityNameLookupRecord> entities) {
+      @JsonProperty("entities") List<EntityNameLookupRecord> entities,
+      @JsonProperty("pageToken") Optional<PageToken> pageTokenOpt) {
     super(returnStatus, extraInformation);
     this.entities = entities;
+    this.pageTokenOpt = pageTokenOpt;
   }
 
   public List<EntityNameLookupRecord> getEntities() {
     return entities;
+  }
+
+  public Optional<PageToken> getPageToken() {
+    return pageTokenOpt;
   }
 }

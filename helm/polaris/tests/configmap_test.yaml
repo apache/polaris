@@ -89,19 +89,18 @@ tests:
   - it: should configure features
     set:
       features:
-        defaults:
-          feature1: true
-          feature2: 42
+        feature1: true
+        feature2: 42
         realmOverrides:
           realm1:
             feature1: false
           realm2:
             feature2: 43
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.defaults.\"feature1\"=true" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.defaults.\"feature2\"=42" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.config.realm-overrides.\"realm1\".\"feature1\"=false" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.config.realm-overrides.\"realm2\".\"feature2\"=43" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.\"feature1\"=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.\"feature2\"=42" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm1\".\"feature1\"=false" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm2\".\"feature2\"=43" }
 
   - it: should configure persistence
     set:

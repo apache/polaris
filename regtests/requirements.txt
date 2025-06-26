@@ -17,4 +17,4 @@
 # under the License.
 #
 
-poetry==1.8.5
+poetry==2.1.3

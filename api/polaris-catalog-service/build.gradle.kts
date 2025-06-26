@@ -71,6 +71,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
 openApiGenerate {
@@ -88,13 +90,12 @@ openApiGenerate {
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
   configOptions.put("useTags", "true")
-  configOptions.put("useBeanValidation", "false")
+  configOptions.put("useBeanValidation", "true")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
   configOptions.put("openApiNullable", "false")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "PolarisCatalog")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
@@ -121,3 +122,5 @@ sourceSets {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("processResources") { dependsOn("openApiGenerate") }
+
+tasks.named("openApiGenerate") { outputs.cacheIf { false } }
