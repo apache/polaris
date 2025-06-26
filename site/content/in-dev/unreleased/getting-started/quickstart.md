@@ -92,7 +92,7 @@ At this point, Polaris is running.
 When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down.
 For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
-When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `secret` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
+When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `s3cr3t` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
 
 ### Installing Apache Spark and Trino Locally for Testing
 
