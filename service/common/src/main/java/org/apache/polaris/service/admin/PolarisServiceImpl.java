@@ -24,7 +24,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -231,7 +230,6 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Catalog> catalogList =
         adminService.listCatalogs().stream()
-            .filter(Objects::nonNull)
             .map(CatalogEntity::new)
             .map(CatalogEntity::asCatalog)
             .toList();

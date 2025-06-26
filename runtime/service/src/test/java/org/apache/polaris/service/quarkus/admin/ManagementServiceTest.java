@@ -43,10 +43,16 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
@@ -275,5 +281,42 @@ public class ManagementServiceTest {
     assertThatThrownBy(
             () -> polarisAdminService.assignPrincipalRole(principal.getName(), role.getName()))
         .isInstanceOf(ValidationException.class);
+  }
+
+  /** Simulates the case when a catalog is dropped after being found while listing all catalogs. */
+  @Test
+  public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
+    TestPolarisMetaStoreManager metaStoreManager = new TestPolarisMetaStoreManager();
+    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    CreateCatalogResult catalog1 =
+        metaStoreManager.createCatalog(
+            callContext,
+            new PolarisBaseEntity(
+                PolarisEntityConstants.getNullId(),
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                PolarisEntityType.CATALOG,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntityConstants.getRootEntityId(),
+                "my-catalog-1"),
+            List.of());
+    CreateCatalogResult catalog2 =
+        metaStoreManager.createCatalog(
+            callContext,
+            new PolarisBaseEntity(
+                PolarisEntityConstants.getNullId(),
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                PolarisEntityType.CATALOG,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntityConstants.getRootEntityId(),
+                "my-catalog-2"),
+            List.of());
+
+    metaStoreManager.fakeEntityNotFoundIds.add(catalog1.getCatalog().getId());
+    List<PolarisEntity> catalogs = polarisAdminService.listCatalogs();
+    assertThat(catalogs.size()).isEqualTo(1);
+    assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
   }
 }
