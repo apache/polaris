@@ -55,7 +55,7 @@ public enum DatabaseType {
       } catch (IOException e) {
         throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
       }
-    } else if {
+    } else {
       final String schemaSuffix;
       switch (schemaOptions.schemaVersion()) {
         case null -> schemaSuffix = "schema-v1.sql";
