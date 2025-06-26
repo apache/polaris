@@ -21,17 +21,17 @@ package org.apache.polaris.core.connection;
 import com.google.common.base.MoreObjects;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
-import org.apache.polaris.core.admin.model.NoAuthAuthenticationParameters;
+import org.apache.polaris.core.admin.model.NoneAuthenticationParameters;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
- * The internal persistence-object counterpart to NoAuthAuthenticationParameters defined in the API
+ * The internal persistence-object counterpart to NoneAuthenticationParameters defined in the API
  * model.
  */
-public class NoAuthAuthenticationParametersDpo extends AuthenticationParametersDpo {
+public class NoneAuthenticationParametersDpo extends AuthenticationParametersDpo {
 
-  public NoAuthAuthenticationParametersDpo() {
-    super(AuthenticationType.NO_AUTH.getCode());
+  public NoneAuthenticationParametersDpo() {
+    super(AuthenticationType.NONE.getCode());
   }
 
   @Override
@@ -41,8 +41,8 @@ public class NoAuthAuthenticationParametersDpo extends AuthenticationParametersD
 
   @Override
   public AuthenticationParameters asAuthenticationParametersModel() {
-    return NoAuthAuthenticationParameters.builder()
-        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.NO_AUTH)
+    return NoneAuthenticationParameters.builder()
+        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.NONE)
         .build();
   }
 

@@ -917,7 +917,7 @@ components:
             - OAUTH
             - BEARER
             - SIGV4
-            - NO_AUTH
+            - NONE
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -927,7 +927,7 @@ components:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
-          NO_AUTH: "#/components/schemas/NoAuthAuthenticationParameters"
+          NONE: "#/components/schemas/NoneAuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -992,7 +992,7 @@ components:
         - roleArn
         - signingRegion
 
-    NoAuthAuthenticationParameters:
+    NoneAuthenticationParameters:
       type: object
       description: No authentication required for the connection
       allOf:
