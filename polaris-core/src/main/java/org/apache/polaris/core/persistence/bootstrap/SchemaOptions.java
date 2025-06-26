@@ -25,10 +25,8 @@ import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface SchemaOptions {
-  public static final String LATEST = "LATEST";
-
   @Nullable
-  String schemaVersion();
+  Integer schemaVersion();
 
   @Nullable
   String schemaFile();
@@ -37,14 +35,6 @@ public interface SchemaOptions {
   default void validate() {
     if (schemaVersion() != null && schemaFile() != null) {
       throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
-    }
-    if (schemaVersion() != null && !schemaVersion().equals(LATEST)) {
-      try {
-        Integer.parseInt(schemaVersion());
-      } catch (NumberFormatException e) {
-        throw new IllegalArgumentException(
-            "schemaVersion must be a valid integer or " + LATEST + ": " + schemaVersion(), e);
-      }
     }
   }
 }
