@@ -39,6 +39,7 @@ A Helm chart for Apache Polaris (incubating).
 * [collado-mike](https://github.com/collado-mike)
 * [gerrit-k](https://github.com/gerrit-k)
 * [snazy](https://github.com/snazy)
+* [flyrain](https://github.com/flyrain)
 
 ## Source Code
 
