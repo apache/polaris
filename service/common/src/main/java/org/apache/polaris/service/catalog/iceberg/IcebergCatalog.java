@@ -93,6 +93,7 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -237,7 +238,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     // Base location from catalogEntity is primary source of truth, otherwise fall through
     // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
-        Optional.ofNullable(catalogEntity.getDefaultBaseLocation())
+        Optional.ofNullable(catalogEntity.getBaseLocation())
             .orElse(
                 properties.getOrDefault(
                     CatalogEntity.DEFAULT_BASE_LOCATION_KEY,
@@ -507,6 +508,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> metadata,
       PolarisResolvedPathWrapper resolvedParent) {
     String baseLocation = resolveNamespaceLocation(namespace, metadata);
+
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(), FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash && !baseLocation.endsWith("/")) {
+      baseLocation += "/";
+    }
+
     NamespaceEntity entity =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
@@ -522,8 +535,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(
             callContext.getRealmContext(), FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
-      validateNoLocationOverlap(
-          entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
+      validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
@@ -578,7 +590,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       @Nonnull CallContext callContext, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
-      String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
+      String catalogDefaultBaseLocation = catEntity.getBaseLocation();
       callContext
           .getPolarisCallContext()
           .getDiagServices()
@@ -695,9 +707,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             callContext.getRealmContext(), FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
-          NamespaceEntity.of(updatedEntity).getBaseLocation(),
-          resolvedEntities.getRawParentPath(),
-          updatedEntity.getName());
+          NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
@@ -1038,7 +1048,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else if (validateViewOverlap
         || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
-      validateNoLocationOverlap(location, resolvedNamespace, identifier.name());
+
+      // Create a fake IcebergTableLikeEntity to check for overlap, since no real entity
+      // has been created yet.
+      IcebergTableLikeEntity virtualEntity =
+          IcebergTableLikeEntity.of(
+              new PolarisEntity.Builder()
+                  .setParentId(resolvedNamespace.getLast().getId())
+                  .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
+                  .build());
+
+      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
     }
   }
 
@@ -1049,8 +1069,41 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * base-location property of each. The target entity's base location may not be a prefix or a
    * suffix of any sibling entity's base location.
    */
-  private void validateNoLocationOverlap(
-      String location, List<PolarisEntity> parentPath, String name) {
+  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
+      T entity, List<PolarisEntity> parentPath) {
+
+    String location = entity.getBaseLocation();
+    String name = entity.getName();
+
+    // Attempt to directly query for siblings
+    boolean useOptimizedSiblingCheck =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(), FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (useOptimizedSiblingCheck) {
+      Optional<Optional<String>> directSiblingCheckResult =
+          getMetaStoreManager().hasOverlappingSiblings(callContext.getPolarisCallContext(), entity);
+      if (directSiblingCheckResult.isPresent()) {
+        if (directSiblingCheckResult.get().isPresent()) {
+          throw new org.apache.iceberg.exceptions.ForbiddenException(
+              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
+              location, directSiblingCheckResult.get().get());
+        } else {
+          return;
+        }
+      }
+    }
+
+    // if the entity path has more than just the catalog, check for tables as well as other
+    // namespaces
+    Optional<NamespaceEntity> parentNamespace =
+        parentPath.size() > 1
+            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
+            : Optional.empty();
+
+    // Fall through by listing everything:
     ListEntitiesResult siblingNamespacesResult =
         getMetaStoreManager()
             .listEntities(
@@ -1063,13 +1116,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           "Unable to resolve siblings entities to validate location - could not list namespaces");
     }
-
-    // if the entity path has more than just the catalog, check for tables as well as other
-    // namespaces
-    Optional<NamespaceEntity> parentNamespace =
-        parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
-            : Optional.empty();
 
     List<TableIdentifier> siblingTables =
         parentNamespace
@@ -2167,26 +2213,47 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private void createTableLike(
       TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
+    IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(), FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .build();
+    }
+
     // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = IcebergTableLikeEntity.of(entity).getMetadataLocation();
+    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
     validateLocationForTableLike(identifier, metadataLocation, resolvedParent);
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    if (entity.getParentId() <= 0) {
+    if (icebergTableLikeEntity.getParentId() <= 0) {
       // TODO: Validate catalogPath size is at least 1 for catalog entity?
-      entity =
-          new PolarisEntity.Builder(entity)
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
               .setParentId(resolvedParent.getRawLeafEntity().getId())
               .build();
     }
-    entity =
-        new PolarisEntity.Builder(entity).setCreateTimestamp(System.currentTimeMillis()).build();
+    icebergTableLikeEntity =
+        new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
 
     EntityResult res =
         getMetaStoreManager()
             .createEntityIfNotExists(
-                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
@@ -2214,16 +2281,35 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format("Failed to fetch resolved TableIdentifier '%s'", identifier));
     }
+    IcebergTableLikeEntity icebergTableLikeEntity = new IcebergTableLikeEntity(entity);
+
+    // Set / suffix
+    boolean requireTrailingSlash =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(), FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
+    if (requireTrailingSlash
+        && icebergTableLikeEntity.getBaseLocation() != null
+        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+      icebergTableLikeEntity =
+          new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
+              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .build();
+    }
 
     // Make sure the metadata file is valid for our allowed locations.
-    String metadataLocation = IcebergTableLikeEntity.of(entity).getMetadataLocation();
+    String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
     validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     EntityResult res =
         getMetaStoreManager()
             .updateEntityPropertiesIfNotChanged(
-                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
@@ -2489,7 +2575,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   protected FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(catalogEntity);
     TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
-    Set<String> locations = Set.of(catalogEntity.getDefaultBaseLocation());
+    Set<String> locations = Set.of(catalogEntity.getBaseLocation());
     ResolvedPolarisEntity resolvedCatalogEntity =
         new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =

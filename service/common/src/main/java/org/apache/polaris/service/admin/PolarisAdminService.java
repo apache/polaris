@@ -576,7 +576,7 @@ public class PolarisAdminService {
   /** Get all locations where data for a `CatalogEntity` may be stored */
   private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
     HashSet<String> catalogLocations = new HashSet<>();
-    catalogLocations.add(terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
+    catalogLocations.add(terminateWithSlash(catalogEntity.getBaseLocation()));
     if (catalogEntity.getStorageConfigurationInfo() != null) {
       catalogLocations.addAll(
           catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
@@ -871,7 +871,7 @@ public class PolarisAdminService {
     }
 
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
-    String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
+    String defaultBaseLocation = currentCatalogEntity.getBaseLocation();
     if (updateRequest.getProperties() != null) {
       Map<String, String> updateProperties =
           reservedProperties.removeReservedPropertiesFromUpdate(

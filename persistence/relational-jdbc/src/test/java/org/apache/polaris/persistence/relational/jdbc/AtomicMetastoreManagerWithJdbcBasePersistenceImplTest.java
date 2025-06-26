@@ -50,7 +50,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       datasourceOperations =
           new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
       datasourceOperations.executeScript(
-          String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));
+          String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
