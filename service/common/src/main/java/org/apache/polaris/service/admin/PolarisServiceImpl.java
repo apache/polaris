@@ -192,7 +192,7 @@ public class PolarisServiceImpl
             .getConfigurationStore()
             .getConfiguration(
                 callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES)
+                FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
