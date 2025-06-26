@@ -44,20 +44,19 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
 
-  @Mock private RealmEntityManagerFactory entityManagerFactory;
-  @Mock private MetaStoreManagerFactory metaStoreManagerFactory;
-  @Mock private UserSecretsManagerFactory userSecretsManagerFactory;
-  @Mock private PolarisAuthorizer polarisAuthorizer;
-  @Mock private CallContext callContext;
-  @Mock private ReservedProperties reservedProperties;
-  @Mock private PolarisCallContext polarisCallContext;
-  @Mock private PolarisConfigurationStore configurationStore;
-  @Mock private RealmContext realmContext;
+  private RealmEntityManagerFactory entityManagerFactory;
+  private MetaStoreManagerFactory metaStoreManagerFactory;
+  private UserSecretsManagerFactory userSecretsManagerFactory;
+  private PolarisAuthorizer polarisAuthorizer;
+  private CallContext callContext;
+  private ReservedProperties reservedProperties;
+  private PolarisCallContext polarisCallContext;
+  private PolarisConfigurationStore configurationStore;
+  private RealmContext realmContext;
 
   private PolarisServiceImpl polarisService;
 
