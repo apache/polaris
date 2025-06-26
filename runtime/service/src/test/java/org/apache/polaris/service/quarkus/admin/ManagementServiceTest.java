@@ -21,11 +21,13 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,8 +54,10 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -314,9 +318,34 @@ public class ManagementServiceTest {
                 "my-catalog-2"),
             List.of());
 
-    metaStoreManager.fakeEntityNotFoundIds.add(catalog1.getCatalog().getId());
+    metaStoreManager.setFakeEntityNotFoundIds(Set.of(catalog1.getCatalog().getId()));
     List<PolarisEntity> catalogs = polarisAdminService.listCatalogs();
     assertThat(catalogs.size()).isEqualTo(1);
     assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
+  }
+
+  /**
+   * Intended to be a delegate to TransactionalMetaStoreManagerImpl with the ability to inject
+   * faults. Currently, you can force loadEntity() to return ENTITY_NOT_FOUND for a set of entity
+   * IDs.
+   */
+  public static class TestPolarisMetaStoreManager extends TransactionalMetaStoreManagerImpl {
+    private Set<Long> fakeEntityNotFoundIds = new HashSet<>();
+
+    public void setFakeEntityNotFoundIds(Set<Long> ids) {
+      fakeEntityNotFoundIds = new HashSet<>(ids);
+    }
+
+    @Override
+    public @Nonnull EntityResult loadEntity(
+        @Nonnull PolarisCallContext callCtx,
+        long entityCatalogId,
+        long entityId,
+        @Nonnull PolarisEntityType entityType) {
+      if (fakeEntityNotFoundIds.contains(entityId)) {
+        return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
+      }
+      return super.loadEntity(callCtx, entityCatalogId, entityId, entityType);
+    }
   }
 }
