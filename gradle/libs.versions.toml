@@ -20,7 +20,7 @@
 [versions]
 checkstyle = "10.25.0"
 hadoop = "3.4.1"
-iceberg = "1.9.0" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
+iceberg = "1.9.1" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
 quarkus = "3.23.3"
 immutables = "2.10.1"
 picocli = "4.7.7"
