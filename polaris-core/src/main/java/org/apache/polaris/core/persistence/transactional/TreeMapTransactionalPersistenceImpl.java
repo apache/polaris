@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -50,6 +51,7 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageLocation;
 
 public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPersistence {
 
@@ -672,6 +674,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
-    return Optional.empty();
+    // TODO we could optimize this full scan
+    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+    List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
+    for (PolarisBaseEntity baseEntity : allEntities) {
+      StorageLocation siblingLocation = StorageLocation.of(((LocationBasedEntity) baseEntity).getBaseLocation());
+      if (siblingLocation.isChildOf(entityLocation) || entityLocation.isChildOf(siblingLocation)) {
+        return Optional.of(Optional.of(siblingLocation.toString()));
+      }
+    }
+    return Optional.of(Optional.empty());
   }
 }

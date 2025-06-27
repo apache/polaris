@@ -90,17 +90,6 @@ public class PolarisOverlappingTableTest {
   private String createTableWithName(TestServices services, String name) {
     CreateTableRequest createTableRequest =
         CreateTableRequest.builder().withName(name).withSchema(SCHEMA).build();
-    Response response1 =
-        services
-            .restApi()
-            .createTable(
-                catalog,
-                namespace,
-                createTableRequest,
-                null,
-                services.realmContext(),
-                services.securityContext());
-    System.out.println("####" + response1);
     try (Response response =
         services
             .restApi()
@@ -400,20 +389,30 @@ public class PolarisOverlappingTableTest {
     String tableName;
     String tableLocation;
 
+    // Location check works:
     tableName = getTableName();
     Assertions.assertNotNull(
         createTableWithName(services, tableName));
 
+    // Non-default pattern:
     tableName = getTableName();
     Assertions.assertNotEquals(
         String.format("%s/%s/%s/%s", baseLocation, catalog, namespace, tableName),
         createTableWithName(services, tableName));
 
+    // Verify components:
     tableName = getTableName();
     tableLocation = createTableWithName(services, tableName);
     Assertions.assertEquals(
         String.format("%s/%s/", baseLocation, catalog),
         tableLocation.substring(0, String.format("%s/%s/", baseLocation, catalog).length())
     );
+    Assertions.assertEquals(
+        String.format("%s/%s", namespace, tableName),
+        tableLocation.substring(String.format("%s/%s/", baseLocation, catalog).length() + (5 * 4))
+    );
+
+    // Overlap succeeds due to :
+    assertThat(createTable(services, tableLocation)).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 }
