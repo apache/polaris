@@ -1213,12 +1213,9 @@ for principal_role in ${principal_roles}; do
   catalog_roles=$(polaris catalog-roles --list --principal-role "${principal_role}")
   for catalog_role in ${catalog_roles}; do
     grants=$(polaris privileges list  --catalog-role "${catalog_role}" --catalog "${catalog}")
-      for grant in $(echo "${grants}" | jq -c '.[] | select(.privilege == "TABLE_READ_DATA")'); do
-        echo "${grant}"
-      fi
+    for grant in $(echo "${grants}" | jq -c '.[] | select(.privilege == "TABLE_READ_DATA")'); do
+      echo "${grant}"
     done
   done
 done
 ```
-
-
