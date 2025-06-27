@@ -133,12 +133,30 @@ options:
       --default-base-location  (Required) Default base location of the catalog
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
       --role-arn  (Required for S3) A role ARN to use when connecting to S3
+      --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
       --multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+      --catalog-connection-type  The type of external catalog in [ICEBERG, HADOOP].
+      --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
+      --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
+      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4]
+      --catalog-service-identity-type  The type of service identity in [AWS_IAM]
+      --catalog-service-identity-iam-arn  When using the AWS_IAM service identity type, this is the ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
+      --catalog-uri  The URI of the external catalog
+      --catalog-token-uri  (For authentication type OAUTH) Token server URI
+      --catalog-client-id  (For authentication type OAUTH) oauth client id
+      --catalog-client-secret  (For authentication type OAUTH) oauth client secret (input-only)
+      --catalog-client-scope  (For authentication type OAUTH) oauth scopes to specify when exchanging for a short-lived access token. Multiple can be provided by specifying this option more than once
+      --catalog-bearer-token  (For authentication type BEARER) Bearer token (input-only)
+      --catalog-role-arn  (For authentication type SIGV4) The aws IAM role arn assumed by polaris userArn when signing requests
+      --catalog-role-session-name  (For authentication type SIGV4) The role session name to be used by the SigV4 protocol for signing requests
+      --catalog-external-id  (For authentication type SIGV4) An optional external id used to establish a trust relationship with AWS in the trust policy
+      --catalog-signing-region  (For authentication type SIGV4) Region to be used by the SigV4 protocol for signing requests
+      --catalog-signing-name  (For authentication type SIGV4) The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
     Positional arguments:
       catalog
 ```
