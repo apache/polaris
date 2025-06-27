@@ -342,7 +342,8 @@ public class PolarisOverlappingTableTest {
             OPTIMIZED_SIBLING_CHECK.key,
             "false");
 
-    TestServices services = TestServices.builder().config(strictServicesNoOptimizedOverlapCheck).build();
+    TestServices services =
+        TestServices.builder().config(strictServicesNoOptimizedOverlapCheck).build();
 
     String baseLocation = tempDir.toAbsolutePath().toUri().toString();
     if (baseLocation.endsWith("/")) {
@@ -351,8 +352,7 @@ public class PolarisOverlappingTableTest {
     createCatalogAndNamespace(services, catalogConfig, baseLocation);
 
     Assertions.assertThrows(
-        IllegalStateException.class,
-        () -> createTableWithName(services, getTableName()));
+        IllegalStateException.class, () -> createTableWithName(services, getTableName()));
   }
 
   @Test
@@ -391,8 +391,7 @@ public class PolarisOverlappingTableTest {
 
     // Location check works:
     tableName = getTableName();
-    Assertions.assertNotNull(
-        createTableWithName(services, tableName));
+    Assertions.assertNotNull(createTableWithName(services, tableName));
 
     // Non-default pattern:
     tableName = getTableName();
@@ -405,14 +404,13 @@ public class PolarisOverlappingTableTest {
     tableLocation = createTableWithName(services, tableName);
     Assertions.assertEquals(
         String.format("%s/%s/", baseLocation, catalog),
-        tableLocation.substring(0, String.format("%s/%s/", baseLocation, catalog).length())
-    );
+        tableLocation.substring(0, String.format("%s/%s/", baseLocation, catalog).length()));
     Assertions.assertEquals(
         String.format("%s/%s", namespace, tableName),
-        tableLocation.substring(String.format("%s/%s/", baseLocation, catalog).length() + (5 * 4))
-    );
+        tableLocation.substring(String.format("%s/%s/", baseLocation, catalog).length() + (5 * 4)));
 
-    // Overlap succeeds due to :
-    assertThat(createTable(services, tableLocation)).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+    // Overlap fails:
+    assertThat(createTable(services, tableLocation))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 }

@@ -29,15 +29,16 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -669,18 +670,42 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 
+  private Optional<String> getEntityLocationWithoutScheme(PolarisBaseEntity entity) {
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        return Optional.of(
+            StorageLocation.of(
+                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+                .withoutScheme());
+      }
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      return Optional.of(
+          StorageLocation.of(
+                  entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+              .withoutScheme());
+    }
+    return Optional.empty();
+  }
+
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
     // TODO we could optimize this full scan
-    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+    StorageLocation entityLocationWithoutScheme =
+        StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
-    for (PolarisBaseEntity baseEntity : allEntities) {
-      StorageLocation siblingLocation = StorageLocation.of(((LocationBasedEntity) baseEntity).getBaseLocation());
-      if (siblingLocation.isChildOf(entityLocation) || entityLocation.isChildOf(siblingLocation)) {
-        return Optional.of(Optional.of(siblingLocation.toString()));
+    for (PolarisBaseEntity siblingEntity : allEntities) {
+      Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
+          getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
+      if (maybeSiblingLocationWithoutScheme.isPresent()) {
+        if (maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme)
+            || entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get())) {
+          return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
+        }
       }
     }
     return Optional.of(Optional.empty());

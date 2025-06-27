@@ -81,6 +81,10 @@ public class TreeMapMetaStore {
      */
     public List<T> readRange(String prefix) {
       TreeMapMetaStore.this.ensureReadTr();
+      if (prefix.isEmpty()) {
+        return new ArrayList<>(this.slice.values());
+      }
+
       // end of the key
       String endKey =
           prefix.substring(0, prefix.length() - 1)

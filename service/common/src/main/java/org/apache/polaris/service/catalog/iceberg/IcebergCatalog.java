@@ -949,7 +949,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     boolean optimizedSiblingCheck =
         configurationStore.getConfiguration(
             realmContext, catalogEntity, FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
-    if (!randomPrefixEnabled) {
+    if (location != null) {
+      return location;
+    } else if (!randomPrefixEnabled) {
       return location;
     } else if (!allowUnstructuredTableLocation) {
       throw new IllegalStateException(
@@ -980,8 +982,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key);
       }
       return buildRandomLocation(tableIdentifier);
-    } else if (location != null) {
-      return location;
     } else {
       return buildRandomLocation(tableIdentifier);
     }
@@ -1071,8 +1071,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
         PolarisStorageConfigurationInfo.forEntityPath(
-            callContext.getPolarisCallContext(),
-            resolvedStorageEntity.getRawFullPath());
+            callContext.getPolarisCallContext(), resolvedStorageEntity.getRawFullPath());
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
@@ -2557,7 +2556,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
 
       String existingLocation;
-      String newLocation = transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
+      String newLocation =
+          transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
       if (null == entity) {
         existingLocation = null;
         entity =
