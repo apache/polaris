@@ -82,7 +82,6 @@ import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -475,7 +474,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
       if (baseCatalog instanceof IcebergCatalog) {
-        location = ((IcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
+        location =
+            ((IcebergCatalog) baseCatalog).transformTableLikeLocation(ident, request.location());
       } else {
         location = request.location();
       }
@@ -801,7 +801,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
                     String filteredLocation =
                         ((IcebergCatalog) baseCatalog)
-                            .transformTableLikeLocation(requestedLocation);
+                            .transformTableLikeLocation(identifier, requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
                     return update;
