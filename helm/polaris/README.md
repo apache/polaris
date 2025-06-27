@@ -33,13 +33,6 @@ A Helm chart for Apache Polaris (incubating).
 
 **Homepage:** <https://polaris.apache.org/>
 
-## Maintainers
-* [MonkeyCanCode](https://github.com/MonkeyCanCode)
-* [adutra](https://github.com/adutra)
-* [collado-mike](https://github.com/collado-mike)
-* [gerrit-k](https://github.com/gerrit-k)
-* [snazy](https://github.com/snazy)
-
 ## Source Code
 
 * <https://github.com/apache/polaris>

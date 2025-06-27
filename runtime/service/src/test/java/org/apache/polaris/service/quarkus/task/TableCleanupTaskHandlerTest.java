@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.task;
 
+import static org.apache.polaris.service.quarkus.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusMock;
@@ -26,7 +27,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +50,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -110,12 +109,6 @@ class TableCleanupTaskHandlerTest {
             Clock.systemDefaultZone());
   }
 
-  private void addTaskLocation(TaskEntity task) {
-    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
-    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
-    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
-  }
-
   @Test
   public void testTableCleanup() throws IOException {
     FileIO fileIO = new InMemoryFileIO();
@@ -149,7 +142,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task, callContext);
@@ -224,7 +217,7 @@ class TableCleanupTaskHandlerTest {
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(icebergTableLikeEntity)
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -285,7 +278,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -410,7 +403,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task, callContext);
@@ -583,7 +576,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
-    addTaskLocation(task);
+    task = addTaskLocation(task);
 
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
