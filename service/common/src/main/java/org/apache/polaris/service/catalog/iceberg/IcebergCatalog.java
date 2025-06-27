@@ -1318,28 +1318,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private class PolarisIcebergCatalogTableBuilder
       extends BaseMetastoreViewCatalog.BaseMetastoreViewCatalogTableBuilder {
+    private final TableIdentifier identifier;
 
     public PolarisIcebergCatalogTableBuilder(TableIdentifier identifier, Schema schema) {
       super(identifier, schema);
+      this.identifier = identifier;
     }
 
     @Override
     public TableBuilder withLocation(String newLocation) {
-      return super.withLocation(transformTableLikeLocation(newLocation));
+      return super.withLocation(transformTableLikeLocation(identifier, newLocation));
     }
   }
 
   private class PolarisIcebergCatalogViewBuilder extends BaseMetastoreViewCatalog.BaseViewBuilder {
+    private final TableIdentifier identifier;
 
     public PolarisIcebergCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
       withProperties(
           PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
+      this.identifier = identifier;
     }
 
     @Override
     public ViewBuilder withLocation(String newLocation) {
-      return super.withLocation(transformTableLikeLocation(newLocation));
+      return super.withLocation(transformTableLikeLocation(identifier, newLocation));
     }
   }
 
@@ -2524,7 +2528,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // Validate location against the resolvedStorageEntity
       String metadataLocation =
-          transformTableLikeLocation(request.getPayload().getMetadataLocation());
+          transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
       validateLocationForTableLike(tableIdentifier, metadataLocation, resolvedStorageEntity);
 
       // Validate that we can construct a FileIO
@@ -2553,7 +2557,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
 
       String existingLocation;
-      String newLocation = transformTableLikeLocation(request.getPayload().getMetadataLocation());
+      String newLocation = transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
       if (null == entity) {
         existingLocation = null;
         entity =
