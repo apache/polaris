@@ -19,9 +19,11 @@
 
 # Apache Polaris Changelog
 
-The Polaris changelog is used to give users and contributors more information than just the list of commits.
+This changelog is used to give users and contributors condensed information about the contents of Polaris releases. 
 Entries are grouped in sections like _Highlights_ or _Upgrade notes_, the provided sections can be adjusted
-as necessary. Empty sections will not end up in the release notes.
+as necessary. Empty sections will not end up in the release notes. Contributors are encouraged to incorporate
+CHANGELOG updates into their PRs when appropriate. Reviewers should be mindful of the impact of PRs and
+request adding CHANGELOG notes for breaking (!) changes and possibly other sections as appropriate.   
 
 ## [Unreleased]
 
