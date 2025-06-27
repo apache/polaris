@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -89,6 +90,17 @@ public class PolarisOverlappingTableTest {
   private String createTableWithName(TestServices services, String name) {
     CreateTableRequest createTableRequest =
         CreateTableRequest.builder().withName(name).withSchema(SCHEMA).build();
+    Response response1 =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                null,
+                services.realmContext(),
+                services.securityContext());
+    System.out.println("####" + response1);
     try (Response response =
         services
             .restApi()
@@ -305,10 +317,30 @@ public class PolarisOverlappingTableTest {
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 
-  @Test
-  @DisplayName("Test tables getting created at random locations")
-  public void testRandomTableLocations(@TempDir Path tempDir) {
-    Map<String, Object> strictServices =
+  static Stream<Arguments> testInvalidSetupsForRandomLocation() {
+    Map<String, Object> randomAndNoOverlapCatalog =
+        Map.of(
+            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            "true",
+            ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+            "false");
+    Map<String, Object> randomAndOverlapButNoOptimizedCatalog =
+        Map.of(
+            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            "true",
+            ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+            "true");
+    return Stream.of(
+        Arguments.of(randomAndNoOverlapCatalog),
+        Arguments.of(randomAndOverlapButNoOptimizedCatalog));
+  }
+
+  @ParameterizedTest
+  @MethodSource()
+  @DisplayName("Test invalid configurations for enabling random locations")
+  void testInvalidSetupsForRandomLocation(
+      Map<String, String> catalogConfig, @TempDir Path tempDir) {
+    Map<String, Object> strictServicesNoOptimizedOverlapCheck =
         Map.of(
             "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
             "false",
@@ -317,27 +349,71 @@ public class PolarisOverlappingTableTest {
             "ALLOW_INSECURE_STORAGE_TYPES",
             "true",
             "SUPPORTED_CATALOG_STORAGE_TYPES",
-            List.of("FILE", "S3"));
-    Map<String, String> randomCatalog =
-        Map.of(
-            ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-            "true",
-            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
-            "true");
+            List.of("FILE", "S3"),
+            OPTIMIZED_SIBLING_CHECK.key,
+            "false");
 
-    TestServices services = TestServices.builder().config(strictServices).build();
+    TestServices services = TestServices.builder().config(strictServicesNoOptimizedOverlapCheck).build();
 
     String baseLocation = tempDir.toAbsolutePath().toUri().toString();
     if (baseLocation.endsWith("/")) {
       baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
     }
-    createCatalogAndNamespace(services, randomCatalog, baseLocation);
+    createCatalogAndNamespace(services, catalogConfig, baseLocation);
+
+    Assertions.assertThrows(
+        IllegalStateException.class,
+        () -> createTableWithName(services, getTableName()));
+  }
+
+  @Test
+  @DisplayName("Test tables getting created at random locations")
+  public void testRandomTableLocations(@TempDir Path tempDir) {
+    Map<String, Object> strictServicesWithOptimizedOverlapCheck =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "false",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"),
+            OPTIMIZED_SIBLING_CHECK.key,
+            "true");
+    Map<String, String> randomAndOverlapButNoOptimizedCatalog =
+        Map.of(
+            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            "true",
+            ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+            "true");
+
+    TestServices services =
+        TestServices.builder().config(strictServicesWithOptimizedOverlapCheck).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, randomAndOverlapButNoOptimizedCatalog, baseLocation);
 
     String tableName;
+    String tableLocation;
+
+    tableName = getTableName();
+    Assertions.assertNotNull(
+        createTableWithName(services, tableName));
 
     tableName = getTableName();
     Assertions.assertNotEquals(
         String.format("%s/%s/%s/%s", baseLocation, catalog, namespace, tableName),
         createTableWithName(services, tableName));
+
+    tableName = getTableName();
+    tableLocation = createTableWithName(services, tableName);
+    Assertions.assertEquals(
+        String.format("%s/%s/", baseLocation, catalog),
+        tableLocation.substring(0, String.format("%s/%s/", baseLocation, catalog).length())
+    );
   }
 }

@@ -940,9 +940,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             realmContext,
             catalogEntity,
             FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED);
-    boolean allowExternalTableLocation =
+    boolean allowUnstructuredTableLocation =
         configurationStore.getConfiguration(
-            realmContext, catalogEntity, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+            realmContext, catalogEntity, FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
     boolean allowTableLocationOverlap =
         configurationStore.getConfiguration(
             realmContext, catalogEntity, FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP);
@@ -951,12 +951,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             realmContext, catalogEntity, FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (!randomPrefixEnabled) {
       return location;
-    } else if (!allowExternalTableLocation) {
+    } else if (!allowUnstructuredTableLocation) {
       throw new IllegalStateException(
           String.format(
               "The configuration %s is enabled, but %s is not enabled",
               FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
-              FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.key));
+              FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
     } else if (!allowTableLocationOverlap) {
       // TODO consider doing this check any time ALLOW_EXTERNAL_TABLE_LOCATION is enabled, not just
       // here
@@ -969,11 +969,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                     + " combination of configurations.",
                 FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key,
                 FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
-                FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.key));
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
       } else if (!loggedRandomPrefixOverlapWarning.getAndSet(true)) {
         LOGGER.warn(
             "A table is being created with {} and {} enabled, but with {} disabled. "
-                + "This is a safe combination of configurations which may prevent table overlap, but only if the"
+                + "This is a safe combination of configurations which may prevent table overlap, but only if the "
                 + "underlying persistence actually implements %s. Exercise caution.",
             FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
             FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
@@ -1071,7 +1071,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
         PolarisStorageConfigurationInfo.forEntityPath(
-            callContext.getPolarisCallContext().getDiagServices(),
+            callContext.getPolarisCallContext(),
             resolvedStorageEntity.getRawFullPath());
 
     optStorageConfiguration.ifPresentOrElse(
