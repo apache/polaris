@@ -1,0 +1,34 @@
+{{- /* Define emojis and handle the case where .AlertType is not found */ -}}
+{{- $emojis := dict
+    "danger" ":stop_sign:"
+    "error" ":x:"
+    "caution" ":warning:"
+    "warning" ":warning:"
+    "important" ":exclamation:"
+    "info" ":information_source:"
+    "note" ":memo:"
+    "tip" ":bulb:"
+    "success" ":white_check_mark:"
+    "primary" ":information_source:"
+-}}
+
+{{- if eq .Type "alert" -}}
+  <blockquote class="alert alert-{{ .AlertType }}">
+    {{- /* Check for emoji, with a sensible default */ -}}
+    {{- $emoji := index $emojis .AlertType | default ":information_source:" -}}
+    <p class="alert-heading">
+      {{- transform.Emojify $emoji -}}
+      {{- /* Check for custom title, otherwise use i18n or title case */ -}}
+      {{- with .AlertTitle -}}
+        {{- . -}}
+      {{- else -}}
+        {{- or (i18n .AlertType) (title .AlertType) -}}
+      {{- end -}}
+    </p>
+    {{- .Text | safeHTML -}}
+  </blockquote>
+{{- else -}}
+  <blockquote>
+    {{- .Text | safeHTML -}}
+  </blockquote>
+{{- end -}}
