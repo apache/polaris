@@ -521,7 +521,8 @@ features:
 
 # -- Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link.
+  # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
+  # The eclipse-link type is also supported but is deprecated.
   type: ~  # in-memory
   # -- The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
