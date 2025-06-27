@@ -24,7 +24,7 @@ inputs:
     description: 'Java version'
     default: '21'
   job-id:
-    description: 'Job name to prefer'
+    description: 'Job ID to prefer'
     default: 'polaris-gradle'
   job-instance:
     description: 'Job instance to prefer'
