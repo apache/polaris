@@ -133,7 +133,7 @@ class PolarisCli:
             if options.host is not None or options.port is not None:
                 raise Exception(f'Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or'
                                 f' {Argument.to_flag_name(Arguments.HOST)} &'
-                                f' {Argument.to_flag_name(Arguments.PORT)}, but not both');
+                                f' {Argument.to_flag_name(Arguments.PORT)}, but not both')
 
             polaris_management_url = f'{options.base_url}/api/management/v1'
             polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
