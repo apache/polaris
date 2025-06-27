@@ -31,11 +31,10 @@ cascade:
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
 
-{{< alert title="Warning" color="warning" >}}
-These pages refer to the current state of the main branch, which is still under active development.
-
-Functionalities can be changed, removed or added without prior notice.
-{{< /alert >}}
+> [!WARNING]
+> These pages refer to the current state of the main branch, which is still under active development.
+>
+> Functionalities can be changed, removed or added without prior notice.
 
 Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
@@ -83,8 +82,7 @@ A catalog is configured with a storage configuration that can point to S3, Azure
 You create *namespaces* to logically group Iceberg tables within a catalog. A catalog can have multiple namespaces. You can also create
 nested namespaces. Iceberg tables belong to namespaces.
 
-> **Important**
->
+> [!Important]
 > For the access privileges defined for a catalog to be enforced correctly, the following conditions must be met:
 >
 > - The directory only contains the data files that belong to a single table.

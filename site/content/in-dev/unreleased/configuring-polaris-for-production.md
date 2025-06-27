@@ -218,4 +218,3 @@ Leave out `FILE` to prevent its use. Only include the storage types your setup n
 
 The [Polaris Evolution](../evolution) page discusses backward compatibility and
 upgrade concerns.
-
