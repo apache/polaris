@@ -30,7 +30,7 @@ sources:
 keywords:
   - polaris
   - iceberg
-maintainers:
+maintainers:  # Maintainers section is kept only to satisfy the Helm Chart Spec and downstream linters.
   - name: MonkeyCanCode
   - name: adutra
   - name: collado-mike
