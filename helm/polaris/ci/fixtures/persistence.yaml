@@ -25,4 +25,4 @@ type: Opaque
 stringData:
   username: "postgres"
   password: "postgres"
-  jdbc_url: "jdbc:postgresql://postgres:5432/POLARIS"
+  jdbcUrl: "jdbc:postgresql://postgres:5432/POLARIS"
