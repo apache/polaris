@@ -18,6 +18,7 @@
  */
 
 import publishing.GenerateDigest
+import publishing.PublishingHelperPlugin
 
 plugins {
     id("distribution")
@@ -25,6 +26,8 @@ plugins {
 }
 
 description = "Apache Polaris Binary Distribution"
+
+apply<PublishingHelperPlugin>()
 
 val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
@@ -104,7 +107,6 @@ distZip.configure { finalizedBy(digestDistZip) }
 
 if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
     signing {
-        useGpgCmd();
         sign(distTar.get())
         sign(distZip.get())
     }
