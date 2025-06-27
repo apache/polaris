@@ -35,7 +35,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -44,8 +43,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.AppendFiles;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
@@ -69,16 +71,10 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
-import org.apache.iceberg.AppendFiles;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DataFiles;
-import org.apache.iceberg.Table;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
 import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
@@ -97,7 +93,6 @@ import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -115,7 +110,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -129,15 +123,15 @@ import org.junit.jupiter.api.io.TempDir;
  *     CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.7.1
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog> {
-  private static final String TEST_ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
-
-  private static URI s3BucketBase;
-  private static URI externalCatalogBase;
-
+public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RESTCatalog> {
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
+  // subpath shouldn't start with a slash, as it is appended to the base URI
+  private static final String CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_CATALOG_LOCATION_SUBPATH"))
+          .orElse("path/to/data");
+  private static final String EXTERNAL_CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_EXTERNAL_CATALOG_LOCATION_SUBPATH"))
+          .orElse("external-catalog");
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -149,9 +143,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private Map<String, String> restCatalogConfig;
-
-  private final String catalogBaseLocation =
-      s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
+  private URI externalCatalogBase;
+  private String catalogBaseLocation;
 
   private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
       Map.of(
@@ -186,16 +179,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     String[] value() default {};
   }
 
+  /**
+   * Get the storage configuration information for the catalog.
+   *
+   * @return StorageConfigInfo instance containing the storage configuration
+   */
+  protected abstract StorageConfigInfo getStorageConfigInfo();
+
+  /**
+   * Determine whether the test should be skipped based on the environment or configuration.
+   *
+   * @return true if the test should be skipped, false otherwise
+   */
+  protected abstract boolean shouldSkip();
+
   @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
+  static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
-    s3BucketBase = testRootUri.resolve("my-bucket");
-    externalCatalogBase = testRootUri.resolve("external-catalog");
   }
 
   static {
@@ -209,6 +212,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    Assumptions.assumeThat(shouldSkip()).isFalse();
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
@@ -218,14 +222,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn(TEST_ROLE_ARN)
-            .setExternalId("externalId")
-            .setUserArn("a:user:arn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-            .build();
+    StorageConfigInfo storageConfig = getStorageConfigInfo();
+    URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
+    catalogBaseLocation = testRuntimeURI + "/" + CATALOG_LOCATION_SUBPATH;
+    externalCatalogBase =
+        URI.create(
+            testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH + "/" + method.getName());
+
     Optional<CatalogConfig> catalogConfig =
         Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
 
@@ -237,7 +240,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
-    if (!s3BucketBase.getScheme().equals("file")) {
+    if (!testRuntimeURI.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
     }
@@ -246,11 +249,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .setType(catalogConfig.map(CatalogConfig::value).orElse(Catalog.TypeEnum.INTERNAL))
             .setName(currentCatalogName)
             .setProperties(catalogPropsBuilder.build())
-            .setStorageConfigInfo(
-                s3BucketBase.getScheme().equals("file")
-                    ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
-                    : awsConfigModel)
+            .setStorageConfigInfo(storageConfig)
             .build();
 
     managementApi.createCatalog(principalRoleName, catalog);
@@ -706,12 +705,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
       Invocation invocation =
@@ -750,12 +749,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation registerInvocation =
@@ -793,12 +792,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation createInvocation =
@@ -1560,8 +1559,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Create a table first
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
-    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
-        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+    restCatalog
+        .buildTable(
+            TableIdentifier.of(ns1, "test_table"),
+            new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get()))))
+        .create();
 
     // Load table with a non-matching If-None-Match header
     String nonMatchingETag = "W/\"non-matching-etag-value\"";
@@ -1586,8 +1588,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Create a table first
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
-    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
-        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+    restCatalog
+        .buildTable(
+            TableIdentifier.of(ns1, "test_table"),
+            new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get()))))
+        .create();
 
     // First, load the table to get the ETag
     Invocation initialInvocation =
@@ -1615,7 +1620,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .build("GET");
 
     try (Response etaggedResponse = etaggedInvocation.invoke()) {
-      assertThat(etaggedResponse.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+      assertThat(etaggedResponse.getStatus())
+          .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
       assertThat(etaggedResponse.hasEntity()).isFalse();
     }
   }
@@ -1625,8 +1631,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Create a table first
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
-    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
-        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+    restCatalog
+        .buildTable(
+            TableIdentifier.of(ns1, "test_table"),
+            new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get()))))
+        .create();
 
     // Load table with wildcard If-None-Match header (should be rejected)
     Invocation invocation =
@@ -1640,7 +1649,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
   }
 
-  
   @Test
   public void testLoadNonExistentTableWithIfNoneMatch() {
     // Create namespace but not the table
@@ -1669,16 +1677,18 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableId = TableIdentifier.of(ns1, "test_schema_evolution_table");
 
     // Create initial table with v1 schema
-    Schema v1Schema = new Schema(List.of(
-        Types.NestedField.required(1, "id", Types.LongType.get()),
-        Types.NestedField.optional(2, "name", Types.StringType.get())
-    ));
+    Schema v1Schema =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(2, "name", Types.StringType.get())));
     restCatalog.buildTable(tableId, v1Schema).create();
 
     // Load table and get v1 ETag
     Invocation v1Invocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .build("GET");
 
     String v1ETag;
@@ -1689,14 +1699,17 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
 
     // Evolve schema to v2 (add email column)
-    restCatalog.loadTable(tableId).updateSchema()
+    restCatalog
+        .loadTable(tableId)
+        .updateSchema()
         .addColumn("email", Types.StringType.get())
         .commit();
 
     // Load table and get v2 ETag
     Invocation v2Invocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .build("GET");
 
     String v2ETag;
@@ -1707,14 +1720,17 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
 
     // Evolve schema to v3 (add age column)
-    restCatalog.loadTable(tableId).updateSchema()
+    restCatalog
+        .loadTable(tableId)
+        .updateSchema()
         .addColumn("age", Types.IntegerType.get())
         .commit();
 
     // Load table and get v3 ETag
     Invocation v3Invocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .build("GET");
 
     String v3ETag;
@@ -1732,7 +1748,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Test If-None-Match with v1 ETag against current v3 table
     Invocation v1EtagTestInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .header(HttpHeaders.IF_NONE_MATCH, v1ETag)
             .build("GET");
 
@@ -1749,7 +1766,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     String multipleETags = v1ETag + ", " + v2ETag;
     Invocation multipleEtagsInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .header(HttpHeaders.IF_NONE_MATCH, multipleETags)
             .build("GET");
 
@@ -1761,13 +1779,15 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Test with current v3 ETag
     Invocation currentEtagInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
             .header(HttpHeaders.IF_NONE_MATCH, v3ETag)
             .build("GET");
 
     try (Response currentEtagResponse = currentEtagInvocation.invoke()) {
       // Should return 304 Not Modified because ETag matches current version
-      assertThat(currentEtagResponse.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+      assertThat(currentEtagResponse.getStatus())
+          .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
       assertThat(currentEtagResponse.hasEntity()).isFalse();
     }
   }
@@ -1780,16 +1800,20 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableId = TableIdentifier.of(ns1, "test_drop_recreate_behavior_table");
 
     // Create original table
-    Schema originalSchema = new Schema(List.of(
-        Types.NestedField.required(1, "original_id", Types.LongType.get()),
-        Types.NestedField.optional(2, "original_name", Types.StringType.get())
-    ));
+    Schema originalSchema =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "original_id", Types.LongType.get()),
+                Types.NestedField.optional(2, "original_name", Types.StringType.get())));
     restCatalog.buildTable(tableId, originalSchema).create();
 
     // Load original table and get ETag
     Invocation originalInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
+            .request(
+                "v1/"
+                    + currentCatalogName
+                    + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
             .build("GET");
 
     String originalETag;
@@ -1807,17 +1831,22 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog.dropTable(tableId);
 
     // Recreate table with completely different schema
-    Schema recreatedSchema = new Schema(List.of(
-        Types.NestedField.required(1, "recreated_uuid", Types.StringType.get()),
-        Types.NestedField.optional(2, "recreated_data", Types.StringType.get()),
-        Types.NestedField.optional(3, "recreated_timestamp", Types.TimestampType.withoutZone())
-    ));
+    Schema recreatedSchema =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "recreated_uuid", Types.StringType.get()),
+                Types.NestedField.optional(2, "recreated_data", Types.StringType.get()),
+                Types.NestedField.optional(
+                    3, "recreated_timestamp", Types.TimestampType.withoutZone())));
     restCatalog.buildTable(tableId, recreatedSchema).create();
 
     // Load recreated table and get ETag
     Invocation recreatedInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
+            .request(
+                "v1/"
+                    + currentCatalogName
+                    + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
             .build("GET");
 
     String recreatedETag;
@@ -1827,7 +1856,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(recreatedResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
       recreatedETag = recreatedResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
 
-      LoadTableResponse recreatedLoadResponse = recreatedResponse.readEntity(LoadTableResponse.class);
+      LoadTableResponse recreatedLoadResponse =
+          recreatedResponse.readEntity(LoadTableResponse.class);
       recreatedMetadataLocation = recreatedLoadResponse.metadataLocation();
     }
 
@@ -1838,25 +1868,34 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Test If-None-Match with original ETag against recreated table
     Invocation originalEtagTestInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
+            .request(
+                "v1/"
+                    + currentCatalogName
+                    + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
             .header(HttpHeaders.IF_NONE_MATCH, originalETag)
             .build("GET");
 
     try (Response originalEtagTestResponse = originalEtagTestInvocation.invoke()) {
       // Should return 200 OK because it's a completely different table
-      assertThat(originalEtagTestResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      assertThat(originalEtagTestResponse.getStatus())
+          .isEqualTo(Response.Status.OK.getStatusCode());
       assertThat(originalEtagTestResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
 
-      String currentETag = originalEtagTestResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+      String currentETag =
+          originalEtagTestResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
       assertThat(currentETag).isEqualTo(recreatedETag); // Should match recreated table ETag
 
-      LoadTableResponse currentLoadResponse = originalEtagTestResponse.readEntity(LoadTableResponse.class);
+      LoadTableResponse currentLoadResponse =
+          originalEtagTestResponse.readEntity(LoadTableResponse.class);
 
       // Verify we get the recreated table schema (not the original)
       assertThat(currentLoadResponse.tableMetadata().schema().columns()).hasSize(3);
-      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_uuid")).isNotNull();
-      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_data")).isNotNull();
-      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_timestamp")).isNotNull();
+      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_uuid"))
+          .isNotNull();
+      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_data"))
+          .isNotNull();
+      assertThat(currentLoadResponse.tableMetadata().schema().findField("recreated_timestamp"))
+          .isNotNull();
 
       // Verify original schema fields are NOT present
       assertThat(currentLoadResponse.tableMetadata().schema().findField("original_id")).isNull();
@@ -1866,13 +1905,17 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // Test with current recreated ETag
     Invocation currentEtagInvocation =
         catalogApi
-            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
+            .request(
+                "v1/"
+                    + currentCatalogName
+                    + "/namespaces/ns1/tables/test_drop_recreate_behavior_table")
             .header(HttpHeaders.IF_NONE_MATCH, recreatedETag)
             .build("GET");
 
     try (Response currentEtagResponse = currentEtagInvocation.invoke()) {
       // Should return 304 Not Modified because ETag matches current recreated table
-      assertThat(currentEtagResponse.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+      assertThat(currentEtagResponse.getStatus())
+          .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
       assertThat(currentEtagResponse.hasEntity()).isFalse();
     }
   }
@@ -1885,11 +1928,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     TableIdentifier tableId = TableIdentifier.of(ns1, "test_dml_etag_table");
 
     // Create table with initial schema
-    Schema schema = new Schema(List.of(
-        Types.NestedField.required(1, "id", Types.LongType.get()),
-        Types.NestedField.optional(2, "name", Types.StringType.get()),
-        Types.NestedField.optional(3, "value", Types.IntegerType.get())
-    ));
+    Schema schema =
+        new Schema(
+            List.of(
+                Types.NestedField.required(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(2, "name", Types.StringType.get()),
+                Types.NestedField.optional(3, "value", Types.IntegerType.get())));
     restCatalog.buildTable(tableId, schema).create();
 
     // Load table and get initial ETag (before any data)
@@ -1916,11 +1960,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     AppendFiles append = table.newAppend();
 
     // Create a mock data file entry
-    DataFile dataFile = DataFiles.builder(table.spec())
-        .withPath("/path/to/data/file1.parquet")
-        .withFileSizeInBytes(1024)
-        .withRecordCount(100)
-        .build();
+    DataFile dataFile =
+        DataFiles.builder(table.spec())
+            .withPath("/path/to/data/file1.parquet")
+            .withFileSizeInBytes(1024)
+            .withRecordCount(100)
+            .build();
 
     append.appendFile(dataFile);
     append.commit(); // This creates a new snapshot and should change the ETag
@@ -1958,7 +2003,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(initialEtagTestResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       assertThat(initialEtagTestResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
 
-      String currentETag = initialEtagTestResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+      String currentETag =
+          initialEtagTestResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
       assertThat(currentETag).isEqualTo(afterDMLETag); // Should match post-DML ETag
     }
   }

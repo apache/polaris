@@ -24,8 +24,13 @@ from pydantic import StrictStr
 from cli.command import Command
 from cli.constants import Subcommands, Arguments
 from cli.options.option_tree import Argument
-from polaris.management import PolarisDefaultApi, CreateCatalogRoleRequest, CatalogRole, UpdateCatalogRoleRequest, \
-    GrantCatalogRoleRequest
+from polaris.management import (
+    PolarisDefaultApi,
+    CreateCatalogRoleRequest,
+    CatalogRole,
+    UpdateCatalogRoleRequest,
+    GrantCatalogRoleRequest,
+)
 
 
 @dataclass
@@ -51,34 +56,44 @@ class CatalogRolesCommand(Command):
 
     def validate(self):
         if not self.catalog_name:
-            raise Exception(f'Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}')
+            raise Exception(
+                f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
+            )
         if self.catalog_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_role_name:
-                raise Exception(f'Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}')
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}"
+                )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalog_roles_subcommand == Subcommands.CREATE:
             request = CreateCatalogRoleRequest(
                 catalog_role=CatalogRole(
-                    name=self.catalog_role_name,
-                    properties=self.properties
+                    name=self.catalog_role_name, properties=self.properties
                 )
             )
             api.create_catalog_role(self.catalog_name, request)
         elif self.catalog_roles_subcommand == Subcommands.DELETE:
             api.delete_catalog_role(self.catalog_name, self.catalog_role_name)
         elif self.catalog_roles_subcommand == Subcommands.GET:
-            print(api.get_catalog_role(self.catalog_name, self.catalog_role_name).to_json())
+            print(
+                api.get_catalog_role(
+                    self.catalog_name, self.catalog_role_name
+                ).to_json()
+            )
         elif self.catalog_roles_subcommand == Subcommands.LIST:
             if self.principal_role_name:
                 for catalog_role in api.list_catalog_roles_for_principal_role(
-                        self.principal_role_name, self.catalog_name).roles:
+                    self.principal_role_name, self.catalog_name
+                ).roles:
                     print(catalog_role.to_json())
             else:
                 for catalog_role in api.list_catalog_roles(self.catalog_name).roles:
                     print(catalog_role.to_json())
         elif self.catalog_roles_subcommand == Subcommands.UPDATE:
-            catalog_role = api.get_catalog_role(self.catalog_name, self.catalog_role_name)
+            catalog_role = api.get_catalog_role(
+                self.catalog_name, self.catalog_role_name
+            )
             new_properties = catalog_role.properties or {}
 
             # Add or update all entries specified in set_properties
@@ -92,19 +107,22 @@ class CatalogRolesCommand(Command):
 
             request = UpdateCatalogRoleRequest(
                 current_entity_version=catalog_role.entity_version,
-                properties=new_properties
+                properties=new_properties,
             )
             api.update_catalog_role(self.catalog_name, self.catalog_role_name, request)
         elif self.catalog_roles_subcommand == Subcommands.GRANT:
             request = GrantCatalogRoleRequest(
-                catalog_role=CatalogRole(
-                    name=self.catalog_role_name
-                ),
-                properties=self.properties
+                catalog_role=CatalogRole(name=self.catalog_role_name),
+                properties=self.properties,
             )
-            api.assign_catalog_role_to_principal_role(self.principal_role_name, self.catalog_name, request)
+            api.assign_catalog_role_to_principal_role(
+                self.principal_role_name, self.catalog_name, request
+            )
         elif self.catalog_roles_subcommand == Subcommands.REVOKE:
             api.revoke_catalog_role_from_principal_role(
-                self.principal_role_name, self.catalog_name, self.catalog_role_name)
+                self.principal_role_name, self.catalog_name, self.catalog_role_name
+            )
         else:
-            raise Exception(f'{self.catalog_roles_subcommand} is not supported in the CLI')
+            raise Exception(
+                f"{self.catalog_roles_subcommand} is not supported in the CLI"
+            )

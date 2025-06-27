@@ -19,7 +19,7 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAzureIntegrationTest;
 
 @QuarkusIntegrationTest
-public class QuarkusRestCatalogIT extends PolarisRestCatalogIntegrationTest {}
+public class QuarkusRestCatalogAzureIT extends PolarisRestCatalogAzureIntegrationTest {}
