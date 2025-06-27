@@ -45,5 +45,5 @@ as necessary. Empty sections will not end up in the release notes.
 
 - TODO: backfill 1.0.0 release notes
 
-[Unreleased]: https://github.com/projectnessie/nessie/commits
+[Unreleased]: https://github.com/apache/polaris/commits
 [1.0.0-incubating]: https://github.com/apache/polaris/releases/tag/apache-polaris-1.0.0-incubating-rc2
