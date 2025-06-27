@@ -85,7 +85,7 @@ class Parser(object):
                 if arg.default:
                     kwargs["default"] = arg.default
 
-                if arg.type == bool:
+                if arg.type is bool:
                     del kwargs["type"]
                     parser.add_argument(
                         arg.get_flag_name(), **kwargs, action="store_true"
@@ -157,7 +157,7 @@ class TreeHelpParser(argparse.ArgumentParser):
             tree_str = self._get_tree_str(args[:help_index])
             if tree_str:
                 print(f"input: polaris {' '.join(args)}")
-                print(f"options:")
+                print("options:")
                 print(tree_str)
                 print("\n")
                 self.print_usage()
@@ -226,7 +226,7 @@ class TreeHelpParser(argparse.ArgumentParser):
                     parser = parser._subparsers._group_actions[0].choices.get(arg)
                     if not parser:
                         break
-                except Exception as e:
+                except Exception:
                     break
                 options = list(filter(lambda o: o.name == arg, options))[0].children
                 if options is None:

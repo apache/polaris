@@ -22,7 +22,6 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
-from pydantic import StrictStr
 
 from cli.command import Command
 from cli.constants import (

@@ -16,8 +16,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from dataclasses import dataclass, field
-from typing import Dict, Optional, List
+from dataclasses import dataclass
+from typing import Dict, List
 
 from pydantic import StrictStr
 
@@ -26,7 +26,6 @@ from cli.constants import StorageType, CatalogType, Subcommands, Arguments
 from cli.options.option_tree import Argument
 from polaris.management import (
     PolarisDefaultApi,
-    Catalog,
     CreateCatalogRequest,
     UpdateCatalogRequest,
     StorageConfigInfo,

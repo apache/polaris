@@ -32,7 +32,6 @@ from polaris.catalog import (
     ApiClient,
     Configuration,
 )
-from polaris.catalog.exceptions import NotFoundException
 from polaris.management import PolarisDefaultApi
 
 

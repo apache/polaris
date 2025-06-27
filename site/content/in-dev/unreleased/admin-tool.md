@@ -117,8 +117,9 @@ java -jar runtime/admin/build/polaris-admin-*-runner.jar bootstrap -r realm1 -c 
 
 The `purge` command is used to remove realms and principal credentials from the Polaris server.
 
-> Warning: Running the `purge` command will remove all data associated with the specified realms!
-  This includes all entities (catalogs, namespaces, tables, views, roles), all principal 
+> [!WARNING]
+> Running the `purge` command will remove all data associated with the specified realms!
+  This includes all entities (catalogs, namespaces, tables, views, roles), all principal
   credentials, grants, and any other data associated with the realms.
 
 ```shell

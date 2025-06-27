@@ -28,7 +28,8 @@ This page provides information on how to configure Apache Polaris (Incubating). 
 otherwise, this information is valid both for Polaris Docker images (and Kubernetes deployments) as
 well as for Polaris binary distributions.
 
-> Note: for Production tips and best practices, refer to [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
+> [!NOTE]
+> For Production tips and best practices, refer to [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
 
 First off, Polaris server runs on Quarkus, and uses its configuration mechanisms. Read Quarkus
 [configuration guide](https://quarkus.io/guides/config) to get familiar with the basics.
@@ -48,7 +49,7 @@ The sources are listed below, from highest to lowest priority:
 When using environment variables, there are two naming conventions:
 
 1. If possible, just use the property name as the environment variable name. This works fine in most
-   cases, e.g. in Kubernetes deployments. For example, `polaris.realm-context.realms` can be 
+   cases, e.g. in Kubernetes deployments. For example, `polaris.realm-context.realms` can be
    included as is in a container YAML definition:
    ```yaml
    env:
@@ -79,7 +80,7 @@ read-only mode, as Polaris only reads the configuration file once, at startup.
 
 | Configuration Property                                                                 | Default Value         | Description                                                                                                                                                                                                                                                                                                                                                   |
 |----------------------------------------------------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `polaris.persistence.type`                                                             | `relational-jdbc`     | Define the persistence backend used by Polaris (`in-memory`, `relational-jdbc`, `eclipse-link` (deprecated)). See [Configuring Apache Polaris for Production)[{{% ref "configuring-polaris-for-production.md" %}})                                                                                                                                            | 
+| `polaris.persistence.type`                                                             | `relational-jdbc`     | Define the persistence backend used by Polaris (`in-memory`, `relational-jdbc`, `eclipse-link` (deprecated)). See [Configuring Apache Polaris for Production)[{{% ref "configuring-polaris-for-production.md" %}})                                                                                                                                            |
 | `polaris.persistence.relational.jdbc.max-retries`                                      | `1`                   | Total number of retries JDBC persistence will attempt on connection resets or serialization failures before giving up.                                                                                                                                                                                                                                        |
 | `polaris.persistence.relational.jdbc.max_duaration_in_ms`                              | `5000 ms`             | Max time interval (ms) since the start of a transaction when retries can be attempted.                                                                                                                                                                                                                                                                        |
 | `polaris.persistence.relational.jdbc.initial_delay_in_ms`                              | `100 ms`              | Initial delay before retrying. The delay is doubled after each retry.                                                                                                                                                                                                                                                                                         |
@@ -124,7 +125,7 @@ There are non Polaris configuration properties that can be useful:
 |------------------------------------------------------|---------------------------------|-----------------------------------------------------------------------------|
 | `quarkus.log.level`                                  | `INFO`                          | Define the root log level.                                                  |
 | `quarkus.log.category."org.apache.polaris".level`    |                                 | Define the log level for a specific category.                               |
-| `quarkus.default-locale`                             | System locale                   | Force the use of a specific locale, for instance `en_US`.                   | 
+| `quarkus.default-locale`                             | System locale                   | Force the use of a specific locale, for instance `en_US`.                   |
 | `quarkus.http.port`                                  | `8181`                          | Define the HTTP port number.                                                |
 | `quarkus.http.auth.basic`                            | `false`                         | Enable the HTTP basic authentication.                                       |
 | `quarkus.http.limits.max-body-size`                  | `10240K`                        | Define the HTTP max body size limit.                                        |
@@ -139,7 +140,8 @@ There are non Polaris configuration properties that can be useful:
 | `quarkus.management.root-path`                       |                                 | Define the root path where `/metrics` and `/health` endpoints are based on. |
 | `quarkus.otel.sdk.disabled`                          | `true`                          | Enable the OpenTelemetry layer.                                             |
 
-> Note: This section is only relevant for Polaris Docker images and Kubernetes deployments.
+> [!NOTE]
+> This section is only relevant for Polaris Docker images and Kubernetes deployments.
 
 There are many other actionable environment variables available in the official Polaris Docker
 image; they come from the base image used by Polaris, [ubi9/openjdk-21-runtime]. They should be used
@@ -169,8 +171,8 @@ Here are some examples:
 | Example                                    | `docker run` option                                                                                                 |
 |--------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | Using another GC                           | `-e GC_CONTAINER_OPTIONS="-XX:+UseShenandoahGC"` lets Polaris use Shenandoah GC instead of the default parallel GC. |
-| Set the Java heap size to a _fixed_ amount | `-e JAVA_OPTS_APPEND="-Xms8g -Xmx8g"` lets Polaris use a Java heap of 8g.                                           | 
-| Set the maximum heap percentage            | `-e JAVA_MAX_MEM_RATIO="70"` lets Polaris use 70% percent of the available memory.                                  | 
+| Set the Java heap size to a _fixed_ amount | `-e JAVA_OPTS_APPEND="-Xms8g -Xmx8g"` lets Polaris use a Java heap of 8g.                                           |
+| Set the maximum heap percentage            | `-e JAVA_MAX_MEM_RATIO="70"` lets Polaris use 70% percent of the available memory.                                  |
 
 
 ## Troubleshooting Configuration Issues
@@ -184,5 +186,5 @@ quarkus.log.console.level=DEBUG
 quarkus.log.category."io.smallrye.config".level=DEBUG
 ```
 
-> [!IMPORTANT] This will print out all configuration values, including sensitive ones like 
+> [!IMPORTANT] This will print out all configuration values, including sensitive ones like
 > passwords. Don't do this in production, and don't share this output with anyone you don't trust!

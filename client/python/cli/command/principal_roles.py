@@ -29,8 +29,6 @@ from polaris.management import (
     CreatePrincipalRoleRequest,
     PrincipalRole,
     UpdatePrincipalRoleRequest,
-    GrantCatalogRoleRequest,
-    CatalogRole,
     GrantPrincipalRoleRequest,
 )
 
