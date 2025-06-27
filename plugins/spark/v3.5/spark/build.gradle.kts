@@ -140,8 +140,6 @@ tasks.register("addLicenseFilesToJar") {
       .matching {
         include("**/*LICENSE*")
         include("**/*NOTICE*")
-        include("**/*license*")
-        include("**/*notice*")
       }
       .forEach { file ->
         logger.info("Removing license file: ${file.relativeTo(tempDir)}")
