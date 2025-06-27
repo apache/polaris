@@ -35,7 +35,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -68,12 +67,10 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
 import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
@@ -92,7 +89,6 @@ import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -110,7 +106,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -124,15 +119,15 @@ import org.junit.jupiter.api.io.TempDir;
  *     CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.7.1
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog> {
-  private static final String TEST_ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
-
-  private static URI s3BucketBase;
-  private static URI externalCatalogBase;
-
+public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RESTCatalog> {
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
+  // subpath shouldn't start with a slash, as it is appended to the base URI
+  private static final String CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_CATALOG_LOCATION_SUBPATH"))
+          .orElse("path/to/data");
+  private static final String EXTERNAL_CATALOG_LOCATION_SUBPATH =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_EXTERNAL_CATALOG_LOCATION_SUBPATH"))
+          .orElse("external-catalog");
   private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -144,9 +139,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private Map<String, String> restCatalogConfig;
-
-  private final String catalogBaseLocation =
-      s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
+  private URI externalCatalogBase;
+  private String catalogBaseLocation;
 
   private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
       Map.of(
@@ -181,16 +175,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     String[] value() default {};
   }
 
+  /**
+   * Get the storage configuration information for the catalog.
+   *
+   * @return StorageConfigInfo instance containing the storage configuration
+   */
+  protected abstract StorageConfigInfo getStorageConfigInfo();
+
+  /**
+   * Determine whether the test should be skipped based on the environment or configuration.
+   *
+   * @return true if the test should be skipped, false otherwise
+   */
+  protected abstract boolean shouldSkip();
+
   @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
+  static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
-    s3BucketBase = testRootUri.resolve("my-bucket");
-    externalCatalogBase = testRootUri.resolve("external-catalog");
   }
 
   static {
@@ -204,6 +208,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    Assumptions.assumeThat(shouldSkip()).isFalse();
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
@@ -213,14 +218,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn(TEST_ROLE_ARN)
-            .setExternalId("externalId")
-            .setUserArn("a:user:arn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-            .build();
+    StorageConfigInfo storageConfig = getStorageConfigInfo();
+    URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
+    catalogBaseLocation = testRuntimeURI + "/" + CATALOG_LOCATION_SUBPATH;
+    externalCatalogBase =
+        URI.create(
+            testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH + "/" + method.getName());
+
     Optional<CatalogConfig> catalogConfig =
         Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
 
@@ -232,7 +236,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
-    if (!s3BucketBase.getScheme().equals("file")) {
+    if (!testRuntimeURI.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
     }
@@ -241,11 +245,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .setType(catalogConfig.map(CatalogConfig::value).orElse(Catalog.TypeEnum.INTERNAL))
             .setName(currentCatalogName)
             .setProperties(catalogPropsBuilder.build())
-            .setStorageConfigInfo(
-                s3BucketBase.getScheme().equals("file")
-                    ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
-                    : awsConfigModel)
+            .setStorageConfigInfo(storageConfig)
             .build();
 
     managementApi.createCatalog(principalRoleName, catalog);
@@ -701,12 +701,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
       Invocation invocation =
@@ -745,12 +745,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation registerInvocation =
@@ -788,12 +788,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            "file:///tmp/ns1/my_table",
+            externalCatalogBase + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation createInvocation =
