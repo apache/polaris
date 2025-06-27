@@ -76,6 +76,7 @@ github:
     - renovate-bot
     - nssalian
     - adnanhemani
+    - HotSushi
 
 notifications:
   commits:      commits@polaris.apache.org
