@@ -19,23 +19,20 @@
 
 package org.apache.polaris.service.catalog.common;
 
+import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 public class LocationUtilsTest {
 
   @Test
   public void testHashFormat() {
-    for (String input: List.of("", " ", "foo", "かな")) {
+    for (String input : List.of("", " ", "foo", "かな")) {
       String hash = LocationUtils.computeHash(input);
       Assertions.assertThat(hash).isNotNull();
 
       String[] parts = hash.split("/");
-      Assertions.assertThat(parts)
-          .as("Hash must have exactly 4 segments")
-          .hasSize(4);
+      Assertions.assertThat(parts).as("Hash must have exactly 4 segments").hasSize(4);
 
       Assertions.assertThat(parts[0])
           .as("First segment must be 4 chars")
@@ -63,11 +60,16 @@ public class LocationUtilsTest {
   public void testStableHashes() {
     Assertions.assertThat(LocationUtils.computeHash("foo")).isEqualTo("0101/1100/0100/00100000");
     Assertions.assertThat(LocationUtils.computeHash("foo")).isEqualTo("0101/1100/0100/00100000");
-    Assertions.assertThat(LocationUtils.computeHash("foo ")).isNotEqualTo("0101/1100/0100/00100000");
-    Assertions.assertThat(LocationUtils.computeHash(" foo")).isNotEqualTo("0101/1100/0100/00100000");
+    Assertions.assertThat(LocationUtils.computeHash("foo "))
+        .isNotEqualTo("0101/1100/0100/00100000");
+    Assertions.assertThat(LocationUtils.computeHash(" foo"))
+        .isNotEqualTo("0101/1100/0100/00100000");
 
-    Assertions.assertThat(LocationUtils.computeHash("/some/path.txt")).isEqualTo("1101/0101/1110/10001001");
-    Assertions.assertThat(LocationUtils.computeHash("/other/path.txt")).isEqualTo("1010/0010/1101/11011100");
-    Assertions.assertThat(LocationUtils.computeHash("/some/path.txt/")).isEqualTo("1110/1011/1111/11111010");
+    Assertions.assertThat(LocationUtils.computeHash("/some/path.txt"))
+        .isEqualTo("1101/0101/1110/10001001");
+    Assertions.assertThat(LocationUtils.computeHash("/other/path.txt"))
+        .isEqualTo("1010/0010/1101/11011100");
+    Assertions.assertThat(LocationUtils.computeHash("/some/path.txt/"))
+        .isEqualTo("1110/1011/1111/11111010");
   }
 }

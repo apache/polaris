@@ -23,7 +23,6 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import jakarta.annotation.Nonnull;
-
 import java.nio.charset.StandardCharsets;
 
 /**
