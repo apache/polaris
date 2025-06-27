@@ -20,7 +20,9 @@
 package org.apache.polaris.service.quarkus.events;
 
 public interface AwsCloudwatchConfig {
-    String logGroup();
-    String logStream();
-    String region();
+  String logGroup();
+
+  String logStream();
+
+  String region();
 }

@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +75,8 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   private final Region region;
 
   @Inject
-  public AwsCloudWatchEventListener(EventListenerConfiguration config, ExecutorService executorService) {
+  public AwsCloudWatchEventListener(
+      EventListenerConfiguration config, ExecutorService executorService) {
     this.executorService = executorService;
 
     this.logStream = config.awsCloudwatchlogStream().orElse("polaris-cloudwatch-default-stream");
@@ -203,8 +203,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
       queue.add(
-          new EventAndTimestamp(
-              objectMapper.writeValueAsString(json), System.currentTimeMillis()));
+          new EventAndTimestamp(objectMapper.writeValueAsString(json), System.currentTimeMillis()));
     } catch (JsonProcessingException e) {
       LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
     }

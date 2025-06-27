@@ -22,9 +22,9 @@ package org.apache.polaris.service.events;
 import java.util.Optional;
 
 public interface EventListenerConfiguration {
-    Optional<String> awsCloudwatchlogGroup();
+  Optional<String> awsCloudwatchlogGroup();
 
-    Optional<String> awsCloudwatchlogStream();
+  Optional<String> awsCloudwatchlogStream();
 
-    Optional<String> awsCloudwatchRegion();
+  Optional<String> awsCloudwatchRegion();
 }
