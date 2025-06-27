@@ -27,7 +27,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
  * Namespace-specific subclass of the {@link PolarisEntity} that provides accessors interacting with
  * internalProperties specific to the NAMESPACE type.
  */
-public class NamespaceEntity extends PolarisEntity {
+public class NamespaceEntity extends PolarisEntity implements LocationBasedEntity {
   // RESTUtil-encoded parent namespace.
   public static final String PARENT_NAMESPACE_KEY = "parent-namespace";
 
@@ -60,6 +60,7 @@ public class NamespaceEntity extends PolarisEntity {
     return Namespace.of(levels);
   }
 
+  @Override
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);

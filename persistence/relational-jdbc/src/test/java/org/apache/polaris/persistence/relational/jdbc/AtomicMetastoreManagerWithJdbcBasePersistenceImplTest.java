@@ -53,7 +53,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
       InputStream scriptStream =
           classLoader.getResourceAsStream(
-              String.format("%s/schema-v1.sql", DatabaseType.H2.getDisplayName()));
+              String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
       datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(

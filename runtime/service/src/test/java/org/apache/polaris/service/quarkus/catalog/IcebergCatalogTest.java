@@ -213,6 +213,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "polaris.event-listener.type",
           "test",
           "polaris.readiness.ignore-severe-issues",
+          "true",
+          "polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"",
           "true");
     }
   }

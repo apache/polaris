@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -1816,6 +1818,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // return the result
     return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    BasePersistence ms = callContext.getMetaStore();
+    return ms.hasOverlappingSiblings(callContext, entity);
   }
 
   @Override

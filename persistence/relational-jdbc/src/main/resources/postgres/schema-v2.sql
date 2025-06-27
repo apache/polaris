@@ -16,6 +16,10 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
+-- Changes from v1:
+--  * Added a `location` column to entities
+--  * Added an index `idx_locations` over (realm_id, parent_id, location) in entities
+
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
 
@@ -24,9 +28,9 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 1)
-    ON CONFLICT (version_key) DO UPDATE
-                            SET version_value = EXCLUDED.version_value;
+VALUES ('version', 2)
+ON CONFLICT (version_key) DO UPDATE
+SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -46,12 +50,16 @@ CREATE TABLE IF NOT EXISTS entities (
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
     grant_records_version INT NOT NULL,
+    location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_locations
+    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
 
