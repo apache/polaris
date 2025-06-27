@@ -221,7 +221,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     StorageConfigInfo storageConfig = getStorageConfigInfo();
     URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
     catalogBaseLocation = testRuntimeURI + "/" + CATALOG_LOCATION_SUBPATH;
-    externalCatalogBase = URI.create(testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH);
+    externalCatalogBase =
+        URI.create(
+            testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH + "/" + method.getName());
 
     Optional<CatalogConfig> catalogConfig =
         Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
