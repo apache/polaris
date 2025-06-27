@@ -1,7 +1,7 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
+ * distributed with this work for additional debugrmation
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -138,15 +138,22 @@ tasks.register("addLicenseFilesToJar") {
 
     fileTree(tempDir)
       .matching {
-        include("LICENSE*")
-        include("NOTICE*")
-        include("META-INF/LICENSE*")
-        include("META-INF/NOTICE*")
+        include("**/*LICENSE*")
+        include("**/*NOTICE*")
+        include("**/*license*")
+        include("**/*notice*")
       }
       .forEach { file ->
         logger.info("Removing license file: ${file.relativeTo(tempDir)}")
         file.delete()
       }
+
+    // Remove META-INF/licenses directory if it exists
+    val licensesDir = File(tempDir, "META-INF/licenses")
+    if (licensesDir.exists()) {
+      licensesDir.deleteRecursively()
+      logger.info("Removed META-INF/licenses directory")
+    }
 
     // Copy our project's license files to root
     copy {
