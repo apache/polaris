@@ -67,6 +67,7 @@ import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -1548,5 +1549,132 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
+  }
+
+  @Test
+  public void testLoadTableWithNonMatchingIfNoneMatchHeader() {
+    // Create a table first
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
+        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+
+    // Load table with a non-matching If-None-Match header
+    String nonMatchingETag = "W/\"non-matching-etag-value\"";
+    Invocation invocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_table")
+            .header(HttpHeaders.IF_NONE_MATCH, nonMatchingETag)
+            .build("GET");
+
+    try (Response response = invocation.invoke()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      assertThat(response.getHeaders()).containsKey(HttpHeaders.ETAG);
+
+      LoadTableResponse loadTableResponse = response.readEntity(LoadTableResponse.class);
+      assertThat(loadTableResponse).isNotNull();
+      assertThat(loadTableResponse.metadataLocation()).isNotNull();
+    }
+  }
+
+  @Test
+  public void testLoadTableWithMultipleIfNoneMatchETags() {
+    // Create a table first
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
+        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+
+    // First, load the table to get the ETag
+    Invocation initialInvocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_table")
+            .build("GET");
+
+    String correctETag;
+    try (Response initialResponse = initialInvocation.invoke()) {
+      assertThat(initialResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      assertThat(initialResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
+      correctETag = initialResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
+    }
+
+    // Create multiple ETags, one of which matches
+    String wrongETag1 = "W/\"wrong-etag-1\"";
+    String wrongETag2 = "W/\"wrong-etag-2\"";
+    String multipleETags = wrongETag1 + ", " + correctETag + ", " + wrongETag2;
+
+    // Load the table with multiple ETags
+    Invocation etaggedInvocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_table")
+            .header(HttpHeaders.IF_NONE_MATCH, multipleETags)
+            .build("GET");
+
+    try (Response etaggedResponse = etaggedInvocation.invoke()) {
+      assertThat(etaggedResponse.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+      assertThat(etaggedResponse.hasEntity()).isFalse();
+    }
+  }
+
+  @Test
+  public void testLoadTableWithWildcardIfNoneMatchReturns400() {
+    // Create a table first
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
+        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+
+    // Load table with wildcard If-None-Match header (should be rejected)
+    Invocation invocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_table")
+            .header(HttpHeaders.IF_NONE_MATCH, "*")
+            .build("GET");
+
+    try (Response response = invocation.invoke()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testLoadTableWithInvalidIfNoneMatchFormat() {
+    // Create a table first
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    restCatalog.buildTable(TableIdentifier.of(ns1, "test_table"),
+        new Schema(List.of(Types.NestedField.required(1, "col1", Types.StringType.get())))).create();
+
+    // Load table with invalid If-None-Match header format
+    String invalidETag = "invalid-etag-format";
+    Invocation invocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/test_table")
+            .header(HttpHeaders.IF_NONE_MATCH, invalidETag)
+            .build("GET");
+
+    try (Response response = invocation.invoke()) {
+      // Should return 400 Bad Request for invalid ETag format
+      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testLoadNonExistentTableWithIfNoneMatch() {
+    // Create namespace but not the table
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+
+    // Try to load a non-existent table with If-None-Match header
+    String etag = "W/\"some-etag\"";
+    Invocation invocation =
+        catalogApi
+            .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/non_existent_table")
+            .header(HttpHeaders.IF_NONE_MATCH, etag)
+            .build("GET");
+
+    try (Response response = invocation.invoke()) {
+      // Should return 404 Not Found regardless of If-None-Match header
+      assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+    }
   }
 }
