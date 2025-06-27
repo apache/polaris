@@ -36,12 +36,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
@@ -562,6 +557,16 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testCreateTableWithMetadataConflictingName() {
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    TableIdentifier tableIdentifier = TableIdentifier.of("ns1", "history");
+    restCatalog.buildTable(tableIdentifier, SCHEMA).withProperty("stage-create", "true").create();
+    Table table = restCatalog.loadTable(tableIdentifier);
+    assertThat(table).isNotNull().isInstanceOf(BaseTable.class);
   }
 
   @Test
