@@ -128,6 +128,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.SupportsNotifications;
+import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -908,15 +909,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!defaultBaseLocation.endsWith("/")) {
       locationBuilder.append("/");
     }
-    // Add a random prefix after the base location:
-    for (int i = 0; i < RANDOM_PREFIX_COMPONENTS; i++) {
-      if (i > 0) {
-        locationBuilder.append('/');
-      }
-      for (int j = 0; j < RANDOM_PREFIX_COMPONENT_LENGTH; j++) {
-        locationBuilder.append(RANDOM.nextBoolean() ? '1' : '0');
-      }
-    }
+
+    locationBuilder.append(LocationUtils.computeHash(tableIdentifier.toString()));
+
     for (String ns : tableIdentifier.namespace().levels()) {
       locationBuilder.append("/").append(URLEncoder.encode(ns, Charset.defaultCharset()));
     }

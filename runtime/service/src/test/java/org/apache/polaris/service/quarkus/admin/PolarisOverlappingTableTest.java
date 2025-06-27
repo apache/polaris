@@ -42,6 +42,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -407,10 +408,17 @@ public class PolarisOverlappingTableTest {
         tableLocation.substring(0, String.format("%s/%s/", baseLocation, catalog).length()));
     Assertions.assertEquals(
         String.format("%s/%s", namespace, tableName),
-        tableLocation.substring(String.format("%s/%s/", baseLocation, catalog).length() + (5 * 4)));
+        tableLocation.substring(
+            String.format("%s/%s/", baseLocation, catalog).length()
+                + (LocationUtils.HASH_BINARY_STRING_BITS + LocationUtils.ENTROPY_DIR_LENGTH)));
 
     // Overlap fails:
     assertThat(createTable(services, tableLocation))
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+
+    // The random prefix does not actually have to be stable, so this test
+    // is okay to change in the future.
+    assertThat(createTableWithName(services, "determinism_check").substring(baseLocation.length()))
+        .isEqualTo("/test-catalog/1110/1010/0001/01111010/ns/determinism_check");
   }
 }
