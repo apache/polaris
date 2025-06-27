@@ -21,13 +21,14 @@ package org.apache.polaris.service.http;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for If-None-Match header processing and ETag interaction scenarios.
- * This includes both HTTP header parsing and tests that verify how ETag generation
- * works together with If-None-Match processing for metadata location changes.
+ * Tests for If-None-Match header processing and ETag interaction scenarios. This includes both HTTP
+ * header parsing and tests that verify how ETag generation works together with If-None-Match
+ * processing for metadata location changes.
  */
 public class IfNoneMatchTest {
 
@@ -137,7 +138,6 @@ public class IfNoneMatchTest {
         IllegalArgumentException.class, () -> IfNoneMatch.fromHeader("W/\"etag\" \"valid-etag\""));
   }
 
-
   @Test
   public void testETagGenerationConsistency() {
     // Test that ETag generation is consistent for the same metadata location
@@ -152,27 +152,15 @@ public class IfNoneMatchTest {
   }
 
   @Test
-  public void testETagGenerationDifferentLocations() {
-    // Test that different metadata locations generate different ETags
-    String location1 = "s3://bucket/path/metadata1.json";
-    String location2 = "s3://bucket/path/metadata2.json";
-
-    String etag1 = IcebergHttpUtil.generateETagForMetadataFileLocation(location1);
-    String etag2 = IcebergHttpUtil.generateETagForMetadataFileLocation(location2);
-
-    assertThat(etag1).isNotEqualTo(etag2);
-    assertThat(etag1).startsWith("W/\"").endsWith("\"");
-    assertThat(etag2).startsWith("W/\"").endsWith("\"");
-  }
-
-  @Test
   public void testETagChangeAfterMetadataLocationChange() {
     // Test that ETags change when metadata location changes (simulating schema updates)
     String originalMetadataLocation = "s3://bucket/path/metadata/v1.metadata.json";
     String updatedMetadataLocation = "s3://bucket/path/metadata/v2.metadata.json";
 
-    String originalETag = IcebergHttpUtil.generateETagForMetadataFileLocation(originalMetadataLocation);
-    String updatedETag = IcebergHttpUtil.generateETagForMetadataFileLocation(updatedMetadataLocation);
+    String originalETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(originalMetadataLocation);
+    String updatedETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(updatedMetadataLocation);
 
     // ETags should be different for different metadata locations
     assertThat(originalETag).isNotEqualTo(updatedETag);
@@ -209,9 +197,10 @@ public class IfNoneMatchTest {
     String v3ETag = IcebergHttpUtil.generateETagForMetadataFileLocation(v3MetadataLocation);
 
     // All ETags should be different
-    assertThat(v1ETag).isNotEqualTo(v2ETag);
-    assertThat(v1ETag).isNotEqualTo(v3ETag);
-    assertThat(v2ETag).isNotEqualTo(v3ETag);
+    Set<String> etagSet = Set.of(v1ETag, v2ETag, v3ETag);
+    assertThat(etagSet)
+        .as("Schema evolution should generate unique ETags for each version (v1, v2, v3)")
+        .hasSize(3);
 
     // Test If-None-Match with original ETag after schema changes
     IfNoneMatch originalIfNoneMatch = IfNoneMatch.fromHeader(v1ETag);
@@ -236,36 +225,6 @@ public class IfNoneMatchTest {
   }
 
   @Test
-  public void testETagBehaviorForTableDropAndRecreate() {
-    // Simulate a table drop and recreate scenario
-    String baseLocation = "s3://warehouse/db/table/metadata/";
-
-    // Original table metadata location
-    String originalMetadataLocation = baseLocation + "original-v1.metadata.json";
-    String originalETag = IcebergHttpUtil.generateETagForMetadataFileLocation(originalMetadataLocation);
-
-    // After dropping and recreating table (completely new metadata location)
-    String recreatedMetadataLocation = "s3://warehouse/db/table/metadata/recreated-v1.metadata.json";
-    String recreatedETag = IcebergHttpUtil.generateETagForMetadataFileLocation(recreatedMetadataLocation);
-
-    // ETags should be completely different for different metadata locations
-    assertThat(originalETag).isNotEqualTo(recreatedETag);
-
-    // Both should be valid weak ETags
-    assertThat(originalETag).startsWith("W/\"").endsWith("\"");
-    assertThat(recreatedETag).startsWith("W/\"").endsWith("\"");
-
-    // Test If-None-Match with original ETag after table recreation
-    IfNoneMatch originalIfNoneMatch = IfNoneMatch.fromHeader(originalETag);
-
-    // Should match the original ETag
-    assertThat(originalIfNoneMatch.anyMatch(originalETag)).isTrue();
-
-    // Should NOT match the recreated table's ETag (completely different table)
-    assertThat(originalIfNoneMatch.anyMatch(recreatedETag)).isFalse();
-  }
-
-  @Test
   public void testETagUniquenessAcrossTableLifecycle() {
     // Test ETag uniqueness across the complete table lifecycle
     String baseLocation = "s3://warehouse/db/users/metadata/";
@@ -284,11 +243,13 @@ public class IfNoneMatchTest {
 
     // Table dropped and recreated with different schema (new metadata path)
     String recreatedV1MetadataLocation = baseLocation + "recreated-v1.metadata.json";
-    String recreatedV1ETag = IcebergHttpUtil.generateETagForMetadataFileLocation(recreatedV1MetadataLocation);
+    String recreatedV1ETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(recreatedV1MetadataLocation);
 
     // Further evolution of recreated table
     String recreatedV2MetadataLocation = baseLocation + "recreated-v2.metadata.json";
-    String recreatedV2ETag = IcebergHttpUtil.generateETagForMetadataFileLocation(recreatedV2MetadataLocation);
+    String recreatedV2ETag =
+        IcebergHttpUtil.generateETagForMetadataFileLocation(recreatedV2MetadataLocation);
 
     // All ETags should be unique
     List<String> allETags = List.of(v1ETag, v2ETag, v3ETag, recreatedV1ETag, recreatedV2ETag);

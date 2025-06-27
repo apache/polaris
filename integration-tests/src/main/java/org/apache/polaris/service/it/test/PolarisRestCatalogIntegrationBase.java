@@ -1670,8 +1670,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
-  public void testETagBehaviorForTableSchemaChangesIntegration() {
-    // Integration test equivalent of testETagBehaviorForTableSchemaChanges unit test
+  public void testETagBehaviorForTableSchemaChanges() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableIdentifier tableId = TableIdentifier.of(ns1, "test_schema_evolution_table");
@@ -1774,6 +1773,22 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     try (Response multipleEtagsResponse = multipleEtagsInvocation.invoke()) {
       // Should return 200 OK because current v3 ETag doesn't match v1 or v2
       assertThat(multipleEtagsResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // Test with multiple ETags including v1 and v3
+    multipleETags = v1ETag + ", " + v3ETag;
+    multipleEtagsInvocation =
+        catalogApi
+            .request(
+                "v1/" + currentCatalogName + "/namespaces/ns1/tables/test_schema_evolution_table")
+            .header(HttpHeaders.IF_NONE_MATCH, multipleETags)
+            .build("GET");
+
+    try (Response multipleEtagsResponse = multipleEtagsInvocation.invoke()) {
+      // Should return 304 Not Modified because ETag matches current v3
+      assertThat(multipleEtagsResponse.getStatus())
+          .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+      assertThat(multipleEtagsResponse.hasEntity()).isFalse();
     }
 
     // Test with current v3 ETag
@@ -1962,7 +1977,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     // Create a mock data file entry
     DataFile dataFile =
         DataFiles.builder(table.spec())
-            .withPath("/path/to/data/file1.parquet")
+            .withPath(table.locationProvider().newDataLocation("file1.parquet"))
             .withFileSizeInBytes(1024)
             .withRecordCount(100)
             .build();
