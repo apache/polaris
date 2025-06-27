@@ -20,13 +20,29 @@ package org.apache.polaris.service.quarkus.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithName;
+import org.apache.polaris.service.events.EventListenerConfiguration;
+
+import java.util.Optional;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener")
-public interface QuarkusPolarisEventListenerConfiguration {
+public interface QuarkusPolarisEventListenerConfiguration extends EventListenerConfiguration {
   /**
    * The type of the event listener to use. Must be a registered {@link
    * org.apache.polaris.service.events.PolarisEventListener} identifier.
    */
   String type();
+
+  @WithName("aws-cloudwatch.log-group")
+  @Override
+  Optional<String> awsCloudwatchlogGroup();
+
+  @WithName("aws-cloudwatch.log-stream")
+  @Override
+  Optional<String> awsCloudwatchlogStream();
+
+  @WithName("aws-cloudwatch.region")
+  @Override
+  Optional<String> awsCloudwatchRegion();
 }

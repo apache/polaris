@@ -298,4 +298,25 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "in their snapshot summary")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> AWS_CLOUDWATCH_EVENT_LISTENER_LOG_GROUP =
+          PolarisConfiguration.<String>builder()
+                  .key("AWS_CLOUDWATCH_EVENT_LISTENER_LOG_GROUP")
+                  .description("The log group you'd like the AWS CloudWatch Event Listener to output to.")
+                  .defaultValue("polaris-log-group")
+                  .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> AWS_CLOUDWATCH_EVENT_LISTENER_LOG_STREAM =
+          PolarisConfiguration.<String>builder()
+                  .key("AWS_CLOUDWATCH_EVENT_LISTENER_LOG_STREAM")
+                  .description("The log stream you'd like the AWS CloudWatch Event Listener to output to.")
+                  .defaultValue("polaris-log-stream")
+                  .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> AWS_CLOUDWATCH_EVENT_LISTENER_REGION =
+          PolarisConfiguration.<String>builder()
+                  .key("AWS_CLOUDWATCH_EVENT_LISTENER_REGION")
+                  .description("The region where the log group is located for the AWS CloudWatch Event Listener.")
+                  .defaultValue("us-east-1")
+                  .buildFeatureConfiguration();
 }
