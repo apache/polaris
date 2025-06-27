@@ -76,6 +76,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.LocationProvider;
 import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.Tasks;
@@ -91,7 +92,9 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -894,11 +897,56 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Based on configuration settings, for callsites that need to handle potentially setting a new
-   * base location for a TableLike entity, produces the transformed location if applicable, or else
-   * the unaltered specified location.
+   * Applies the rule controlled by DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED to a tablelike location
    */
-  public String transformTableLikeLocation(String specifiedTableLikeLocation) {
+  private String applyDefaultLocationRandomPrefix(String location) {
+    RealmContext realmContext = callContext.getRealmContext();
+    PolarisConfigurationStore configurationStore =
+        callContext.getPolarisCallContext().getConfigurationStore();
+    boolean randomPrefixEnabled =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED);
+    boolean allowExternalTableLocation =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    boolean allowTableLocationOverlap =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP);
+    boolean optimizedSiblingCheck =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (!randomPrefixEnabled) {
+      return location;
+    } else if (!allowExternalTableLocation) {
+      throw new IllegalStateException(String.format(
+          "The configuration %s is enabled, but %s is not enabled",
+          FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
+          FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.key));
+    } else if (!allowTableLocationOverlap && !optimizedSiblingCheck) {
+      // TODO consider doing this check any time ALLOW_EXTERNAL_TABLE_LOCATION is enabled, not just here
+      throw new IllegalStateException(String.format(
+          "%s and %s are both disabled, which means that table location overlap checkes are being"
+              + " performed, but only within each namespace. However, %s is enabled, which indicates"
+              + " that tables may be created outside of their parent namespace. This is not a safe"
+              + " combination of configurations.",
+          FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key,
+          FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
+          FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.key));
+    } else if (location != null) {
+      return location;
+    } else {
+      if (!location.startsWith(defaultBaseLocation)) {
+        throw new IllegalArgumentException("Location was expected to start with " + defaultBaseLocation);
+      }
+      String locationWithoutBaseLocation = location.replace(defaultBaseLocation, "");
+      return "TODO";
+    }
+  }
+
+  /**
+   * Applies the rule controlled by REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY to a tablelike location
+   */
+  private String applyReplaceNewLocationWithCatalogDefault(String specifiedTableLikeLocation) {
     String replaceNewLocationPrefix = catalogEntity.getReplaceNewLocationPrefixWithCatalogDefault();
     if (specifiedTableLikeLocation != null
         && replaceNewLocationPrefix != null
@@ -914,6 +962,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return modifiedLocation;
     }
     return specifiedTableLikeLocation;
+  }
+
+  /**
+   * Based on configuration settings, for callsites that need to handle potentially setting a new
+   * base location for a TableLike entity, produces the transformed location if applicable, or else
+   * the unaltered specified location.
+   */
+  public String transformTableLikeLocation(String specifiedTableLikeLocation) {
+    return applyDefaultLocationRandomPrefix(
+        applyReplaceNewLocationWithCatalogDefault(
+            specifiedTableLikeLocation
+        )
+    );
   }
 
   private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {

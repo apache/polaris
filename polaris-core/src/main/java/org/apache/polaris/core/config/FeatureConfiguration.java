@@ -328,15 +328,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> DEFAULT_TABLE_LOCATION_RANDOM_PREFIX_ENABLED =
-    PolarisConfiguration.<Boolean>builder()
-      .key("DEFAULT_TABLE_LOCATION_RANDOM_PREFIX_ENABLED")
-      .catalogConfig("polaris.config.default-table-location-random-prefix.enabled")
-      .description(
-        "When enabled, tables created without a location specified will receive a randomized location within "
-          + "the catalog's base location, rather than a location inside the parent namespace. Note that this "
-          + "requires ALLOW_EXTERNAL_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
-          + "it is still possible to enforce the uniqueness of table locations within a catalog.")
-      .defaultValue(false)
-      .buildFeatureConfiguration();
+  public static final FeatureConfiguration<Boolean> DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED")
+          .catalogConfig("polaris.config.default-table-location-random-prefix.enabled")
+          .description(
+              "When enabled, Iceberg tables and views created without a location specified will receive a randomized "
+                  + "location within the catalog's base location, rather than a location inside the parent "
+                  + "namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be enabled, but "
+                  + "with OPTIMIZED_SIBLING_CHECK enabled "
+                  + "it is still possible to enforce the uniqueness of table locations within a catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
