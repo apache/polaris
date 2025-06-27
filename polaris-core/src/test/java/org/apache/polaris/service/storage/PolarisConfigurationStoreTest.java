@@ -150,7 +150,6 @@ public class PolarisConfigurationStoreTest {
 
   @Test
   public void testEntityOverrides() {
-    @SuppressWarnings("deprecation")
     Function<Integer, FeatureConfiguration<String>> cfg =
         i ->
             PolarisConfiguration.<String>builder()
