@@ -93,10 +93,11 @@ public class AwsCredentialsStorageIntegration
     credentialsProvider.ifPresent(
         cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
-    URI endpointUri = storageConfig.getEndpointUri();
     @SuppressWarnings("resource")
+    // Note: stsClientProvider returns "thin" clients that do not need closing
     StsClient stsClient =
-        stsClientProvider.stsClient(StsDestination.of(endpointUri, storageConfig.getRegion()));
+        stsClientProvider.stsClient(
+            StsDestination.of(storageConfig.getStsEndpointUri(), storageConfig.getRegion()));
 
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
     EnumMap<StorageAccessProperty, String> credentialMap =
@@ -119,6 +120,7 @@ public class AwsCredentialsStorageIntegration
       credentialMap.put(StorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
     }
 
+    URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
       credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }

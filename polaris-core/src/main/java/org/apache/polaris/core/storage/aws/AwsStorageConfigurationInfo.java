@@ -54,9 +54,13 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonProperty(value = "region")
   private @Nullable String region = null;
 
-  /** User ARN for the service principal */
+  /** Endpoint URI for S3 API calls */
   @JsonProperty(value = "endpoint")
   private @Nullable String endpoint;
+
+  /** Endpoint URI for STS API calls */
+  @JsonProperty(value = "stsEndpoint")
+  private @Nullable String stsEndpoint;
 
   @JsonCreator
   public AwsStorageConfigurationInfo(
@@ -66,12 +70,22 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
       @JsonProperty(value = "externalId") @Nullable String externalId,
       @JsonProperty(value = "region", required = false) @Nullable String region,
-      @JsonProperty(value = "endpoint") @Nullable String endpoint) {
+      @JsonProperty(value = "endpoint") @Nullable String endpoint,
+      @JsonProperty(value = "stsEndpoint") @Nullable String stsEndpoint) {
     super(storageType, allowedLocations);
     this.roleARN = roleARN;
     this.externalId = externalId;
     this.region = region;
     this.endpoint = endpoint;
+    this.stsEndpoint = stsEndpoint;
+  }
+
+  public AwsStorageConfigurationInfo(
+      @Nonnull StorageType storageType,
+      @Nonnull List<String> allowedLocations,
+      @Nonnull String roleARN,
+      @Nullable String region) {
+    this(storageType, allowedLocations, roleARN, null, region, null, null);
   }
 
   public AwsStorageConfigurationInfo(
@@ -80,7 +94,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull String roleARN,
       @Nullable String externalId,
       @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, externalId, region, null);
+    this(storageType, allowedLocations, roleARN, externalId, region, null, null);
   }
 
   @Override
@@ -133,6 +147,13 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @Nullable
   public URI getEndpointUri() {
     return endpoint == null ? null : URI.create(endpoint);
+  }
+
+  /** Returns the STS endpoint if set, defaulting to {@link #getEndpointUri()} otherwise. */
+  @JsonIgnore
+  @Nullable
+  public URI getStsEndpointUri() {
+    return stsEndpoint == null ? getEndpointUri() : URI.create(stsEndpoint);
   }
 
   @JsonIgnore
