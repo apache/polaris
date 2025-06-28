@@ -1027,7 +1027,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: QUARKUS_DATASOURCE_USERNAME
+            name: quarkus.datasource.username
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence
@@ -1035,7 +1035,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: QUARKUS_DATASOURCE_PASSWORD
+            name: quarkus.datasource.password
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence
@@ -1043,7 +1043,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: QUARKUS_DATASOURCE_JDBC_URL
+            name: quarkus.datasource.jdbc.url
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence
