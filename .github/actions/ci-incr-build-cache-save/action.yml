@@ -1,0 +1,70 @@
+# Copyright (C) 2020 Dremio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# CODE_COPIED_TO_POLARIS Copied from Project Nessie v. 0.104.2
+
+name: 'Save incremental Gradle caches'
+description: 'Save incremental Gradle caches'
+inputs:
+  job-name:
+    description: 'job name'
+  java-version:
+    description: 'Java version'
+    default: '21'
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare Gradle caches archive
+      shell: bash
+      run: |
+        if [[ -d ~/.gradle/caches/ ]] ; then
+          echo "::group::Gradle caches / identify updated cache items"
+
+          cd ~/.gradle/caches/
+
+          echo "Gradle caches/ contains $(find . -type f | wc -l) files"
+          # Identify the added and changed files in caches/.
+
+          echo "Identifying changed/added files..."
+          AGE_SECS=$(($(date +%s) - $(cat ~/caches-prepared-at-epoch)))
+          echo "Build started ~ $AGE_SECS seconds ago"
+          AGE_MINS=$(($AGE_SECS / 60 + 1))
+          echo " ... assuming that is ~ $AGE_MINS minutes"
+          # This lists all relevant files that have been created or modified during by the Gradle
+          # runs of the current job.
+          find . -mmin -$AGE_MINS -type f '(' \
+            -path './[0-9]*/kotlin-dsl/*' -or \
+            -path './jars-*/*' -or \
+            -path './modules-*/files-*/*' -or \
+            -path './modules-*/files-*/*' -or \
+            -path './build-cache-*/*' \
+            ')' | grep -v '[.]lock$'  > ~/ci-gradle-caches-diff || true
+          echo "Identified $(wc -l < ~/ci-gradle-caches-diff) changed/added files in caches/"
+
+          # Only call 'tar', if there is some difference
+          # Note: actions/upload-artifact takes care of compressing the artifact, no need to bug the CPU here
+          echo "Creating artifact (if necessary)..."
+          if [[ -s ~/ci-gradle-caches-diff ]] ; then
+            tar --create --ignore-failed-read --file ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar -T ~/ci-gradle-caches-diff
+            ls -al ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar
+          fi
+          echo "::endgroup::"
+        fi
+    - name: Archive code-checks incremental
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}
+        path: ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar
+        if-no-files-found: ignore
+        retention-days: 1
