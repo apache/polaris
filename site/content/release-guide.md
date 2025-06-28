@@ -113,6 +113,27 @@ git commit -a
 git push
 ```
 
+Update `CHANGELOG.md`:
+```
+./gradlew patchChangelog
+git commit -a
+git push
+```
+
+Note: You should submit a PR to propagate (automated) CHANGELOG updates from the release
+branch to `main`.
+
+If more changes are cherry-picked for the next RC, and those change introduce CHANGELOG entries,
+follow this update process:
+* Manually add an `-rcN` suffix to the previously generated versioned CHANGELOG section.
+* Rerun the `patchChangelog` command
+* Manually remove RC sections from the CHANGELOG
+* Submit a PR to propagate CHANGELOG updates from the release branch to `main`.
+
+Note: the CHANGELOG patch commit should probably be the last commit on the release branch when
+an RC is cut. If more changes are cherry-picked for the next RC, it is best to drop the
+CHANGELOG patch commit, apply cherry-picks, and re-run `patchChangelog`.
+
 Note: You should also submit a PR on `main` branch to bump the version in the `version.txt` file.
 
 ### Create release tag
