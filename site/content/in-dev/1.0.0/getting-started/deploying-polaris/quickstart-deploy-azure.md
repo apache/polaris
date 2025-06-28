@@ -17,25 +17,25 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on Google Cloud Platform (GCP)
+Title: Deploying Polaris on Azure
 type: docs
-weight: 330
+weight: 320
 ---
 
-Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start a [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres) instance, which will be used as the backend Postgres instance holding all Polaris data.
+Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.
 Additionally, Polaris will be bootstrapped to use this database and Docker containers will be spun up for Spark SQL and Trino.
 
 The requirements to run the script below are:
-* Install the `gcloud` CLI, if it is not already installed on the GCP VM. Instructions to download the `gcloud` CLI can be found [here](https://cloud.google.com/sdk/docs/install).
-* Ensure the `Cloud SQL Admin API` has been enabled in your project and that your VM's Principal has access to the correct role: `roles/cloudsql.admin`.
-* Ensure the VM's Principal has access to at least Read-only scope on Compute Engine: `compute.readonly`.
+* Install the AZ CLI, if it is not already installed on the Azure VM. Instructions to download the AZ CLI can be found [here](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+* You must be logged into the AZ CLI. Please run `az account show` to ensure that you are logged in prior to running this script.
+* Assign a System-Assigned Managed Identity to the Azure VM. 
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-gcp.sh
+chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
-./getting-started/assets/cloud_providers/deploy-gcp.sh
+./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
 
 ## Next Steps
