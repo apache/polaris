@@ -18,6 +18,7 @@
  */
 
 import publishing.GenerateDigest
+import publishing.PublishingHelperPlugin
 
 plugins {
     id("distribution")
@@ -25,6 +26,8 @@ plugins {
 }
 
 description = "Apache Polaris Binary Distribution"
+
+apply<PublishingHelperPlugin>()
 
 val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
