@@ -76,43 +76,51 @@ public class DatasourceOperations {
   }
 
   /**
-   * Execute SQL script.
+   * Execute SQL script and close the associated input stream
    *
-   * @param scriptFilePath : Path of SQL script.
+   * @param scriptInputStream : Input stream containing the SQL script.
    * @throws SQLException : Exception while executing the script.
    */
   public void executeScript(InputStream scriptInputStream) throws SQLException {
-    runWithinTransaction(
-        connection -> {
-          try (Statement statement = connection.createStatement()) {
-            BufferedReader reader =
-                new BufferedReader(
-                    new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8));
-            StringBuilder sqlBuffer = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-              line = line.trim();
-              if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
-                sqlBuffer.append(line).append("\n");
-                if (line.endsWith(";")) { // Execute statement when semicolon is found
-                  String sql = sqlBuffer.toString().trim();
-                  try {
-                    // since SQL is directly read from the file, there is close to 0 possibility
-                    // of this being injected plus this run via an Admin tool, if attacker can
-                    // fiddle with this that means lot of other things are already compromised.
-                    statement.execute(sql);
-                  } catch (SQLException e) {
-                    throw new RuntimeException(e);
+    try {
+      runWithinTransaction(
+          connection -> {
+            try (Statement statement = connection.createStatement()) {
+              BufferedReader reader =
+                  new BufferedReader(
+                      new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8));
+              StringBuilder sqlBuffer = new StringBuilder();
+              String line;
+              while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
+                  sqlBuffer.append(line).append("\n");
+                  if (line.endsWith(";")) { // Execute statement when semicolon is found
+                    String sql = sqlBuffer.toString().trim();
+                    try {
+                      // since SQL is directly read from the file, there is close to 0 possibility
+                      // of this being injected plus this run via an Admin tool, if attacker can
+                      // fiddle with this that means lot of other things are already compromised.
+                      statement.execute(sql);
+                    } catch (SQLException e) {
+                      throw new RuntimeException(e);
+                    }
+                    sqlBuffer.setLength(0); // Clear the buffer for the next statement
                   }
-                  sqlBuffer.setLength(0); // Clear the buffer for the next statement
                 }
               }
+              return true;
+            } catch (IOException e) {
+              throw new RuntimeException(e);
             }
-            return true;
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+          });
+    } finally {
+      try {
+        scriptInputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Failed to close input stream: {}", e.getMessage());
+      }
+    }
   }
 
   /**
