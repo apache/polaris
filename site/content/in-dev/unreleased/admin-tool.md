@@ -36,8 +36,7 @@ example, to build the tool with support for Postgres, run the following:
 
 The above command will generate:
 
-- One standalone JAR in `runtime/admin/build/polaris-admin-*-runner.jar`
-- Two distribution archives in `runtime/admin/build/distributions`
+- One fast-jar in `runtime/admin/build/quarkus-app/quarkus-run.jar`
 - Two Docker images named `apache/polaris-admin-tool:latest` and `apache/polaris-admin-tool:<version>`
 
 ## Usage
@@ -46,7 +45,7 @@ Please make sure the admin tool and Polaris server are with the same version bef
 To run the standalone JAR, use the following command:
 
 ```shell
-java -jar runtime/admin/build/polaris-admin-*-runner.jar --help
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar --help
 ```
 
 To run the Docker image, use the following command:
