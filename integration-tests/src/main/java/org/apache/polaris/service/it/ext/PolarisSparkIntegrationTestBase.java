@@ -49,6 +49,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisSparkIntegrationTestBase {
@@ -64,6 +71,7 @@ public abstract class PolarisSparkIntegrationTestBase {
   protected String externalCatalogName;
 
   protected URI warehouseDir;
+  protected S3Client s3Client;
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -83,6 +91,16 @@ public abstract class PolarisSparkIntegrationTestBase {
     sparkToken = client.obtainToken(credentials);
     managementApi = client.managementApi(credentials);
     catalogApi = client.catalogApi(credentials);
+
+    s3Client =
+        S3Client.builder()
+            .endpointOverride(URI.create(s3Container.getHttpEndpoint()))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create("accessKey", "secretKey")))
+            .region(Region.of("us-west-2"))
+            .forcePathStyle(true) // Required for S3Mock
+            .build();
 
     warehouseDir = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("spark-warehouse");
 
@@ -235,5 +253,16 @@ public abstract class PolarisSparkIntegrationTestBase {
 
   protected static Dataset<Row> onSpark(@Language("SQL") String sql) {
     return spark.sql(sql);
+  }
+
+  protected boolean fileExists(String key) {
+    try {
+      s3Client.headObject(HeadObjectRequest.builder().bucket("my-bucket").key(key).build());
+      return true; // File exists
+    } catch (NoSuchKeyException e) {
+      return false; // File does not exist
+    } catch (S3Exception e) { // Handle other S3-related exceptions
+      throw e;
+    }
   }
 }
