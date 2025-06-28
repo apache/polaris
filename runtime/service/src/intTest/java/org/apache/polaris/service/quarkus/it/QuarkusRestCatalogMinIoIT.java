@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
@@ -110,7 +111,8 @@ public class QuarkusRestCatalogMinIoIT {
   private static S3Client s3Client;
 
   private CatalogApi catalogApi;
-  private RESTCatalog restCatalog;
+  private String principalRoleName;
+  private PrincipalWithCredentials principalCredentials;
   private String catalogName;
 
   @BeforeAll
@@ -135,23 +137,25 @@ public class QuarkusRestCatalogMinIoIT {
   @BeforeEach
   public void before(TestInfo testInfo) {
     String principalName = client.newEntityName("test-user");
-    String principalRoleName = client.newEntityName("test-admin");
-    PrincipalWithCredentials principalCredentials =
-        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    principalRoleName = client.newEntityName("test-admin");
+    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
 
     catalogName = client.newEntityName(testInfo.getTestMethod().orElseThrow().getName());
+  }
 
-    AwsStorageConfigInfo storageConfig =
+  private RESTCatalog createCatalog(Optional<String> endpoint, Optional<String> stsEndpoint) {
+    AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
-            .setEndpoint(endpoint)
             .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
             .setExternalId("externalId123")
             .setUserArn("arn:aws:iam::123456789012:user/polaris-test")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageBase.toString()))
-            .build();
+            .setAllowedLocations(List.of(storageBase.toString()));
+
+    endpoint.ifPresent(storageConfig::setEndpoint);
+    stsEndpoint.ifPresent(storageConfig::setStsEndpoint);
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
@@ -159,14 +163,14 @@ public class QuarkusRestCatalogMinIoIT {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(storageConfig)
+            .setStorageConfigInfo(storageConfig.build())
             .setProperties(catalogProps.build())
             .build();
 
     managementApi.createCatalog(principalRoleName, catalog);
 
     String authToken = client.obtainToken(principalCredentials);
-    restCatalog = new RESTCatalog();
+    RESTCatalog restCatalog = new RESTCatalog();
 
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
@@ -178,6 +182,7 @@ public class QuarkusRestCatalogMinIoIT {
             .put("header.X-Iceberg-Access-Delegation", "vended-credentials");
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
+    return restCatalog;
   }
 
   @AfterEach
@@ -186,63 +191,67 @@ public class QuarkusRestCatalogMinIoIT {
   }
 
   @Test
-  public void testCreateTable() {
-    catalogApi.createNamespace(catalogName, "test-ns");
-    TableIdentifier id = TableIdentifier.of("test-ns", "t1");
-    Table table = restCatalog.createTable(id, SCHEMA);
-    assertThat(table).isNotNull();
-    assertThat(restCatalog.tableExists(id)).isTrue();
+  public void testCreateTable() throws IOException {
+    try (RESTCatalog restCatalog = createCatalog(Optional.of(endpoint), Optional.empty())) {
+      catalogApi.createNamespace(catalogName, "test-ns");
+      TableIdentifier id = TableIdentifier.of("test-ns", "t1");
+      Table table = restCatalog.createTable(id, SCHEMA);
+      assertThat(table).isNotNull();
+      assertThat(restCatalog.tableExists(id)).isTrue();
 
-    TableOperations ops = ((HasTableOperations) table).operations();
-    URI location = URI.create(ops.current().metadataFileLocation());
+      TableOperations ops = ((HasTableOperations) table).operations();
+      URI location = URI.create(ops.current().metadataFileLocation());
 
-    GetObjectResponse response =
-        s3Client
-            .getObject(
-                GetObjectRequest.builder()
-                    .bucket(location.getAuthority())
-                    .key(location.getPath().substring(1)) // drop leading slash
-                    .build())
-            .response();
-    assertThat(response.contentLength()).isGreaterThan(0);
+      GetObjectResponse response =
+          s3Client
+              .getObject(
+                  GetObjectRequest.builder()
+                      .bucket(location.getAuthority())
+                      .key(location.getPath().substring(1)) // drop leading slash
+                      .build())
+              .response();
+      assertThat(response.contentLength()).isGreaterThan(0);
 
-    restCatalog.dropTable(id);
-    assertThat(restCatalog.tableExists(id)).isFalse();
+      restCatalog.dropTable(id);
+      assertThat(restCatalog.tableExists(id)).isFalse();
+    }
   }
 
   @Test
   public void testAppendFiles() throws IOException {
-    catalogApi.createNamespace(catalogName, "test-ns");
-    TableIdentifier id = TableIdentifier.of("test-ns", "t1");
-    Table table = restCatalog.createTable(id, SCHEMA);
-    assertThat(table).isNotNull();
+    try (RESTCatalog restCatalog = createCatalog(Optional.of(endpoint), Optional.of(endpoint))) {
+      catalogApi.createNamespace(catalogName, "test-ns");
+      TableIdentifier id = TableIdentifier.of("test-ns", "t1");
+      Table table = restCatalog.createTable(id, SCHEMA);
+      assertThat(table).isNotNull();
 
-    @SuppressWarnings("resource")
-    FileIO io = table.io();
+      @SuppressWarnings("resource")
+      FileIO io = table.io();
 
-    URI loc = URI.create(table.locationProvider().newDataLocation("test-file1.txt"));
-    OutputFile f1 = io.newOutputFile(loc.toString());
-    try (PositionOutputStream os = f1.create()) {
-      os.write("Hello World".getBytes(UTF_8));
-    }
+      URI loc = URI.create(table.locationProvider().newDataLocation("test-file1.txt"));
+      OutputFile f1 = io.newOutputFile(loc.toString());
+      try (PositionOutputStream os = f1.create()) {
+        os.write("Hello World".getBytes(UTF_8));
+      }
 
-    DataFile df =
-        DataFiles.builder(PartitionSpec.unpartitioned())
-            .withPath(f1.location())
-            .withFormat(FileFormat.PARQUET) // bogus value
-            .withFileSizeInBytes(4)
-            .withRecordCount(1)
-            .build();
+      DataFile df =
+          DataFiles.builder(PartitionSpec.unpartitioned())
+              .withPath(f1.location())
+              .withFormat(FileFormat.PARQUET) // bogus value
+              .withFileSizeInBytes(4)
+              .withRecordCount(1)
+              .build();
 
-    table.newAppend().appendFile(df).commit();
+      table.newAppend().appendFile(df).commit();
 
-    try (InputStream is =
-        s3Client.getObject(
-            GetObjectRequest.builder()
-                .bucket(loc.getAuthority())
-                .key(loc.getPath().substring(1)) // drop leading slash
-                .build())) {
-      assertThat(new String(is.readAllBytes(), UTF_8)).isEqualTo("Hello World");
+      try (InputStream is =
+          s3Client.getObject(
+              GetObjectRequest.builder()
+                  .bucket(loc.getAuthority())
+                  .key(loc.getPath().substring(1)) // drop leading slash
+                  .build())) {
+        assertThat(new String(is.readAllBytes(), UTF_8)).isEqualTo("Hello World");
+      }
     }
   }
 }
