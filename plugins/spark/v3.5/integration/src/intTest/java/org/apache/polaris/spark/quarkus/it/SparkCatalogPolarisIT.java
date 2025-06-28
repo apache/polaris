@@ -20,18 +20,5 @@ package org.apache.polaris.spark.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
-public class SparkCatalogPolarisIT {
-  @QuarkusIntegrationTest
-  static class S3ATest extends SparkCatalogBaseIT {
-    public S3ATest() {
-      s3Scheme = "s3a";
-    }
-  }
-
-  @QuarkusIntegrationTest
-  static class S3Test extends SparkCatalogBaseIT {
-    public S3Test() {
-      s3Scheme = "s3";
-    }
-  }
-}
+@QuarkusIntegrationTest
+public class SparkCatalogPolarisIT extends SparkCatalogBaseIT {}

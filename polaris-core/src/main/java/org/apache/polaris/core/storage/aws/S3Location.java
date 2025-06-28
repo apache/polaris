@@ -49,11 +49,21 @@ public class S3Location extends StorageLocation {
 
   @Override
   public boolean isChildOf(StorageLocation potentialParent) {
-    // Given that S3 and S3A are to be treated similarly, the parent check ignores the prefix
     if (potentialParent instanceof S3Location) {
-      return this.objectKeyWBucket.startsWith(((S3Location) potentialParent).objectKeyWBucket);
-    } else {
-      return false;
+      S3Location that = (S3Location) potentialParent;
+      // Given that S3 and S3A are to be treated similarly, the parent check ignores the prefix
+      String slashTerminatedObjectKey = ensureTrailingSlash(this.objectKeyWBucket);
+      String slashTerminatedObjectKeyThat = ensureTrailingSlash(that.objectKeyWBucket);
+      return slashTerminatedObjectKey.startsWith(slashTerminatedObjectKeyThat);
     }
+    return false;
+  }
+
+  public String getScheme() {
+    return scheme;
+  }
+
+  public String getObjectKeyWBucket() {
+    return objectKeyWBucket;
   }
 }

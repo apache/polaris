@@ -77,7 +77,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .isInstanceOf(AssumeRoleRequest.class)
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
-                  .returns(roleARN, AssumeRoleRequest::roleArn);
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  // ensure that the policy content does not refer to S3A
+                  .extracting(AssumeRoleRequest::policy)
+                  .doesNotMatch(s -> s.contains("s3a"));
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
