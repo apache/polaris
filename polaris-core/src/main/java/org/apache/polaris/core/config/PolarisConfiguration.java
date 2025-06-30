@@ -41,6 +41,7 @@ public abstract class PolarisConfiguration<T> {
 
   public final String key;
   public final String description;
+  public final Optional<String> deprecatedKey;
   public final T defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Optional<String> catalogConfigUnsafeImpl;
@@ -55,9 +56,21 @@ public abstract class PolarisConfiguration<T> {
    */
   private static void registerConfiguration(PolarisConfiguration<?> configuration) {
     for (PolarisConfiguration<?> existingConfiguration : allConfigurations) {
-      if (existingConfiguration.key.equals(configuration.key)) {
+      if (existingConfiguration.key.equals(configuration.key)
+          || (configuration.deprecatedKey.isPresent()
+              && existingConfiguration.key.equals(configuration.deprecatedKey.get()))) {
         throw new IllegalArgumentException(
-            String.format("Config '%s' is already in use", configuration.key));
+            String.format("Config '%s' is already in use", existingConfiguration.key));
+      } else if (existingConfiguration.deprecatedKey.isPresent()
+          && (configuration.key.equals(existingConfiguration.deprecatedKey.get())
+              || (configuration.deprecatedKey.isPresent()
+                  && configuration
+                      .deprecatedKey
+                      .get()
+                      .equals(existingConfiguration.deprecatedKey.get())))) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Config '%s' is already in use", existingConfiguration.deprecatedKey.get()));
       } else {
         var configs =
             Stream.of(
@@ -86,16 +99,29 @@ public abstract class PolarisConfiguration<T> {
   @SuppressWarnings("unchecked")
   protected PolarisConfiguration(
       String key,
+      Optional<String> deprecatedKey,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
     this.key = key;
+    this.deprecatedKey = deprecatedKey;
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
     this.catalogConfigUnsafeImpl = catalogConfigUnsafe;
     this.typ = (Class<T>) defaultValue.getClass();
+  }
+
+  public boolean hasDeprecatedKey() {
+    return deprecatedKey.isPresent();
+  }
+
+  public String deprecatedKey() {
+    return deprecatedKey.orElseThrow(
+        () ->
+            new IllegalStateException(
+                "Attempted to read a deprecated key from a configuration that doesn't have one."));
   }
 
   public boolean hasCatalogConfig() {
@@ -126,6 +152,7 @@ public abstract class PolarisConfiguration<T> {
 
   public static class Builder<T> {
     private String key;
+    private Optional<String> deprecatedKey = Optional.empty();
     private String description;
     private T defaultValue;
     private Optional<String> catalogConfig = Optional.empty();
@@ -133,6 +160,11 @@ public abstract class PolarisConfiguration<T> {
 
     public Builder<T> key(String key) {
       this.key = key;
+      return this;
+    }
+
+    public Builder<T> deprecatedKey(String deprecatedKey) {
+      this.deprecatedKey = Optional.of(deprecatedKey);
       return this;
     }
 
@@ -190,7 +222,7 @@ public abstract class PolarisConfiguration<T> {
       validateOrThrow();
       FeatureConfiguration<T> config =
           new FeatureConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, deprecatedKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
@@ -203,7 +235,7 @@ public abstract class PolarisConfiguration<T> {
       }
       BehaviorChangeConfiguration<T> config =
           new BehaviorChangeConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, deprecatedKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
