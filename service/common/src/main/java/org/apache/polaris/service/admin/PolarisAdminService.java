@@ -19,6 +19,7 @@
 package org.apache.polaris.service.admin;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.polaris.core.entity.EntityConverter.toNamespace;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -1875,7 +1876,7 @@ public class PolarisAdminService {
             {
               NamespaceGrant grant =
                   new NamespaceGrant(
-                      List.of(NamespaceEntity.of(baseEntity).asNamespace().levels()),
+                      List.of(toNamespace(NamespaceEntity.of(baseEntity)).levels()),
                       NamespacePrivilege.valueOf(privilege.toString()),
                       GrantResource.TypeEnum.NAMESPACE);
               namespaceGrants.add(grant);

@@ -277,6 +277,7 @@ public abstract class PolarisAuthzTestBase {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of(storageLocation, "file:///tmp/authz"))
             .build();
+    //TODO: GINDA
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(

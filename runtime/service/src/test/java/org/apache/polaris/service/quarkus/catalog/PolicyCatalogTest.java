@@ -247,6 +247,7 @@ public class PolicyCatalogTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
+    //TODO: GINDA
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
@@ -262,6 +263,7 @@ public class PolicyCatalogTest {
                     .setStorageConfigurationInfo(
                         polarisContext, storageConfigModel, storageLocation)
                     .build()
+                    //TODO: GINDA
                     .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =

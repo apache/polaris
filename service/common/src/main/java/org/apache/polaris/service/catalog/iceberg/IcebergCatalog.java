@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.entity.EntityConverter.toNamespace;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -1136,7 +1137,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                         "Unable to resolve siblings entities to validate location - could not list tables");
                   }
                   return siblingTablesResult.getEntities().stream()
-                      .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
+                      .map(tbl -> TableIdentifier.of(toNamespace(ns), tbl.getName()))
                       .collect(Collectors.toList());
                 })
             .orElse(List.of());
@@ -1147,7 +1148,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 ns -> {
                   String[] nsLevels =
                       parentNamespace
-                          .map(parent -> parent.asNamespace().levels())
+                          .map(parent -> toNamespace(parent).levels())
                           .orElse(new String[0]);
                   String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
                   newLevels[nsLevels.length] = ns.getName();

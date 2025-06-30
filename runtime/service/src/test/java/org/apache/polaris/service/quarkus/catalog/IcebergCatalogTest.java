@@ -340,8 +340,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
-    catalogEntity =
-        adminService.createCatalog(
+
+    //TODO: GINDA
+    catalogEntity = adminService.createCatalog(
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
@@ -1351,6 +1352,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
+
+    //TODO: GINDA
     PolarisEntity catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
@@ -1417,6 +1420,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
+
+    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()
@@ -1947,6 +1952,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
+    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()
@@ -2259,6 +2265,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .hasMessageContaining("conflict_table");
   }
 
+  //TODO: GINDA
   @Test
   public void createCatalogWithReservedProperty() {
     Assertions.assertThatCode(
@@ -2276,6 +2283,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .hasMessageContaining("reserved prefix");
   }
 
+  //TODO: GINDA
   @Test
   public void updateCatalogWithReservedProperty() {
     adminService.createCatalog(

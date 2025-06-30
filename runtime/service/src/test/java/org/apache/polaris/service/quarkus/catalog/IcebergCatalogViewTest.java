@@ -213,6 +213,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
             reservedProperties);
+
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()
@@ -229,6 +230,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")
                 .build()
+                //TODO: GINDA
                 .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =

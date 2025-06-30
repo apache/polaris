@@ -40,17 +40,6 @@ public class CatalogRoleEntity extends PolarisEntity {
         .build();
   }
 
-  public CatalogRole asCatalogRole() {
-    CatalogRole catalogRole =
-        new CatalogRole(
-            getName(),
-            getPropertiesAsMap(),
-            getCreateTimestamp(),
-            getLastUpdateTimestamp(),
-            getEntityVersion());
-    return catalogRole;
-  }
-
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogRoleEntity, Builder> {
     public Builder() {
       super();

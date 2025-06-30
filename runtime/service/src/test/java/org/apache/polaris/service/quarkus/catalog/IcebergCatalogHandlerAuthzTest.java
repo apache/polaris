@@ -1721,6 +1721,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .build();
+    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()

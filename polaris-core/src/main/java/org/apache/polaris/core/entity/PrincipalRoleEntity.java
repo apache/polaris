@@ -44,16 +44,6 @@ public class PrincipalRoleEntity extends PolarisEntity {
         .build();
   }
 
-  public PrincipalRole asPrincipalRole() {
-    return new PrincipalRole(
-        getName(),
-        FederatedEntities.isFederated(this),
-        getPropertiesAsMap(),
-        getCreateTimestamp(),
-        getLastUpdateTimestamp(),
-        getEntityVersion());
-  }
-
   public static class Builder extends PolarisEntity.BaseBuilder<PrincipalRoleEntity, Builder> {
     public Builder() {
       super();
