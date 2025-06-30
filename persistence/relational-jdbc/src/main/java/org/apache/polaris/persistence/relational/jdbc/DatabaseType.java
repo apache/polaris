@@ -48,7 +48,11 @@ public enum DatabaseType {
     };
   }
 
-  public InputStream getInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
+  /**
+   * Open an InputStream that contains data from an init script. This stream should be
+   * closed by the caller.
+   */
+  public InputStream openInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
     if (schemaOptions.schemaFile() != null) {
       try {
         return new FileInputStream(schemaOptions.schemaFile());

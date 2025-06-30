@@ -152,7 +152,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()
-                  .getInitScriptResource(bootstrapOptions.schemaOptions()));
+                  .openInitScriptResource(bootstrapOptions.schemaOptions()));
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
