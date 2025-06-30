@@ -41,9 +41,6 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 |===
 | Date | Time
 
-| 2025-06-26 | 9:00 AM PST
-18:00 CET
-
 | 2025-07-10 | 9:00 AM PST
 18:00 CET
 
@@ -53,6 +50,9 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 | 2025-08-07 | 9:00 AM PST
 18:00 CET
 
+| 2025-08-21 | 9:00 AM PST
+| 18:00 CET
+
 | ... |
 |===
 
@@ -61,6 +61,10 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 [cols="1,3,3"]
 |===
 | Date | Notes | Recording
+
+| 2025-06-26
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.pnvo802xxv0e[Meeting Notes]
+| https://drive.google.com/file/d/15xPXCGVSKmfc5HWI4CYbfiBC5HnUtR16/view?usp=sharing
 
 | 2025-06-12
 | https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?pli=1&tab=t.0#heading=h.5uuvx1b2337n[Meeting Notes]
