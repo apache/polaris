@@ -21,7 +21,11 @@ package org.apache.polaris.admintool;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import picocli.CommandLine;
 
@@ -41,6 +45,9 @@ public class BootstrapCommand extends BaseCommand {
 
     @CommandLine.ArgGroup(multiplicity = "1")
     FileInputOptions fileOptions;
+
+    @CommandLine.ArgGroup(multiplicity = "1")
+    SchemaInputOptions schemaInputOptions;
 
     static class StandardInputOptions {
 
@@ -70,6 +77,22 @@ public class BootstrapCommand extends BaseCommand {
           paramLabel = "<file>",
           description = "A file containing root principal credentials to bootstrap.")
       Path file;
+    }
+
+    static class SchemaInputOptions {
+      @CommandLine.Option(
+          names = {"-v", "--schema-version"},
+          paramLabel = "<schema version>",
+          description = "The version of the schema to load in [1, 2, LATEST].")
+      Integer schemaVersion;
+
+      @CommandLine.Option(
+          names = {"--schema-file"},
+          paramLabel = "<schema file>",
+          description =
+              "A schema file to bootstrap from. If unset, the bundled files will be used.",
+          defaultValue = "")
+      String schemaFile;
     }
   }
 
@@ -103,9 +126,27 @@ public class BootstrapCommand extends BaseCommand {
         }
       }
 
+      final SchemaOptions schemaOptions;
+      if (inputOptions.schemaInputOptions != null) {
+        schemaOptions =
+            ImmutableSchemaOptions.builder()
+                .schemaFile(inputOptions.schemaInputOptions.schemaFile)
+                .schemaVersion(inputOptions.schemaInputOptions.schemaVersion)
+                .build();
+      } else {
+        schemaOptions = ImmutableSchemaOptions.builder().build();
+      }
+
+      BootstrapOptions bootstrapOptions =
+          ImmutableBootstrapOptions.builder()
+              .realms(realms)
+              .rootCredentialsSet(rootCredentialsSet)
+              .schemaOptions(schemaOptions)
+              .build();
+
       // Execute the bootstrap
       Map<String, PrincipalSecretsResult> results =
-          metaStoreManagerFactory.bootstrapRealms(realms, rootCredentialsSet);
+          metaStoreManagerFactory.bootstrapRealms(bootstrapOptions);
 
       // Log any errors:
       boolean success = true;
