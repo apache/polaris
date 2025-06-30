@@ -150,7 +150,7 @@ public class TestCatalogMaintenance {
     var principal = createPrincipal(manager, callCtx, persistence);
 
     var catalog = createCatalog(manager, callCtx, persistence);
-    var catalogBase = new PolarisBaseEntity(catalog);
+    var catalogBase = new PolarisBaseEntity.Builder(catalog).build();
     var catalogId = catalog.getId();
 
     // Some references are "empty", need to populate those to be able to bump the references "back"

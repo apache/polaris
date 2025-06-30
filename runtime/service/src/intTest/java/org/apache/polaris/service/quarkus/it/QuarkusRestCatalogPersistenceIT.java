@@ -20,8 +20,7 @@ package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
 
 @QuarkusIntegrationTest
 @TestProfile(value = PersistenceTesting.PersistenceInMemoryProfile.class)
-public class QuarkusRestCatalogPersistenceIT extends PolarisRestCatalogIntegrationTest {}
+public class QuarkusRestCatalogPersistenceIT extends QuarkusRestCatalogAwsIT {}

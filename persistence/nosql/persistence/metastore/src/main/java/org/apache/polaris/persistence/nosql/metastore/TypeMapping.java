@@ -569,13 +569,19 @@ class TypeMapping {
 
     var id = objBase.stableId();
     var name = objBase.name();
-    var b = new PolarisBaseEntity(catalogId, id, type, subType, parentId, name);
-    b.setPropertiesAsMap(properties);
-    b.setInternalPropertiesAsMap(internalProperties);
-    b.setCreateTimestamp(objBase.createTimestamp().toEpochMilli());
-    b.setLastUpdateTimestamp(objBase.updateTimestamp().toEpochMilli());
-    b.setEntityVersion(objBase.entityVersion());
-    return b;
+    return new PolarisBaseEntity.Builder()
+        .catalogId(catalogId)
+        .id(id)
+        .typeCode(type.getCode())
+        .subTypeCode(subType.getCode())
+        .parentId(parentId)
+        .name(name)
+        .propertiesAsMap(properties)
+        .internalPropertiesAsMap(internalProperties)
+        .createTimestamp(objBase.createTimestamp().toEpochMilli())
+        .lastUpdateTimestamp(objBase.updateTimestamp().toEpochMilli())
+        .entityVersion(objBase.entityVersion())
+        .build();
   }
 
   @Nonnull

@@ -275,8 +275,7 @@ class PersistenceMetaStoreManager implements PolarisMetaStoreManager {
       var last = newCatalogPath.getLast();
       // At least BasePolarisMetaStoreManagerTest comes with the wrong parentId in renamedEntity
       if (renamedEntity.getParentId() != last.getId()) {
-        renamedEntity = new PolarisEntity(renamedEntity);
-        renamedEntity.setParentId(last.getId());
+        renamedEntity = new PolarisEntity.Builder(renamedEntity).setParentId(last.getId()).build();
       }
     }
     return ms.updateEntity(renamedEntity);
@@ -544,7 +543,7 @@ class PersistenceMetaStoreManager implements PolarisMetaStoreManager {
 
     availableTasks.items.forEach(
         task -> {
-          var originalTask = new PolarisBaseEntity(task);
+          var newTask = new PolarisBaseEntity.Builder(task);
           var properties =
               PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
@@ -556,9 +555,9 @@ class PersistenceMetaStoreManager implements PolarisMetaStoreManager {
               String.valueOf(
                   Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                       + 1));
-          task.setEntityVersion(task.getEntityVersion() + 1);
-          task.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          ms.updateEntity(originalTask);
+          newTask.entityVersion(task.getEntityVersion() + 1);
+          newTask.properties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+          ms.updateEntity(newTask.build());
         });
     return new EntitiesResult(availableTasks.items);
   }

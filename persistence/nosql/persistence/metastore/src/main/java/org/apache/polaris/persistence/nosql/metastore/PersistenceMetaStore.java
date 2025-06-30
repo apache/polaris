@@ -470,25 +470,25 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
       // cleanup task
       var dropped = results.droppedEntities().getFirst();
 
-      PolarisBaseEntity taskEntity =
+      PolarisEntity.Builder taskEntityBuilder =
           new PolarisEntity.Builder()
               .setId(persistence.generateId())
               .setCatalogId(0L)
               .setName("entityCleanup_" + entityToDrop.getId())
               .setType(PolarisEntityType.TASK)
               .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
-              .setCreateTimestamp(persistence.currentTimeMillis())
-              .build();
+              .setCreateTimestamp(persistence.currentTimeMillis());
 
       Map<String, String> properties = new HashMap<>();
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
       properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, dropped));
-      taskEntity.setPropertiesAsMap(properties);
+      taskEntityBuilder.setProperties(properties);
       if (cleanupProperties != null) {
-        taskEntity.setInternalPropertiesAsMap(cleanupProperties);
+        taskEntityBuilder.setInternalProperties(cleanupProperties);
       }
+      var taskEntity = taskEntityBuilder.build();
 
       try {
         performEntityMutations(
