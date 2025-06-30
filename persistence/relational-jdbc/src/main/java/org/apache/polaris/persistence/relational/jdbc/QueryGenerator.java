@@ -215,10 +215,10 @@ public class QueryGenerator {
   }
 
   /**
-   * Generate a SELECT query to find any entities that have a given realm & parent and that may with
-   * a given location. The check is performed without consideration for the scheme, so a path on one
-   * storage type may give a false positive for overlapping with another storage type. This should
-   * be combined with a check using `StorageLocation`.
+   * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
+   * overlap with a given location. The check is performed without consideration for the scheme, so
+   * a path on one storage type may give a false positive for overlapping with another storage type.
+   * This should be combined with a check using `StorageLocation`.
    *
    * @param realmId A realm to search within
    * @param catalogId A catalog entity to search within
