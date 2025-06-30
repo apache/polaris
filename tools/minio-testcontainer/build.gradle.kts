@@ -16,31 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.storage;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithName;
-import java.time.Duration;
-import java.util.Optional;
-import org.apache.polaris.service.storage.StorageConfiguration;
-import org.apache.polaris.service.storage.aws.S3AccessConfig;
+plugins {
+  alias(libs.plugins.jandex)
+  id("polaris-server")
+}
 
-@ConfigMapping(prefix = "polaris.storage")
-public interface QuarkusStorageConfiguration extends StorageConfiguration, S3AccessConfig {
+dependencies {
+  api(platform(libs.testcontainers.bom))
+  api("org.testcontainers:testcontainers")
 
-  @WithName("aws.access-key")
-  @Override
-  Optional<String> awsAccessKey();
+  api(platform(libs.awssdk.bom))
+  api("software.amazon.awssdk:s3")
 
-  @WithName("aws.secret-key")
-  @Override
-  Optional<String> awsSecretKey();
+  implementation(project(":polaris-container-spec-helper"))
+  implementation("software.amazon.awssdk:url-connection-client")
+  implementation(libs.guava)
 
-  @WithName("gcp.token")
-  @Override
-  Optional<String> gcpAccessToken();
-
-  @WithName("gcp.lifespan")
-  @Override
-  Optional<Duration> gcpAccessTokenLifespan();
+  compileOnly(platform(libs.junit.bom))
+  compileOnly("org.junit.jupiter:junit-jupiter-api")
 }

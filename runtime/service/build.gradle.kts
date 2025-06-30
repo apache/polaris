@@ -79,6 +79,9 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:apache-client") {
+    exclude("commons-logging", "commons-logging")
+  }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
 
@@ -100,6 +103,8 @@ dependencies {
 
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(testFixtures(project(":polaris-service-common")))
+
+  testImplementation(project(":polaris-minio-testcontainer"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
