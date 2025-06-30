@@ -29,11 +29,14 @@ class S3LocationTest {
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
   public void testLocation(String scheme) {
-    StorageLocation loc = StorageLocation.of(scheme + "://bucket/schema1/table1");
+    String locInput = scheme + "://bucket/schema1/table1";
+    StorageLocation loc = StorageLocation.of(locInput);
     Assertions.assertThat(loc).isInstanceOf(S3Location.class);
     S3Location s3Loc = (S3Location) loc;
     Assertions.assertThat(s3Loc.getScheme()).isEqualTo(scheme);
     Assertions.assertThat(s3Loc.getObjectKeyWBucket()).isEqualTo("bucket/schema1/table1");
+    Assertions.assertThat(s3Loc.withoutScheme()).doesNotStartWith(scheme);
+    Assertions.assertThat(scheme + ":" + s3Loc.withoutScheme()).isEqualTo(locInput);
   }
 
   @ParameterizedTest

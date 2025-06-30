@@ -48,7 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public class PolarisS3InterOperabilityTest {
+public class PolarisS3InteroperabilityTest {
 
   private static final String BASE_LOCATION = "://bucket1/base";
   private static final Map<String, Object> SERVER_CONFIG =
@@ -74,7 +74,7 @@ public class PolarisS3InterOperabilityTest {
     return "%s%s/%s/%s/%s".formatted(scheme, BASE_LOCATION, catalogName, namespace, tableName);
   }
 
-  public PolarisS3InterOperabilityTest() {
+  public PolarisS3InteroperabilityTest() {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
         (entityManagerFactory, metaStoreManagerFactory, configurationStore) ->
             (FileIOFactory)
