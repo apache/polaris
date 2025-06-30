@@ -68,12 +68,12 @@ public class CatalogEntityTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, scheme + "://externally-owned-bucket"))
             .build();
-    CatalogProperties prop = new CatalogProperties(storageLocation);
+    CatalogProperties props = new CatalogProperties(storageLocation);
     Catalog awsCatalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName("name")
-            .setProperties(prop)
+            .setProperties(props)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))

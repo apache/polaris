@@ -34,7 +34,7 @@ class S3LocationTest {
     Assertions.assertThat(loc).isInstanceOf(S3Location.class);
     S3Location s3Loc = (S3Location) loc;
     Assertions.assertThat(s3Loc.getScheme()).isEqualTo(scheme);
-    Assertions.assertThat(s3Loc.getObjectKeyWBucket()).isEqualTo("bucket/schema1/table1");
+    Assertions.assertThat(s3Loc.withoutScheme()).isEqualTo("//bucket/schema1/table1");
     Assertions.assertThat(s3Loc.withoutScheme()).doesNotStartWith(scheme);
     Assertions.assertThat(scheme + ":" + s3Loc.withoutScheme()).isEqualTo(locInput);
   }

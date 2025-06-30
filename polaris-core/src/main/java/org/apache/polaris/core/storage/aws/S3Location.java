@@ -25,9 +25,9 @@ import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.StorageLocation;
 
 public class S3Location extends StorageLocation {
-  private static final Pattern URI_PATTERN = Pattern.compile("^(s3a?)://(.+)$");
+  private static final Pattern URI_PATTERN = Pattern.compile("^(s3a?):(.+)$");
   private final String scheme;
-  private final String objectKeyWBucket;
+  private final String locationWithoutScheme;
 
   public S3Location(@Nonnull String location) {
     super(location);
@@ -36,7 +36,7 @@ public class S3Location extends StorageLocation {
       throw new IllegalArgumentException("Invalid S3 location uri " + location);
     }
     this.scheme = matcher.group(1);
-    this.objectKeyWBucket = matcher.group(2);
+    this.locationWithoutScheme = matcher.group(2);
   }
 
   public static boolean isS3Location(String location) {
@@ -52,8 +52,8 @@ public class S3Location extends StorageLocation {
     if (potentialParent instanceof S3Location) {
       S3Location that = (S3Location) potentialParent;
       // Given that S3 and S3A are to be treated similarly, the parent check ignores the prefix
-      String slashTerminatedObjectKey = ensureTrailingSlash(this.objectKeyWBucket);
-      String slashTerminatedObjectKeyThat = ensureTrailingSlash(that.objectKeyWBucket);
+      String slashTerminatedObjectKey = ensureTrailingSlash(this.locationWithoutScheme);
+      String slashTerminatedObjectKeyThat = ensureTrailingSlash(that.locationWithoutScheme);
       return slashTerminatedObjectKey.startsWith(slashTerminatedObjectKeyThat);
     }
     return false;
@@ -63,7 +63,8 @@ public class S3Location extends StorageLocation {
     return scheme;
   }
 
-  public String getObjectKeyWBucket() {
-    return objectKeyWBucket;
+  @Override
+  public String withoutScheme() {
+    return locationWithoutScheme;
   }
 }
