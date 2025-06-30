@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.polaris.core.storage.aws.S3Location;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,8 @@ public class StorageLocation {
     // TODO implement StorageLocation for all supported file systems and add isValidLocation
     if (AzureLocation.isAzureLocation(location)) {
       return new AzureLocation(location);
+    } else if (S3Location.isS3Location(location)) {
+      return new S3Location(location);
     } else {
       return new StorageLocation(location);
     }
