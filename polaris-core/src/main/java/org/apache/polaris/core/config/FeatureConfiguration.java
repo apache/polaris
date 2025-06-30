@@ -36,12 +36,12 @@ import org.apache.polaris.core.persistence.cache.EntityWeigher;
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
       String key,
-      Optional<String> deprecatedKey,
+      Optional<String> legacyKey,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
-    super(key, deprecatedKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+    super(key, legacyKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   /**
@@ -268,7 +268,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES =
           PolarisConfiguration.<List<String>>builder()
               .key("SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES")
-              .deprecatedKey("SUPPORTED_CATALOG_CONNECTION_TYPES")
+              .legacyKey("SUPPORTED_CATALOG_CONNECTION_TYPES")
               .description("The list of supported external catalog connection types for federation")
               .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
               .buildFeatureConfiguration();
