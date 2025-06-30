@@ -113,7 +113,7 @@ git push apache release/x.y.z
 Go in the branch, and set the target release version:
 
 ```
-git checkoout release/x.y.z
+git checkout release/x.y.z
 echo "x.y.z" > version.txt
 git commit -a
 git push
@@ -209,6 +209,22 @@ Next, you have to close the staging repository:
 3. Select the Polaris repository
 4. At the top, select "Close" and follow the instructions
 5. In the comment field, use "Apache Polaris x.y.z RCi"
+
+### Build and stage Docker images
+
+You can build the Docker image for Polaris server using:
+
+```
+./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.name=apache/polaris:x.y.z-rci
+```
+
+The Docker image is in your running Docker daemon. You can now push the image to the Apache Polaris DockerHub repository:
+
+```
+docker push apache/polaris:x.y.z-rci
+```
+
+Note: this is a staging Docker image, so do not tag with `latest`.
 
 ### Start the vote thread
 
