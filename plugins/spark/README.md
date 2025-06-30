@@ -21,12 +21,12 @@
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
-[TableCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java),
-[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java),
-[ViewCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
+[TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java),
+[ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
+[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java),
 
 Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13,
-and depends on iceberg-spark-runtime 1.9.0.
+and depends on iceberg-spark-runtime 1.9.1.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
@@ -53,7 +53,7 @@ jar, and to use the local Polaris server as a Catalog.
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -73,7 +73,7 @@ and the name of the catalog is `polaris`. The cli command will look like followi
 ```shell
 bin/spark-shell \
 --jars /polaris/plugins/spark/v3.5/spark/build/2.12/libs/polaris-spark-3.5_2.12-0.11.0-beta-incubating-SNAPSHOT-bundle.jar \
---packages org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=<catalog-name> \

@@ -1300,13 +1300,13 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-api Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-aws Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-azure Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-common Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-core Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-gcp Version: 1.9.0
+Group: org.apache.iceberg Name: iceberg-api Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-aws Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-azure Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-common Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-core Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-gcp Version: 1.9.1
 Project URL: https://iceberg.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
