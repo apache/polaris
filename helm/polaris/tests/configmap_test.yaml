@@ -110,6 +110,12 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.persistence-unit=polaris" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.configuration-file=/deployments/config/persistence.xml" }
 
+  - it: should configure relational-jdbc persistence
+    set:
+      persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
+
   - it: should configure file-io
     set:
       fileIo.type: "custom"
