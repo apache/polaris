@@ -44,6 +44,8 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.catalyst.catalog.CatalogDatabase;
+import org.apache.spark.sql.catalyst.catalog.SessionCatalog;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.NamespaceChange;
 import org.apache.spark.sql.connector.catalog.Table;
@@ -140,6 +142,8 @@ public class SparkCatalogTest {
     org.apache.spark.sql.RuntimeConfig mockedConfig =
         Mockito.mock(org.apache.spark.sql.RuntimeConfig.class);
     SparkContext mockedContext = Mockito.mock(SparkContext.class);
+    SessionState mockedSessionState = Mockito.mock(SessionState.class);
+    SessionCatalog mockedSessionCatalog = Mockito.mock(SessionCatalog.class);
 
     mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
     Mockito.when(mockedSession.conf()).thenReturn(mockedConfig);
@@ -148,10 +152,37 @@ public class SparkCatalogTest {
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"
                 + "io.delta.sql.DeltaSparkSessionExtension"
                 + "org.apache.spark.sql.hudi.HoodieSparkSessionExtension");
+    Mockito.when(mockedConfig.get("spark.sql.warehouse.dir", "spark-warehouse"))
+        .thenReturn("/tmp/test-warehouse");
     Mockito.when(mockedSession.sparkContext()).thenReturn(mockedContext);
     Mockito.when(mockedContext.applicationId()).thenReturn("appId");
     Mockito.when(mockedContext.sparkUser()).thenReturn("test-user");
     Mockito.when(mockedContext.version()).thenReturn("3.5");
+
+    // Set up SessionState and SessionCatalog mocking for HudiCatalogUtils
+    Mockito.when(mockedSession.sessionState()).thenReturn(mockedSessionState);
+    Mockito.when(mockedSessionState.catalog()).thenReturn(mockedSessionCatalog);
+
+    // Mock SessionCatalog methods used by HudiCatalogUtils
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .createDatabase(Mockito.any(CatalogDatabase.class), Mockito.anyBoolean());
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .alterDatabase(Mockito.any(CatalogDatabase.class));
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .dropDatabase(Mockito.anyString(), Mockito.anyBoolean(), Mockito.anyBoolean());
+
+    // Mock getDatabaseMetadata to return a simple CatalogDatabase for alter operations
+    CatalogDatabase mockCatalogDb = Mockito.mock(CatalogDatabase.class);
+    Mockito.when(mockCatalogDb.name()).thenReturn("test_db");
+    Mockito.when(mockCatalogDb.description()).thenReturn("");
+    Mockito.when(mockCatalogDb.locationUri()).thenReturn(java.net.URI.create(""));
+    Mockito.when(mockCatalogDb.properties())
+        .thenReturn(scala.collection.immutable.Map$.MODULE$.<String, String>empty());
+    Mockito.when(mockedSessionCatalog.getDatabaseMetadata(Mockito.anyString()))
+        .thenReturn(mockCatalogDb);
 
     try (MockedStatic<SparkUtil> mockedSparkUtil = Mockito.mockStatic(SparkUtil.class)) {
       mockedSparkUtil

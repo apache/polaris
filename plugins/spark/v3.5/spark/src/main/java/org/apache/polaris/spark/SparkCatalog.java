@@ -279,7 +279,9 @@ public class SparkCatalog
   @Override
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
-    return this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
+    Map<String, String> metadata = this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
+    HudiCatalogUtils.loadNamespaceMetadata(namespace, metadata);
+    return metadata;
   }
 
   @Override
