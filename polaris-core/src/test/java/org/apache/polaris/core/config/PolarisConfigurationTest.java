@@ -35,8 +35,8 @@ public class PolarisConfigurationTest {
             .defaultValue(true)
             .buildFeatureConfiguration();
 
-    assertThat(config.hasLegacyKey()).isTrue();
-    assertThat(config.legacyKey()).isEqualTo("OLD_FEATURE_CONFIG_WITH_LEGACY_KEY");
+    assertThat(config.hasLegacyKeys()).isTrue();
+    assertThat(config.legacyKeys()).isEqualTo("OLD_FEATURE_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.key).isEqualTo("FEATURE_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.description).isEqualTo("Test configuration with deprecated key");
     assertThat(config.defaultValue).isTrue();
@@ -52,8 +52,8 @@ public class PolarisConfigurationTest {
             .defaultValue("test-value")
             .buildBehaviorChangeConfiguration();
 
-    assertThat(config.hasLegacyKey()).isTrue();
-    assertThat(config.legacyKey()).isEqualTo("OLD_BEHAVIOR_CONFIG_WITH_LEGACY_KEY");
+    assertThat(config.hasLegacyKeys()).isTrue();
+    assertThat(config.legacyKeys()).isEqualTo("OLD_BEHAVIOR_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.key).isEqualTo("BEHAVIOR_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.defaultValue).isEqualTo("test-value");
   }
@@ -78,10 +78,12 @@ public class PolarisConfigurationTest {
   }
 
   @Test
-  void testDuplicateLegacyKeyValidation() {
+  void testDuplicateLegacyKeysValidation() {
     PolarisConfiguration.<Boolean>builder()
         .key("NEW_KEY_DEPRECATED_TEST_2")
-        .legacyKey("LEGACY_KEY_TEST_2")
+        .legacyKey("LEGACY_KEY_TEST_2_1")
+        .legacyKey("LEGACY_KEY_TEST_2_2")
+        .legacyKey("LEGACY_KEY_TEST_2_3")
         .description("First configuration with deprecated key")
         .defaultValue(true)
         .buildFeatureConfiguration();
@@ -90,12 +92,13 @@ public class PolarisConfigurationTest {
             () ->
                 PolarisConfiguration.<Boolean>builder()
                     .key("ANOTHER_NEW_KEY_2")
-                    .legacyKey("LEGACY_KEY_TEST_2")
+                    .legacyKey("LEGACY_KEY_TEST_2_1")
+                    .legacyKey("LEGACY_KEY_TEST_2_3")
                     .description("Second configuration with same deprecated key")
                     .defaultValue(false)
                     .buildFeatureConfiguration())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Config 'LEGACY_KEY_TEST_2' is already in use");
+        .hasMessage("Config 'LEGACY_KEY_TEST_2_3,LEGACY_KEY_TEST_2_1' is already in use");
   }
 
   @Test
@@ -131,6 +134,7 @@ public class PolarisConfigurationTest {
                 PolarisConfiguration.<Boolean>builder()
                     .key("NEW_KEY_FOR_VALIDATION_4")
                     .legacyKey("EXISTING_KEY_4")
+                    .legacyKey("EXISTING_KEY_4_1")
                     .description("Configuration with deprecated key matching existing key")
                     .defaultValue(false)
                     .buildFeatureConfiguration())

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.config;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Internal configuration flags for non-feature behavior changes in Polaris. These flags control
@@ -34,12 +35,12 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
 
   protected BehaviorChangeConfiguration(
       String key,
-      Optional<String> legacyKey,
+      Set<String> legacyKeys,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
-    super(key, legacyKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+    super(key, legacyKeys, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =

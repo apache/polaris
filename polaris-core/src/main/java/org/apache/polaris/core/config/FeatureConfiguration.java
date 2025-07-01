@@ -20,6 +20,7 @@ package org.apache.polaris.core.config;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -36,12 +37,12 @@ import org.apache.polaris.core.persistence.cache.EntityWeigher;
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
       String key,
-      Optional<String> legacyKey,
+      Set<String> legacyKeys,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
-    super(key, legacyKey, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+    super(key, legacyKeys, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   /**
