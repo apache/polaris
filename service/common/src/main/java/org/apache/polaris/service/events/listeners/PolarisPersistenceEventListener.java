@@ -20,6 +20,8 @@
 package org.apache.polaris.service.events.listeners;
 
 import java.util.Map;
+
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -40,77 +42,89 @@ import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
   @Override
-  public final void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
+  public final void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
+  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
+  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
+  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
+  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
+  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
+  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
+  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
+  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event, CallContext callCtx) {}
 
   @Override
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
+  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event, CallContext callCtx) {}
 
   @Override
-  public void onBeforeTableCreated(BeforeTableCreatedEvent event) {}
+  public void onBeforeTableCreated(BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx) {
+  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
         new org.apache.polaris.core.entity.PolarisEvent(
-            event.getCatalogName(),
-            event.getEventId(),
-            event.getRequestId(),
+            event.catalogName(),
+            event.eventId(),
+            getRequestId(callCtx),
             event.getClass().getSimpleName(),
-            event.getTimestampMs(),
-            event.getUser(),
-            event.getResourceType(),
-            event.getTableIdentifier().toString());
+            getTimestamp(callCtx),
+                getUsername(securityContext),
+            PolarisEvent.ResourceType.TABLE,
+            event.identifier().toString());
     Map<String, String> additionalParameters =
         Map.of(
             "table-uuid",
-            event.getTableMetadata().uuid(),
+            event.metadata().uuid(),
             "metadata",
-            TableMetadataParser.toJson(event.getTableMetadata()));
+            TableMetadataParser.toJson(event.metadata()));
     polarisEvent.setAdditionalParameters(additionalParameters);
 
     addToBuffer(polarisEvent, callCtx);
   }
 
   @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx) {
+  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
-        new PolarisEvent(
-            event.getCatalogName(),
-            event.getEventId(),
-            event.getRequestId(),
-            event.getClass().getSimpleName(),
-            event.getTimestampMs(),
-            event.getUser(),
-            event.getResourceType(),
-            event.getCatalogName());
+            new PolarisEvent(
+                    event.catalogName(),
+                    event.eventId(),
+                    getRequestId(callCtx),
+                    event.getClass().getSimpleName(),
+                    getTimestamp(callCtx),
+                    getUsername(securityContext),
+                    PolarisEvent.ResourceType.CATALOG,
+                    event.catalogName());
     addToBuffer(polarisEvent, callCtx);
+  }
+
+  private long getTimestamp(CallContext callCtx) {
+    return callCtx.getPolarisCallContext().getClock().millis();
+  }
+
+  private String getRequestId(CallContext callCtx) {
+    return callCtx.getPolarisCallContext().getRequestId();
+  }
+
+  private String getUsername(SecurityContext securityContext) {
+    return securityContext.getUserPrincipal() == null ? null : securityContext.getUserPrincipal().getName();
   }
 
   abstract void addToBuffer(org.apache.polaris.core.entity.PolarisEvent event, CallContext callCtx);

@@ -18,59 +18,59 @@
  */
 package org.apache.polaris.service.events.listeners;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.events.*;
+
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
  */
-public abstract class PolarisEventListener {
-  protected static final ObjectMapper MAPPER = new ObjectMapper();
+public class PolarisEventListener {
 
   /** {@link BeforeRequestRateLimitedEvent} */
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
+  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTableCommitedEvent} */
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
+  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableCommitedEvent} */
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
+  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewCommitedEvent} */
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
+  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewCommitedEvent} */
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
+  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTableRefreshedEvent} */
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
+  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableRefreshedEvent} */
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewRefreshedEvent} */
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
+  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewRefreshedEvent} */
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
+  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTaskAttemptedEvent} */
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
+  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event, CallContext callCtx) {}
 
   /** {@link AfterTaskAttemptedEvent} */
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
+  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event, CallContext callCtx) {}
 
   /** {@link BeforeTableCreatedEvent} */
-  public void onBeforeTableCreated(BeforeTableCreatedEvent event) {}
+  public void onBeforeTableCreated(BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableCreatedEvent} */
-  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx) {}
+  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogCreatedEvent} */
-  public void onBeforeCatalogCreated(BeforeCatalogCreatedEvent event) {}
+  public void onBeforeCatalogCreated(BeforeCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogCreatedEvent} */
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx) {}
+  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 }

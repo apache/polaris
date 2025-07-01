@@ -30,6 +30,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -38,6 +41,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.events.EventListenerConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -51,7 +55,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
   private CallContext callContext;
 
   private static final int CONFIG_MAX_BUFFER_SIZE = 5;
-  private static final int CONFIG_TIME_TO_FLUSH_IN_MS = 500;
+  private static final long CONFIG_TIME_TO_FLUSH_IN_MS = 500;
 
   @BeforeEach
   public void setUp() {
@@ -62,19 +66,17 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     when(metaStoreManagerFactory.getOrCreateSessionSupplier(Mockito.any()))
         .thenReturn(basePersistenceSupplier);
 
-    configurationStore = Mockito.mock(PolarisConfigurationStore.class);
-    when(configurationStore.getConfiguration(
-            null, FeatureConfiguration.EVENT_BUFFER_TIME_TO_FLUSH_IN_MS))
-        .thenReturn(CONFIG_TIME_TO_FLUSH_IN_MS);
-    when(configurationStore.getConfiguration(null, FeatureConfiguration.EVENT_BUFFER_MAX_SIZE))
-        .thenReturn(CONFIG_MAX_BUFFER_SIZE);
+    EventListenerConfiguration eventListenerConfiguration = Mockito.mock(EventListenerConfiguration.class);
+    when(eventListenerConfiguration.maxBufferSize()).thenReturn(Optional.of(CONFIG_MAX_BUFFER_SIZE));
+    when(eventListenerConfiguration.bufferTime()).thenReturn(Optional.of(CONFIG_TIME_TO_FLUSH_IN_MS));
 
     clock =
         MutableClock.of(
             Instant.ofEpochSecond(0), ZoneOffset.UTC); // Use 0 Epoch Time to make it easier to test
+
     eventListener =
         new InMemoryBufferPolarisPersistenceEventListener(
-            metaStoreManagerFactory, configurationStore, clock);
+            metaStoreManagerFactory, configurationStore, clock, eventListenerConfiguration);
   }
 
   @Test

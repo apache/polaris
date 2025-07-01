@@ -20,6 +20,8 @@ package org.apache.polaris.service.events.listeners;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -27,13 +29,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.config.FeatureConfiguration;
+
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.events.EventListenerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,36 +53,42 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   private final HashMap<String, List<PolarisEvent>> buffer = new HashMap<>();
   private final ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor();
-  private final int timeToFlush;
+  private final long timeToFlush;
   private final int maxBufferSize;
+  private Future<?> backgroundTask;
 
   @Inject
   public InMemoryBufferPolarisPersistenceEventListener(
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisConfigurationStore polarisConfigurationStore,
-      Clock clock) {
+      Clock clock,
+      EventListenerConfiguration eventListenerConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisConfigurationStore = polarisConfigurationStore;
     this.clock = clock;
-    this.timeToFlush =
-        polarisConfigurationStore.getConfiguration(
-            null, FeatureConfiguration.EVENT_BUFFER_TIME_TO_FLUSH_IN_MS);
-    this.maxBufferSize =
-        polarisConfigurationStore.getConfiguration(
-            null, FeatureConfiguration.EVENT_BUFFER_MAX_SIZE);
+    this.timeToFlush = eventListenerConfiguration.bufferTime().orElse((long) 30*1000); // 30s default
+    this.maxBufferSize = eventListenerConfiguration.maxBufferSize().orElse(5); // 5 events default
+  }
 
-    Runnable bufferCheckTask =
-        () -> {
-          try {
-            for (String realmId : buffer.keySet()) {
-              checkAndFlushBufferIfNecessary(realmId);
-            }
-          } catch (Exception e) {
-            LOGGER.debug("Buffer checking task failed: ", e);
-          }
-        };
+  @PostConstruct
+  void start() {
+    backgroundTask = thread.scheduleAtFixedRate(this::runCleanup, 0, timeToFlush, TimeUnit.MILLISECONDS);
+  }
 
-    var future = thread.scheduleAtFixedRate(bufferCheckTask, 0, timeToFlush, TimeUnit.MILLISECONDS);
+  void runCleanup() {
+    for (String realmId : buffer.keySet()) {
+      try {
+        checkAndFlushBufferIfNecessary(realmId);
+      } catch (Exception e) {
+        LOGGER.debug("Buffer checking task failed for realm ({}): {}", realmId, e);
+      }
+    }
+  }
+
+  @PreDestroy
+  void shutdown() {
+    backgroundTask.cancel(false);
+    thread.shutdownNow();
   }
 
   @Override

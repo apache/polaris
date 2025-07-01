@@ -230,31 +230,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void writeEvents(@Nonnull List<PolarisEvent> events) {
-    int batchSize = 10;
-
     try {
-      datasourceOperations.runWithinTransaction(
-          connection -> {
-            List<List<List<Object>>> batchedModelEvents =
-                Lists.partition(
-                    events.stream()
-                        .map(
-                            e ->
-                                ModelEvent.fromEvent(e)
-                                    .toMap(datasourceOperations.getDatabaseType())
-                                    .values()
-                                    .stream()
-                                    .toList())
-                        .toList(),
-                    batchSize);
-            for (List<List<Object>> batchedModelEvent : batchedModelEvents) {
-              datasourceOperations.execute(
-                  connection,
-                  QueryGenerator.generateMultipleInsertQuery(
-                      ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, batchedModelEvent, realmId));
-            }
-            return true;
-          });
+      List<PreparedQuery> preparedQueries = new ArrayList<>();
+      for (PolarisEvent event : events) {
+        preparedQueries.add(QueryGenerator.generateInsertQuery(ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, ModelEvent.fromEvent(event).toMap(datasourceOperations.getDatabaseType()).values().stream().toList(), realmId));
+      }
+      int totalUpdated = datasourceOperations.executeBatchUpdate(preparedQueries);
+
+      if (totalUpdated == 0) {
+        throw new SQLException("No events were inserted.");
+      }
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write events due to %s", e.getMessage()), e);

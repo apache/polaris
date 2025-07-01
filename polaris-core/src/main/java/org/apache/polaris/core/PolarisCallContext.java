@@ -21,6 +21,8 @@ package org.apache.polaris.core;
 import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
+import java.util.UUID;
+
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -42,6 +44,9 @@ public class PolarisCallContext implements CallContext {
 
   private final Clock clock;
 
+  // A requst ID to identify this REST request
+  private final String requestId;
+
   // will make it final once we remove deprecated constructor
   private RealmContext realmContext = null;
 
@@ -56,6 +61,7 @@ public class PolarisCallContext implements CallContext {
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
     this.clock = clock;
+    this.requestId = UUID.randomUUID().toString();
   }
 
   public PolarisCallContext(
@@ -67,6 +73,7 @@ public class PolarisCallContext implements CallContext {
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};
     this.clock = Clock.system(ZoneId.systemDefault());
+    this.requestId = UUID.randomUUID().toString();
   }
 
   public BasePersistence getMetaStore() {
@@ -83,6 +90,10 @@ public class PolarisCallContext implements CallContext {
 
   public Clock getClock() {
     return clock;
+  }
+
+  public String getRequestId() {
+    return requestId;
   }
 
   @Override

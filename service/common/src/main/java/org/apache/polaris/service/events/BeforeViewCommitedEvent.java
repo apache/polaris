@@ -21,37 +21,9 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.view.ViewMetadata;
 
-public final class BeforeViewCommitedEvent extends PolarisEvent {
-
-  private final TableIdentifier identifier;
-  private final ViewMetadata base;
-  private final ViewMetadata metadata;
-
-  /**
-   * Emitted when Polaris intends to perform a commit to a view. There is no guarantee on the order
-   * of this event relative to the validation checks we've performed, which means the commit may
-   * still fail Polaris-side validation checks.
-   *
-   * @param identifier The identifier.
-   * @param base The old metadata.
-   * @param metadata The new metadata.
-   */
-  public BeforeViewCommitedEvent(
-      TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata) {
-    this.identifier = identifier;
-    this.base = base;
-    this.metadata = metadata;
-  }
-
-  public TableIdentifier getIdentifier() {
-    return identifier;
-  }
-
-  public ViewMetadata getBase() {
-    return base;
-  }
-
-  public ViewMetadata getMetadata() {
-    return metadata;
-  }
-}
+public record BeforeViewCommitedEvent(
+    String eventId,
+    TableIdentifier identifier,
+    ViewMetadata base,
+    ViewMetadata metadata
+) implements PolarisEvent {}

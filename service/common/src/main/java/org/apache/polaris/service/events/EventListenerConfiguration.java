@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.catalog.TableIdentifier;
+import java.util.Optional;
 
-public record AfterTableCommitedEvent(String eventId,
-        TableIdentifier identifier, TableMetadata base, TableMetadata metadata) implements PolarisEvent {}
+public interface EventListenerConfiguration {
+    Optional<Long> bufferTime();
+    Optional<Integer> maxBufferSize();
+}

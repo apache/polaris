@@ -20,35 +20,9 @@ package org.apache.polaris.service.events;
 
 import org.apache.polaris.core.context.CallContext;
 
-public final class BeforeTaskAttemptedEvent extends PolarisEvent {
-
-  private final long taskEntityId;
-  private final CallContext callContext;
-  private final int attempt;
-
-  /**
-   * Emitted before an attempt of an async task, such as manifest file cleanup, begins.
-   *
-   * @param taskEntityId The ID of the TaskEntity
-   * @param callContext The CallContext the task is being executed under.
-   * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
-   *     initial (non-retried) attempt starts counting from 1.
-   */
-  public BeforeTaskAttemptedEvent(long taskEntityId, CallContext callContext, int attempt) {
-    this.taskEntityId = taskEntityId;
-    this.callContext = callContext;
-    this.attempt = attempt;
-  }
-
-  public long getTaskEntityId() {
-    return taskEntityId;
-  }
-
-  public CallContext getCallContext() {
-    return callContext;
-  }
-
-  public int getAttempt() {
-    return attempt;
-  }
-}
+public record BeforeTaskAttemptedEvent(
+    String eventId,
+    long taskEntityId,
+    CallContext callContext,
+    int attempt
+) implements PolarisEvent {}

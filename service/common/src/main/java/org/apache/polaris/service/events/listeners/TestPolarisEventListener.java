@@ -23,6 +23,9 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.ArrayList;
 import java.util.List;
+
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
@@ -48,57 +51,57 @@ public class TestPolarisEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {
+  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {
+  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {
+  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {
+  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {
+  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {
+  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {
+  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {
+  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {
+  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event, CallContext callCtx) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {
+  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event, CallContext callCtx) {
     history.add(event);
   }
 }

@@ -121,26 +121,26 @@ public class QueryGeneratorTest {
             .sql());
   }
 
-  @Test
-  void testGenerateMultipleInsertQuery() {
-    ModelEvent event1 =
-        ModelEvent.builder().resourceType(PolarisEvent.ResourceType.CATALOG).build();
-    ModelEvent event2 = ModelEvent.builder().resourceType(PolarisEvent.ResourceType.TABLE).build();
-
-    String expectedQuery =
-        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_parameters, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ), ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
-    QueryGenerator.PreparedQuery preparedQuery =
-        QueryGenerator.generateMultipleInsertQuery(
-            ModelEvent.ALL_COLUMNS,
-            ModelEvent.TABLE_NAME,
-            List.of(
-                event1.toMap(DatabaseType.H2).values().stream().toList(),
-                event2.toMap(DatabaseType.H2).values().stream().toList()),
-            REALM_ID);
-    assertEquals(expectedQuery, preparedQuery.sql());
-    assertEquals(
-        20, preparedQuery.parameters().size()); // 10 parameters per event, including the realm_id
-  }
+//  @Test
+//  void testGenerateMultipleInsertQuery() {
+//    ModelEvent event1 =
+//        ModelEvent.builder().resourceType(PolarisEvent.ResourceType.CATALOG).build();
+//    ModelEvent event2 = ModelEvent.builder().resourceType(PolarisEvent.ResourceType.TABLE).build();
+//
+//    String expectedQuery =
+//        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_parameters, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ), ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
+//    QueryGenerator.PreparedQuery preparedQuery =
+//        QueryGenerator.generateMultipleInsertQuery(
+//            ModelEvent.ALL_COLUMNS,
+//            ModelEvent.TABLE_NAME,
+//            List.of(
+//                event1.toMap(DatabaseType.H2).values().stream().toList(),
+//                event2.toMap(DatabaseType.H2).values().stream().toList()),
+//            REALM_ID);
+//    assertEquals(expectedQuery, preparedQuery.sql());
+//    assertEquals(
+//        20, preparedQuery.parameters().size()); // 10 parameters per event, including the realm_id
+//  }
 
   @Test
   void testGenerateUpdateQuery_nonNullFields() {

@@ -21,36 +21,9 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 
-public final class BeforeTableCommitedEvent extends PolarisEvent {
-  private final TableIdentifier tableIdentifier;
-  private final TableMetadata base;
-  private final TableMetadata metadata;
-
-  /**
-   * Emitted when Polaris intends to perform a commit to a table. There is no guarantee on the order
-   * of this event relative to the validation checks we've performed, which means the commit may
-   * still fail Polaris-side validation checks.
-   *
-   * @param identifier The identifier.
-   * @param base The old metadata.
-   * @param metadata The new metadata.
-   */
-  public BeforeTableCommitedEvent(
-      TableIdentifier identifier, TableMetadata base, TableMetadata metadata) {
-    this.tableIdentifier = identifier;
-    this.base = base;
-    this.metadata = metadata;
-  }
-
-  public TableIdentifier getTableIdentifier() {
-    return tableIdentifier;
-  }
-
-  public TableMetadata getBase() {
-    return base;
-  }
-
-  public TableMetadata getMetadata() {
-    return metadata;
-  }
-}
+public record BeforeTableCommitedEvent(
+    String eventId,
+    TableIdentifier tableIdentifier,
+    TableMetadata base,
+    TableMetadata metadata
+) implements PolarisEvent {}

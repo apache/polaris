@@ -20,14 +20,24 @@ package org.apache.polaris.service.quarkus.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithName;
+import org.apache.polaris.service.events.EventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+
+import java.util.Optional;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener")
-public interface QuarkusPolarisEventListenerConfiguration {
+public interface QuarkusPolarisEventListenerConfiguration extends EventListenerConfiguration {
   /**
    * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
    * identifier.
    */
   String type();
+
+  @Override
+  Optional<Long> bufferTime();
+
+  @Override
+  Optional<Integer> maxBufferSize();
 }

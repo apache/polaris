@@ -20,21 +20,7 @@ package org.apache.polaris.service.events;
 
 import org.apache.iceberg.catalog.TableIdentifier;
 
-public final class BeforeViewRefreshedEvent extends PolarisEvent {
-
-  private final TableIdentifier viewIdentifier;
-
-  /**
-   * Emitted when Polaris intends to refresh its known version of a view's metadata by fetching the
-   * latest.
-   *
-   * @param viewIdentifier The identifier of the view being refreshed.
-   */
-  public BeforeViewRefreshedEvent(TableIdentifier viewIdentifier) {
-    this.viewIdentifier = viewIdentifier;
-  }
-
-  public TableIdentifier getViewIdentifier() {
-    return viewIdentifier;
-  }
-}
+public record BeforeViewRefreshedEvent(
+    String eventId,
+    TableIdentifier viewIdentifier
+) implements PolarisEvent {}

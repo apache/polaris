@@ -383,8 +383,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-    String requestId = PolarisEvent.createRequestId();
-    polarisEventListener.onBeforeTableCreated(new BeforeTableCreatedEvent(identifier, requestId));
+    polarisEventListener.onBeforeTableCreated(new BeforeTableCreatedEvent(PolarisEvent.createEventId(), identifier), callContext, securityContext);
     CatalogEntity catalog =
         CatalogEntity.of(
             resolutionManifest
@@ -407,12 +406,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
     polarisEventListener.onAfterTableCreated(
         new AfterTableCreatedEvent(
+            PolarisEvent.createEventId(),
             catalogName,
             resp.tableMetadata(),
-            request.properties().get("request_id"),
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal(),
             identifier),
-        callContext);
+        callContext, securityContext);
     return resp;
   }
 
@@ -446,9 +444,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new AlreadyExistsException("Table already exists: %s", tableIdentifier);
     }
 
-    String requestId = PolarisEvent.createRequestId();
     polarisEventListener.onBeforeTableCreated(
-        new BeforeTableCreatedEvent(tableIdentifier, requestId));
+        new BeforeTableCreatedEvent(PolarisEvent.createEventId(), tableIdentifier), callContext, securityContext);
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
@@ -477,12 +474,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .build();
       polarisEventListener.onAfterTableCreated(
           new AfterTableCreatedEvent(
+                  PolarisEvent.createEventId(),
               catalogName,
               resp.tableMetadata(),
-              request.properties().get("request_id"),
-              (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal(),
               tableIdentifier),
-          callContext);
+          callContext, securityContext);
       return resp;
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now

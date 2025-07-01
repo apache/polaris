@@ -20,43 +20,10 @@ package org.apache.polaris.service.events;
 
 import org.apache.polaris.core.context.CallContext;
 
-public final class AfterTaskAttemptedEvent extends PolarisEvent {
-
-  private final long taskEntityId;
-  private final CallContext callContext;
-  private final int attempt;
-  private final boolean success;
-
-  /**
-   * Emitted after an attempt of an async task, such as manifest file cleanup, finishes.
-   *
-   * @param taskEntityId The ID of the TaskEntity.
-   * @param callContext The CallContext the task is being executed under.
-   * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
-   *     initial (non-retried) attempt starts counting from 1.
-   * @param success Whether the attempt succeeded.
-   */
-  public AfterTaskAttemptedEvent(
-      long taskEntityId, CallContext callContext, int attempt, boolean success) {
-    this.taskEntityId = taskEntityId;
-    this.callContext = callContext;
-    this.attempt = attempt;
-    this.success = success;
-  }
-
-  public long getTaskEntityId() {
-    return taskEntityId;
-  }
-
-  public CallContext getCallContext() {
-    return callContext;
-  }
-
-  public int getAttempt() {
-    return attempt;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
-}
+public record AfterTaskAttemptedEvent(
+    String eventId,
+    long taskEntityId,
+    CallContext callContext,
+    int attempt,
+    boolean success
+) implements PolarisEvent {}
