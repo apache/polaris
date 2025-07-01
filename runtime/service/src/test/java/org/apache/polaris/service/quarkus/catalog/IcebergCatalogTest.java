@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -341,10 +342,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
 
-    //TODO: GINDA
     catalogEntity = adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
+                toCatalog(new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
                     .setReplaceNewLocationPrefixWithCatalogDefault("file:")
@@ -357,8 +357,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(
                         polarisContext, storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog()));
+                    .build())
+                    ));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -1353,15 +1353,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
 
-    //TODO: GINDA
     PolarisEntity catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
+                toCatalog(new CatalogEntity.Builder()
                     .setDefaultBaseLocation("file://")
                     .setName(catalogWithoutStorage)
                     .build()
-                    .asCatalog()));
+                    )));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1421,14 +1420,13 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     String catalogName = "catalogForMaliciousDomain";
 
-    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
+            toCatalog(new CatalogEntity.Builder()
                 .setDefaultBaseLocation("http://maliciousdomain.com")
                 .setName(catalogName)
                 .build()
-                .asCatalog()));
+                )));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1952,10 +1950,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
-    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
+            toCatalog(new CatalogEntity.Builder()
                 .setName(noPurgeCatalogName)
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
@@ -1967,7 +1964,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 .setStorageConfigurationInfo(
                     polarisContext, noPurgeStorageConfigModel, storageLocation)
                 .build()
-                .asCatalog()));
+                )));
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, noPurgeCatalogName);
@@ -2265,35 +2262,33 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .hasMessageContaining("conflict_table");
   }
 
-  //TODO: GINDA
   @Test
   public void createCatalogWithReservedProperty() {
     Assertions.assertThatCode(
             () -> {
               adminService.createCatalog(
                   new CreateCatalogRequest(
-                      new CatalogEntity.Builder()
+                      toCatalog(new CatalogEntity.Builder()
                           .setDefaultBaseLocation("file://")
                           .setName("createCatalogWithReservedProperty")
                           .setProperties(ImmutableMap.of("polaris.reserved", "true"))
                           .build()
-                          .asCatalog()));
+                          )));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
   }
 
-  //TODO: GINDA
   @Test
   public void updateCatalogWithReservedProperty() {
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
+            toCatalog(new CatalogEntity.Builder()
                 .setDefaultBaseLocation("file://")
                 .setName("updateCatalogWithReservedProperty")
                 .setProperties(ImmutableMap.of("a", "b"))
                 .build()
-                .asCatalog()));
+                )));
     Assertions.assertThatCode(
             () -> {
               adminService.updateCatalog(

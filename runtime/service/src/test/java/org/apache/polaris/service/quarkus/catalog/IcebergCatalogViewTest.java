@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -216,7 +217,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
+            toCatalog(new CatalogEntity.Builder()
                 .setName(CATALOG_NAME)
                 .addProperty(
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
@@ -230,8 +231,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")
                 .build()
-                //TODO: GINDA
-                .asCatalog()));
+                )));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

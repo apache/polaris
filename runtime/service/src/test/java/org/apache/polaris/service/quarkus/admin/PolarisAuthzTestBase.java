@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.admin;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -277,17 +278,16 @@ public abstract class PolarisAuthzTestBase {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of(storageLocation, "file:///tmp/authz"))
             .build();
-    //TODO: GINDA
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
+                toCatalog(new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
                     .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    )));
 
     initBaseCatalog();
 

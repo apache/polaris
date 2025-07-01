@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -1721,16 +1723,15 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .build();
-    //TODO: GINDA
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
+            toCatalog(new CatalogEntity.Builder()
                 .setName(externalCatalog)
                 .setDefaultBaseLocation(storageLocation)
                 .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
                 .setCatalogType("EXTERNAL")
                 .build()
-                .asCatalog()));
+                )));
     adminService.createCatalogRole(
         externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
     adminService.createCatalogRole(

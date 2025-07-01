@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -219,11 +220,11 @@ public class PolarisGenericTableCatalogTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
-    //TODO: GINDA
+
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
+                toCatalog(new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
                     .setReplaceNewLocationPrefixWithCatalogDefault("file:")
@@ -237,8 +238,7 @@ public class PolarisGenericTableCatalogTest {
                     .setStorageConfigurationInfo(
                         polarisContext, storageConfigModel, storageLocation)
                     .build()
-                    //TODO: GINDA
-                    .asCatalog()));
+                    )));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
