@@ -141,16 +141,15 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
               PolicyMappingsObj.POLICY_MAPPINGS_REF_NAME,
               PolicyMappingsObj.class,
               policyMappingsContinue,
-              policyMappingsObj -> {
-                policyMappingsObj
-                    .policyMappings()
-                    .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
-                    .forEach(
-                        e -> {
-                          var policyMapping = e.getValue();
-                          policyMapping.externalMapping().ifPresent(collector::retainObject);
-                        });
-              });
+              policyMappingsObj ->
+                  policyMappingsObj
+                      .policyMappings()
+                      .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
+                      .forEach(
+                          e -> {
+                            var policyMapping = e.getValue();
+                            policyMapping.externalMapping().ifPresent(collector::retainObject);
+                          }));
         });
 
     // per catalog
@@ -252,7 +251,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                             nextLog = now + 2_000L;
                           }
                         }
-                      });
+                      },
+                      x -> {});
                 });
           }
         });

@@ -39,6 +39,10 @@ public interface Identifier {
     return ImmutableIdentifier.of(elements);
   }
 
+  static Identifier identifier(String[] namespace, String name) {
+    return ImmutableIdentifier.builder().addElements(namespace).addElements(name).build();
+  }
+
   static Identifier identifier(String... elements) {
     return ImmutableIdentifier.of(List.of(elements));
   }
@@ -78,8 +82,8 @@ public interface Identifier {
     return ImmutableIdentifier.builder();
   }
 
-  static IndexKey identifierToIndexKey(Identifier identifier) {
-    return IndexKey.key(String.join("\u0000", identifier.elements()));
+  default IndexKey toIndexKey() {
+    return IndexKey.key(String.join("\u0000", elements()));
   }
 
   @CanIgnoreReturnValue

@@ -30,7 +30,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.POLICY_MAPPINGS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj.REALM_GRANTS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.perCatalogReferenceName;
-import static org.apache.polaris.persistence.nosql.metastore.Identifier.identifierToIndexKey;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifier;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifierBuilder;
 import static org.apache.polaris.persistence.nosql.metastore.MemoizedIndexedAccess.newMemoizedIndexedAccess;
@@ -922,7 +921,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     }
     identifierBuilder.addElements(entity.getName());
     var identifier = identifierBuilder.build();
-    return identifierToIndexKey(identifier);
+    return identifier.toIndexKey();
   }
 
   private static ObjBase objForChangeComparison(

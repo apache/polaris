@@ -133,8 +133,8 @@ public interface RetainedCollector {
   }
 
   /**
-   * Same as {@link #refRetainIndexToSingleObj(String, Class, Predicate, Function,
-   * ProgressListener)}, but without a {@link ProgressListener}.
+   * Same as {@link #refRetainIndexToSingleObj(String, Class, Predicate, Function, ProgressListener,
+   * Consumer)}, but without a {@link ProgressListener}.
    */
   default <O extends BaseCommitObj> void refRetainIndexToSingleObj(
       String ref,
@@ -142,7 +142,12 @@ public interface RetainedCollector {
       Predicate<O> continuePredicate,
       Function<O, IndexContainer<ObjRef>> indexToObjIdFromRetainedObj) {
     refRetainIndexToSingleObj(
-        ref, clazz, continuePredicate, indexToObjIdFromRetainedObj, new ProgressListener() {});
+        ref,
+        clazz,
+        continuePredicate,
+        indexToObjIdFromRetainedObj,
+        new ProgressListener() {},
+        x -> {});
   }
 
   /**
@@ -163,7 +168,8 @@ public interface RetainedCollector {
       Class<O> clazz,
       Predicate<O> continuePredicate,
       Function<O, IndexContainer<ObjRef>> indexToObjIdFromRetainedObj,
-      ProgressListener progressListener) {
+      ProgressListener progressListener,
+      Consumer<ObjRef> indexedObjRefConsumer) {
     var total = new AtomicLong();
     refRetain(
         ref,
@@ -181,10 +187,13 @@ public interface RetainedCollector {
               indexToObjIdFromRetainedObj
                   .apply(obj)
                   .indexForRead(realmPersistence(), OBJ_REF_SERIALIZER)) {
-            retainObject(entry.getValue());
+            ObjRef indexedObjRef = entry.getValue();
+            retainObject(indexedObjRef);
             // ^ is for persistence.fetch(principalEntry.getValue(), PrincipalObj.class);
             ++elem;
             progressListener.onIndexEntry(elem, t + elem);
+
+            indexedObjRefConsumer.accept(indexedObjRef);
           }
           total.addAndGet(elem);
         },

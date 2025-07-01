@@ -23,7 +23,6 @@ import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootEntit
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.perCatalogReferenceName;
-import static org.apache.polaris.persistence.nosql.metastore.Identifier.identifierToIndexKey;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifierBuilder;
 
 import com.google.common.base.Suppliers;
@@ -31,6 +30,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -144,6 +144,8 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
 
   abstract Optional<IndexKey> nameKeyById(long stableId);
 
+  abstract Optional<ObjBase> byIdentifier(Identifier identifier);
+
   abstract Optional<ObjBase> byParentIdAndName(long parentId, String name);
 
   abstract Optional<ObjBase> byNameOnRoot(String name);
@@ -187,6 +189,14 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
     Optional<org.apache.polaris.persistence.nosql.api.index.Index<ObjRef>> nameIndex() {
       return Optional.of(
           new SingletonIndex<>(nameKey, () -> rootLazy().map(ObjRef::objRef).orElse(null)));
+    }
+
+    @Override
+    Optional<ObjBase> byIdentifier(Identifier identifier) {
+      if (identifier.elements().equals(List.of(getRootContainerName()))) {
+        return root;
+      }
+      return Optional.empty();
     }
 
     @Override
@@ -307,6 +317,11 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
     }
 
     @Override
+    Optional<ObjBase> byIdentifier(Identifier identifier) {
+      return Optional.empty();
+    }
+
+    @Override
     Optional<ObjBase> byParentIdAndName(long parentId, String name) {
       return Optional.empty();
     }
@@ -382,6 +397,11 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
     }
 
     @Override
+    Optional<ObjBase> byIdentifier(Identifier identifier) {
+      return objRefByName(identifier.toIndexKey()).flatMap(this::objByRef);
+    }
+
+    @Override
     Optional<ObjBase> byParentIdAndName(long parentId, String name) {
       return (parentId != 0L
               ? nameKeyById(parentId)
@@ -389,8 +409,7 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
                       parentKey -> {
                         var fullIdentifier =
                             indexKeyToIdentifierBuilder(parentKey).addElements(name).build();
-                        var fullKey = identifierToIndexKey(fullIdentifier);
-                        return objRefByName(fullKey);
+                        return objRefByName(fullIdentifier.toIndexKey());
                       })
               : objRefByName(IndexKey.key(name)))
           .flatMap(this::objByRef);
