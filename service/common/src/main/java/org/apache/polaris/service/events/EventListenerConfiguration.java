@@ -22,6 +22,7 @@ package org.apache.polaris.service.events;
 import java.util.Optional;
 
 public interface EventListenerConfiguration {
-    Optional<Long> bufferTime();
-    Optional<Integer> maxBufferSize();
+  Optional<Long> bufferTime();
+
+  Optional<Integer> maxBufferSize();
 }

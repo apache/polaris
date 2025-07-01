@@ -22,8 +22,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-
-import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
@@ -154,14 +152,19 @@ public class PolarisServiceImpl
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onBeforeCatalogCreated(
-        new BeforeCatalogCreatedEvent(PolarisEvent.createEventId(), request.getCatalog().getName()), callContext, securityContext);
+        new BeforeCatalogCreatedEvent(PolarisEvent.createEventId(), request.getCatalog().getName()),
+        callContext,
+        securityContext);
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    polarisEventListener.onAfterCatalogCreated(new AfterCatalogCreatedEvent(PolarisEvent.createEventId(), newCatalog.getName()), callContext, securityContext);
+    polarisEventListener.onAfterCatalogCreated(
+        new AfterCatalogCreatedEvent(PolarisEvent.createEventId(), newCatalog.getName()),
+        callContext,
+        securityContext);
     return Response.status(Response.Status.CREATED).build();
   }
 

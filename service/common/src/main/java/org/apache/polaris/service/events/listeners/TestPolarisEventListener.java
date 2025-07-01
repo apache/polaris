@@ -21,10 +21,9 @@ package org.apache.polaris.service.events.listeners;
 import com.google.common.collect.Streams;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
-
-import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
@@ -51,47 +50,56 @@ public class TestPolarisEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onBeforeRequestRateLimited(
+      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onBeforeTableCommited(
+      BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterTableCommited(
+      AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onBeforeViewCommited(
+      BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterViewCommited(
+      AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onBeforeTableRefreshed(
+      BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterTableRefreshed(
+      AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onBeforeViewRefreshed(
+      BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterViewRefreshed(
+      AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 

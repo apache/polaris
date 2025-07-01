@@ -22,7 +22,6 @@ import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.UUID;
-
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;

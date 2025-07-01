@@ -73,7 +73,6 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -381,7 +380,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-    polarisEventListener.onBeforeTableCreated(new BeforeTableCreatedEvent(PolarisEvent.createEventId(), identifier), callContext, securityContext);
+    polarisEventListener.onBeforeTableCreated(
+        new BeforeTableCreatedEvent(PolarisEvent.createEventId(), identifier),
+        callContext,
+        securityContext);
     CatalogEntity catalog =
         CatalogEntity.of(
             resolutionManifest
@@ -404,11 +406,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
     polarisEventListener.onAfterTableCreated(
         new AfterTableCreatedEvent(
-            PolarisEvent.createEventId(),
-            catalogName,
-            resp.tableMetadata(),
-            identifier),
-        callContext, securityContext);
+            PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), identifier),
+        callContext,
+        securityContext);
     return resp;
   }
 
@@ -443,7 +443,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     polarisEventListener.onBeforeTableCreated(
-        new BeforeTableCreatedEvent(PolarisEvent.createEventId(), tableIdentifier), callContext, securityContext);
+        new BeforeTableCreatedEvent(PolarisEvent.createEventId(), tableIdentifier),
+        callContext,
+        securityContext);
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
@@ -472,11 +474,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .build();
       polarisEventListener.onAfterTableCreated(
           new AfterTableCreatedEvent(
-                  PolarisEvent.createEventId(),
-              catalogName,
-              resp.tableMetadata(),
-              tableIdentifier),
-          callContext, securityContext);
+              PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), tableIdentifier),
+          callContext,
+          securityContext);
       return resp;
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now

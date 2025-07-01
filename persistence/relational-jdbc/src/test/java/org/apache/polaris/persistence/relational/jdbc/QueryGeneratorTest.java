@@ -31,9 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 

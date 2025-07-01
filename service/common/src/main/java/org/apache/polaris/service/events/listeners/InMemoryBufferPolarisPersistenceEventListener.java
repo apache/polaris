@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -66,13 +65,15 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisConfigurationStore = polarisConfigurationStore;
     this.clock = clock;
-    this.timeToFlush = eventListenerConfiguration.bufferTime().orElse((long) 30*1000); // 30s default
+    this.timeToFlush =
+        eventListenerConfiguration.bufferTime().orElse((long) 30 * 1000); // 30s default
     this.maxBufferSize = eventListenerConfiguration.maxBufferSize().orElse(5); // 5 events default
   }
 
   @PostConstruct
   void start() {
-    backgroundTask = thread.scheduleAtFixedRate(this::runCleanup, 0, timeToFlush, TimeUnit.MILLISECONDS);
+    backgroundTask =
+        thread.scheduleAtFixedRate(this::runCleanup, 0, timeToFlush, TimeUnit.MILLISECONDS);
   }
 
   void runCleanup() {

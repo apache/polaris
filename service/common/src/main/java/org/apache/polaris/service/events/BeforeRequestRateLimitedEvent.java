@@ -18,8 +18,5 @@
  */
 package org.apache.polaris.service.events;
 
-public record BeforeRequestRateLimitedEvent(
-    String eventId,
-    String method,
-    String absolutePath
-) implements PolarisEvent {}
+public record BeforeRequestRateLimitedEvent(String eventId, String method, String absolutePath)
+    implements PolarisEvent {}

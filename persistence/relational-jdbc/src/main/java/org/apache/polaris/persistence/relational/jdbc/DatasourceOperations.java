@@ -203,56 +203,58 @@ public class DatasourceOperations {
   }
 
   /**
-   * Executes the INSERT/UPDATE Queries in batches. Requires that all SQL queries have the same parameterized form.
+   * Executes the INSERT/UPDATE Queries in batches. Requires that all SQL queries have the same
+   * parameterized form.
    *
    * @param preparedQueries : queries to be executed
    * @return : Number of rows modified / inserted.
    * @throws SQLException : Exception during Query Execution.
    */
-  public int executeBatchUpdate(List<QueryGenerator.PreparedQuery> preparedQueries) throws SQLException {
+  public int executeBatchUpdate(List<QueryGenerator.PreparedQuery> preparedQueries)
+      throws SQLException {
     if (preparedQueries.isEmpty()) {
       return 0;
     }
     int batchSize = 100;
     AtomicInteger successCount = new AtomicInteger();
     return withRetries(
-            () -> {
-              String sql = preparedQueries.get(0).sql();
-              try (Connection connection = borrowConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-                boolean autoCommit = connection.getAutoCommit();
-                boolean success = false;
-                connection.setAutoCommit(false);
+        () -> {
+          String sql = preparedQueries.get(0).sql();
+          try (Connection connection = borrowConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            boolean autoCommit = connection.getAutoCommit();
+            boolean success = false;
+            connection.setAutoCommit(false);
 
-                try {
-                  for (int i = 1; i <= preparedQueries.size(); i++) {
-                    List<Object> params = preparedQueries.get(i - 1).parameters();
-                    for (int j = 0; j < params.size(); j++) {
-                      statement.setObject(j + 1, params.get(j));
-                    }
+            try {
+              for (int i = 1; i <= preparedQueries.size(); i++) {
+                List<Object> params = preparedQueries.get(i - 1).parameters();
+                for (int j = 0; j < params.size(); j++) {
+                  statement.setObject(j + 1, params.get(j));
+                }
 
-                    statement.addBatch(); // Add to batch
+                statement.addBatch(); // Add to batch
 
-                    if (i % batchSize == 0) {
-                      successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-                    }
-                  }
-
-                  // Execute remaining queries in the batch
+                if (i % batchSize == 0) {
                   successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
-                  success = true;
-                } finally {
-                  if (success) {
-                    connection.commit();
-                  } else {
-                    connection.rollback();
-                    successCount.set(0);
-                  }
-                  connection.setAutoCommit(autoCommit);
                 }
               }
-              return successCount.get();
+
+              // Execute remaining queries in the batch
+              successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+              success = true;
+            } finally {
+              if (success) {
+                connection.commit();
+              } else {
+                connection.rollback();
+                successCount.set(0);
+              }
+              connection.setAutoCommit(autoCommit);
             }
-    );
+          }
+          return successCount.get();
+        });
   }
 
   /**

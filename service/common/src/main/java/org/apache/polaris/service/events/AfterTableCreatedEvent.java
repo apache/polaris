@@ -21,11 +21,8 @@ package org.apache.polaris.service.events;
 
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
 /** Emitted when Polaris intends to create a table. */
 public record AfterTableCreatedEvent(
-        String eventId,
-        String catalogName,
-        TableMetadata metadata,
-        TableIdentifier identifier) implements PolarisEvent {}
+    String eventId, String catalogName, TableMetadata metadata, TableIdentifier identifier)
+    implements PolarisEvent {}

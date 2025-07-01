@@ -19,9 +19,8 @@
 
 package org.apache.polaris.service.events.listeners;
 
-import java.util.Map;
-
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Map;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -42,31 +41,40 @@ import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
   @Override
-  public final void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public final void onBeforeRequestRateLimited(
+      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableCommited(
+      BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterTableCommited(
+      AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeViewCommited(
+      BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterViewCommited(
+      AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableRefreshed(
+      BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterTableRefreshed(
+      AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeViewRefreshed(
+      BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterViewRefreshed(
+      AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
   public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event, CallContext callCtx) {}
@@ -75,10 +83,12 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event, CallContext callCtx) {}
 
   @Override
-  public void onBeforeTableCreated(BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableCreated(
+      BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   @Override
-  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterTableCreated(
+      AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
         new org.apache.polaris.core.entity.PolarisEvent(
             event.catalogName(),
@@ -86,7 +96,7 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
             getRequestId(callCtx),
             event.getClass().getSimpleName(),
             getTimestamp(callCtx),
-                getUsername(securityContext),
+            getUsername(securityContext),
             PolarisEvent.ResourceType.TABLE,
             event.identifier().toString());
     Map<String, String> additionalParameters =
@@ -101,17 +111,18 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
   }
 
   @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
+  public void onAfterCatalogCreated(
+      AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
-            new PolarisEvent(
-                    event.catalogName(),
-                    event.eventId(),
-                    getRequestId(callCtx),
-                    event.getClass().getSimpleName(),
-                    getTimestamp(callCtx),
-                    getUsername(securityContext),
-                    PolarisEvent.ResourceType.CATALOG,
-                    event.catalogName());
+        new PolarisEvent(
+            event.catalogName(),
+            event.eventId(),
+            getRequestId(callCtx),
+            event.getClass().getSimpleName(),
+            getTimestamp(callCtx),
+            getUsername(securityContext),
+            PolarisEvent.ResourceType.CATALOG,
+            event.catalogName());
     addToBuffer(polarisEvent, callCtx);
   }
 
@@ -124,7 +135,9 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
   }
 
   private String getUsername(SecurityContext securityContext) {
-    return securityContext.getUserPrincipal() == null ? null : securityContext.getUserPrincipal().getName();
+    return securityContext.getUserPrincipal() == null
+        ? null
+        : securityContext.getUserPrincipal().getName();
   }
 
   abstract void addToBuffer(org.apache.polaris.core.entity.PolarisEvent event, CallContext callCtx);

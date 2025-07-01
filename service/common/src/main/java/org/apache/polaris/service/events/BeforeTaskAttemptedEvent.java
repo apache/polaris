@@ -21,8 +21,5 @@ package org.apache.polaris.service.events;
 import org.apache.polaris.core.context.CallContext;
 
 public record BeforeTaskAttemptedEvent(
-    String eventId,
-    long taskEntityId,
-    CallContext callContext,
-    int attempt
-) implements PolarisEvent {}
+    String eventId, long taskEntityId, CallContext callContext, int attempt)
+    implements PolarisEvent {}

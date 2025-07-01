@@ -31,10 +31,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Supplier;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -66,9 +63,12 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     when(metaStoreManagerFactory.getOrCreateSessionSupplier(Mockito.any()))
         .thenReturn(basePersistenceSupplier);
 
-    EventListenerConfiguration eventListenerConfiguration = Mockito.mock(EventListenerConfiguration.class);
-    when(eventListenerConfiguration.maxBufferSize()).thenReturn(Optional.of(CONFIG_MAX_BUFFER_SIZE));
-    when(eventListenerConfiguration.bufferTime()).thenReturn(Optional.of(CONFIG_TIME_TO_FLUSH_IN_MS));
+    EventListenerConfiguration eventListenerConfiguration =
+        Mockito.mock(EventListenerConfiguration.class);
+    when(eventListenerConfiguration.maxBufferSize())
+        .thenReturn(Optional.of(CONFIG_MAX_BUFFER_SIZE));
+    when(eventListenerConfiguration.bufferTime())
+        .thenReturn(Optional.of(CONFIG_TIME_TO_FLUSH_IN_MS));
 
     clock =
         MutableClock.of(

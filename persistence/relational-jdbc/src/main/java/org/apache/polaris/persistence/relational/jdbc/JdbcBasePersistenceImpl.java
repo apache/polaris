@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.Connection;
@@ -243,7 +242,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PreparedQuery> preparedQueries = new ArrayList<>();
       for (PolarisEvent event : events) {
-        preparedQueries.add(QueryGenerator.generateInsertQuery(ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, ModelEvent.fromEvent(event).toMap(datasourceOperations.getDatabaseType()).values().stream().toList(), realmId));
+        preparedQueries.add(
+            QueryGenerator.generateInsertQuery(
+                ModelEvent.ALL_COLUMNS,
+                ModelEvent.TABLE_NAME,
+                ModelEvent.fromEvent(event)
+                    .toMap(datasourceOperations.getDatabaseType())
+                    .values()
+                    .stream()
+                    .toList(),
+                realmId));
       }
       int totalUpdated = datasourceOperations.executeBatchUpdate(preparedQueries);
 

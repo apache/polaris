@@ -22,4 +22,5 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.catalog.TableIdentifier;
 
 /** Emitted when Polaris intends to create a table. */
-public record BeforeTableCreatedEvent(String eventId, TableIdentifier identifier) implements PolarisEvent {}
+public record BeforeTableCreatedEvent(String eventId, TableIdentifier identifier)
+    implements PolarisEvent {}

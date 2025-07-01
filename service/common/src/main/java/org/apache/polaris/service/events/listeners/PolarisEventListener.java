@@ -36,7 +36,6 @@ import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 
-
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
@@ -44,31 +43,40 @@ import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 public class PolarisEventListener {
 
   /** {@link BeforeRequestRateLimitedEvent} */
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeRequestRateLimited(
+      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTableCommitedEvent} */
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableCommited(
+      BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableCommitedEvent} */
-  public void onAfterTableCommited(AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterTableCommited(
+      AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewCommitedEvent} */
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeViewCommited(
+      BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewCommitedEvent} */
-  public void onAfterViewCommited(AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterViewCommited(
+      AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTableRefreshedEvent} */
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableRefreshed(
+      BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableRefreshedEvent} */
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterTableRefreshed(
+      AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewRefreshedEvent} */
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeViewRefreshed(
+      BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewRefreshedEvent} */
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterViewRefreshed(
+      AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTaskAttemptedEvent} */
   public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event, CallContext callCtx) {}
@@ -77,14 +85,18 @@ public class PolarisEventListener {
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event, CallContext callCtx) {}
 
   /** {@link BeforeTableCreatedEvent} */
-  public void onBeforeTableCreated(BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeTableCreated(
+      BeforeTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableCreatedEvent} */
-  public void onAfterTableCreated(AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterTableCreated(
+      AfterTableCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogCreatedEvent} */
-  public void onBeforeCatalogCreated(BeforeCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onBeforeCatalogCreated(
+      BeforeCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogCreatedEvent} */
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+  public void onAfterCatalogCreated(
+      AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 }

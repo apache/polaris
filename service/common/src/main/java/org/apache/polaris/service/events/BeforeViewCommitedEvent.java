@@ -22,8 +22,5 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.view.ViewMetadata;
 
 public record BeforeViewCommitedEvent(
-    String eventId,
-    TableIdentifier identifier,
-    ViewMetadata base,
-    ViewMetadata metadata
-) implements PolarisEvent {}
+    String eventId, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+    implements PolarisEvent {}

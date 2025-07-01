@@ -20,4 +20,5 @@ package org.apache.polaris.service.events;
 
 import org.apache.iceberg.catalog.TableIdentifier;
 
-public record AfterViewRefreshedEvent(String eventId, TableIdentifier viewIdentifier) implements PolarisEvent {}
+public record AfterViewRefreshedEvent(String eventId, TableIdentifier viewIdentifier)
+    implements PolarisEvent {}
