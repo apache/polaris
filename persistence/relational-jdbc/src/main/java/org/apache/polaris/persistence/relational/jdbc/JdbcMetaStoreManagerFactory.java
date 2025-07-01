@@ -23,7 +23,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +31,7 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -43,7 +43,11 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
+import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -75,6 +79,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+  @Inject PolarisConfigurationStore configurationStore;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -93,20 +98,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private void initializeForRealm(
-      RealmContext realmContext, RootCredentialsSet rootCredentialsSet, boolean isBootstrap) {
-    DatabaseType databaseType;
-    try {
-      databaseType = getDatabaseType();
-    } catch (SQLException e) {
-      throw new RuntimeException(e);
-    }
-    DatasourceOperations databaseOperations = getDatasourceOperations(isBootstrap, databaseType);
+      DatasourceOperations datasourceOperations,
+      RealmContext realmContext,
+      RootCredentialsSet rootCredentialsSet) {
     sessionSupplierMap.put(
         realmContext.getRealmIdentifier(),
         new CachedSupplier<>(
             () ->
                 new JdbcBasePersistenceImpl(
-                    databaseOperations,
+                    datasourceOperations,
                     secretsGenerator(realmContext, rootCredentialsSet),
                     storageIntegrationProvider,
                     realmContext.getRealmIdentifier())));
@@ -118,24 +118,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
-  protected DatabaseType getDatabaseType() throws SQLException {
-    try (Connection connection = dataSource.get().getConnection()) {
-      String productName = connection.getMetaData().getDatabaseProductName();
-      return DatabaseType.fromDisplayName(productName);
-    }
-  }
-
-  private DatasourceOperations getDatasourceOperations(
-      boolean isBootstrap, DatabaseType databaseType) {
-    DatasourceOperations databaseOperations =
-        new DatasourceOperations(dataSource.get(), databaseType, relationalJdbcConfiguration);
-    if (isBootstrap) {
-      try {
-        databaseOperations.executeScript(databaseType.getInitScriptResource());
-      } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Error executing sql script: %s", e.getMessage()), e);
-      }
+  public DatasourceOperations getDatasourceOperations() {
+    DatasourceOperations databaseOperations;
+    try {
+      databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+    } catch (SQLException sqlException) {
+      throw new RuntimeException(sqlException);
     }
     return databaseOperations;
   }
@@ -143,12 +131,39 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
+    SchemaOptions schemaOptions = ImmutableSchemaOptions.builder().build();
+
+    BootstrapOptions bootstrapOptions =
+        ImmutableBootstrapOptions.builder()
+            .realms(realms)
+            .rootCredentialsSet(rootCredentialsSet)
+            .schemaOptions(schemaOptions)
+            .build();
+
+    return bootstrapRealms(bootstrapOptions);
+  }
+
+  @Override
+  public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
+      BootstrapOptions bootstrapOptions) {
     Map<String, PrincipalSecretsResult> results = new HashMap<>();
 
-    for (String realm : realms) {
+    for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        initializeForRealm(realmContext, rootCredentialsSet, true);
+        DatasourceOperations datasourceOperations = getDatasourceOperations();
+        try {
+          // Run the set-up script to create the tables.
+          datasourceOperations.executeScript(
+              datasourceOperations
+                  .getDatabaseType()
+                  .openInitScriptResource(bootstrapOptions.schemaOptions()));
+        } catch (SQLException e) {
+          throw new RuntimeException(
+              String.format("Error executing sql script: %s", e.getMessage()), e);
+        }
+        initializeForRealm(
+            datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realmContext, metaStoreManagerMap.get(realm));
@@ -184,7 +199,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, false);
+      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
@@ -195,7 +211,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized Supplier<BasePersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null, false);
+      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     } else {
@@ -210,7 +227,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(),
+          new StorageCredentialCache(realmContext, configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
@@ -221,7 +239,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
-          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager));
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

@@ -47,7 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -61,7 +61,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-public class AzureCredentialStorageIntegrationTest {
+public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
@@ -349,7 +349,7 @@ public class AzureCredentialStorageIntegrationTest {
         new AzureCredentialsStorageIntegration();
     EnumMap<StorageAccessProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
-            new PolarisDefaultDiagServiceImpl(),
+            newCallContext(),
             azureConfig,
             allowListAction,
             new HashSet<>(allowedReadLoc),

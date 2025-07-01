@@ -21,7 +21,7 @@ package org.apache.polaris.service.it.test;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
@@ -334,7 +334,7 @@ public class PolarisApplicationIntegrationTest {
           .isNotNull()
           .isNotEmpty()
           .containsEntry(
-              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1");
+              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1/");
     }
   }
 

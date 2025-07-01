@@ -27,7 +27,7 @@ image:
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
-  tag: "latest"
+  tag: "1.1.0-incubating-SNAPSHOT"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # Note: if you are using EclipseLink, then this value must be at least two folders down to the
@@ -521,8 +521,18 @@ features:
 
 # -- Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link.
-  type: eclipse-link  # in-memory
+  # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
+  # The eclipse-link type is also supported but is deprecated.
+  type: in-memory  # relational-jdbc
+  # -- The configuration for the relational-jdbc persistence manager.
+  relationalJdbc:
+    # -- The type of database to use. Valid values are: h2, postgres.
+    dbKind: postgres  # h2
+    # -- The secret name to pull the database connection properties from.
+    secret:
+      # -- The secret name to pull the database connection properties from.
+      name: ~
+
   # -- The configuration for the eclipse-link persistence manager.
   eclipseLink:
     # -- The secret name to pull persistence.xml from.

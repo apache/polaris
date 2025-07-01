@@ -19,6 +19,19 @@
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
+
+CREATE TABLE IF NOT EXISTS version (
+    version_key VARCHAR PRIMARY KEY,
+    version_value INTEGER NOT NULL
+);
+
+MERGE INTO version (version_key, version_value)
+    KEY (version_key)
+    VALUES ('version', 1);
+
+-- H2 supports COMMENT, but some modes may ignore it
+COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+
 DROP TABLE IF EXISTS entities;
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,

@@ -19,10 +19,10 @@
 #
 title: Policy
 type: docs
-weight: 425 
+weight: 425
 ---
 
-The Polaris Policy framework empowers organizations to centrally define, manage, and enforce fine-grained governance, lifecycle, and operational rules across all data resources in the catalog. 
+The Polaris Policy framework empowers organizations to centrally define, manage, and enforce fine-grained governance, lifecycle, and operational rules across all data resources in the catalog.
 
 With the policy API, you can:
 - Create and manage policies
@@ -81,7 +81,8 @@ The inheritance follows an override mechanism:
 1. Table-level policies override namespace and catalog policies
 2. Namespace-level policies override parent namespace and catalog policies
 
-> **Important:** Because an override completely replaces the same policy type at higher levels, 
+> [!IMPORTANT]
+> Because an override completely replaces the same policy type at higher levels,
 > **only one instance of a given policy type can be attached to (and therefore affect) a resource**.
 
 ## Working with Policies

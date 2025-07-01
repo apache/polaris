@@ -49,7 +49,7 @@ setting the `polaris.metrics.tags.application=<new-value>` property.
 
 ### Realm ID Tag
 
-Polaris can add the realm ID as a tag to all API and HTTP request metrics. This is disabled by 
+Polaris can add the realm ID as a tag to all API and HTTP request metrics. This is disabled by
 default to prevent high cardinality issues, but can be enabled by setting the following properties:
 
 ```properties
@@ -61,14 +61,14 @@ You should be particularly careful when enabling the realm ID tag in HTTP reques
 metrics typically have a much higher cardinality than API request metrics.
 
 In order to prevent the number of tags from growing indefinitely and causing performance issues or
-crashing the server, the number of unique realm IDs in HTTP request metrics is limited to 100 by 
+crashing the server, the number of unique realm IDs in HTTP request metrics is limited to 100 by
 default. If the number of unique realm IDs exceeds this value, a warning will be logged and no more
-HTTP request metrics will be recorded. This threshold can be changed by setting the 
+HTTP request metrics will be recorded. This threshold can be changed by setting the
 `polaris.metrics.realm-id-tag.http-metrics-max-cardinality` property.
 
 ## Traces
 
-Traces are published using [OpenTelemetry]. 
+Traces are published using [OpenTelemetry].
 
 [OpenTelemetry]: https://quarkus.io/guides/opentelemetry-tracing
 
@@ -110,7 +110,7 @@ quarkus.otel.resource.attributes[0]=service.name=Polaris
 quarkus.otel.resource.attributes[1]=deployment.environment=dev
 ```
 
-Finally, two additional span attributes are added to all request parent spans: 
+Finally, two additional span attributes are added to all request parent spans:
 
 - `polaris.request.id`: The unique identifier of the request, if set by the caller through the
   `Polaris-Request-Id` header.
@@ -122,7 +122,7 @@ Finally, two additional span attributes are added to all request parent spans:
 If the server is unable to publish traces, check first for a log warning message like the following:
 
 ```
-SEVERE [io.ope.exp.int.grp.OkHttpGrpcExporter] (OkHttp http://localhost:4317/...) Failed to export spans. 
+SEVERE [io.ope.exp.int.grp.OkHttpGrpcExporter] (OkHttp http://localhost:4317/...) Failed to export spans.
 The request could not be executed. Full error message: Failed to connect to localhost/0:0:0:0:0:0:0:1:4317
 ```
 
@@ -131,7 +131,7 @@ running and that the URL is correct.
 
 ## Logging
 
-Polaris relies on [Quarkus](https://quarkus.io/guides/logging) for logging. 
+Polaris relies on [Quarkus](https://quarkus.io/guides/logging) for logging.
 
 By default, logs are written to the console and to a file located in the `./logs` directory. The log
 file is rotated daily and compressed. The maximum size of the log file is 10MB, and the maximum
@@ -141,7 +141,7 @@ JSON logging can be enabled by setting the `quarkus.log.console.json` and `quark
 properties to `true`. By default, JSON logging is disabled.
 
 The log level can be set for the entire application or for specific packages. The default log level
-is `INFO`. To set the log level for the entire application, use the `quarkus.log.level` property. 
+is `INFO`. To set the log level for the entire application, use the `quarkus.log.level` property.
 
 To set the log level for a specific package, use the `quarkus.log.category."package-name".level`,
 where `package-name` is the name of the package. For example, the package `io.smallrye.config` has a

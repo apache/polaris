@@ -56,6 +56,10 @@ openApiGenerate {
   additionalProperties.put("apiNamePrefix", "Polaris")
   additionalProperties.put("apiNameSuffix", "Api")
   additionalProperties.put("metricsPrefix", "polaris")
+  additionalProperties.put(
+    "additionalModelTypeAnnotations",
+    "@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)",
+  )
   serverVariables = mapOf("basePath" to "api/v1")
 }
 

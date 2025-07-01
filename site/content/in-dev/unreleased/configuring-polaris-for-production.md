@@ -142,7 +142,6 @@ Configure the metastore by setting the following ENV variables:
 ```
 POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-QUARKUS_DATASOURCE_DB_KIND=postgresql
 QUARKUS_DATASOURCE_USERNAME=<your-username>
 QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
@@ -215,3 +214,7 @@ polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
 ```
 Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
 
+### Upgrade Considerations
+
+The [Polaris Evolution](../evolution) page discusses backward compatibility and
+upgrade concerns.

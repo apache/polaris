@@ -21,8 +21,8 @@ apiVersion: v2
 name: polaris
 description: A Helm chart for Apache Polaris (incubating)
 type: application
-version: 0.1.0
-appVersion: 1.0.0-incubating-SNAPSHOT
+version: 1.1.0-incubating-SNAPSHOT
+appVersion: 1.1.0-incubating-SNAPSHOT
 home: https://polaris.apache.org/
 icon: https://raw.githubusercontent.com/apache/polaris/main/site/static/img/logos/polaris-brandmark.png
 sources:
@@ -30,9 +30,10 @@ sources:
 keywords:
   - polaris
   - iceberg
-maintainers:
+maintainers:  # Maintainers section is kept only to satisfy the Helm Chart Spec and downstream linters.
   - name: MonkeyCanCode
   - name: adutra
   - name: collado-mike
   - name: gerrit-k
   - name: snazy
+  - name: flyrain

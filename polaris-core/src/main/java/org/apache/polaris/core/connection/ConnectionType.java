@@ -26,7 +26,7 @@ import java.util.Arrays;
  * the API model. We define integer type codes in this enum for better compatibility within
  * persisted data in case the names of enum types are ever changed in place.
  *
- * <p>Important: Codes must be kept in-sync with JsonSubTypes annotated within {@link
+ * <p>Important: Codes must be kept in-sync wi th JsonSubTypes annotated within {@link
  * ConnectionConfigInfoDpo}.
  */
 public enum ConnectionType {

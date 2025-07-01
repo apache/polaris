@@ -41,8 +41,7 @@ Please follow instructions from the [Git Documentation](https://git-scm.com/book
 Then, use git to clone the Polaris repo:
 
 ```shell
-cd ~
-git clone https://github.com/apache/polaris.git
+git clone https://github.com/apache/polaris.git ~/polaris
 ```
 
 ## Docker
@@ -115,4 +114,7 @@ Ensure that `java --version` and `javac` both return non-zero responses.
 
 ## jq
 
-Most Polaris Quickstart scripts require `jq`. Follow the instructions from the [jq](https://jqlang.org/download/) website to download this tool.
+Most Polaris Quickstart scripts require [jq]((https://jqlang.org/download/)). You can install jq using [homebrew](https://brew.sh/):
+```shell
+brew install jq
+```

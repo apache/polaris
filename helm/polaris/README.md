@@ -33,13 +33,6 @@ A Helm chart for Apache Polaris (incubating).
 
 **Homepage:** <https://polaris.apache.org/>
 
-## Maintainers
-* [MonkeyCanCode](https://github.com/MonkeyCanCode)
-* [adutra](https://github.com/adutra)
-* [collado-mike](https://github.com/collado-mike)
-* [gerrit-k](https://github.com/gerrit-k)
-* [snazy](https://github.com/snazy)
-
 ## Source Code
 
 * <https://github.com/apache/polaris>
@@ -81,10 +74,10 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 eval $(minikube -p minikube docker-env)
 
 ./gradlew \
-    :polaris-quarkus-server:assemble \
-    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-    :polaris-quarkus-admin:assemble \
-    :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+    :polaris-server:assemble \
+    :polaris-server:quarkusAppPartsBuild --rerun \
+    :polaris-admin:assemble \
+    :polaris-admin:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true
 ```
 
@@ -171,7 +164,7 @@ Run the catalog bootstrap using the Polaris admin tool. This step initializes th
 ```bash
 java -Dpolaris.persistence.eclipselink.configuration-file=./persistence.xml \
   -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-  -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar \
+  -jar runtime/admin/build/polaris-admin-*-runner.jar \
   bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 

@@ -32,6 +32,7 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
+  alias(libs.plugins.jetbrains.changelog)
   // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
   alias(libs.plugins.jandex) apply false
 }
@@ -216,4 +217,24 @@ copiedCodeChecks {
       include("*")
     }
   }
+}
+
+changelog {
+  repositoryUrl.set("https://github.com/apache/polaris")
+  title.set("Apache Polaris Changelog")
+  versionPrefix.set("apache-polaris-")
+  header.set(provider { "${version.get()}" })
+  groups.set(
+    listOf(
+      "Highlights",
+      "Upgrade notes",
+      "Breaking changes",
+      "New Features",
+      "Changes",
+      "Deprecations",
+      "Fixes",
+      "Commits",
+    )
+  )
+  version.set(provider { project.version.toString() })
 }

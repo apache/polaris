@@ -23,34 +23,6 @@ metadata:
   name: polaris-persistence
 type: Opaque
 stringData:
-  persistence.xml: |-
-    <persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
-      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
-      <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
-        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntity</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityActive</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityChangeTracking</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityDropped</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelGrantRecord</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPrincipalSecrets</class>
-        <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelSequenceId</class>
-        <shared-cache-mode>NONE</shared-cache-mode>
-        <properties>
-          <property name="jakarta.persistence.jdbc.url"
-            value="jdbc:postgresql://postgres:5432/{realm}"/>
-          <property name="jakarta.persistence.jdbc.user" value="postgres"/>
-          <property name="jakarta.persistence.jdbc.password" value="postgres"/>
-          <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
-          <property name="eclipselink.logging.level.sql" value="FINE"/>
-          <property name="eclipselink.logging.parameters" value="true"/>
-          <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
-          <property name="eclipselink.connection-pool.default.initial" value="1" />
-          <property name="eclipselink.connection-pool.default.min" value="1" />
-          <property name="eclipselink.connection-pool.default.max" value="1" />
-          <property name="eclipselink.session.customizer" value="org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkSessionCustomizer" />
-          <property name="eclipselink.transaction.join-existing" value="true" />
-        </properties>
-      </persistence-unit>
-    </persistence>
+  username: "postgres"
+  password: "postgres"
+  jdbcUrl: "jdbc:postgresql://postgres:5432/POLARIS"

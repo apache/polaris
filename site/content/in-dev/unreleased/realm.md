@@ -38,8 +38,8 @@ A realm in Polaris serves as logical partitioning mechanism within the catalog s
 
 An example of this is:
 
-`jdbc:postgresql://localhost:5432/{realm}
-`
+`jdbc:postgresql://localhost:5432/{realm}`
+
 This ensures that each realm's data is stored separately.
 
 ### How is it used in the system?

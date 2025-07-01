@@ -44,7 +44,8 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.*;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -53,8 +54,9 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -147,9 +149,10 @@ public class FileIOFactoryTest {
   @AfterEach
   public void after() {}
 
-  @Test
-  public void testLoadFileIOForTableLike() {
-    IcebergCatalog catalog = createCatalog(testServices);
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testLoadFileIOForTableLike(String scheme) {
+    IcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
 
@@ -165,9 +168,10 @@ public class FileIOFactoryTest {
             Mockito.any());
   }
 
-  @Test
-  public void testLoadFileIOForCleanupTask() {
-    IcebergCatalog catalog = createCatalog(testServices);
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testLoadFileIOForCleanupTask(String scheme) {
+    IcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
     catalog.dropTable(TABLE, true);
@@ -200,8 +204,8 @@ public class FileIOFactoryTest {
             Mockito.any());
   }
 
-  IcebergCatalog createCatalog(TestServices services) {
-    String storageLocation = "s3://my-bucket/path/to/data";
+  IcebergCatalog createCatalog(TestServices services, String scheme) {
+    String storageLocation = scheme + "://my-bucket/path/to/data";
     AwsStorageConfigInfo awsStorageConfigInfo =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -214,7 +218,7 @@ public class FileIOFactoryTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(CATALOG_NAME)
-            .setProperties(new CatalogProperties("s3://tmp/path/to/data"))
+            .setProperties(new CatalogProperties(scheme + "://tmp/path/to/data"))
             .setStorageConfigInfo(awsStorageConfigInfo)
             .build();
     services

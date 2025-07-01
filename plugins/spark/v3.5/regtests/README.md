@@ -46,8 +46,8 @@ follows:
 ```shell
 ./gradlew build
 ./gradlew \
-  :polaris-quarkus-server:assemble \
-  :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 docker compose -f ./plugins/spark/v3.5/regtests/docker-compose.yml up --build --exit-code-from regtest
 ```

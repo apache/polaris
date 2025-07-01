@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -70,7 +70,7 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull CallContext callContext,
       @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
-import jakarta.persistence.*;
+import jakarta.persistence.EntityManager;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelSequenceId;

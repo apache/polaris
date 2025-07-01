@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -63,10 +64,14 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   private final PolarisDiagnostics diagnostics;
+  private final PolarisConfigurationStore configurationStore;
   private boolean bootstrap;
 
-  protected LocalPolarisMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
+  protected LocalPolarisMetaStoreManagerFactory(
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisConfigurationStore configurationStore) {
     this.diagnostics = diagnostics;
+    this.configurationStore = configurationStore;
   }
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
@@ -177,7 +182,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(),
+          new StorageCredentialCache(realmContext, configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
@@ -188,7 +194,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
-          realmContext.getRealmIdentifier(), new InMemoryEntityCache(metaStoreManager));
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

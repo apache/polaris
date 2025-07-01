@@ -85,7 +85,7 @@ services:
       --conf, "spark.sql.catalog.quickstart_catalog.type=rest",
       --conf, "spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog",
       --conf, "spark.sql.catalog.quickstart_catalog.uri=http://polaris:8181/api/catalog",
-      --conf, "spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET}",
+      --conf, "spark.sql.catalog.quickstart_catalog.credential=${CLIENT_ID}:${CLIENT_SECRET}",
       --conf, "spark.sql.catalog.quickstart_catalog.scope=PRINCIPAL_ROLE:ALL",
       --conf, "spark.sql.defaultCatalog=quickstart_catalog",
       --conf, "spark.sql.catalogImplementation=in-memory",
@@ -98,8 +98,8 @@ services:
       polaris-setup:
         condition: service_completed_successfully
     environment:
-      - CLIENT_ID=${USER_CLIENT_ID}
-      - CLIENT_SECRET=${USER_CLIENT_SECRET}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
     stdin_open: true
     tty: true
     ports:

@@ -73,6 +73,7 @@ public record TestServices(
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
     IcebergRestConfigurationApi restConfigurationApi,
+    IcebergCatalogAdapter catalogAdapter,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
@@ -154,7 +155,7 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics);
+              storageIntegrationProvider, polarisDiagnostics, configurationStore);
       RealmEntityManagerFactory realmEntityManagerFactory =
           new RealmEntityManagerFactory(metaStoreManagerFactory) {};
       UserSecretsManagerFactory userSecretsManagerFactory =
@@ -197,7 +198,7 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils =
           new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
 
-      IcebergCatalogAdapter service =
+      IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
               realmContext,
               callContext,
@@ -211,8 +212,9 @@ public record TestServices(
               catalogHandlerUtils,
               polarisEventListener);
 
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
-      IcebergRestConfigurationApi restConfigurationApi = new IcebergRestConfigurationApi(service);
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
+      IcebergRestConfigurationApi restConfigurationApi =
+          new IcebergRestConfigurationApi(catalogService);
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -264,6 +266,7 @@ public record TestServices(
           catalogsApi,
           restApi,
           restConfigurationApi,
+          catalogService,
           configurationStore,
           polarisDiagnostics,
           realmEntityManagerFactory,

@@ -24,7 +24,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -208,25 +207,6 @@ public abstract class PolarisConfiguration<T> {
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
-  }
-
-  /**
-   * Returns the value of a `PolarisConfiguration`, or the default if it cannot be loaded. This
-   * method does not need to be used when a `CallContext` is already available
-   */
-  public static <T> T loadConfig(PolarisConfiguration<T> configuration) {
-    var callContext = CallContext.getCurrentContext();
-    if (callContext == null) {
-      LOGGER.warn(
-          String.format(
-              "Unable to load current call context; using %s = %s",
-              configuration.key, configuration.defaultValue));
-      return configuration.defaultValue;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(callContext.getRealmContext(), configuration);
   }
 
   public static <T> Builder<T> builder() {

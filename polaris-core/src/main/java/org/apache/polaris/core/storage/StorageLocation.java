@@ -20,18 +20,29 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.polaris.core.storage.aws.S3Location;
 import org.apache.polaris.core.storage.azure.AzureLocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** An abstraction over a storage location */
 public class StorageLocation {
-  private final String location;
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageLocation.class);
+  private static final Pattern SCHEME_PATTERN = Pattern.compile("^(.+?):(.+)");
+
   public static final String LOCAL_PATH_PREFIX = "file:///";
+
+  private final String location;
 
   /** Create a StorageLocation from a String path */
   public static StorageLocation of(String location) {
     // TODO implement StorageLocation for all supported file systems and add isValidLocation
     if (AzureLocation.isAzureLocation(location)) {
       return new AzureLocation(location);
+    } else if (S3Location.isS3Location(location)) {
+      return new S3Location(location);
     } else {
       return new StorageLocation(location);
     }
@@ -97,6 +108,22 @@ public class StorageLocation {
       String slashTerminatedLocation = ensureTrailingSlash(this.location);
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
+    }
+  }
+
+  /** Returns a string representation of the location but without a scheme */
+  public String withoutScheme() {
+    if (location == null) {
+      return null;
+    }
+    Matcher matcher = SCHEME_PATTERN.matcher(location);
+    if (matcher.matches()) {
+      String locationWithoutScheme = matcher.group(2);
+      LOGGER.debug("Extracted {} from location {}", locationWithoutScheme, location);
+      return locationWithoutScheme;
+    } else {
+      LOGGER.debug("Found no scheme in location {}", location);
+      return location;
     }
   }
 }

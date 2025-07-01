@@ -22,10 +22,15 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
-from pydantic import StrictStr
 
 from cli.command import Command
-from cli.constants import Subcommands, DEFAULT_HOSTNAME, DEFAULT_PORT, CONFIG_DIR, CONFIG_FILE
+from cli.constants import (
+    Subcommands,
+    DEFAULT_HOSTNAME,
+    DEFAULT_PORT,
+    CONFIG_DIR,
+    CONFIG_FILE,
+)
 from polaris.management import PolarisDefaultApi
 
 
@@ -62,20 +67,20 @@ class ProfilesCommand(Command):
     def _create_profile(self, name: str) -> None:
         profiles = self._load_profiles()
         if name not in profiles:
-          client_id = input("Polaris Client ID: ")
-          client_secret = input("Polaris Client Secret: ")
-          host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
-          port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
-          profiles[name] = {
-              "client_id": client_id,
-              "client_secret": client_secret,
-              "host": host,
-              "port": port
-          }
-          self._save_profiles(profiles)
+            client_id = input("Polaris Client ID: ")
+            client_secret = input("Polaris Client Secret: ")
+            host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
+            port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
+            profiles[name] = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "host": host,
+                "port": port,
+            }
+            self._save_profiles(profiles)
         else:
-          print(f"Profile {name} already exists.")
-          sys.exit(1)
+            print(f"Profile {name} already exists.")
+            sys.exit(1)
 
     def _get_profile(self, name: str) -> Optional[Dict[str, str]]:
         profiles = self._load_profiles()
@@ -99,15 +104,20 @@ class ProfilesCommand(Command):
             current_host = profiles[name].get("host")
             current_port = profiles[name].get("port")
 
-            client_id = input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
-            client_secret = input(f"Polaris Client Secret [{current_client_secret}]: ") or current_client_secret
+            client_id = (
+                input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
+            )
+            client_secret = (
+                input(f"Polaris Client Secret [{current_client_secret}]: ")
+                or current_client_secret
+            )
             host = input(f"Polaris Client ID [{current_host}]: ") or current_host
             port = input(f"Polaris Client Secret [{current_port}]: ") or current_port
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "host": host,
-                "port": port
+                "port": port,
             }
             self._save_profiles(profiles)
         else:
@@ -126,7 +136,7 @@ class ProfilesCommand(Command):
             print(f"Polaris profile {self.profile_name} deleted successfully.")
         elif self.profiles_subcommand == Subcommands.UPDATE:
             self._update_profile(self.profile_name)
-            print(f"Polaris profile {self.profile_name} updated successfully.")            
+            print(f"Polaris profile {self.profile_name} updated successfully.")
         elif self.profiles_subcommand == Subcommands.GET:
             profile = self._get_profile(self.profile_name)
             if profile:

@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.config.PolarisConfiguration.loadConfig;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
@@ -29,7 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -63,11 +62,16 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull CallContext callContext,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
+    int storageCredentialDurationSeconds =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(callContext.getRealmContext(), STORAGE_CREDENTIAL_DURATION_SECONDS);
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())
@@ -80,7 +84,7 @@ public class AwsCredentialsStorageIntegration
                         allowedReadLocations,
                         allowedWriteLocations)
                     .toJson())
-            .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
+            .durationSeconds(storageCredentialDurationSeconds);
     credentialsProvider.ifPresent(
         cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
