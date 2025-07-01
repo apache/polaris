@@ -151,7 +151,7 @@ public class RateLimiterFilterTest {
     BeforeRequestRateLimitedEvent event =
         ((TestPolarisEventListener) polarisEventListener)
             .getLatest(BeforeRequestRateLimitedEvent.class);
-    assertThat(event.getMethod()).isEqualTo("GET");
+    assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:
     // http_server_requests_seconds_count{application="Polaris",environment="prod",method="GET",outcome="CLIENT_ERROR",realm_id="org_apache_polaris_service_ratelimiter_RateLimiterFilterTest",status="429",uri="/api/management/v1/principal-roles"} 1.0

@@ -2363,19 +2363,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     table.updateProperties().set(key, valNew).commit();
 
     var beforeRefreshEvent = testPolarisEventListener.getLatest(BeforeTableRefreshedEvent.class);
-    Assertions.assertThat(beforeRefreshEvent.getTableIdentifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
     var afterRefreshEvent = testPolarisEventListener.getLatest(AfterTableRefreshedEvent.class);
-    Assertions.assertThat(afterRefreshEvent.getTableIdentifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
     var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
-    Assertions.assertThat(beforeTableEvent.getTableIdentifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeTableEvent.getBase().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(beforeTableEvent.getMetadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(beforeTableEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
 
     var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
-    Assertions.assertThat(afterTableEvent.getTableIdentifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(afterTableEvent.getBase().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(afterTableEvent.getMetadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
 }
