@@ -103,10 +103,6 @@ This section describes the privileges that are available in the Polaris access c
 roles are granted to principal roles, and principal roles are granted to service principals to specify the operations that service principals can
 perform on objects in Polaris.
 
-> [!IMPORTANT]
-> You can only grant privileges at the catalog level. Fine-grained access controls are not available. For example, you can grant read
-> privileges to all tables in a catalog but not to an individual table in the catalog.
-
 To grant the full set of privileges (drop, list, read, write, etc.) on an object, you can use the *full privilege* option.
 
 ### Table privileges
