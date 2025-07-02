@@ -17,7 +17,7 @@
 
 VENV_DIR := .venv
 
-.PHONY: regenerate-client test-integration lint setup-env install-poetry-deps
+.PHONY: regenerate-client test-integration lint setup-env install-poetry-deps clean clean-venv
 
 # Target to create the virtual environment directory
 $(VENV_DIR):
