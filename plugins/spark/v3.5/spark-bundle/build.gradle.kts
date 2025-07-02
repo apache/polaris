@@ -54,8 +54,8 @@ tasks.named<ShadowJar>("shadowJar") {
   exclude("LICENSE*")
   exclude("NOTICE*")
 
-  // add polaris customized LICENSE and NOTICE at top level. Note that the
-  // customized LICENSE and NOTICE file are called CUSTOM-LICENSE and CUSTOM-NOTICE,
+  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
   // and renamed to LICENSE and NOTICE after include, this is to avoid the file
   // being excluded due to the exclude pattern matching used above.
   from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
