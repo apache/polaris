@@ -19,33 +19,17 @@
 package org.apache.polaris.spark.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import org.apache.polaris.service.it.ext.SparkSessionBuilder;
 import org.apache.spark.sql.SparkSession;
 
 @QuarkusIntegrationTest
 public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
   /** Initialize the spark catalog to use the iceberg spark catalog. */
   @Override
-  protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
-    return builder
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        .config(
-            String.format("spark.sql.catalog.%s", catalogName),
-            "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.warehouse.dir", warehouseDir.toString())
-        .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalogName),
-            endpoints.catalogApiEndpoint().toString())
-        .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
-        .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
-        .config(
-            String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+  protected SparkSession buildSparkSession() {
+    return SparkSessionBuilder.buildWithTestDefaults()
+        .withWarehouse(warehouseDir)
+        .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .getOrCreate();
   }
 }
