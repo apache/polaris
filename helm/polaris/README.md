@@ -335,13 +335,20 @@ ct install --namespace polaris --debug --charts ./helm/polaris \
 | metrics.enabled | bool | `true` | Specifies whether metrics for the polaris server should be enabled. |
 | metrics.tags | object | `{}` | Additional tags (dimensional labels) to add to the metrics. |
 | nodeSelector | object | `{}` | Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector. |
-| persistence | object | `{"eclipseLink":{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}},"type":"eclipse-link"}` | Polaris persistence configuration. |
+| persistence | object | `{"eclipseLink":{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}},"relationalJdbc":{"dbKind":"postgres","secret":{"jdbcUrl":null,"name":null,"password":null,"username":null}},"type":"eclipse-link"}` | Polaris persistence configuration. |
 | persistence.eclipseLink | object | `{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}}` | The configuration for the eclipse-link persistence manager. |
 | persistence.eclipseLink.persistenceUnit | string | `"polaris"` | The persistence unit name to use. |
 | persistence.eclipseLink.secret | object | `{"key":"persistence.xml","name":null}` | The secret name to pull persistence.xml from. |
 | persistence.eclipseLink.secret.key | string | `"persistence.xml"` | The key in the secret to pull persistence.xml from. |
 | persistence.eclipseLink.secret.name | string | `nil` | The name of the secret to pull persistence.xml from. If not provided, the default built-in persistence.xml will be used. This is probably not what you want. |
-| persistence.type | string | `"eclipse-link"` | The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link. |
+| persistence.relationalJdbc | object | `{"dbKind":"postgres","secret":{"jdbcUrl":null,"name":null,"password":null,"username":null}}` | The configuration for the relational-jdbc persistence manager. |
+| persistence.relationalJdbc.dbKind | string | `"postgres"` | The database type to use. Supported values: postgres, h2. |
+| persistence.relationalJdbc.secret | object | `{"jdbcUrl":null,"name":null,"password":null,"username":null}` | The secret containing database connection credentials. |
+| persistence.relationalJdbc.secret.jdbcUrl | string | `nil` | The key in the secret containing the JDBC connection URL. |
+| persistence.relationalJdbc.secret.name | string | `nil` | The name of the secret containing database credentials. If not provided, you must configure database connection details via other means. |
+| persistence.relationalJdbc.secret.password | string | `nil` | The key in the secret containing the database password. |
+| persistence.relationalJdbc.secret.username | string | `nil` | The key in the secret containing the database username. |
+| persistence.type | string | `"in-memory"` | The type of persistence to use. Supported types: in-memory, eclipse-link, relational-jdbc. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
