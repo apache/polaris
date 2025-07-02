@@ -58,8 +58,8 @@ tasks.named<ShadowJar>("shadowJar") {
   // customized LICENSE and NOTICE file are called CUSTOM-LICENSE and CUSTOM-NOTICE,
   // and renamed to LICENSE and NOTICE after include, this is to avoid the file
   // being excluded due to the exclude pattern matching used above.
-  from("${projectDir}/CUSTOM-LICENSE") { rename { "LICENSE" } }
-  from("${projectDir}/CUSTOM-NOTICE") { rename { "NOTICE" } }
+  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
 }
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both
@@ -67,3 +67,5 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.named("assemble") { dependsOn("shadowJar") }
 
 tasks.named("build") { dependsOn("shadowJar") }
+
+tasks.named<Jar>("jar") { enabled = false }

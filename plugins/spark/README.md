@@ -63,7 +63,28 @@ bin/spark-shell \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
-The polaris version can be found in versions.txt in the Polaris root project dir.
+The Polaris version is defined in the `versions.txt` file located in the root directory of the Polaris project.
+Assume the following values:
+- `spark_version`: 3.5
+- `scala_version`: 2.12
+- `polaris_version`: 1.1.0-incubating-SNAPSHOT
+- `catalog-name`: `polaris`
+The Spark command would look like following:
+
+```shell
+bin/spark-shell \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.1.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
+--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
+--conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+--conf spark.sql.catalog.polaris.warehouse=polaris \
+--conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
+--conf spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog \
+--conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
+--conf spark.sql.catalog.polaris.credential="root:secret" \
+--conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
+--conf spark.sql.catalog.polaris.token-refresh-enabled=true \
+--conf spark.sql.sources.useV1SourceList=''
+```
 
 # Build and run with Polaris spark bundle JAR
 The polaris-spark-bundle project is used to build the Polaris Spark bundle JAR. The resulting JAR will follow this naming format:
