@@ -38,7 +38,7 @@ USER jovyan
 
 COPY --chown=jovyan client /home/jovyan/client
 COPY --chown=jovyan regtests/requirements.txt /tmp
-COPY --chown=jovyan plugins/spark/v3.5/spark/build/2.12/libs /home/jovyan/polaris_libs
+COPY --chown=jovyan plugins/spark/v3.5/spark-bundle/build/2.12/libs /home/jovyan/polaris_libs
 RUN pip install -r /tmp/requirements.txt
 RUN cd client/python && poetry lock && \
     python3 -m poetry install && \
