@@ -16,8 +16,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from dataclasses import dataclass, field
-from typing import Dict, Optional, List
+from dataclasses import dataclass
+from typing import Dict, List
 
 from pydantic import StrictStr, SecretStr
 
@@ -25,9 +25,9 @@ from cli.command import Command
 from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subcommands, Arguments, AuthenticationType, \
     ServiceIdentityType
 from cli.options.option_tree import Argument
-from polaris.management import PolarisDefaultApi, Catalog, CreateCatalogRequest, UpdateCatalogRequest, \
+from polaris.management import PolarisDefaultApi, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
-    PolarisCatalog, CatalogProperties, AuthenticationParameters, BearerAuthenticationParameters, \
+    PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, \
     OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
     IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 

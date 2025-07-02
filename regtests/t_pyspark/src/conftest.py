@@ -148,7 +148,7 @@ def create_catalog_role(api, catalog, role_name):
     api.create_catalog_role(catalog_name=catalog.name,
                             create_catalog_role_request=CreateCatalogRoleRequest(catalog_role=catalog_role))
     return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
-  except ApiException as e:
+  except ApiException:
     return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
   else:
     raise e
