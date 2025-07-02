@@ -526,8 +526,6 @@ persistence:
   type: in-memory  # relational-jdbc
   # -- The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
-    # -- The type of database to use. Valid values are: h2, postgres.
-    dbKind: postgres  # h2
     # -- The secret name to pull the database connection properties from.
     secret:
       # -- The secret name to pull the database connection properties from.
