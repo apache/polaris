@@ -28,14 +28,42 @@ import org.apache.spark.sql.SparkSession;
 /**
  * A fluent builder for configuring SparkSession instances with Polaris catalogs.
  *
+ * <p>This builder creates a SparkSession with sensible test defaults and allows easy configuration
+ * of multiple Polaris catalogs. The resulting SparkSession will be configured for local execution
+ * with S3Mock support for testing.
+ *
  * <p>Example usage:
  *
  * <pre>
  * SparkSession session = SparkSessionBuilder
- *     .withTestDefaults()
+ *     .buildWithTestDefaults()
+ *     .withExtensions("org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+ *     .withWarehouse(warehouseUri)
  *     .addCatalog("catalog1", "org.apache.iceberg.spark.SparkCatalog", endpoints, token)
  *     .addCatalog("catalog2", "org.apache.polaris.spark.SparkCatalog", endpoints, token)
  *     .createSession();
+ * </pre>
+ *
+ * <p>The final SparkSession will be configured with:
+ *
+ * <ul>
+ *   <li>Local master execution (local[1])
+ *   <li>Disabled Spark UI for clean test output
+ *   <li>S3A filesystem with mock credentials (foo/bar)
+ *   <li>Multiple Polaris catalogs with REST endpoints
+ *   <li>Iceberg extensions for table format support
+ *   <li>Custom warehouse directory location
+ * </ul>
+ *
+ * <p>Each catalog will be configured as:
+ *
+ * <pre>
+ * spark.sql.catalog.{catalogName} = {catalogType}
+ * spark.sql.catalog.{catalogName}.type = rest
+ * spark.sql.catalog.{catalogName}.uri = {polarisEndpoint}
+ * spark.sql.catalog.{catalogName}.token = {authToken}
+ * spark.sql.catalog.{catalogName}.warehouse = {catalogName}
+ * spark.sql.catalog.{catalogName}.scope = PRINCIPAL_ROLE:ALL
  * </pre>
  */
 public class SparkSessionBuilder {
@@ -88,9 +116,8 @@ public class SparkSessionBuilder {
   }
 
   public SparkSessionBuilder addCatalog(
-      String catalogName, String catalogType, PolarisApiEndpoints endpoints, String token) {
-    this.catalogs.add(
-        new CatalogConfig(catalogName, catalogType, endpoints, token, new ArrayList<>()));
+      String catalogName, String catalogImplClass, PolarisApiEndpoints endpoints, String token) {
+    this.catalogs.add(new CatalogConfig(catalogName, catalogImplClass, endpoints, token));
     return this;
   }
 
@@ -99,7 +126,7 @@ public class SparkSessionBuilder {
     return this;
   }
 
-  public SparkSession createSession() {
+  public SparkSession getOrCreate() {
     if (extensions != null) {
       builder.config("spark.sql.extensions", extensions);
     }
@@ -126,7 +153,8 @@ public class SparkSessionBuilder {
   private void applySingleCatalogConfig(CatalogConfig catalog) {
     // Basic catalog configuration
     builder
-        .config(String.format("spark.sql.catalog.%s", catalog.catalogName), catalog.catalogType)
+        .config(
+            String.format("spark.sql.catalog.%s", catalog.catalogName), catalog.catalogImplClass)
         .config(String.format("spark.sql.catalog.%s.type", catalog.catalogName), "rest")
         .config(
             String.format("spark.sql.catalog.%s.warehouse", catalog.catalogName),
@@ -149,11 +177,6 @@ public class SparkSessionBuilder {
       builder.config(
           String.format("spark.sql.catalog.%s.token", catalog.catalogName), catalog.token);
     }
-
-    // Add catalog-specific configurations
-    for (ConfigPair config : catalog.catalogSpecificConfigs) {
-      builder.config(config.key, config.value);
-    }
   }
 
   private void applyAdditionalConfigurations() {
@@ -175,23 +198,16 @@ public class SparkSessionBuilder {
   /** Configuration for a single catalog. */
   private static class CatalogConfig {
     final String catalogName;
-    final String catalogType;
+    final String catalogImplClass;
     final PolarisApiEndpoints endpoints;
     final String token;
-    final List<ConfigPair> catalogSpecificConfigs;
 
     CatalogConfig(
-        String catalogName,
-        String catalogType,
-        PolarisApiEndpoints endpoints,
-        String token,
-        List<ConfigPair> catalogSpecificConfigs) {
+        String catalogName, String catalogImplClass, PolarisApiEndpoints endpoints, String token) {
       this.catalogName = catalogName;
-      this.catalogType = catalogType;
+      this.catalogImplClass = catalogImplClass;
       this.endpoints = endpoints;
       this.token = token;
-      this.catalogSpecificConfigs =
-          catalogSpecificConfigs != null ? catalogSpecificConfigs : new ArrayList<>();
     }
   }
 }

@@ -143,7 +143,7 @@ public abstract class SparkIntegrationBase {
             "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.polaris.spark.SparkCatalog", endpoints, sparkToken)
-        .createSession();
+        .getOrCreate();
   }
 
   @AfterEach

@@ -30,6 +30,6 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
     return SparkSessionBuilder.buildWithTestDefaults()
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
-        .createSession();
+        .getOrCreate();
   }
 }

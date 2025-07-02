@@ -170,7 +170,7 @@ public abstract class PolarisSparkIntegrationTestBase {
         .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .addCatalog(
             externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
-        .createSession();
+        .getOrCreate();
   }
 
   @AfterEach
