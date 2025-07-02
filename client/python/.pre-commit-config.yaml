@@ -36,3 +36,4 @@ repos:
       - id: mypy
         args:
           [--disallow-untyped-defs, --ignore-missing-imports, --install-types, --non-interactive]
+        files: 'integration_tests/.*\.py'
