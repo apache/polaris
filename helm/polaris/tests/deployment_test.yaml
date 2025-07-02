@@ -1020,6 +1020,35 @@ tests:
                       - key: custom.xml
                         path: persistence.xml
 
+  - it: should set relational-jdbc persistence environment variables
+    set:
+      persistence: { type: "relational-jdbc", dbKind: postgres, relationalJdbc: { secret: { name: "polaris-persistence" } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.username
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: username
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.password
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: password
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.jdbc.url
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: jdbcUrl
+
   - it: should configure volume for file logging
     set:
       logging.file.enabled: true

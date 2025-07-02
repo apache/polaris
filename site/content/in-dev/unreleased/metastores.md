@@ -33,7 +33,6 @@ environment variables or JVM -D flags at startup. For more information, refer to
 ```
 POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-QUARKUS_DATASOURCE_DB_KIND=postgresql
 QUARKUS_DATASOURCE_USERNAME=<your-username>
 QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
@@ -46,7 +45,8 @@ Please refer to the documentation here:
 Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration](./configuration.md)
 
 ## EclipseLink (Deprecated)
-> [!IMPORTANT] Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+> [!IMPORTANT]
+> Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
 
 Polaris includes EclipseLink plugin by default with PostgresSQL driver.
 
@@ -66,19 +66,22 @@ The `configuration-file` option must point to an [EclipseLink configuration file
 `persistence.xml`, is used to set up the database connection properties, which can differ depending
 on the type of database and its configuration.
 
-> Note: You have to locate the `persistence.xml` at least two folders down to the root folder, e.g. `/deployments/config/persistence.xml` is OK, whereas `/deployments/persistence.xml` will cause an infinity loop.
+> [!NOTE]
+> You have to locate the `persistence.xml` at least two folders down to the root folder, e.g. `/deployments/config/persistence.xml` is OK, whereas `/deployments/persistence.xml` will cause an infinity loop.
 [Quarkus Configuration Reference]: https://quarkus.io/guides/config-reference
 [EclipseLink configuration file]: https://eclipse.dev/eclipselink/documentation/4.0/solutions/solutions.html#TESTINGJPA002
 
 Polaris creates and connects to a separate database for each realm. Specifically, the `{realm}` placeholder in `jakarta.persistence.jdbc.url` is substituted with the actual realm name, allowing the Polaris server to connect to different databases based on the realm.
 
-> Note: some database systems such as Postgres don't create databases automatically. Database admins need to create them manually before running Polaris server.
+> [!NOTE]
+> Some database systems such as Postgres don't create databases automatically. Database admins need to create them manually before running Polaris server.
 
 A single `persistence.xml` can describe multiple [persistence units](https://eclipse.dev/eclipselink/documentation/4.0/concepts/concepts.html#APPDEV001). For example, with both a `polaris-dev` and `polaris` persistence unit defined, you could use a single `persistence.xml` to easily switch between development and production databases. Use the `persistence-unit` option in the Polaris server configuration to easily switch between persistence units.
 
 ### Using H2
 
-> [!IMPORTANT] H2 is an in-memory database and is not suitable for production!
+> [!IMPORTANT]
+> H2 is an in-memory database and is not suitable for production!
 
 The default [persistence.xml] in Polaris is already configured for H2, but you can easily customize
 your H2 configuration using the persistence unit template below:
@@ -148,4 +151,3 @@ The following shows a sample configuration for integrating Polaris with Postgres
   </properties>
 </persistence-unit>
 ```
-

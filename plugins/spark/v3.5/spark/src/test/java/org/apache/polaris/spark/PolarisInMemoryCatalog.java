@@ -30,7 +30,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
-import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.rest.GenericTable;
 
 /** InMemory implementation for the Polaris Catalog. This class is mainly used by testing. */
 public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCatalog {

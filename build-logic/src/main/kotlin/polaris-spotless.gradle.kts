@@ -17,10 +17,6 @@
  * under the License.
  */
 
-import com.diffplug.spotless.FormatterFunc
-import java.io.Serializable
-import org.gradle.api.GradleException
-
 plugins { id("com.diffplug.spotless") }
 
 // skip spotless check for duplicated projects
@@ -31,18 +27,6 @@ if (!project.extra.has("duplicated-project-sources")) {
       googleJavaFormat()
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
       endWithNewline()
-      custom(
-        "disallowWildcardImports",
-        object : Serializable, FormatterFunc {
-          override fun apply(text: String): String {
-            val regex = "~/import .*\\.\\*;/".toRegex()
-            if (regex.matches(text)) {
-              throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
-            }
-            return text
-          }
-        },
-      )
       toggleOffOn()
     }
     kotlinGradle {

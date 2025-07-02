@@ -77,7 +77,7 @@ tasks.register("run") { dependsOn("quarkusRun") }
 tasks.named<QuarkusRun>("quarkusRun") {
   jvmArgs =
     listOf(
-      "-Dpolaris.bootstrap.credentials=POLARIS,root,secret",
+      "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
       "-Dquarkus.console.color=true",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
       "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",

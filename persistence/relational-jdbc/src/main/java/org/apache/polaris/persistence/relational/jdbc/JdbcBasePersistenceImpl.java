@@ -31,13 +31,16 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -59,10 +62,12 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +79,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final int version;
+
+  // The max number of components a location can have before the optimized sibling check is not used
+  private static final int MAX_LOCATION_COMPONENTS = 40;
 
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
@@ -84,6 +93,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.version = loadVersion();
   }
 
   @Override
@@ -618,6 +628,64 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
+          e);
+    }
+  }
+
+  private int loadVersion() {
+    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    try {
+      List<SchemaVersion> schemaVersion =
+          datasourceOperations.executeSelect(query, new SchemaVersion());
+      if (schemaVersion == null || schemaVersion.size() != 1) {
+        throw new RuntimeException("Failed to retrieve schema version");
+      }
+      return schemaVersion.getFirst().getValue();
+    } catch (SQLException e) {
+      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
+      throw new IllegalStateException("Failed to retrieve schema version", e);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    if (this.version < 2) {
+      return Optional.empty();
+    }
+    if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
+        > MAX_LOCATION_COMPONENTS) {
+      return Optional.empty();
+    }
+
+    PreparedQuery query =
+        QueryGenerator.generateOverlapQuery(
+            realmId, entity.getCatalogId(), entity.getBaseLocation());
+    try {
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
+      if (!results.isEmpty()) {
+        StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+        for (PolarisBaseEntity result : results) {
+          StorageLocation potentialSiblingLocation =
+              StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
+          if (entityLocation.isChildOf(potentialSiblingLocation)
+              || potentialSiblingLocation.isChildOf(entityLocation)) {
+            return Optional.of(Optional.of(potentialSiblingLocation.toString()));
+          }
+        }
+      }
+      return Optional.of(Optional.empty());
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to retrieve location overlap for location {} due to {}",
+          entity.getBaseLocation(),
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format(
+              "Failed to retrieve location overlap for location: %s", entity.getBaseLocation()),
           e);
     }
   }

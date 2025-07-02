@@ -72,8 +72,7 @@ in the catalog, such as catalog namespaces or tables. You can create one or more
 You grant privileges to a catalog role and then grant the catalog role to a principal role to bestow the privileges to one or more service
 principals.
 
-> **Note**
->
+> [!NOTE]
 > If you update the privileges bestowed to a service principal, the updates won't take effect for up to one hour. This means that if you
 > revoke or grant some privileges for a catalog, the updated privileges won't take effect on any service principal with access to that catalog
 > for up to one hour.
@@ -103,11 +102,6 @@ supports a many-to-one relationship between service principals and principal rol
 This section describes the privileges that are available in the Polaris access control model. Privileges are granted to catalog roles, catalog
 roles are granted to principal roles, and principal roles are granted to service principals to specify the operations that service principals can
 perform on objects in Polaris.
-
-> **Important**
->
-> You can only grant privileges at the catalog level. Fine-grained access controls are not available. For example, you can grant read 
-> privileges to all tables in a catalog but not to an individual table in the catalog.
 
 To grant the full set of privileges (drop, list, read, write, etc.) on an object, you can use the *full privilege* option.
 
@@ -184,7 +178,7 @@ includes the following users:
     create service principals. She can also create catalogs and
     namespaces and configure access control for Polaris resources.
 
-- **Bob:** A data engineer who uses Apache Spark&trade; to 
+- **Bob:** A data engineer who uses Apache Spark&trade; to
     interact with Polaris.
 
     - Alice has created a service principal for Bob. It has been

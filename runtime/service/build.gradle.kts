@@ -134,6 +134,7 @@ dependencies {
 }
 
 tasks.withType(Test::class.java).configureEach {
+  forkEvery = 1
   systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")

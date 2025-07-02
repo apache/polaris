@@ -32,8 +32,9 @@ Before running Polaris, ensure you have completed the following setup steps:
 cd ~/polaris
 ./gradlew \
   :polaris-server:assemble \
-  :polaris-server:quarkusAppPartsBuild \
-  :polaris-admin:assemble --rerun \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 ```
@@ -41,7 +42,7 @@ cd ~/polaris
 
 ## Running Polaris with Docker
 
-To start using Polaris in Docker and launch Polaris, which is packaged with a Postgres instance, Apache Spark, and Trino. 
+To start using Polaris in Docker and launch Polaris, which is packaged with a Postgres instance, Apache Spark, and Trino.
 
 ```shell
 export ASSETS_PATH=$(pwd)/getting-started/assets/
@@ -70,7 +71,7 @@ The Docker image pre-configures a sample catalog called `quickstart_catalog` tha
 
 You can also start Polaris through Gradle (packaged within the Polaris repository):
 
-1. **Start the Server**  
+1. **Start the Server**
 
 Run the following command to start Polaris:
 
@@ -81,17 +82,17 @@ Run the following command to start Polaris:
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-runtime-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
+INFO  [io.quarkus] [,] [,,,] (main) Apache Polaris Server (incubating) <version> on JVM (powered by Quarkus <version>) started in 1.911s. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (main) Profile prod activated.
+INFO  [io.quarkus] [,] [,,,] (main) Installed features: [...]
 ```
 
 At this point, Polaris is running.
 
-When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. 
+When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down.
 For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
 
-When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `secret` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
+When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `s3cr3t` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
 
 ### Installing Apache Spark and Trino Locally for Testing
 
@@ -113,4 +114,4 @@ docker run --name trino -d -p 8080:8080 trinodb/trino
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page. 
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.

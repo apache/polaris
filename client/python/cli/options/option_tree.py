@@ -38,16 +38,17 @@ class Argument:
     default: object = None
 
     def __post_init__(self):
-        if self.name.startswith('--'):
-            raise Exception(f'Argument name {self.name} starts with `--`: should this be a flag_name?')
+        if self.name.startswith("--"):
+            raise Exception(
+                f"Argument name {self.name} starts with `--`: should this be a flag_name?"
+            )
 
     @staticmethod
     def to_flag_name(argument_name):
-        return '--' + argument_name.replace('_', '-')
+        return "--" + argument_name.replace("_", "-")
 
     def get_flag_name(self):
         return Argument.to_flag_name(self.name)
-
 
 
 @dataclass
@@ -61,7 +62,7 @@ class Option:
     hint: str = None
     input_name: str = None
     args: List[Argument] = field(default_factory=list)
-    children: List['Option'] = field(default_factory=list)
+    children: List["Option"] = field(default_factory=list)
 
 
 class OptionTree:
@@ -72,7 +73,7 @@ class OptionTree:
 
     _CATALOG_ROLE_AND_CATALOG = [
         Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
-        Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
+        Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE),
     ]
 
     _FEDERATION_ARGS = [

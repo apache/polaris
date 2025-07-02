@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.admintool.el;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+import static org.apache.polaris.admintool.PostgresEclipselinkTestResourceLifecycleManager.INIT_SCRIPT;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.admintool.PostgresTestResourceLifecycleManager;
+import org.apache.polaris.admintool.PostgresEclipselinkTestResourceLifecycleManager;
 
 public class EclipselinkProfile implements QuarkusTestProfile {
 
@@ -36,7 +36,7 @@ public class EclipselinkProfile implements QuarkusTestProfile {
   public List<TestResourceEntry> testResources() {
     return List.of(
         new TestResourceEntry(
-            PostgresTestResourceLifecycleManager.class,
+            PostgresEclipselinkTestResourceLifecycleManager.class,
             Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
   }
 }

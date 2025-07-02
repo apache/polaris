@@ -576,7 +576,7 @@ public class PolarisAdminService {
   /** Get all locations where data for a `CatalogEntity` may be stored */
   private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
     HashSet<String> catalogLocations = new HashSet<>();
-    catalogLocations.add(terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
+    catalogLocations.add(terminateWithSlash(catalogEntity.getBaseLocation()));
     if (catalogEntity.getStorageConfigurationInfo() != null) {
       catalogLocations.addAll(
           catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
@@ -614,7 +614,6 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe().stream()
-        .filter(Objects::nonNull)
         .map(CatalogEntity::new)
         .anyMatch(
             existingCatalog -> {
@@ -872,7 +871,7 @@ public class PolarisAdminService {
     }
 
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
-    String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
+    String defaultBaseLocation = currentCatalogEntity.getBaseLocation();
     if (updateRequest.getProperties() != null) {
       Map<String, String> updateProperties =
           reservedProperties.removeReservedPropertiesFromUpdate(
@@ -923,18 +922,24 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
+  /**
+   * List all catalogs after checking for permission. Nulls due to non-atomic list-then-get are
+   * filtered out.
+   */
   public List<PolarisEntity> listCatalogs() {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
     return listCatalogsUnsafe();
   }
 
   /**
-   * List all catalogs without checking for permission. May contain NULLs due to multiple non-atomic
-   * API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
-   * returned by listCatalogs, but cannot be loaded afterward because it was purged by another
-   * process before it could be loaded.
+   * List all catalogs without checking for permission. Nulls due to non-atomic list-then-get are
+   * filtered out.
    */
   private List<PolarisEntity> listCatalogsUnsafe() {
+    // loadEntity may return null due to multiple non-atomic
+    // API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
+    // returned by listCatalogs, but cannot be loaded afterward because it was purged by another
+    // process before it could be loaded.
     return metaStoreManager
         .listEntities(
             getCurrentPolarisContext(),
@@ -949,6 +954,7 @@ public class PolarisAdminService {
                 PolarisEntity.of(
                     metaStoreManager.loadEntity(
                         getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+        .filter(Objects::nonNull)
         .toList();
   }
 

@@ -55,7 +55,7 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
  * Catalog} model to the persistent entity model.
  */
-public class CatalogEntity extends PolarisEntity {
+public class CatalogEntity extends PolarisEntity implements LocationBasedEntity {
   public static final String CATALOG_TYPE_PROPERTY = "catalogType";
 
   // Specifies the object-store base location used for all Table file locations under the
@@ -91,7 +91,7 @@ public class CatalogEntity extends PolarisEntity {
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getDefaultBaseLocation(catalog));
+        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
@@ -179,7 +179,8 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public String getDefaultBaseLocation() {
+  @Override
+  public String getBaseLocation() {
     return getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY);
   }
 
@@ -342,7 +343,7 @@ public class CatalogEntity extends PolarisEntity {
     }
   }
 
-  protected static @Nonnull String getDefaultBaseLocation(Catalog catalog) {
+  protected static @Nonnull String getBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }

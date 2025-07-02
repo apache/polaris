@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
+import static org.apache.polaris.admintool.PostgresEclipselinkTestResourceLifecycleManager.INIT_SCRIPT;
 
 import java.util.List;
 import java.util.Map;
@@ -28,7 +28,15 @@ import org.apache.polaris.test.commons.RelationalJdbcProfile;
 public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
   @Override
   public Map<String, String> getConfigOverrides() {
-    return Map.of();
+    return Map.of(
+        "polaris.persistence.type",
+        "relational-jdbc",
+        // These two options are required to "trigger" the enablement of JDBC data sources in
+        // admin-tool tests, but do not harm other tests.
+        "quarkus.datasource.active",
+        "true",
+        "quarkus.datasource.db-kind",
+        "postgresql");
   }
 
   @Override

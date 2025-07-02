@@ -29,11 +29,13 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.CatalogRoles;
 import org.apache.polaris.core.admin.model.Catalogs;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
@@ -145,7 +147,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
-    validateConnectionConfigInfo(catalog);
+    validateExternalCatalog(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
@@ -169,27 +171,51 @@ public class PolarisServiceImpl
     }
   }
 
-  private void validateConnectionConfigInfo(Catalog catalog) {
+  private void validateExternalCatalog(Catalog catalog) {
     if (catalog.getType() == Catalog.TypeEnum.EXTERNAL) {
       if (catalog instanceof ExternalCatalog externalCatalog) {
-        if (externalCatalog.getConnectionConfigInfo() != null) {
-          String connectionType =
-              externalCatalog.getConnectionConfigInfo().getConnectionType().name();
-          List<String> supportedConnectionTypes =
-              callContext
-                  .getPolarisCallContext()
-                  .getConfigurationStore()
-                  .getConfiguration(
-                      callContext.getRealmContext(),
-                      FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
-                  .stream()
-                  .map(s -> s.toUpperCase(Locale.ROOT))
-                  .toList();
-          if (!supportedConnectionTypes.contains(connectionType)) {
-            throw new IllegalStateException("Unsupported connection type: " + connectionType);
-          }
+        ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
+        if (connectionConfigInfo != null) {
+          validateConnectionConfigInfo(connectionConfigInfo);
+          validateAuthenticationParameters(connectionConfigInfo.getAuthenticationParameters());
         }
       }
+    }
+  }
+
+  private void validateConnectionConfigInfo(ConnectionConfigInfo connectionConfigInfo) {
+
+    String connectionType = connectionConfigInfo.getConnectionType().name();
+    List<String> supportedConnectionTypes =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(),
+                FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+            .stream()
+            .map(s -> s.toUpperCase(Locale.ROOT))
+            .toList();
+    if (!supportedConnectionTypes.contains(connectionType)) {
+      throw new IllegalStateException("Unsupported connection type: " + connectionType);
+    }
+  }
+
+  private void validateAuthenticationParameters(AuthenticationParameters authenticationParameters) {
+
+    String authenticationType = authenticationParameters.getAuthenticationType().name();
+    List<String> supportedAuthenticationTypes =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getRealmContext(),
+                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+            .stream()
+            .map(s -> s.toUpperCase(Locale.ROOT))
+            .toList();
+    if (!supportedAuthenticationTypes.contains(authenticationType)) {
+      throw new IllegalStateException("Unsupported authentication type: " + authenticationType);
     }
   }
 

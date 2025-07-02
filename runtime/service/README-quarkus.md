@@ -79,6 +79,30 @@ configuration property).
 
 You can find more details here: https://quarkus.io/guides/config
 
+# Integration tests
+Integration tests from the :polaris-tests module can be run against a local Polaris Quarkus instance
+for each supported cloud storage. Set the appropriate environment variables for your target cloud,
+then run the tests as shown below.
+
+For S3:
+```shell
+export INTEGRATION_TEST_S3_PATH="s3://bucket/subpath"
+export INTEGRATION_TEST_S3_ROLE_ARN="your-role-arn"
+./gradlew :polaris-runtime-service:intTest
+```
+For Azure:
+```shell
+export INTEGRATION_TEST_AZURE_PATH="abfss://bucket/subpath"
+export INTEGRATION_TEST_AZURE_TENANT_ID="your-tenant-id"
+./gradlew :polaris-runtime-service:intTest
+``` 
+For GCS:
+```shell
+export INTEGRATION_TEST_GCS_PATH="gs://bucket/subpath"
+export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT="your-service-account"
+./gradlew :polaris-runtime-service:intTest
+```
+
 # TODO
 
 * Modify `CallContext` and remove all usages of `ThreadLocal`, replace with proper context propagation.
