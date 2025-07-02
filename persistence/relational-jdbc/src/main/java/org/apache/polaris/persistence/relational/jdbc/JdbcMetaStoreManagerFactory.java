@@ -83,10 +83,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   protected JdbcMetaStoreManagerFactory() {}
 
   protected PrincipalSecretsGenerator secretsGenerator(
-      RealmContext realmContext, @Nullable RootCredentialsSet rootCredentialsSet) {
+      String realmId, @Nullable RootCredentialsSet rootCredentialsSet) {
     if (rootCredentialsSet != null) {
-      return PrincipalSecretsGenerator.bootstrap(
-          realmContext.getRealmIdentifier(), rootCredentialsSet);
+      return PrincipalSecretsGenerator.bootstrap(realmId, rootCredentialsSet);
     } else {
       return PrincipalSecretsGenerator.RANDOM_SECRETS;
     }
@@ -100,17 +99,18 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       DatasourceOperations datasourceOperations,
       RealmContext realmContext,
       RootCredentialsSet rootCredentialsSet) {
+    String realmId = realmContext.getRealmIdentifier();
     sessionSupplierMap.put(
-        realmContext.getRealmIdentifier(),
+        realmId,
         () ->
             new JdbcBasePersistenceImpl(
                 datasourceOperations,
-                secretsGenerator(realmContext, rootCredentialsSet),
+                secretsGenerator(realmId, rootCredentialsSet),
                 storageIntegrationProvider,
-                realmContext.getRealmIdentifier()));
+                realmId));
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-    metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
+    metaStoreManagerMap.put(realmId, metaStoreManager);
   }
 
   public DatasourceOperations getDatasourceOperations() {
