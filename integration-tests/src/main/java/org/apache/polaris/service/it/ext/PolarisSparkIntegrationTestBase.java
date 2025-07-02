@@ -165,8 +165,7 @@ public abstract class PolarisSparkIntegrationTestBase {
   }
 
   protected SparkSession buildSparkSession() {
-    return SparkSessionBuilder.withTestDefaults()
-        .withS3MockContainer()
+    return SparkSessionBuilder.buildWithTestDefaults()
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .addCatalog(

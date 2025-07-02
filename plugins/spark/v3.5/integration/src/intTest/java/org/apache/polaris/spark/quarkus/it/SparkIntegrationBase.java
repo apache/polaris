@@ -136,8 +136,7 @@ public abstract class SparkIntegrationBase {
   }
 
   protected SparkSession buildSparkSession() {
-    return SparkSessionBuilder.withTestDefaults()
-        .withS3MockContainer()
+    return SparkSessionBuilder.buildWithTestDefaults()
         .withExtensions(
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
         .withConfig(

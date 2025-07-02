@@ -27,8 +27,7 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
   /** Initialize the spark catalog to use the iceberg spark catalog. */
   @Override
   protected SparkSession buildSparkSession() {
-    return SparkSessionBuilder.withTestDefaults()
-        .withS3MockContainer()
+    return SparkSessionBuilder.buildWithTestDefaults()
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .createSession();

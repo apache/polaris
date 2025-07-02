@@ -33,12 +33,134 @@ import org.apache.spark.sql.SparkSession;
  * <pre>
  * SparkSession session = SparkSessionBuilder
  *     .withTestDefaults()
- *     .addCatalog("catalog1", CatalogType.ICEBERG, endpoints, token)
- *     .addCatalog("catalog2", CatalogType.ICEBERG, endpoints, token)
+ *     .addCatalog("catalog1", "org.apache.iceberg.spark.SparkCatalog", endpoints, token)
+ *     .addCatalog("catalog2", "org.apache.polaris.spark.SparkCatalog", endpoints, token)
  *     .createSession();
  * </pre>
  */
 public class SparkSessionBuilder {
+  private final SparkSession.Builder builder;
+  private final List<CatalogConfig> catalogs = new ArrayList<>();
+  private final List<ConfigPair> additionalConfigs = new ArrayList<>();
+
+  private String extensions = "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions";
+  private URI warehouseDir;
+
+  private SparkSessionBuilder(SparkSession.Builder builder) {
+    this.builder = builder;
+  }
+
+  /**
+   * Create a SparkSessionBuilder with common test defaults
+   *
+   * @return new builder instance with test defaults
+   */
+  public static SparkSessionBuilder buildWithTestDefaults() {
+    // local master
+    var builder = SparkSession.builder();
+    builder.master(String.format("local[%d]", 1));
+    // disable UI
+    builder.config("spark.ui.showConsoleProgress", "false");
+    builder.config("spark.ui.enabled", "false");
+
+    var sparkSessionbuilder = new SparkSessionBuilder(builder);
+    sparkSessionbuilder.withS3MockContainer();
+    return sparkSessionbuilder;
+  }
+
+  private void withS3MockContainer() {
+    withConfig("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .withConfig(
+            "spark.hadoop.fs.s3.aws.credentials.provider",
+            "org.apache.hadoop.fs.s3.TemporaryAWSCredentialsProvider")
+        .withConfig("spark.hadoop.fs.s3.access.key", "foo")
+        .withConfig("spark.hadoop.fs.s3.secret.key", "bar");
+  }
+
+  public SparkSessionBuilder withWarehouse(URI warehouseDir) {
+    this.warehouseDir = warehouseDir;
+    return this;
+  }
+
+  public SparkSessionBuilder withExtensions(String extensions) {
+    this.extensions = extensions;
+    return this;
+  }
+
+  public SparkSessionBuilder addCatalog(
+      String catalogName, String catalogType, PolarisApiEndpoints endpoints, String token) {
+    this.catalogs.add(
+        new CatalogConfig(catalogName, catalogType, endpoints, token, new ArrayList<>()));
+    return this;
+  }
+
+  public SparkSessionBuilder withConfig(String key, String value) {
+    this.additionalConfigs.add(new ConfigPair(key, value));
+    return this;
+  }
+
+  public SparkSession createSession() {
+    if (extensions != null) {
+      builder.config("spark.sql.extensions", extensions);
+    }
+
+    if (warehouseDir != null) {
+      builder.config("spark.sql.warehouse.dir", warehouseDir.toString());
+    }
+
+    // Apply catalog configurations
+    applyCatalogConfigurations();
+
+    // Apply additional configurations
+    applyAdditionalConfigurations();
+
+    return builder.getOrCreate();
+  }
+
+  private void applyCatalogConfigurations() {
+    for (CatalogConfig catalog : catalogs) {
+      applySingleCatalogConfig(catalog);
+    }
+  }
+
+  private void applySingleCatalogConfig(CatalogConfig catalog) {
+    // Basic catalog configuration
+    builder
+        .config(String.format("spark.sql.catalog.%s", catalog.catalogName), catalog.catalogType)
+        .config(String.format("spark.sql.catalog.%s.type", catalog.catalogName), "rest")
+        .config(
+            String.format("spark.sql.catalog.%s.warehouse", catalog.catalogName),
+            catalog.catalogName)
+        .config(
+            String.format("spark.sql.catalog.%s.scope", catalog.catalogName), "PRINCIPAL_ROLE:ALL");
+
+    // Add endpoint configuration
+    Preconditions.checkNotNull(catalog.endpoints, "endpoints is required");
+    builder
+        .config(
+            String.format("spark.sql.catalog.%s.uri", catalog.catalogName),
+            catalog.endpoints.catalogApiEndpoint().toString())
+        .config(
+            String.format("spark.sql.catalog.%s.header.realm", catalog.catalogName),
+            catalog.endpoints.realmId());
+
+    // Add token configuration
+    if (catalog.token != null) {
+      builder.config(
+          String.format("spark.sql.catalog.%s.token", catalog.catalogName), catalog.token);
+    }
+
+    // Add catalog-specific configurations
+    for (ConfigPair config : catalog.catalogSpecificConfigs) {
+      builder.config(config.key, config.value);
+    }
+  }
+
+  private void applyAdditionalConfigurations() {
+    for (ConfigPair config : additionalConfigs) {
+      builder.config(config.key, config.value);
+    }
+  }
 
   private static class ConfigPair {
     final String key;
@@ -71,155 +193,5 @@ public class SparkSessionBuilder {
       this.catalogSpecificConfigs =
           catalogSpecificConfigs != null ? catalogSpecificConfigs : new ArrayList<>();
     }
-  }
-
-  private final SparkSession.Builder builder;
-  private final List<CatalogConfig> catalogs = new ArrayList<>();
-  private final List<ConfigPair> additionalConfigs = new ArrayList<>();
-
-  private String extensions = "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions";
-  private URI warehouseDir;
-  private boolean includeDeltaCatalogConfig = false;
-
-  private SparkSessionBuilder(SparkSession.Builder builder) {
-    this.builder = builder;
-  }
-
-  /**
-   * Create a SparkSessionBuilder with common test defaults: local master and disabled UI.
-   *
-   * @return new builder instance with test defaults
-   */
-  public static SparkSessionBuilder withTestDefaults() {
-    // local master
-    var sparkSessionBuilder = SparkSession.builder();
-    sparkSessionBuilder.master(String.format("local[%d]", 1));
-    // disable UI
-    sparkSessionBuilder.config("spark.ui.showConsoleProgress", "false");
-    sparkSessionBuilder.config("spark.ui.enabled", "false");
-
-    return new SparkSessionBuilder(sparkSessionBuilder);
-  }
-
-  public SparkSessionBuilder withS3MockContainer() {
-    return withConfig("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .withConfig(
-            "spark.hadoop.fs.s3.aws.credentials.provider",
-            "org.apache.hadoop.fs.s3.TemporaryAWSCredentialsProvider")
-        .withConfig("spark.hadoop.fs.s3.access.key", "foo")
-        .withConfig("spark.hadoop.fs.s3.secret.key", "bar");
-  }
-
-  public SparkSessionBuilder withWarehouse(URI warehouseDir) {
-    this.warehouseDir = warehouseDir;
-    return this;
-  }
-
-  public SparkSessionBuilder withExtensions(String extensions) {
-    this.extensions = extensions;
-    return this;
-  }
-
-  public SparkSessionBuilder addCatalog(
-      String catalogName, String catalogType, PolarisApiEndpoints endpoints, String token) {
-    this.catalogs.add(
-        new CatalogConfig(catalogName, catalogType, endpoints, token, new ArrayList<>()));
-    return this;
-  }
-
-  public SparkSessionBuilder withConfig(String key, String value) {
-    this.additionalConfigs.add(new ConfigPair(key, value));
-    return this;
-  }
-
-  public SparkSession createSession() {
-    return build().getOrCreate();
-  }
-
-  /**
-   * Build the underlying SparkSession.Builder with all configurations applied. Use this if you need
-   * to do additional configuration before creating the session.
-   *
-   * @return configured SparkSession.Builder
-   */
-  public SparkSession.Builder build() {
-    SparkSession.Builder configuredBuilder = builder;
-
-    // Apply core configurations
-    builder.config("spark.sql.extensions", extensions);
-
-    // Apply catalog configurations
-    configuredBuilder = applyCatalogConfigurations(configuredBuilder);
-
-    // Apply additional configurations
-    configuredBuilder = applyAdditionalConfigurations(configuredBuilder);
-
-    return configuredBuilder;
-  }
-
-  private SparkSession.Builder applyDeltaConfig(SparkSession.Builder builder) {
-    if (includeDeltaCatalogConfig) {
-      builder =
-          builder.config(
-              "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog");
-    }
-    return builder;
-  }
-
-  private SparkSession.Builder applyWarehouseConfig(SparkSession.Builder builder) {
-    if (warehouseDir != null) {
-      builder = builder.config("spark.sql.warehouse.dir", warehouseDir.toString());
-    }
-    return builder;
-  }
-
-  private SparkSession.Builder applyCatalogConfigurations(SparkSession.Builder builder) {
-    for (CatalogConfig catalog : catalogs) {
-      applySingleCatalogConfig(builder, catalog);
-    }
-    return builder;
-  }
-
-  private SparkSession.Builder applySingleCatalogConfig(
-      SparkSession.Builder builder, CatalogConfig catalog) {
-    // Basic catalog configuration
-    builder
-        .config(String.format("spark.sql.catalog.%s", catalog.catalogName), catalog.catalogType)
-        .config(String.format("spark.sql.catalog.%s.type", catalog.catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.warehouse", catalog.catalogName),
-            catalog.catalogName)
-        .config(
-            String.format("spark.sql.catalog.%s.scope", catalog.catalogName), "PRINCIPAL_ROLE:ALL");
-
-    // Add endpoint configuration
-    Preconditions.checkNotNull(catalog.endpoints, "endpoints is required");
-    builder
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalog.catalogName),
-            catalog.endpoints.catalogApiEndpoint().toString())
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalog.catalogName),
-            catalog.endpoints.realmId());
-
-    // Add token configuration
-    if (catalog.token != null) {
-      builder.config(
-          String.format("spark.sql.catalog.%s.token", catalog.catalogName), catalog.token);
-    }
-
-    // Add catalog-specific configurations
-    for (ConfigPair config : catalog.catalogSpecificConfigs) {
-      builder.config(config.key, config.value);
-    }
-
-    return builder;
-  }
-
-  private SparkSession.Builder applyAdditionalConfigurations(SparkSession.Builder builder) {
-    for (ConfigPair config : additionalConfigs) {
-      builder = builder.config(config.key, config.value);
-    }
-    return builder;
   }
 }
