@@ -39,7 +39,7 @@ import org.apache.polaris.core.secrets.UserSecretReference;
 @JsonSubTypes({
   @JsonSubTypes.Type(value = OAuthClientCredentialsParametersDpo.class, name = "1"),
   @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
-  @JsonSubTypes.Type(value = NoneAuthenticationParametersDpo.class, name = "3"),
+  @JsonSubTypes.Type(value = ImplicitAuthenticationParametersDpo.class, name = "3"),
 })
 public abstract class AuthenticationParametersDpo implements IcebergCatalogPropertiesProvider {
 
@@ -82,8 +82,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
             new BearerAuthenticationParametersDpo(
                 secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
         break;
-      case NONE:
-        config = new NoneAuthenticationParametersDpo();
+      case IMPLICIT:
+        config = new ImplicitAuthenticationParametersDpo();
         break;
       default:
         throw new IllegalStateException(

@@ -704,7 +704,7 @@ public class PolarisAdminService {
   private boolean requiresSecretReferenceExtraction(
       @NotNull ConnectionConfigInfo connectionConfigInfo) {
     return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
-        != AuthenticationParameters.AuthenticationTypeEnum.NONE;
+        != AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT;
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
@@ -768,8 +768,8 @@ public class PolarisAdminService {
           // Support no-auth catalog federation only when the feature is enabled.
           checkState(
               supportedAuthenticationTypes.contains(
-                  AuthenticationParameters.AuthenticationTypeEnum.NONE.name()),
-              "Authentication-less catalog federation is not supported.");
+                  AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
+              "Implicit authentication based catalog federation is not supported.");
         }
         entity =
             new CatalogEntity.Builder(entity)
