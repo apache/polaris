@@ -133,7 +133,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testNoneAuthenticationParameters() throws JsonProcessingException {
+  void testImplicitAuthenticationParameters() throws JsonProcessingException {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
@@ -162,7 +162,7 @@ public class ConnectionConfigInfoDpoTest {
             + "  \"uri\": \"file:///hadoop-catalog/warehouse\","
             + "  \"warehouse\": \"hadoop-catalog\","
             + "  \"authenticationParameters\": {"
-            + "    \"authenticationType\": \"NONE\""
+            + "    \"authenticationType\": \"IMPLICIT\""
             + "  }"
             + "}";
     Assertions.assertEquals(
