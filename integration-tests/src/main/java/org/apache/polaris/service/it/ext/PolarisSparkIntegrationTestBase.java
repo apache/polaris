@@ -19,7 +19,6 @@
 package org.apache.polaris.service.it.ext;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
-import static org.apache.polaris.service.it.ext.SparkSessionBuilder.CatalogType.ICEBERG;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import java.io.IOException;
@@ -168,10 +167,10 @@ public abstract class PolarisSparkIntegrationTestBase {
   protected SparkSession buildSparkSession() {
     return SparkSessionBuilder.withTestDefaults()
         .withS3MockContainer()
-        .withExtensions(SparkSessionBuilder.ExtensionType.ICEBERG_ONLY)
         .withWarehouse(warehouseDir)
-        .addCatalog(catalogName, ICEBERG, endpoints, sparkToken)
-        .addCatalog(externalCatalogName, ICEBERG, endpoints, sparkToken)
+        .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .addCatalog(
+            externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .createSession();
   }
 

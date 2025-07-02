@@ -29,9 +29,8 @@ public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
   protected SparkSession buildSparkSession() {
     return SparkSessionBuilder.withTestDefaults()
         .withS3MockContainer()
-        .withExtensions(SparkSessionBuilder.ExtensionType.ICEBERG_ONLY)
         .withWarehouse(warehouseDir)
-        .addCatalog(catalogName, SparkSessionBuilder.CatalogType.ICEBERG, endpoints, sparkToken)
+        .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .createSession();
   }
 }

@@ -138,10 +138,12 @@ public abstract class SparkIntegrationBase {
   protected SparkSession buildSparkSession() {
     return SparkSessionBuilder.withTestDefaults()
         .withS3MockContainer()
-        .withExtensions(SparkSessionBuilder.ExtensionType.ICEBERG_AND_DELTA)
-        .withDeltaCatalogConfig()
+        .withExtensions(
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
+        .withConfig(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
         .withWarehouse(warehouseDir)
-        .addCatalog(catalogName, SparkSessionBuilder.CatalogType.POLARIS, endpoints, sparkToken)
+        .addCatalog(catalogName, "org.apache.polaris.spark.SparkCatalog", endpoints, sparkToken)
         .createSession();
   }
 
