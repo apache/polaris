@@ -53,11 +53,6 @@ data:
     {{- $_ = set $map "polaris.persistence.eclipselink.persistence-unit" .Values.persistence.eclipseLink.persistenceUnit -}}
     {{- $_ = set $map "polaris.persistence.eclipselink.configuration-file" (printf "%s/persistence.xml" .Values.image.configDir ) -}}
     {{- end -}}
-    {{- if eq .Values.persistence.type "relational-jdbc" -}}
-    {{- if .Values.persistence.relationalJdbc.dbKind -}}
-    {{- $_ = set $map "quarkus.datasource.db-kind" .Values.persistence.relationalJdbc.dbKind -}}
-    {{- end -}}
-    {{- end -}}
 
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}

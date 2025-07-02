@@ -1022,7 +1022,7 @@ tests:
 
   - it: should set relational-jdbc persistence environment variables
     set:
-      persistence: { type: "relational-jdbc", dbKind: postgres, relationalJdbc: { secret: { name: "polaris-persistence" } } }
+      persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
