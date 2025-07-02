@@ -488,14 +488,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
-
   @Test
   public void testPropertiesUpdateConcurrentException() {
     PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
     PolarisPassthroughResolutionView passthroughView =
-            new PolarisPassthroughResolutionView(
-                    polarisContext, entityManager, securityContext, CATALOG_NAME);
-    IcebergCatalog catalog = new IcebergCatalog(
+        new PolarisPassthroughResolutionView(
+            polarisContext, entityManager, securityContext, CATALOG_NAME);
+    IcebergCatalog catalog =
+        new IcebergCatalog(
             entityManager,
             spyMetaStore,
             polarisContext,
@@ -505,10 +505,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             fileIOFactory,
             polarisEventListener);
     catalog.createNamespace(NS);
-    doReturn(new EntityResult(ENTITY_NOT_FOUND,""))
-            .when(spyMetaStore)
-            .updateEntityPropertiesIfNotChanged(any(), any(), any());
-    assertThrows(CommitFailedException.class, () -> catalog.setProperties(NS, ImmutableMap.of("a", "b")));
+    doReturn(new EntityResult(ENTITY_NOT_FOUND, ""))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+    assertThrows(
+        CommitFailedException.class, () -> catalog.setProperties(NS, ImmutableMap.of("a", "b")));
     assertThrows(CommitFailedException.class, () -> catalog.removeProperties(NS, Set.of("a", "b")));
   }
 
