@@ -35,6 +35,7 @@ plugins {
   alias(libs.plugins.jetbrains.changelog)
   // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
   alias(libs.plugins.jandex) apply false
+  alias(libs.plugins.use.python)
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -237,4 +238,23 @@ changelog {
     )
   )
   version.set(provider { project.version.toString() })
+}
+
+python {
+  installVirtualenv = true
+  pip("ruff:${libs.versions.ruff.get()}")
+}
+
+tasks.register<Exec>("ruffFormat") {
+  description = "Run ruff format for python code"
+
+  commandLine("/bin/bash", "-c", "./.gradle/python/bin/ruff format client/python")
+  dependsOn("pipInstall")
+}
+
+tasks.register<Exec>("ruffCheck") {
+  description = "Run ruff check for python code"
+
+  commandLine("/bin/bash", "-c", "./.gradle/python/bin/ruff check --fix client/python")
+  dependsOn("pipInstall")
 }
