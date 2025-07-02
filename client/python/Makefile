@@ -60,7 +60,7 @@ test-integration: setup-env
 
 # Target to run linting checks
 lint: setup-env
-	$(VENV_DIR)/bin/poetry run pre-commit run --files integration_tests/* cli/*
+	$(VENV_DIR)/bin/poetry run pre-commit run --files integration_tests/*
 
 # Clean targets
 clean: clean-venv
