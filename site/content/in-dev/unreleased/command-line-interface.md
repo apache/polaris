@@ -384,7 +384,8 @@ input: polaris principals update --help
 options:
   update
     Named arguments:
-      --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+      --set-property  A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+      --remove-property  A key to remove from a properties map. If the key already does not exist then no action is takn for the specified key. If properties are also being set in the same update command then the list of removals is applied last. Multiple can be provided by specifying this option more than once
     Positional arguments:
       principal
 ```
@@ -523,7 +524,8 @@ input: polaris principal-roles update --help
 options:
   update
     Named arguments:
-      --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+      --set-property  A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+      --remove-property  A key to remove from a properties map. If the key already does not exist then no action is takn for the specified key. If properties are also being set in the same update command then the list of removals is applied last. Multiple can be provided by specifying this option more than once
     Positional arguments:
       principal_role
 ```
@@ -693,7 +695,8 @@ options:
   update
     Named arguments:
       --catalog  The name of an existing catalog
-      --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+      --set-property  A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+      --remove-property  A key to remove from a properties map. If the key already does not exist then no action is takn for the specified key. If properties are also being set in the same update command then the list of removals is applied last. Multiple can be provided by specifying this option more than once
     Positional arguments:
       catalog_role
 ```
