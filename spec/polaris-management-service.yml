@@ -157,6 +157,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
+              example:
+                principal:
+                  name: "alice"
+                  properties:
+                    department: "engineering"
+                credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
