@@ -86,10 +86,8 @@ class Parser(object):
                     kwargs["default"] = arg.default
 
                 if arg.type is bool:
-                    del kwargs["type"]
-                    parser.add_argument(
-                        arg.get_flag_name(), **kwargs, action="store_true"
-                    )
+                    del kwargs['type']
+                    parser.add_argument(arg.get_flag_name(), **kwargs, action='store_true')
                 elif arg.allow_repeats:
                     parser.add_argument(arg.get_flag_name(), **kwargs, action="append")
                 else:
@@ -156,8 +154,8 @@ class TreeHelpParser(argparse.ArgumentParser):
         if help_index < float("inf"):
             tree_str = self._get_tree_str(args[:help_index])
             if tree_str:
-                print(f"input: polaris {' '.join(args)}")
-                print("options:")
+                print(f'input: polaris {" ".join(args)}')
+                print('options:')
                 print(tree_str)
                 print("\n")
                 self.print_usage()

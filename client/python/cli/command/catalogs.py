@@ -19,23 +19,17 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from pydantic import StrictStr
+from pydantic import StrictStr, SecretStr
 
 from cli.command import Command
-from cli.constants import StorageType, CatalogType, Subcommands, Arguments
+from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subcommands, Arguments, AuthenticationType, \
+    ServiceIdentityType
 from cli.options.option_tree import Argument
-from polaris.management import (
-    PolarisDefaultApi,
-    CreateCatalogRequest,
-    UpdateCatalogRequest,
-    StorageConfigInfo,
-    ExternalCatalog,
-    AwsStorageConfigInfo,
-    AzureStorageConfigInfo,
-    GcpStorageConfigInfo,
-    PolarisCatalog,
-    CatalogProperties,
-)
+from polaris.management import PolarisDefaultApi, CreateCatalogRequest, UpdateCatalogRequest, \
+    StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
+    PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, \
+    OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
+    IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 
 
 @dataclass
@@ -68,19 +62,56 @@ class CatalogsCommand(Command):
     properties: Dict[str, StrictStr]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
+    hadoop_warehouse: str
+    iceberg_remote_catalog_name: str
+    catalog_connection_type: str
+    catalog_authentication_type: str
+    catalog_service_identity_type: str
+    catalog_service_identity_iam_arn: str
+    catalog_uri: str
+    catalog_token_uri: str
+    catalog_client_id: str
+    catalog_client_secret: str
+    catalog_client_scopes: List[str]
+    catalog_bearer_token: str
+    catalog_role_arn: str
+    catalog_role_session_name: str
+    catalog_external_id: str
+    catalog_signing_region: str
+    catalog_signing_name: str
 
     def validate(self):
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if not self.storage_type:
-                raise Exception(
-                    f"Missing required argument:"
-                    f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
-                )
-            if not self.default_base_location:
-                raise Exception(
-                    f"Missing required argument:"
-                    f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
-                )
+            if self.catalog_type != CatalogType.EXTERNAL.value:
+                if not self.storage_type:
+                    raise Exception(f'Missing required argument:'
+                                    f' {Argument.to_flag_name(Arguments.STORAGE_TYPE)}')
+                if not self.default_base_location:
+                    raise Exception(f'Missing required argument:'
+                                    f' {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}')
+            else:
+                if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+                    if not self.catalog_token_uri or not self.catalog_client_id \
+                            or not self.catalog_client_secret or len(self.catalog_client_scopes) == 0:
+                        raise Exception(f"Authentication type 'OAUTH' requires"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_TOKEN_URI)},"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_ID)},"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_SECRET)},"
+                                f" and at least one {Argument.to_flag_name(Arguments.CATALOG_CLIENT_SCOPE)}.")
+                elif self.catalog_authentication_type == AuthenticationType.BEARER.value:
+                    if not self.catalog_bearer_token:
+                        raise Exception(f"Missing required argument for authentication type 'BEARER':"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}")
+                elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
+                    if not self.catalog_role_arn or not self.catalog_signing_region:
+                        raise Exception(f"Authentication type 'SIGV4 requires"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
+                                f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}")
+
+        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
+            if not self.catalog_service_identity_iam_arn:
+                        raise Exception(f"Missing required argument for service identity type 'AWS_IAM':"
+                                f" {Argument.to_flag_name(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN)}")
 
         if self.storage_type == StorageType.S3.value:
             if not self.role_arn:
@@ -166,19 +197,81 @@ class CatalogsCommand(Command):
             )
         return config
 
+    def _build_connection_config_info(self):
+        if self.catalog_type != CatalogType.EXTERNAL.value:
+            return None
+
+        auth_params = None
+        if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
+            auth_params = OAuthClientCredentialsParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
+                token_uri=self.catalog_token_uri,
+                client_id=self.catalog_client_id,
+                client_secret=SecretStr(self.catalog_client_secret),
+                scopes=self.catalog_client_scopes
+            )
+        elif self.catalog_authentication_type == AuthenticationType.BEARER.value:
+            auth_params = BearerAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
+                bearer_token=SecretStr(self.catalog_bearer_token)
+            )
+        elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
+            auth_params = SigV4AuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper(),
+                role_arn=self.catalog_role_arn,
+                role_session_name=self.catalog_role_session_name,
+                external_id=self.catalog_external_id,
+                signing_region=self.catalog_signing_region,
+                signing_name=self.catalog_signing_name,
+            )
+        elif self.catalog_authentication_type is not None:
+            raise Exception("Unknown authentication type:", self.catalog_authentication_type)
+
+        service_identity = None
+        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM:
+            service_identity = AwsIamServiceIdentityInfo(
+                identity_type=self.catalog_service_identity_type.upper(),
+                iam_arn=self.catalog_service_identity_iam_arn
+            )
+        elif self.catalog_service_identity_type is not None:
+            raise Exception("Unknown service identity type:", self.catalog_service_identity_type)
+
+        config = None
+        if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
+            config = HadoopConnectionConfigInfo(
+                connection_type=self.catalog_connection_type.upper(),
+                uri=self.catalog_uri,
+                authentication_parameters=auth_params,
+                service_identity=service_identity,
+                warehouse=self.hadoop_warehouse
+            )
+        elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
+            config = IcebergRestConnectionConfigInfo(
+                connection_type=self.catalog_connection_type.upper().replace('-', '_'),
+                uri=self.catalog_uri,
+                authentication_parameters=auth_params,
+                service_identity=service_identity,
+                remote_catalog_name=self.iceberg_remote_catalog_name
+            )
+        elif self.catalog_connection_type is not None:
+            raise Exception("Unknown catalog connection type:", self.catalog_connection_type)
+        return config
+
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
-            config = self._build_storage_config_info()
+            storage_config = self._build_storage_config_info()
+            connection_config = self._build_connection_config_info()
             if self.catalog_type == CatalogType.EXTERNAL.value:
                 request = CreateCatalogRequest(
                     catalog=ExternalCatalog(
                         type=self.catalog_type.upper(),
                         name=self.catalog_name,
-                        storage_config_info=config,
+                        storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
-                            additional_properties=self.properties,
+                            additional_properties=self.properties
                         ),
+                        connection_config_info=connection_config
                     )
                 )
             else:
@@ -186,11 +279,12 @@ class CatalogsCommand(Command):
                     catalog=PolarisCatalog(
                         type=self.catalog_type.upper(),
                         name=self.catalog_name,
-                        storage_config_info=config,
+                        storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
-                            additional_properties=self.properties,
+                            additional_properties=self.properties
                         ),
+                        connection_config_info=connection_config
                     )
                 )
             api.create_catalog(request)

@@ -26,12 +26,7 @@ from pydantic import StrictStr
 from cli.command import Command
 from cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from cli.options.option_tree import Argument
-from polaris.catalog import (
-    IcebergCatalogAPI,
-    CreateNamespaceRequest,
-    ApiClient,
-    Configuration,
-)
+from polaris.catalog import IcebergCatalogAPI, CreateNamespaceRequest, ApiClient, Configuration
 from polaris.management import PolarisDefaultApi
 
 

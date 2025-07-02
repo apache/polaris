@@ -48,6 +48,33 @@ class PrincipalType(Enum):
     SERVICE = "service"
 
 
+class CatalogConnectionType(Enum):
+    """
+    Represents a ConnectionType for an EXTERNAL catalog -- see ConnectionConfigInfo in the spec
+    """
+
+    HADOOP = 'hadoop'
+    ICEBERG = 'iceberg-rest'
+
+
+class AuthenticationType(Enum):
+    """
+    Represents a AuthenticationType for an EXTERNAL catalog -- see AuthenticationParameters in the spec
+    """
+
+    OAUTH = 'oauth'
+    BEARER = 'bearer'
+    SIGV4 = 'sigv4'
+
+
+class ServiceIdentityType(Enum):
+    """
+    Represents a Service Identity Type for an EXTERNAL catalog -- see ServiceIdentityInfo in the spec
+    """
+
+    AWS_IAM = 'aws_iam'
+
+
 class Commands:
     """
     Represents the various commands available in the CLI
@@ -102,40 +129,57 @@ class Arguments:
     These values should be snake_case, but they will get mapped to kebab-case in `Parser.parse`
     """
 
-    TYPE = "type"
-    DEFAULT_BASE_LOCATION = "default_base_location"
-    STORAGE_TYPE = "storage_type"
-    ALLOWED_LOCATION = "allowed_location"
-    ROLE_ARN = "role_arn"
-    EXTERNAL_ID = "external_id"
-    USER_ARN = "user_arn"
-    TENANT_ID = "tenant_id"
-    MULTI_TENANT_APP_NAME = "multi_tenant_app_name"
-    CONSENT_URL = "consent_url"
-    SERVICE_ACCOUNT = "service_account"
-    CATALOG_ROLE = "catalog_role"
-    CATALOG = "catalog"
-    PRINCIPAL = "principal"
-    CLIENT_ID = "client_id"
-    PRINCIPAL_ROLE = "principal_role"
-    PROPERTY = "property"
-    SET_PROPERTY = "set_property"
-    REMOVE_PROPERTY = "remove_property"
-    PRIVILEGE = "privilege"
-    NAMESPACE = "namespace"
-    TABLE = "table"
-    VIEW = "view"
-    CASCADE = "cascade"
-    CLIENT_SECRET = "client_secret"
-    ACCESS_TOKEN = "access_token"
-    HOST = "host"
-    PORT = "port"
-    BASE_URL = "base_url"
-    PARENT = "parent"
-    LOCATION = "location"
-    REGION = "region"
-    PROFILE = "profile"
-    PROXY = "proxy"
+    TYPE = 'type'
+    DEFAULT_BASE_LOCATION = 'default_base_location'
+    STORAGE_TYPE = 'storage_type'
+    ALLOWED_LOCATION = 'allowed_location'
+    ROLE_ARN = 'role_arn'
+    EXTERNAL_ID = 'external_id'
+    USER_ARN = 'user_arn'
+    TENANT_ID = 'tenant_id'
+    MULTI_TENANT_APP_NAME = 'multi_tenant_app_name'
+    CONSENT_URL = 'consent_url'
+    SERVICE_ACCOUNT = 'service_account'
+    CATALOG_ROLE = 'catalog_role'
+    CATALOG = 'catalog'
+    PRINCIPAL = 'principal'
+    CLIENT_ID = 'client_id'
+    PRINCIPAL_ROLE = 'principal_role'
+    PROPERTY = 'property'
+    SET_PROPERTY = 'set_property'
+    REMOVE_PROPERTY = 'remove_property'
+    PRIVILEGE = 'privilege'
+    NAMESPACE = 'namespace'
+    TABLE = 'table'
+    VIEW = 'view'
+    CASCADE = 'cascade'
+    CLIENT_SECRET = 'client_secret'
+    ACCESS_TOKEN = 'access_token'
+    HOST = 'host'
+    PORT = 'port'
+    BASE_URL = 'base_url'
+    PARENT = 'parent'
+    LOCATION = 'location'
+    REGION = 'region'
+    PROFILE = 'profile'
+    PROXY = 'proxy'
+    HADOOP_WAREHOUSE = 'hadoop_warehouse'
+    ICEBERG_REMOTE_CATALOG_NAME = 'iceberg_remote_catalog_name'
+    CATALOG_CONNECTION_TYPE = 'catalog_connection_type'
+    CATALOG_AUTHENTICATION_TYPE = 'catalog_authentication_type'
+    CATALOG_SERVICE_IDENTITY_TYPE = 'catalog_service_identity_type'
+    CATALOG_SERVICE_IDENTITY_IAM_ARN = 'catalog_service_identity_iam_arn'
+    CATALOG_URI = 'catalog_uri'
+    CATALOG_TOKEN_URI = 'catalog_token_uri'
+    CATALOG_CLIENT_ID = 'catalog_client_id'
+    CATALOG_CLIENT_SECRET = 'catalog_client_secret'
+    CATALOG_CLIENT_SCOPE = 'catalog_client_scope'
+    CATALOG_BEARER_TOKEN = 'catalog_bearer_token'
+    CATALOG_ROLE_ARN = 'catalog_role_arn'
+    CATALOG_ROLE_SESSION_NAME = 'catalog_role_session_name'
+    CATALOG_EXTERNAL_ID = 'catalog_external_id'
+    CATALOG_SIGNING_REGION = 'catalog_signing_region'
+    CATALOG_SIGNING_NAME = 'catalog_signing_name'
 
 
 class Hints:
@@ -191,6 +235,41 @@ class Hints:
 
         class Update:
             DEFAULT_BASE_LOCATION = "A new default base location for the catalog"
+
+        class External:
+            CATALOG_CONNECTION_TYPE = 'The type of external catalog in [ICEBERG, HADOOP].'
+            CATALOG_AUTHENTICATION_TYPE = 'The type of authentication in [OAUTH, BEARER, SIGV4]'
+            CATALOG_SERVICE_IDENTITY_TYPE = 'The type of service identity in [AWS_IAM]'
+
+            CATALOG_SERVICE_IDENTITY_IAM_ARN = ('When using the AWS_IAM service identity type, this is the ARN '
+                                                'of the IAM user or IAM role Polaris uses to assume roles and '
+                                                'then access external resources.')
+
+            CATALOG_URI = 'The URI of the external catalog'
+            HADOOP_WAREHOUSE = 'The warehouse to use when federating to a HADOOP catalog'
+            ICEBERG_REMOTE_CATALOG_NAME = 'The remote catalog name when federating to an Iceberg REST catalog'
+
+
+            CATALOG_TOKEN_URI = '(For authentication type OAUTH) Token server URI'
+            CATALOG_CLIENT_ID = '(For authentication type OAUTH) oauth client id'
+            CATALOG_CLIENT_SECRET = '(For authentication type OAUTH) oauth client secret (input-only)'
+            CATALOG_CLIENT_SCOPE = ('(For authentication type OAUTH) oauth scopes to specify when exchanging '
+                                    'for a short-lived access token. Multiple can be provided by specifying'
+                                    ' this option more than once')
+
+            CATALOG_BEARER_TOKEN = '(For authentication type BEARER) Bearer token (input-only)'
+
+            CATALOG_ROLE_ARN = ('(For authentication type SIGV4) The aws IAM role arn assumed by polaris '
+                                'userArn when signing requests')
+            CATALOG_ROLE_SESSION_NAME = ('(For authentication type SIGV4) The role session name to be used '
+                                         'by the SigV4 protocol for signing requests')
+            CATALOG_EXTERNAL_ID = ('(For authentication type SIGV4) An optional external id used to establish '
+                                   'a trust relationship with AWS in the trust policy')
+            CATALOG_SIGNING_REGION = ('(For authentication type SIGV4) Region to be used by the SigV4 protocol '
+                                      'for signing requests')
+            CATALOG_SIGNING_NAME = ('(For authentication type SIGV4) The service name to be used by the SigV4 '
+                                    'protocol for signing requests, the default signing name is "execute-api" '
+                                    'is if not provided')
 
     class Principals:
         class Create:
