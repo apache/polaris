@@ -38,7 +38,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 ### Deprecations
-- Deprecates the `SUPPORTED_CATALOG_CONNECTION_TYPES` and replaces it with `SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES`. 
+- Deprecates the `SUPPORTED_CATALOG_CONNECTION_TYPES` configuration property and replaces it with `SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES`. 
 
 ### Fixes
 
