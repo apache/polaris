@@ -217,21 +217,23 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
 
     adminService.createCatalog(
         new CreateCatalogRequest(
-            toCatalog(new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    polarisContext,
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                    "file://tmp")
-                .build()
-                )));
+            toCatalog(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .setDefaultBaseLocation("file://tmp")
+                    .setStorageConfigurationInfo(
+                        polarisContext,
+                        new FileStorageConfigInfo(
+                            StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                        "file://tmp")
+                    .build())));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

@@ -20,6 +20,7 @@ package org.apache.polaris.service.admin;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.polaris.core.entity.EntityConverter.toNamespace;
+import static org.apache.polaris.core.entity.EntityConverter.toPrincipal;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -982,7 +983,7 @@ public class PolarisAdminService {
           entity.getName());
     }
     return new PrincipalWithCredentials(
-        new PrincipalEntity(principalResult.getPrincipal()).asPrincipal(),
+        toPrincipal(new PrincipalEntity(principalResult.getPrincipal())),
         new PrincipalWithCredentialsCredentials(
             principalResult.getPrincipalSecrets().getPrincipalClientId(),
             principalResult.getPrincipalSecrets().getMainSecret()));
@@ -1101,7 +1102,7 @@ public class PolarisAdminService {
                 currentPrincipalEntity.getId(),
                 currentPrincipalEntity.getType()));
     return new PrincipalWithCredentials(
-        PrincipalEntity.of(newPrincipal).asPrincipal(),
+        toPrincipal(PrincipalEntity.of(newPrincipal)),
         new PrincipalWithCredentialsCredentials(
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }

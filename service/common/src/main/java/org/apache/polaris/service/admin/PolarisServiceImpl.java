@@ -461,7 +461,8 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(
-            toCatalogRole(adminService.updateCatalogRole(catalogName, catalogRoleName, updateRequest)))
+            toCatalogRole(
+                adminService.updateCatalogRole(catalogName, catalogRoleName, updateRequest)))
         .build();
   }
 
