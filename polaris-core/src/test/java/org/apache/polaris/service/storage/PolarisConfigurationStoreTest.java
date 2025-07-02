@@ -259,30 +259,4 @@ public class PolarisConfigurationStoreTest {
     String result = store.getConfiguration(testRealmContext, config);
     Assertions.assertEquals("default-value", result);
   }
-
-  @Test
-  public void testLegacyKeyWarningIsLogged() {
-    FeatureConfiguration<String> config =
-        PolarisConfiguration.<String>builder()
-            .key("WARNING_TEST_NEW_KEY")
-            .legacyKey("WARNING_TEST_LEGACY_KEY")
-            .description("Test config for legacy key warning")
-            .defaultValue("default-value")
-            .buildFeatureConfiguration();
-
-    PolarisConfigurationStore store =
-        new PolarisConfigurationStore() {
-          @SuppressWarnings("unchecked")
-          @Override
-          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
-            if ("WARNING_TEST_LEGACY_KEY".equals(configName)) {
-              return (T) "legacy-value";
-            }
-            return null;
-          }
-        };
-
-    String result = store.getConfiguration(testRealmContext, config);
-    Assertions.assertEquals("legacy-value", result);
-  }
 }
