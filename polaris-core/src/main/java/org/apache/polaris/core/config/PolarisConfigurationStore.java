@@ -99,7 +99,25 @@ public interface PolarisConfigurationStore {
    */
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
-    T result = getConfiguration(realmContext, config.key, config.defaultValue);
+    T result = getConfiguration(realmContext, config.key);
+
+    if (result == null && config.hasLegacyKeys()) {
+      for (String legacyKey : config.legacyKeys) {
+        result = getConfiguration(realmContext, legacyKey);
+        if (result != null) {
+          LOGGER.warn(
+              "Legacy configuration key '{}' is in use. Please use '{}' instead.",
+              legacyKey,
+              config.key);
+          break;
+        }
+      }
+    }
+
+    if (result == null) {
+      result = config.defaultValue;
+    }
+
     return tryCast(config, result);
   }
 

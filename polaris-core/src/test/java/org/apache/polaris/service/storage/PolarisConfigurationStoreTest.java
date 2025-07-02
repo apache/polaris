@@ -19,7 +19,6 @@
 package org.apache.polaris.service.storage;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -54,7 +53,7 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
                 return (T) String.valueOf(c.defaultValue);
@@ -163,9 +162,9 @@ public class PolarisConfigurationStoreTest {
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(
-              @Nonnull RealmContext realmContext, String configName) {
+          public <T> T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
             //noinspection unchecked
             return (T) Map.of("key2", "config-value2").get(configName);
           }
@@ -185,5 +184,105 @@ public class PolarisConfigurationStoreTest {
         "entity-new3", store.getConfiguration(testRealmContext, entity, cfg.apply(3)));
     Assertions.assertEquals(
         "entity-legacy4", store.getConfiguration(testRealmContext, entity, cfg.apply(4)));
+  }
+
+  @Test
+  public void testLegacyKeyLookup() {
+    FeatureConfiguration<String> config =
+        PolarisConfiguration.<String>builder()
+            .key("LEGACY_KEY_TEST_NEW_KEY")
+            .legacyKey("LEGACY_TEST_OLD_KEY_1")
+            .legacyKey("LEGACY_TEST_OLD_KEY_2")
+            .description("Test config with legacy keys")
+            .defaultValue("default-value")
+            .buildFeatureConfiguration();
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            Map<String, String> values = Map.of("LEGACY_TEST_OLD_KEY_1", "legacy-value-1");
+            return (T) values.get(configName);
+          }
+        };
+
+    String result = store.getConfiguration(testRealmContext, config);
+    Assertions.assertEquals("legacy-value-1", result);
+  }
+
+  @Test
+  public void testMainKeyTakesPrecedenceOverLegacyKeys() {
+    FeatureConfiguration<String> config =
+        PolarisConfiguration.<String>builder()
+            .key("PRECEDENCE_TEST_NEW_KEY")
+            .legacyKey("PRECEDENCE_TEST_OLD_KEY")
+            .description("Test config with legacy keys")
+            .defaultValue("default-value")
+            .buildFeatureConfiguration();
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            Map<String, String> values =
+                Map.of(
+                    "PRECEDENCE_TEST_NEW_KEY", "new-value",
+                    "PRECEDENCE_TEST_OLD_KEY", "legacy-value");
+            return (T) values.get(configName);
+          }
+        };
+
+    String result = store.getConfiguration(testRealmContext, config);
+    Assertions.assertEquals("new-value", result);
+  }
+
+  @Test
+  public void testFallbackToDefaultWhenNoKeysFound() {
+    FeatureConfiguration<String> config =
+        PolarisConfiguration.<String>builder()
+            .key("FALLBACK_TEST_NEW_KEY")
+            .legacyKey("FALLBACK_TEST_OLD_KEY")
+            .description("Test config with legacy keys")
+            .defaultValue("default-value")
+            .buildFeatureConfiguration();
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @Override
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            return null;
+          }
+        };
+
+    String result = store.getConfiguration(testRealmContext, config);
+    Assertions.assertEquals("default-value", result);
+  }
+
+  @Test
+  public void testLegacyKeyWarningIsLogged() {
+    FeatureConfiguration<String> config =
+        PolarisConfiguration.<String>builder()
+            .key("WARNING_TEST_NEW_KEY")
+            .legacyKey("WARNING_TEST_LEGACY_KEY")
+            .description("Test config for legacy key warning")
+            .defaultValue("default-value")
+            .buildFeatureConfiguration();
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            if ("WARNING_TEST_LEGACY_KEY".equals(configName)) {
+              return (T) "legacy-value";
+            }
+            return null;
+          }
+        };
+
+    String result = store.getConfiguration(testRealmContext, config);
+    Assertions.assertEquals("legacy-value", result);
   }
 }
