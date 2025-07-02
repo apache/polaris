@@ -177,7 +177,7 @@ public class QuarkusProducers {
 
   @Produces
   @Singleton
-  @Identifier("http-client-s3")
+  @Identifier("aws-sdk-http-client")
   public SdkHttpClient sdkHttpClient(S3AccessConfig config) {
     ApacheHttpClient.Builder httpClient = ApacheHttpClient.builder();
     config.maxHttpConnections().ifPresent(httpClient::maxConnections);
@@ -190,14 +190,15 @@ public class QuarkusProducers {
     return httpClient.build();
   }
 
-  public void closeSdkHttpClient(@Disposes @Identifier("http-client-s3") SdkHttpClient client) {
+  public void closeSdkHttpClient(
+      @Disposes @Identifier("aws-sdk-http-client") SdkHttpClient client) {
     client.close();
   }
 
   @Produces
   @ApplicationScoped
   public StsClientsPool stsClientsPool(
-      @Identifier("http-client-s3") SdkHttpClient httpClient,
+      @Identifier("aws-sdk-http-client") SdkHttpClient httpClient,
       S3AccessConfig config,
       MeterRegistry meterRegistry) {
     return new StsClientsPool(config, httpClient, meterRegistry);
