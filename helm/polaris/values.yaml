@@ -530,11 +530,11 @@ persistence:
     secret:
       # -- The secret name to pull database connection properties from
       name: ~
-      # -- Database username for authentication
+      # -- The secret key holding the database username for authentication
       username: ~
-      # -- Database password for authentication
+      # -- The secret key holding the database password for authentication
       password: ~
-      # -- Database JDBC connection URL
+      # -- The secret key holding the database JDBC connection URL
       jdbcUrl: ~
 
   # -- The configuration for the eclipse-link persistence manager.
