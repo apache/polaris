@@ -44,17 +44,12 @@ public class HudiCatalogUtils {
 
   /**
    * Synchronizes namespace creation to session catalog when Hudi extension is enabled. This ensures
-   * session catalog metadata stays consistent with Polaris catalog for comprehensive Hudi
-   * compatibility.
+   * session catalog metadata stays consistent with Polaris catalog for Hudi compatibility.
    *
    * @param namespace The namespace to create
    * @param metadata The namespace metadata properties
    */
   public static void createNamespace(String[] namespace, Map<String, String> metadata) {
-    if (!PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      return;
-    }
-
     // Sync namespace with filtered metadata to session catalog only when Hudi is enabled
     // This is needed because Hudi table loading uses the spark session catalog
     // to validate namespace existence and access metadata properties.
@@ -92,16 +87,12 @@ public class HudiCatalogUtils {
 
   /**
    * Synchronizes namespace alterations to session catalog when Hudi extension is enabled. Applies
-   * both namespace existence and property changes via SQL commands for Hudi compatibility.
+   * both namespace existence and property changes for Hudi compatibility.
    *
    * @param namespace The namespace to alter
    * @param changes The namespace changes to apply
    */
   public static void alterNamespace(String[] namespace, NamespaceChange... changes) {
-    if (!PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      return;
-    }
-
     // For Hudi compatibility, sync namespace changes to session catalog
     // Apply both namespace existence and property changes via SessionCatalog API
     try {
@@ -153,10 +144,6 @@ public class HudiCatalogUtils {
    * @param metadata The namespace metadata from Polaris catalog
    */
   public static void loadNamespaceMetadata(String[] namespace, Map<String, String> metadata) {
-    if (!PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      return;
-    }
-
     // Check if namespace already exists in session catalog
     try {
       SparkSession spark = SparkSession.active();
@@ -209,10 +196,6 @@ public class HudiCatalogUtils {
    * @param cascade Whether to cascade the drop operation
    */
   public static void dropNamespace(String[] namespace, boolean cascade) {
-    if (!PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      return;
-    }
-
     // Sync namespace drop to session catalog only when Hudi is enabled
     // This maintains consistency between catalogs for Hudi table operations
     try {

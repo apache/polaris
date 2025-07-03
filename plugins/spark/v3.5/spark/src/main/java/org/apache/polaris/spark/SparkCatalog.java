@@ -280,7 +280,9 @@ public class SparkCatalog
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
     Map<String, String> metadata = this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
-    HudiCatalogUtils.loadNamespaceMetadata(namespace, metadata);
+    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
+      HudiCatalogUtils.loadNamespaceMetadata(namespace, metadata);
+    }
     return metadata;
   }
 
@@ -288,21 +290,25 @@ public class SparkCatalog
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
     this.icebergsSparkCatalog.createNamespace(namespace, metadata);
-    HudiCatalogUtils.createNamespace(namespace, metadata);
+    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
+      HudiCatalogUtils.createNamespace(namespace, metadata);
+    }
   }
 
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
     this.icebergsSparkCatalog.alterNamespace(namespace, changes);
-    HudiCatalogUtils.alterNamespace(namespace, changes);
+    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
+      HudiCatalogUtils.alterNamespace(namespace, changes);
+    }
   }
 
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
     boolean result = this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
-    if (result) {
+    if (result && PolarisCatalogUtils.isHudiExtensionEnabled()) {
       HudiCatalogUtils.dropNamespace(namespace, cascade);
     }
     return result;
