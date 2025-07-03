@@ -151,9 +151,6 @@ spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
 EOF
 fi
 
-# spark.jars $POLARIS_CLIENT_JAR
-# spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
-
 cat << EOF >> ${SPARK_CONF}
 
 spark.sql.variable.substitute true
