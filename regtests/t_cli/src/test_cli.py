@@ -16,8 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import contextlib
-import io
 import json
 import os
 import random
@@ -157,7 +155,7 @@ def test_quickstart_flow():
             f'test_cli_catalog_{SALT}',
             '--catalog-role',
             f'test_cli_c_role_{SALT}',
-            f'CATALOG_MANAGE_CONTENT'
+            'CATALOG_MANAGE_CONTENT'
         ), checker=lambda s: s == '')
 
         # User now has catalog access:
@@ -835,7 +833,7 @@ def test_list_privileges():
             f'test_cli_catalog_{SALT}',
             '--catalog-role',
             f'test_cli_c_role_{SALT}',
-            f'TABLE_READ_DATA'
+            'TABLE_READ_DATA'
         ), checker=lambda s: s == '')
         check_output(root_cli(
             'privileges',
@@ -847,7 +845,7 @@ def test_list_privileges():
             f'test_cli_c_role_{SALT}',
             '--namespace',
             f'a_{SALT}',
-            f'TABLE_WRITE_DATA'
+            'TABLE_WRITE_DATA'
         ), checker=lambda s: s == '')
         check_output(root_cli(
             'privileges',
@@ -859,7 +857,7 @@ def test_list_privileges():
             f'test_cli_c_role_{SALT}',
             '--namespace',
             f'a_{SALT}',
-            f'TABLE_LIST'
+            'TABLE_LIST'
         ), checker=lambda s: s == '')
 
         # List privileges:

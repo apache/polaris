@@ -21,7 +21,6 @@
 import os
 from typing import Any, Dict, List, Optional, Union
 
-from pyspark.errors import PySparkRuntimeError
 from pyspark.sql import SparkSession
 
 

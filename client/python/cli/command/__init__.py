@@ -39,6 +39,7 @@ class Command(ABC):
         properties = Parser.parse_properties(options_get(Arguments.PROPERTY))
         set_properties = Parser.parse_properties(options_get(Arguments.SET_PROPERTY))
         remove_properties = options_get(Arguments.REMOVE_PROPERTY)
+        catalog_client_scopes = options_get(Arguments.CATALOG_CLIENT_SCOPE)
 
         command = None
         if options.command == Commands.CATALOGS:
@@ -61,9 +62,24 @@ class Command(ABC):
                 catalog_name=options_get(Arguments.CATALOG),
                 properties={} if properties is None else properties,
                 set_properties={} if set_properties is None else set_properties,
-                remove_properties=[]
-                if remove_properties is None
-                else remove_properties,
+                hadoop_warehouse=options_get(Arguments.HADOOP_WAREHOUSE),
+                iceberg_remote_catalog_name=options_get(Arguments.ICEBERG_REMOTE_CATALOG_NAME),
+                remove_properties=[] if remove_properties is None else remove_properties,
+                catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
+                catalog_authentication_type=options_get(Arguments.CATALOG_AUTHENTICATION_TYPE),
+                catalog_service_identity_type=options_get(Arguments.CATALOG_SERVICE_IDENTITY_TYPE),
+                catalog_service_identity_iam_arn=options_get(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN),
+                catalog_uri=options_get(Arguments.CATALOG_URI),
+                catalog_token_uri=options_get(Arguments.CATALOG_TOKEN_URI),
+                catalog_client_id=options_get(Arguments.CATALOG_CLIENT_ID),
+                catalog_client_secret=options_get(Arguments.CATALOG_CLIENT_SECRET),
+                catalog_client_scopes=[] if catalog_client_scopes is None else catalog_client_scopes,
+                catalog_bearer_token=options_get(Arguments.CATALOG_BEARER_TOKEN),
+                catalog_role_arn=options_get(Arguments.CATALOG_ROLE_ARN),
+                catalog_role_session_name=options_get(Arguments.CATALOG_ROLE_SESSION_NAME),
+                catalog_external_id=options_get(Arguments.CATALOG_EXTERNAL_ID),
+                catalog_signing_region=options_get(Arguments.CATALOG_SIGNING_REGION),
+                catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME)
             )
         elif options.command == Commands.PRINCIPALS:
             from cli.command.principals import PrincipalsCommand
