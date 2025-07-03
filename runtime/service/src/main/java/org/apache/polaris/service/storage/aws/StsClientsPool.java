@@ -49,9 +49,9 @@ public class StsClientsPool implements StsClientProvider {
   private final Function<StsDestination, StsClient> clientBuilder;
 
   public StsClientsPool(
-      S3AccessConfig effectiveSts, SdkHttpClient sdkHttpClient, MeterRegistry meterRegistry) {
+      int clientsCacheMaxSize, SdkHttpClient sdkHttpClient, MeterRegistry meterRegistry) {
     this(
-        effectiveSts.effectiveClientsCacheMaxSize(),
+        clientsCacheMaxSize,
         key -> defaultStsClient(key, sdkHttpClient),
         Optional.ofNullable(meterRegistry));
   }

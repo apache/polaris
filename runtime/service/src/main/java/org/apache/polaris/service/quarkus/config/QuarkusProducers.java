@@ -201,7 +201,7 @@ public class QuarkusProducers {
       @Identifier("aws-sdk-http-client") SdkHttpClient httpClient,
       S3AccessConfig config,
       MeterRegistry meterRegistry) {
-    return new StsClientsPool(config, httpClient, meterRegistry);
+    return new StsClientsPool(config.effectiveClientsCacheMaxSize(), httpClient, meterRegistry);
   }
 
   /**
