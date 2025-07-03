@@ -132,8 +132,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             adminService.grantPrivilegeOnRootContainerToPrincipalRole(
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP))
         .isTrue();
-    final CatalogEntity newCatalog =
-        new CatalogEntity.Builder().setName("new_catalog").setCatalogType("INTERNAL").build();
+    final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
 
     doTestSufficientPrivileges(
@@ -152,8 +151,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testCreateCatalogInsufficientPrivileges() {
-    final CatalogEntity newCatalog =
-        new CatalogEntity.Builder().setName("new_catalog").setCatalogType("INTERNAL").build();
+    final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
 
     doTestInsufficientPrivileges(
@@ -289,8 +287,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             adminService.grantPrivilegeOnRootContainerToPrincipalRole(
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE))
         .isTrue();
-    final CatalogEntity newCatalog =
-        new CatalogEntity.Builder().setName("new_catalog").setCatalogType("INTERNAL").build();
+    final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
     adminService.createCatalog(createRequest);
 
@@ -310,8 +307,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDeleteCatalogInsufficientPrivileges() {
-    final CatalogEntity newCatalog =
-        new CatalogEntity.Builder().setName("new_catalog").setCatalogType("INTERNAL").build();
+    final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
     adminService.createCatalog(createRequest);
 

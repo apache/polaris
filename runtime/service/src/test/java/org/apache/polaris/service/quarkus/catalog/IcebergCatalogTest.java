@@ -345,7 +345,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
-                    .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
                     .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                     .addProperty(
@@ -1358,7 +1357,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 new CatalogEntity.Builder()
                     .setDefaultBaseLocation("file://")
                     .setName(catalogWithoutStorage)
-                    .setCatalogType("INTERNAL")
                     .build()
                     .asCatalog()));
 
@@ -1424,7 +1422,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             new CatalogEntity.Builder()
                 .setDefaultBaseLocation("http://maliciousdomain.com")
                 .setName(catalogName)
-                .setCatalogType("INTERNAL")
                 .build()
                 .asCatalog()));
 
@@ -1954,7 +1951,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         new CreateCatalogRequest(
             new CatalogEntity.Builder()
                 .setName(noPurgeCatalogName)
-                .setCatalogType("INTERNAL")
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                 .addProperty(
@@ -2272,7 +2268,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                       new CatalogEntity.Builder()
                           .setDefaultBaseLocation("file://")
                           .setName("createCatalogWithReservedProperty")
-                          .setCatalogType("INTERNAL")
                           .setProperties(ImmutableMap.of("polaris.reserved", "true"))
                           .build()
                           .asCatalog()));
@@ -2288,7 +2283,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             new CatalogEntity.Builder()
                 .setDefaultBaseLocation("file://")
                 .setName("updateCatalogWithReservedProperty")
-                .setCatalogType("INTERNAL")
                 .setProperties(ImmutableMap.of("a", "b"))
                 .build()
                 .asCatalog()));
