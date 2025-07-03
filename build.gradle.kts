@@ -248,13 +248,15 @@ python {
 tasks.register<Exec>("ruffFormat") {
   description = "Run ruff format for python code"
 
-  commandLine("/bin/bash", "-c", "./.gradle/python/bin/ruff format client/python")
+  workingDir = project.rootDir
+  commandLine("/bin/bash", "-c", "${project.rootDir.resolve(".gradle/python/bin/ruff").absolutePath} format client/python")
   dependsOn("pipInstall")
 }
 
 tasks.register<Exec>("ruffCheck") {
   description = "Run ruff check for python code"
 
-  commandLine("/bin/bash", "-c", "./.gradle/python/bin/ruff check --fix client/python")
+  workingDir = project.rootDir
+  commandLine("/bin/bash", "-c", "${project.rootDir.resolve(".gradle/python/bin/ruff").absolutePath} check --fix --exit-non-zero-on-fix client/python")
   dependsOn("pipInstall")
 }

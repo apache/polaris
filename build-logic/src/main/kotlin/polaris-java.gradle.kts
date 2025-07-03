@@ -55,6 +55,11 @@ checkstyle {
 // Ensure Checkstyle runs after jandex to avoid task dependency issues
 tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
 
+tasks.checkstyleMain {
+    // Add the dependency on the root project's ruffCheck task
+    dependsOn(":ruffCheck")
+}
+
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
@@ -88,6 +93,7 @@ tasks.register("format").configure {
   group = "verification"
   description = "Runs all code formatting tasks"
   dependsOn("spotlessApply")
+  dependsOn(":ruffFormat")
 }
 
 tasks.named<Test>("test").configure { jvmArgs("-Duser.language=en") }
