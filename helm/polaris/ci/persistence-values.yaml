@@ -37,3 +37,6 @@ persistence:
   relationalJdbc:
     secret:
       name: polaris-persistence
+      username: username
+      password: password
+      jdbcUrl: jdbcUrl
