@@ -224,7 +224,6 @@ public class PolarisGenericTableCatalogTest {
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
-                    .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
                     .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                     .addProperty(
