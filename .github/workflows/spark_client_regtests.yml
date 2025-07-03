@@ -43,9 +43,6 @@ jobs:
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
-      - name: Run regeneratePythonClient
-        run: ./gradlew regeneratePythonClient
-
       - name: Project build without testing
         run: ./gradlew assemble
 
