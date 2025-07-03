@@ -62,7 +62,7 @@ dependencies {
   }
 
   // Add spark-hive for Hudi integration - provides HiveExternalCatalog that Hudi needs
-  testImplementation("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}") {
+  testRuntimeOnly("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies to match spark-sql exclusions
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
