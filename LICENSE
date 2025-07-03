@@ -263,6 +263,8 @@ License: https://www.apache.org/licenses/LICENSE-2.0
 
 This product includes code from Project Nessie.
 
+* .github/actions/ci-incr-build-cache-prepare/action.yml
+* .github/actions/ci-incr-build-cache-save/action.yml
 * build-logic/src/main/kotlin/LicenseFileValidation.kt
 * build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerPlugin.kt
 * build-logic/src/main/kotlin/copiedcode/CopiedCodeCheckerExtension.kt

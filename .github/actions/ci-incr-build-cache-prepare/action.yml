@@ -1,0 +1,82 @@
+# Copyright (C) 2020 Dremio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# CODE_COPIED_TO_POLARIS Copied from Project Nessie v. 0.104.2
+
+name: 'Incremental Gradle build cache prepare'
+description: 'Prepare to save incremental Gradle build cache'
+inputs:
+  cache-read-only:
+    description: 'Gradle cache read only'
+    default: 'true'
+  java-version:
+    description: 'Java version'
+    default: '21'
+  job-id:
+    description: 'Job ID to prefer'
+    default: 'polaris-gradle'
+  job-instance:
+    description: 'Job instance to prefer'
+    default: 'gradle'
+runs:
+  using: "composite"
+  steps:
+    - name: Prep env
+      shell: bash
+      run: |
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_ENVIRONMENT=java-${{ inputs.java-version }}" >> ${GITHUB_ENV}
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB=${{ inputs.job-id }}" >> ${GITHUB_ENV}
+        if [[ -n "${{ inputs.no-daemon }}" ]] ; then
+          echo "G_DAEMON_FLAG=--no-daemon" >> ${GITHUB_ENV}
+        fi
+        if [[ -n "${{ inputs.job-instance }}" ]] ; then
+          echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE=${{ inputs.job-instance }}" >> ${GITHUB_ENV}
+        fi
+
+    - name: Gradle / Setup
+      uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4
+      with:
+        cache-read-only: ${{ inputs.cache-read-only }}
+        validate-wrappers: false
+
+    - name: Gradle / Init
+      shell: bash
+      run: ./gradlew -h
+
+    - name: Download existing workflow artifacts
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      # Just in case, don't know the exact inner workings of Gradle's build cache and whether
+      # the download-action complains about duplicate files.
+      continue-on-error: true
+      with:
+        path: ~/downloaded-artifacts/
+
+    - name: Extract caches
+      shell: bash
+      run: |
+        echo "::group::Gradle build cache / add incremental updates"
+        mkdir -p ~/.gradle/caches/
+
+        if [[ -d ~/downloaded-artifacts/ ]] ; then
+          find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${{ inputs.java-version }}.tar" | while read arch ; do
+            echo "Adding archive content from $arch ..."
+            (cd ~/.gradle/caches/ ; tar xf $arch)
+          done
+        else
+          echo "No previous build cache artifacts downloaded."
+        fi
+        
+        date +%s > ~/caches-prepared-at-epoch
+
+        echo "::endgroup::"
