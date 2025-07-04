@@ -20,6 +20,7 @@ package org.apache.polaris.core.config;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -36,11 +37,12 @@ import org.apache.polaris.core.persistence.cache.EntityWeigher;
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
       String key,
+      Set<String> legacyKeys,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
-    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+    super(key, legacyKeys, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   /**
@@ -263,12 +265,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
-      PolarisConfiguration.<List<String>>builder()
-          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
-          .description("The list of supported catalog connection types for federation")
-          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
-          .buildFeatureConfiguration();
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_EXTERNAL_CATALOG_CONNECTION_TYPES")
+              .legacyKey("SUPPORTED_CATALOG_CONNECTION_TYPES")
+              .description("The list of supported external catalog connection types for federation")
+              .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+              .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>>
       SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES =

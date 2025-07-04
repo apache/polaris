@@ -19,8 +19,10 @@
 package org.apache.polaris.core.config;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,6 +43,7 @@ public abstract class PolarisConfiguration<T> {
 
   public final String key;
   public final String description;
+  public final Set<String> legacyKeys;
   public final T defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Optional<String> catalogConfigUnsafeImpl;
@@ -55,9 +58,22 @@ public abstract class PolarisConfiguration<T> {
    */
   private static void registerConfiguration(PolarisConfiguration<?> configuration) {
     for (PolarisConfiguration<?> existingConfiguration : allConfigurations) {
-      if (existingConfiguration.key.equals(configuration.key)) {
+      if (existingConfiguration.key.equals(configuration.key)
+          || configuration.legacyKeys.contains(existingConfiguration.key)) {
+        throw new IllegalArgumentException(
+            String.format("Config '%s' is already in use", existingConfiguration.key));
+      } else if (existingConfiguration.legacyKeys.contains(configuration.key)) {
         throw new IllegalArgumentException(
             String.format("Config '%s' is already in use", configuration.key));
+      } else if (!configuration.legacyKeys.isEmpty()) {
+        Set<String> legacyKeys = new HashSet<>(existingConfiguration.legacyKeys);
+        legacyKeys.retainAll(configuration.legacyKeys);
+        if (!legacyKeys.isEmpty()) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Config '%s' is already in use",
+                  legacyKeys.stream().collect(Collectors.joining(","))));
+        }
       } else {
         var configs =
             Stream.of(
@@ -86,16 +102,26 @@ public abstract class PolarisConfiguration<T> {
   @SuppressWarnings("unchecked")
   protected PolarisConfiguration(
       String key,
+      Set<String> legacyKeys,
       String description,
       T defaultValue,
       Optional<String> catalogConfig,
       Optional<String> catalogConfigUnsafe) {
     this.key = key;
+    this.legacyKeys = legacyKeys;
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
     this.catalogConfigUnsafeImpl = catalogConfigUnsafe;
     this.typ = (Class<T>) defaultValue.getClass();
+  }
+
+  public boolean hasLegacyKeys() {
+    return !legacyKeys.isEmpty();
+  }
+
+  public Set<String> legacyKeys() {
+    return legacyKeys;
   }
 
   public boolean hasCatalogConfig() {
@@ -126,6 +152,7 @@ public abstract class PolarisConfiguration<T> {
 
   public static class Builder<T> {
     private String key;
+    private Set<String> legacyKeys = new HashSet<>();
     private String description;
     private T defaultValue;
     private Optional<String> catalogConfig = Optional.empty();
@@ -133,6 +160,16 @@ public abstract class PolarisConfiguration<T> {
 
     public Builder<T> key(String key) {
       this.key = key;
+      return this;
+    }
+
+    public Builder<T> legacyKey(String legacyKey) {
+      legacyKeys.add(legacyKey);
+      return this;
+    }
+
+    public Builder<T> legacyKeys(Set<String> legacyKeys) {
+      this.legacyKeys.addAll(legacyKeys);
       return this;
     }
 
@@ -190,7 +227,7 @@ public abstract class PolarisConfiguration<T> {
       validateOrThrow();
       FeatureConfiguration<T> config =
           new FeatureConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, legacyKeys, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
@@ -203,7 +240,7 @@ public abstract class PolarisConfiguration<T> {
       }
       BehaviorChangeConfiguration<T> config =
           new BehaviorChangeConfiguration<>(
-              key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
+              key, legacyKeys, description, defaultValue, catalogConfig, catalogConfigUnsafe);
       PolarisConfiguration.registerConfiguration(config);
       return config;
     }
