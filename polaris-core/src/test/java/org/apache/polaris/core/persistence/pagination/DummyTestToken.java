@@ -18,35 +18,36 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.Optional;
+import java.util.OptionalInt;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-/**
- * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
- * represent a `limit`. When updated, it returns {@link DonePageToken}. As such it should never be
- * user-facing and doesn't truly paginate.
- */
-public class LimitPageToken extends PageToken implements HasPageSize {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableDummyTestToken.class)
+@JsonDeserialize(as = ImmutableDummyTestToken.class)
+public interface DummyTestToken extends Token {
+  String ID = "test-dummy";
 
-  public static final String PREFIX = "limit";
+  Optional<String> s();
 
-  private final int pageSize;
-
-  public LimitPageToken(int pageSize) {
-    this.pageSize = pageSize;
-  }
-
-  @Override
-  public int getPageSize() {
-    return pageSize;
-  }
+  OptionalInt i();
 
   @Override
-  public String toTokenString() {
-    return String.format("%s/%d", PREFIX, pageSize);
+  default String getT() {
+    return ID;
   }
 
-  @Override
-  protected PageToken updated(List<?> newData) {
-    return new DonePageToken();
+  final class DummyTestTokenType implements TokenType {
+    @Override
+    public String id() {
+      return ID;
+    }
+
+    @Override
+    public Class<? extends Token> javaType() {
+      return DummyTestToken.class;
+    }
   }
 }
