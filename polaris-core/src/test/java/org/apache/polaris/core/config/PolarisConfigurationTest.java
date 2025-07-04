@@ -36,7 +36,7 @@ public class PolarisConfigurationTest {
             .buildFeatureConfiguration();
 
     assertThat(config.hasLegacyKeys()).isTrue();
-    assertThat(config.legacyKeys()).isEqualTo("OLD_FEATURE_CONFIG_WITH_LEGACY_KEY");
+    assertThat(config.legacyKeys().contains("OLD_FEATURE_CONFIG_WITH_LEGACY_KEY")).isTrue();
     assertThat(config.key).isEqualTo("FEATURE_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.description).isEqualTo("Test configuration with deprecated key");
     assertThat(config.defaultValue).isTrue();
@@ -53,7 +53,7 @@ public class PolarisConfigurationTest {
             .buildBehaviorChangeConfiguration();
 
     assertThat(config.hasLegacyKeys()).isTrue();
-    assertThat(config.legacyKeys()).isEqualTo("OLD_BEHAVIOR_CONFIG_WITH_LEGACY_KEY");
+    assertThat(config.legacyKeys().contains("OLD_BEHAVIOR_CONFIG_WITH_LEGACY_KEY")).isTrue();
     assertThat(config.key).isEqualTo("BEHAVIOR_CONFIG_WITH_LEGACY_KEY");
     assertThat(config.defaultValue).isEqualTo("test-value");
   }

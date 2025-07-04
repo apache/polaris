@@ -102,7 +102,7 @@ public interface PolarisConfigurationStore {
     T result = getConfiguration(realmContext, config.key);
 
     if (result == null && config.hasLegacyKeys()) {
-      for (String legacyKey : config.legacyKeys) {
+      for (String legacyKey : config.legacyKeys()) {
         result = getConfiguration(realmContext, legacyKey);
         if (result != null) {
           LOGGER.warn(

@@ -120,12 +120,8 @@ public abstract class PolarisConfiguration<T> {
     return !legacyKeys.isEmpty();
   }
 
-  public String legacyKeys() {
-    if (legacyKeys.isEmpty()) {
-      throw new IllegalStateException(
-          "Attempted to read legacy keys from a configuration that doesn't have any.");
-    }
-    return legacyKeys.stream().collect(Collectors.joining(","));
+  public Set<String> legacyKeys() {
+    return legacyKeys;
   }
 
   public boolean hasCatalogConfig() {
