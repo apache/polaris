@@ -917,6 +917,7 @@ components:
             - OAUTH
             - BEARER
             - SIGV4
+            - IMPLICIT
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -926,6 +927,7 @@ components:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
+          IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -989,6 +991,13 @@ components:
       required:
         - roleArn
         - signingRegion
+
+    ImplicitAuthenticationParameters:
+      type: object
+      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+        parameters found in the environment and/or configuration files will be used for this connection.
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
 
     StorageConfigInfo:
       type: object

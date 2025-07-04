@@ -33,6 +33,7 @@ public enum AuthenticationType {
   NULL_TYPE(0),
   OAUTH(1),
   BEARER(2),
+  IMPLICIT(3),
   ;
 
   private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;
