@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
@@ -64,6 +65,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
@@ -232,6 +234,33 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to grant records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    try {
+      List<PreparedQuery> preparedQueries = new ArrayList<>();
+      for (PolarisEvent event : events) {
+        preparedQueries.add(
+            QueryGenerator.generateInsertQuery(
+                ModelEvent.ALL_COLUMNS,
+                ModelEvent.TABLE_NAME,
+                ModelEvent.fromEvent(event)
+                    .toMap(datasourceOperations.getDatabaseType())
+                    .values()
+                    .stream()
+                    .toList(),
+                realmId));
+      }
+      int totalUpdated = datasourceOperations.executeBatchUpdate(preparedQueries);
+
+      if (totalUpdated == 0) {
+        throw new SQLException("No events were inserted.");
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write events due to %s", e.getMessage()), e);
     }
   }
 

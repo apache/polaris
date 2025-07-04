@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
-
-public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, CallContext callContext, int attempt, boolean success)
+/** Emitted when Polaris intends to create a catalog. */
+public record AfterCatalogCreatedEvent(String eventId, String catalogName)
     implements PolarisEvent {}

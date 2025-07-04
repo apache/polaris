@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
 
-import org.apache.polaris.core.context.CallContext;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 
-public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, CallContext callContext, int attempt, boolean success)
-    implements PolarisEvent {}
+/** Event listener that does nothing. */
+@ApplicationScoped
+@Identifier("no-op")
+public class NoOpPolarisEventListener extends PolarisEventListener {}

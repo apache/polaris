@@ -18,11 +18,5 @@
  */
 package org.apache.polaris.service.events;
 
-/**
- * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
- *
- * @param method The request's HTTP method
- * @param absolutePath The request's absolute path
- */
-public record BeforeRequestRateLimitedEvent(String method, String absolutePath)
+public record BeforeRequestRateLimitedEvent(String eventId, String method, String absolutePath)
     implements PolarisEvent {}

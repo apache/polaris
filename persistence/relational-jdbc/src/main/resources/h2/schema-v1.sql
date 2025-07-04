@@ -118,3 +118,17 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
 );
 
 CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
+
+CREATE TABLE IF NOT EXISTS events (
+    realm_id TEXT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    resource_type TEXT NOT NULL,
+    resource_identifier TEXT NOT NULL,
+    additional_parameters TEXT NOT NULL DEFAULT '{}',
+    PRIMARY KEY (event_id)
+);

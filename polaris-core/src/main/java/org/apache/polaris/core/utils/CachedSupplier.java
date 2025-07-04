@@ -16,10 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
+package org.apache.polaris.core.utils;
 
-public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, CallContext callContext, int attempt, boolean success)
-    implements PolarisEvent {}
+import java.util.function.Supplier;
+
+public class CachedSupplier<T> implements Supplier<T> {
+  private final Supplier<T> delegate;
+  private T value;
+  private boolean initialized = false;
+
+  public CachedSupplier(Supplier<T> delegate) {
+    this.delegate = delegate;
+  }
+
+  @Override
+  public synchronized T get() {
+    if (!initialized) {
+      value = delegate.get();
+      initialized = true;
+    }
+    return value;
+  }
+}

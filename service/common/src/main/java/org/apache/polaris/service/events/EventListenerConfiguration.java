@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
+import java.util.Optional;
 
-public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, CallContext callContext, int attempt, boolean success)
-    implements PolarisEvent {}
+public interface EventListenerConfiguration {
+  Optional<Long> bufferTime();
+
+  Optional<Integer> maxBufferSize();
+}

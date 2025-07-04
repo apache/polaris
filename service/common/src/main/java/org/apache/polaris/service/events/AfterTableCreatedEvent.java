@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.catalog.TableIdentifier;
 
-public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, CallContext callContext, int attempt, boolean success)
+/** Emitted when Polaris intends to create a table. */
+public record AfterTableCreatedEvent(
+    String eventId, String catalogName, TableMetadata metadata, TableIdentifier identifier)
     implements PolarisEvent {}

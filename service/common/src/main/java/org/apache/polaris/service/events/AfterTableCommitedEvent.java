@@ -21,14 +21,6 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 
-/**
- * Emitted after Polaris performs a commit to a table. This is not emitted if there's an exception
- * while committing.
- *
- * @param identifier The identifier.
- * @param base The old metadata.
- * @param metadata The new metadata.
- */
 public record AfterTableCommitedEvent(
-    TableIdentifier identifier, TableMetadata base, TableMetadata metadata)
+    String eventId, TableIdentifier identifier, TableMetadata base, TableMetadata metadata)
     implements PolarisEvent {}

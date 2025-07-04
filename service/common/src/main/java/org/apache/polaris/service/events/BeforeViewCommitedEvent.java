@@ -21,14 +21,6 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.view.ViewMetadata;
 
-/**
- * Emitted when Polaris intends to perform a commit to a view. There is no guarantee on the order of
- * this event relative to the validation checks we've performed, which means the commit may still
- * fail Polaris-side validation checks.
- *
- * @param identifier The identifier.
- * @param base The old metadata.
- * @param metadata The new metadata.
- */
 public record BeforeViewCommitedEvent(
-    TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}
+    String eventId, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+    implements PolarisEvent {}
