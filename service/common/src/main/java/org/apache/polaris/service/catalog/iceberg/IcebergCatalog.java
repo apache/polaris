@@ -30,6 +30,8 @@ import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -91,7 +94,9 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -123,6 +128,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.SupportsNotifications;
+import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -147,6 +153,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
+  private static final Random RANDOM = new Random();
+  private static final int RANDOM_PREFIX_COMPONENTS = 4;
+  private static final int RANDOM_PREFIX_COMPONENT_LENGTH = 4;
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -169,6 +178,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final TaskExecutor taskExecutor;
   private final SecurityContext securityContext;
   private final PolarisEventListener polarisEventListener;
+  private final AtomicBoolean loggedRandomPrefixOverlapWarning = new AtomicBoolean(false);
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -893,12 +903,90 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         storageInfo.get());
   }
 
+  private String buildRandomLocation(TableIdentifier tableIdentifier) {
+    StringBuilder locationBuilder = new StringBuilder();
+    locationBuilder.append(defaultBaseLocation);
+    if (!defaultBaseLocation.endsWith("/")) {
+      locationBuilder.append("/");
+    }
+
+    locationBuilder.append(LocationUtils.computeHash(tableIdentifier.toString()));
+
+    for (String ns : tableIdentifier.namespace().levels()) {
+      locationBuilder.append("/").append(URLEncoder.encode(ns, Charset.defaultCharset()));
+    }
+    locationBuilder
+        .append("/")
+        .append(URLEncoder.encode(tableIdentifier.name(), Charset.defaultCharset()))
+        .append("/");
+    return locationBuilder.toString();
+  }
+
   /**
-   * Based on configuration settings, for callsites that need to handle potentially setting a new
-   * base location for a TableLike entity, produces the transformed location if applicable, or else
-   * the unaltered specified location.
+   * Applies the rule controlled by DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED to a tablelike location
    */
-  public String transformTableLikeLocation(String specifiedTableLikeLocation) {
+  private String applyDefaultLocationRandomPrefix(
+      TableIdentifier tableIdentifier, String location) {
+    RealmContext realmContext = callContext.getRealmContext();
+    PolarisConfigurationStore configurationStore =
+        callContext.getPolarisCallContext().getConfigurationStore();
+    boolean randomPrefixEnabled =
+        configurationStore.getConfiguration(
+            realmContext,
+            catalogEntity,
+            FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED);
+    boolean allowUnstructuredTableLocation =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+    boolean allowTableLocationOverlap =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP);
+    boolean optimizedSiblingCheck =
+        configurationStore.getConfiguration(
+            realmContext, catalogEntity, FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (location != null) {
+      return location;
+    } else if (!randomPrefixEnabled) {
+      return location;
+    } else if (!allowUnstructuredTableLocation) {
+      throw new IllegalStateException(
+          String.format(
+              "The configuration %s is enabled, but %s is not enabled",
+              FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
+              FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
+    } else if (!allowTableLocationOverlap) {
+      // TODO consider doing this check any time ALLOW_EXTERNAL_TABLE_LOCATION is enabled, not just
+      // here
+      if (!optimizedSiblingCheck) {
+        throw new IllegalStateException(
+            String.format(
+                "%s and %s are both disabled, which means that table location overlap checkes are being"
+                    + " performed, but only within each namespace. However, %s is enabled, which indicates"
+                    + " that tables may be created outside of their parent namespace. This is not a safe"
+                    + " combination of configurations.",
+                FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key,
+                FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
+      } else if (!loggedRandomPrefixOverlapWarning.getAndSet(true)) {
+        LOGGER.warn(
+            "A table is being created with {} and {} enabled, but with {} disabled. "
+                + "This is a safe combination of configurations which may prevent table overlap, but only if the "
+                + "underlying persistence actually implements %s. Exercise caution.",
+            FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
+            FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
+            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key);
+      }
+      return buildRandomLocation(tableIdentifier);
+    } else {
+      return buildRandomLocation(tableIdentifier);
+    }
+  }
+
+  /**
+   * Applies the rule controlled by REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY to a
+   * tablelike location
+   */
+  private String applyReplaceNewLocationWithCatalogDefault(String specifiedTableLikeLocation) {
     String replaceNewLocationPrefix = catalogEntity.getReplaceNewLocationPrefixWithCatalogDefault();
     if (specifiedTableLikeLocation != null
         && replaceNewLocationPrefix != null
@@ -914,6 +1002,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return modifiedLocation;
     }
     return specifiedTableLikeLocation;
+  }
+
+  /**
+   * Based on configuration settings, for callsites that need to handle potentially setting a new
+   * base location for a TableLike entity, produces the transformed location if applicable, or else
+   * the unaltered specified location.
+   */
+  public String transformTableLikeLocation(TableIdentifier tableIdentifier, String location) {
+    return applyDefaultLocationRandomPrefix(
+        tableIdentifier, applyReplaceNewLocationWithCatalogDefault(location));
   }
 
   private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
@@ -968,8 +1066,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
         PolarisStorageConfigurationInfo.forEntityPath(
-            callContext.getPolarisCallContext().getDiagServices(),
-            resolvedStorageEntity.getRawFullPath());
+            callContext.getPolarisCallContext(), resolvedStorageEntity.getRawFullPath());
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
@@ -1215,28 +1312,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private class PolarisIcebergCatalogTableBuilder
       extends BaseMetastoreViewCatalog.BaseMetastoreViewCatalogTableBuilder {
+    private final TableIdentifier identifier;
 
     public PolarisIcebergCatalogTableBuilder(TableIdentifier identifier, Schema schema) {
       super(identifier, schema);
+      this.identifier = identifier;
     }
 
     @Override
     public TableBuilder withLocation(String newLocation) {
-      return super.withLocation(transformTableLikeLocation(newLocation));
+      return super.withLocation(transformTableLikeLocation(identifier, newLocation));
     }
   }
 
   private class PolarisIcebergCatalogViewBuilder extends BaseMetastoreViewCatalog.BaseViewBuilder {
+    private final TableIdentifier identifier;
 
     public PolarisIcebergCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
       withProperties(
           PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
+      this.identifier = identifier;
     }
 
     @Override
     public ViewBuilder withLocation(String newLocation) {
-      return super.withLocation(transformTableLikeLocation(newLocation));
+      return super.withLocation(transformTableLikeLocation(identifier, newLocation));
     }
   }
 
@@ -2421,7 +2522,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // Validate location against the resolvedStorageEntity
       String metadataLocation =
-          transformTableLikeLocation(request.getPayload().getMetadataLocation());
+          transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
       validateLocationForTableLike(tableIdentifier, metadataLocation, resolvedStorageEntity);
 
       // Validate that we can construct a FileIO
@@ -2450,7 +2551,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
 
       String existingLocation;
-      String newLocation = transformTableLikeLocation(request.getPayload().getMetadataLocation());
+      String newLocation =
+          transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
       if (null == entity) {
         existingLocation = null;
         entity =

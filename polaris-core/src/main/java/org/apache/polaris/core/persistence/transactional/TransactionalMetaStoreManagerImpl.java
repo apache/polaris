@@ -2328,7 +2328,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
-    return Optional.empty();
+    TransactionalPersistence ms = ((TransactionalPersistence) callContext.getMetaStore());
+    return ms.runInTransaction(
+        callContext,
+        () -> {
+          return callContext.getMetaStore().hasOverlappingSiblings(callContext, entity);
+        });
   }
 
   /** {@inheritDoc} */
