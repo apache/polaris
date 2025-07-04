@@ -46,4 +46,5 @@ services:
       polaris:
         condition: service_healthy
     volumes:
+      - ~/.m2:/home/spark/.m2
       - ./output:/tmp/polaris-regtests/
