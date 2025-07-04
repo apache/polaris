@@ -309,7 +309,12 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/Minio.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioAccess.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioContainer.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioExtension.java
 * runtime/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* runtime/service/src/main/java/org/apache/polaris/service/storage/aws/StsClientsPool.java
 * helm/polaris/tests/logging_storage_test.yaml
 * helm/polaris/tests/quantity_test.yaml
 * helm/polaris/tests/service_monitor_test.yaml

@@ -16,31 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.storage;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithName;
-import java.time.Duration;
-import java.util.Optional;
-import org.apache.polaris.service.storage.StorageConfiguration;
-import org.apache.polaris.service.storage.aws.S3AccessConfig;
+package org.apache.polaris.test.minio;
 
-@ConfigMapping(prefix = "polaris.storage")
-public interface QuarkusStorageConfiguration extends StorageConfiguration, S3AccessConfig {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  @WithName("aws.access-key")
-  @Override
-  Optional<String> awsAccessKey();
+// CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+public @interface Minio {
+  /** Optional, use this access key instead of a random one. */
+  String accessKey() default DEFAULT;
 
-  @WithName("aws.secret-key")
-  @Override
-  Optional<String> awsSecretKey();
+  /** Optional, use this secret key instead of a random one. */
+  String secretKey() default DEFAULT;
 
-  @WithName("gcp.token")
-  @Override
-  Optional<String> gcpAccessToken();
+  /** Optional, use this bucket instead of a random one. */
+  String bucket() default DEFAULT;
 
-  @WithName("gcp.lifespan")
-  @Override
-  Optional<Duration> gcpAccessTokenLifespan();
+  String DEFAULT = "minio_default_value__";
 }

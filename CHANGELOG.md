@@ -35,6 +35,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added Catalog configuration for S3 and STS endpoints. This also allows using non-AWS S3 implementations.
+
 ### Changes
 
 ### Deprecations
