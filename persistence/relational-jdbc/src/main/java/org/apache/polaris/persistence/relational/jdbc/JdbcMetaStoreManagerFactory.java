@@ -99,6 +99,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       DatasourceOperations datasourceOperations,
       RealmContext realmContext,
       RootCredentialsSet rootCredentialsSet) {
+    // Materialize realmId so that background tasks that don't have an active
+    // RealmContext (request-scoped bean) can still create a JdbcBasePersistenceImpl
     String realmId = realmContext.getRealmIdentifier();
     sessionSupplierMap.put(
         realmId,
