@@ -724,7 +724,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitFailedException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -756,7 +756,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitFailedException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
