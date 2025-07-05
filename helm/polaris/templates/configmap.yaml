@@ -6,9 +6,9 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -45,13 +45,6 @@ data:
     {{- range $k, $v := $overrides -}}
     {{- $_ = set $map (printf "polaris.features.realm-overrides.\"%s\".\"%s\"" $realm $k) (toJson $v) -}}
     {{- end -}}
-    {{- end -}}
-
-    {{- /* Persistence */ -}}
-    {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
-    {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.persistence-unit" .Values.persistence.eclipseLink.persistenceUnit -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.configuration-file" (printf "%s/persistence.xml" .Values.image.configDir ) -}}
     {{- end -}}
 
     {{- /* File IO */ -}}

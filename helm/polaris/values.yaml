@@ -537,18 +537,6 @@ persistence:
       # -- The secret key holding the database JDBC connection URL
       jdbcUrl: jdbcUrl
 
-  # -- The configuration for the eclipse-link persistence manager.
-  eclipseLink:
-    # -- The secret name to pull persistence.xml from.
-    secret:
-      # -- The name of the secret to pull persistence.xml from.
-      # If not provided, the default built-in persistence.xml will be used. This is probably not what you want.
-      name: ~
-      # -- The key in the secret to pull persistence.xml from.
-      key: persistence.xml
-    # -- The persistence unit name to use.
-    persistenceUnit: polaris
-
 # -- Polaris FileIO configuration.
 fileIo:
     # -- The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones.
