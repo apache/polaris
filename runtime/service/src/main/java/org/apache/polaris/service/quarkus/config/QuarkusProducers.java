@@ -79,7 +79,6 @@ import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.storage.aws.StsClientsPool;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 import org.slf4j.Logger;
@@ -375,9 +374,11 @@ public class QuarkusProducers {
 
   @Produces
   public ActiveRolesProvider activeRolesProvider(
-      @ConfigProperty(name = "polaris.active-roles-provider.type") String activeRolesProviderType,
+      QuarkusAuthenticationRealmConfiguration config,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
-    return activeRolesProviders.select(Identifier.Literal.of(activeRolesProviderType)).get();
+    return activeRolesProviders
+        .select(Identifier.Literal.of(config.activeRolesProvider().type()))
+        .get();
   }
 
   @Produces
