@@ -20,7 +20,12 @@ package org.apache.polaris.spark.utils;
 
 import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.CachingCatalog;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -29,14 +34,25 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SparkCatalog;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.TableIdentifier;
+import org.apache.spark.sql.catalyst.analysis.NoSuchDatabaseException;
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.hudi.catalog.HoodieInternalV2Table;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scala.Option;
 
 public class PolarisCatalogUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogUtils.class);
+
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
 
@@ -48,6 +64,17 @@ public class PolarisCatalogUtils {
   /** Check whether the table provider is delta. */
   public static boolean useDelta(String provider) {
     return "delta".equalsIgnoreCase(provider);
+  }
+
+  public static boolean useHudi(String provider) {
+    return "hudi".equalsIgnoreCase(provider);
+  }
+
+  public static boolean isHudiExtensionEnabled() {
+    SparkSession spark = SparkSession.active();
+    String extensions = spark.conf().get("spark.sql.extensions", null);
+    return extensions != null
+        && extensions.contains("org.apache.spark.sql.hudi.HoodieSparkSessionExtension");
   }
 
   /**
@@ -64,9 +91,13 @@ public class PolarisCatalogUtils {
    * Load spark table using DataSourceV2.
    *
    * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
-   *     DeltaTableV2.
+   *     DeltaTableV2. For hudi it should return HoodieInternalV2Table.
    */
-  public static Table loadSparkTable(GenericTable genericTable) {
+  public static Table loadSparkTable(GenericTable genericTable, Identifier identifier) {
+    if (genericTable.getFormat().equalsIgnoreCase("hudi")) {
+      // hudi does not implement table provider interface, so will need to catch it
+      return loadHudiSparkTable(genericTable, identifier);
+    }
     SparkSession sparkSession = SparkSession.active();
     TableProvider provider =
         DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
@@ -85,6 +116,32 @@ public class PolarisCatalogUtils {
     }
     return DataSourceV2Utils.getTableFromProvider(
         provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());
+  }
+
+  public static Table loadHudiSparkTable(GenericTable genericTable, Identifier identifier) {
+    SparkSession sparkSession = SparkSession.active();
+    Map<String, String> tableProperties = Maps.newHashMap();
+    tableProperties.putAll(genericTable.getProperties());
+    tableProperties.put(
+        TABLE_PATH_KEY, genericTable.getProperties().get(TableCatalog.PROP_LOCATION));
+    String namespacePath = String.join(".", identifier.namespace());
+    TableIdentifier tableIdentifier =
+        new TableIdentifier(identifier.name(), Option.apply(namespacePath));
+    CatalogTable catalogTable = null;
+    try {
+      catalogTable = sparkSession.sessionState().catalog().getTableMetadata(tableIdentifier);
+    } catch (NoSuchDatabaseException e) {
+      throw new RuntimeException(
+          "No database found for the given tableIdentifier:" + tableIdentifier, e);
+    } catch (NoSuchTableException e) {
+      LOG.debug("No table currently exists, as an initial create table");
+    }
+    return new HoodieInternalV2Table(
+        sparkSession,
+        genericTable.getProperties().get(TableCatalog.PROP_LOCATION),
+        Option.apply(catalogTable),
+        Option.apply(identifier.toString()),
+        new CaseInsensitiveStringMap(tableProperties));
   }
 
   /**
@@ -118,5 +175,44 @@ public class PolarisCatalogUtils {
     } catch (Exception e) {
       throw new RuntimeException("Failed to get the catalogAuth from the Iceberg SparkCatalog", e);
     }
+  }
+
+  /**
+   * Set of namespace properties that are reserved by Spark and cannot be set via database
+   * properties. These properties are managed by Spark internally and will cause errors if included
+   * in database metadata operations.
+   */
+  private static final Set<String> SPARK_RESERVED_NAMESPACE_PROPERTIES =
+      Set.of("owner", "location", "comment");
+
+  /**
+   * Filters out Spark reserved properties from metadata map to prevent SQL errors.
+   *
+   * @param metadata The original metadata map
+   * @return Filtered metadata map without reserved properties
+   */
+  public static Map<String, String> filterReservedProperties(Map<String, String> metadata) {
+    if (metadata == null || metadata.isEmpty()) {
+      return metadata;
+    }
+
+    Map<String, String> filtered = new HashMap<>();
+    List<String> filteredOut = new ArrayList<>();
+
+    for (Map.Entry<String, String> entry : metadata.entrySet()) {
+      String key = entry.getKey();
+      if (SPARK_RESERVED_NAMESPACE_PROPERTIES.contains(key.toLowerCase(Locale.ROOT))) {
+        filteredOut.add(key);
+      } else {
+        filtered.put(key, entry.getValue());
+      }
+    }
+
+    if (!filteredOut.isEmpty()) {
+      LOG.info(
+          "Filtered out reserved namespace properties for Hudi compatibility: {}", filteredOut);
+    }
+
+    return filtered;
   }
 }
