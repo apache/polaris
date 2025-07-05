@@ -47,6 +47,9 @@ data:
     {{- end -}}
     {{- end -}}
 
+    {{- /* Persistence */ -}}
+    {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
+
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}
 
