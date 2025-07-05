@@ -50,16 +50,6 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
     return RESTUtil.decodeNamespace(encodedNamespace);
   }
 
-  public Namespace asNamespace() {
-    Namespace parent = getParentNamespace();
-    String[] levels = new String[parent.length() + 1];
-    for (int i = 0; i < parent.length(); ++i) {
-      levels[i] = parent.level(i);
-    }
-    levels[levels.length - 1] = getName();
-    return Namespace.of(levels);
-  }
-
   @Override
   @JsonIgnore
   public String getBaseLocation() {

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -213,23 +214,26 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
             reservedProperties);
+
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    polarisContext,
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                    "file://tmp")
-                .build()
-                .asCatalog()));
+            toCatalog(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .setDefaultBaseLocation("file://tmp")
+                    .setStorageConfigurationInfo(
+                        polarisContext,
+                        new FileStorageConfigInfo(
+                            StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                        "file://tmp")
+                    .build())));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

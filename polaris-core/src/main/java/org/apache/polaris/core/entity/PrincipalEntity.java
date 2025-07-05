@@ -41,16 +41,6 @@ public class PrincipalEntity extends PolarisEntity {
         .build();
   }
 
-  public Principal asPrincipal() {
-    return new Principal(
-        getName(),
-        getClientId(),
-        getPropertiesAsMap(),
-        getCreateTimestamp(),
-        getLastUpdateTimestamp(),
-        getEntityVersion());
-  }
-
   public String getClientId() {
     return getInternalPropertiesAsMap().get(PolarisEntityConstants.getClientIdPropertyName());
   }

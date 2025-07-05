@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -340,24 +341,26 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
+
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .addProperty(
-                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog()));
+                toCatalog(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setDefaultBaseLocation(storageLocation)
+                        .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                        .setStorageConfigurationInfo(
+                            polarisContext, storageConfigModel, storageLocation)
+                        .build())));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -1351,14 +1354,15 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
+
     PolarisEntity catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setDefaultBaseLocation("file://")
-                    .setName(catalogWithoutStorage)
-                    .build()
-                    .asCatalog()));
+                toCatalog(
+                    new CatalogEntity.Builder()
+                        .setDefaultBaseLocation("file://")
+                        .setName(catalogWithoutStorage)
+                        .build())));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1417,13 +1421,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
+
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("http://maliciousdomain.com")
-                .setName(catalogName)
-                .build()
-                .asCatalog()));
+            toCatalog(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("http://maliciousdomain.com")
+                    .setName(catalogName)
+                    .build())));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1949,19 +1954,21 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .build();
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(noPurgeCatalogName)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                .setStorageConfigurationInfo(
-                    polarisContext, noPurgeStorageConfigModel, storageLocation)
-                .build()
-                .asCatalog()));
+            toCatalog(
+                new CatalogEntity.Builder()
+                    .setName(noPurgeCatalogName)
+                    .setDefaultBaseLocation(storageLocation)
+                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+                    .setStorageConfigurationInfo(
+                        polarisContext, noPurgeStorageConfigModel, storageLocation)
+                    .build())));
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, noPurgeCatalogName);
@@ -2265,12 +2272,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             () -> {
               adminService.createCatalog(
                   new CreateCatalogRequest(
-                      new CatalogEntity.Builder()
-                          .setDefaultBaseLocation("file://")
-                          .setName("createCatalogWithReservedProperty")
-                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
-                          .build()
-                          .asCatalog()));
+                      toCatalog(
+                          new CatalogEntity.Builder()
+                              .setDefaultBaseLocation("file://")
+                              .setName("createCatalogWithReservedProperty")
+                              .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                              .build())));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -2280,12 +2287,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   public void updateCatalogWithReservedProperty() {
     adminService.createCatalog(
         new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("file://")
-                .setName("updateCatalogWithReservedProperty")
-                .setProperties(ImmutableMap.of("a", "b"))
-                .build()
-                .asCatalog()));
+            toCatalog(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("file://")
+                    .setName("updateCatalogWithReservedProperty")
+                    .setProperties(ImmutableMap.of("a", "b"))
+                    .build())));
     Assertions.assertThatCode(
             () -> {
               adminService.updateCatalog(

@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
@@ -247,22 +248,24 @@ public class PolicyCatalogTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
+
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog()));
+                toCatalog(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setDefaultBaseLocation(storageLocation)
+                        .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .setStorageConfigurationInfo(
+                            polarisContext, storageConfigModel, storageLocation)
+                        .build())));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

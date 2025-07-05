@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
+import static org.apache.polaris.core.entity.EntityConverter.toCatalog;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.List;
@@ -133,7 +135,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP))
         .isTrue();
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(toCatalog(newCatalog));
 
     doTestSufficientPrivileges(
         List.of(
@@ -152,7 +154,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreateCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(toCatalog(newCatalog));
 
     doTestInsufficientPrivileges(
         List.of(
@@ -288,7 +290,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE))
         .isTrue();
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(toCatalog(newCatalog));
     adminService.createCatalog(createRequest);
 
     doTestSufficientPrivileges(
@@ -308,7 +310,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeleteCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(toCatalog(newCatalog));
     adminService.createCatalog(createRequest);
 
     doTestInsufficientPrivileges(

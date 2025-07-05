@@ -34,12 +34,9 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
-import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
-import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -93,39 +90,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     builder.setStorageConfigurationInfo(
         callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
-  }
-
-  public Catalog asCatalog() {
-    Map<String, String> internalProperties = getInternalPropertiesAsMap();
-    Catalog.TypeEnum catalogType =
-        Optional.ofNullable(internalProperties.get(CATALOG_TYPE_PROPERTY))
-            .map(Catalog.TypeEnum::valueOf)
-            .orElseGet(() -> getName().equalsIgnoreCase("ROOT") ? Catalog.TypeEnum.INTERNAL : null);
-    Map<String, String> propertiesMap = getPropertiesAsMap();
-    CatalogProperties catalogProps =
-        CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
-            .putAll(propertiesMap)
-            .build();
-    return catalogType == Catalog.TypeEnum.INTERNAL
-        ? PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(getName())
-            .setProperties(catalogProps)
-            .setCreateTimestamp(getCreateTimestamp())
-            .setLastUpdateTimestamp(getLastUpdateTimestamp())
-            .setEntityVersion(getEntityVersion())
-            .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .build()
-        : ExternalCatalog.builder()
-            .setType(Catalog.TypeEnum.EXTERNAL)
-            .setName(getName())
-            .setProperties(catalogProps)
-            .setCreateTimestamp(getCreateTimestamp())
-            .setLastUpdateTimestamp(getLastUpdateTimestamp())
-            .setEntityVersion(getEntityVersion())
-            .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setConnectionConfigInfo(getConnectionInfo(internalProperties))
-            .build();
   }
 
   private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
