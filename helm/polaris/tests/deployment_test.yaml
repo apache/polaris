@@ -356,31 +356,6 @@ tests:
             mountPath: /deployments/config
             readOnly: true
 
-  - it: should evaluate template expressions in persistence secret name
-    set:
-      persistence:
-        type: eclipse-link
-        eclipseLink:
-          secret:
-            name: "{{ .Release.Name }}-persistence-secret"
-    asserts:
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: config-volume
-            projected:
-              sources:
-                  - configMap:
-                      items:
-                        - key: application.properties
-                          path: application.properties
-                      name: polaris-release
-                  - secret:
-                      items:
-                        - key: persistence.xml
-                          path: persistence.xml
-                      name: polaris-release-persistence-secret
-
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default
     asserts:
@@ -986,39 +961,6 @@ tests:
                         path: public.pem
                       - key: private.key
                         path: private.pem
-
-  - it: should configure config volume with persistence secret
-    set:
-      image.configDir: /config/dir
-      persistence:
-        type: eclipse-link
-        eclipseLink:
-          secret:
-            name: polaris-persistence
-            key: custom.xml
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: config-volume
-            mountPath: /config/dir
-            readOnly: true
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: config-volume
-            projected:
-              sources:
-                - configMap:
-                    name: polaris-release
-                    items:
-                      - key: application.properties
-                        path: application.properties
-                - secret:
-                    name: polaris-persistence
-                    items:
-                      - key: custom.xml
-                        path: persistence.xml
 
   - it: should set relational-jdbc persistence environment variables
     set:

@@ -24,8 +24,6 @@
 # Function to display usage information
 usage() {
   echo "Usage: $0 [--eclipse-link-deps=<deps>] [-h|--help]"
-  echo "  --eclipse-link-deps=<deps>  EclipseLink dependencies to use, e.g."
-  echo "                              --eclipse-link-deps=com.h2database:h2:2.3.232"
   echo "  -h, --help                  Display this help message"
   exit 1
 }
@@ -33,9 +31,6 @@ usage() {
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
   case $1 in
-    --eclipse-link-deps=*)
-      ECLIPSE_LINK_DEPS="-PeclipseLinkDeps=${1#*=}"
-      ;;
     -h|--help)
       usage
       ;;
@@ -53,9 +48,11 @@ sh ./kind-registry.sh
 # Build and deploy the server image
 echo "Building polaris image..."
 ./gradlew \
-  :polaris-server:build \
+  :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
-  $ECLIPSE_LINK_DEPS \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true \
   -Dquarkus.container-image.registry=localhost:5001
 
