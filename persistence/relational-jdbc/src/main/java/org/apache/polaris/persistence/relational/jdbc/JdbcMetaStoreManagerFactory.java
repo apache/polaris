@@ -25,6 +25,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -241,6 +242,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
+  }
+
+  @Override
+  public Iterator<Map.Entry<String, PolarisMetaStoreManager>> getMetaStoreManagerMap() {
+    return metaStoreManagerMap.entrySet().iterator();
   }
 
   /**
