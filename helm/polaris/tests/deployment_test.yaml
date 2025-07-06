@@ -952,15 +952,19 @@ tests:
                       - key: application.properties
                         path: application.properties
 
-  - it: should configure config volume with token broker secret
+  - it: should configure config volume with token broker secret (rsa-key-pair)
     set:
       image.configDir: /config/dir
       authentication:
         tokenBroker:
           secret:
             name: polaris-token-broker
-            publicKey: public.key
-            privateKey: private.key
+            type: rsa-key-pair
+            rsaKeyPair:
+              publicKey: public.key
+              privateKey: private.key
+            symmetricKey:
+              secretKey: symmetric.pem
     asserts:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
@@ -986,6 +990,43 @@ tests:
                         path: public.pem
                       - key: private.key
                         path: private.pem
+
+  - it: should configure config volume with token broker secret (symmetric-key)
+    set:
+      image.configDir: /config/dir
+      authentication:
+        tokenBroker:
+          type: symmetric-key
+          secret:
+            name: polaris-token-broker
+            rsaKeyPair:
+              publicKey: public.key
+              privateKey: private.key
+            symmetricKey:
+              secretKey: symmetric.pem
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+                - secret:
+                    name: polaris-token-broker
+                    items:
+                      - key: symmetric.pem
+                        path: symmetric.key
 
   - it: should configure config volume with persistence secret
     set:

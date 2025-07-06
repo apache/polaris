@@ -583,18 +583,27 @@ authentication:
   # -- The type of token broker to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
   tokenBroker:
     type: rsa-key-pair  # symmetric-key
+    # -- Maximum token generation duration (e.g., PT1H for 1 hour).
     maxTokenGeneration: PT1H
     # -- The secret name to pull the public and private keys, or the symmetric key secret from.
     secret:
       # -- The name of the secret to pull the keys from. If not provided, a key pair will be generated.
       # This is not recommended for production.
       name: ~
-      # -- The public key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
+
       publicKey: public.pem
-      # -- The private key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
       privateKey: private.pem
-      # -- The symmetric key file to use for symmetric key token broker. Only required when using symmetric-key.
       secretKey: secret
+      # -- Optional: configuration specific to RSA key pair secret.
+      rsaKeyPair:
+        # -- Key name inside the secret for the public key
+        publicKey: public.pem
+        # -- Key name inside the secret for the private key
+        privateKey: private.pem
+      # -- Optional: configuration specific to symmetric key secret.
+      symmetricKey:
+        # -- Key name inside the secret for the symmetric key
+        secretKey: symmetric.pem
 
 # -- Polaris CORS configuration.
 cors:

@@ -181,13 +181,13 @@ Prints the config volume definition for deployments and jobs.
           name: {{ tpl .Values.authentication.tokenBroker.secret.name . }}
           items:
           {{- if eq .Values.authentication.tokenBroker.type "rsa-key-pair" }}
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.publicKey . }}
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.rsaKeyPair.publicKey . }}
               path: public.pem
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.privateKey . }}
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.rsaKeyPair.privateKey . }}
               path: private.pem
           {{- end }}
           {{- if eq .Values.authentication.tokenBroker.type "symmetric-key" }}
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.secretKey . }}
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.symmetricKey.secretKey . }}
               path: symmetric.key
           {{- end }}
       {{- end }}
