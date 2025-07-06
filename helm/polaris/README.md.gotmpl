@@ -35,12 +35,6 @@
 
 {{ template "chart.homepageLine" . }}
 
-{{ template "chart.maintainersHeader" . }}
-
-{{- range .Maintainers }}
-* [{{ .Name }}]({{ if .Url }}{{ .Url }}{{ else }}https://github.com/{{ .Name }}{{ end }})
-{{- end }}
-
 {{ template "chart.sourcesSection" . }}
 
 {{ template "chart.requirementsSection" . }}
