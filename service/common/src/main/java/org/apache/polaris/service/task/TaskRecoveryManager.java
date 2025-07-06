@@ -76,7 +76,7 @@ public class TaskRecoveryManager {
               configurationStore,
               clock);
       EntitiesResult entitiesResult =
-          metaStoreManager.loadTasks(polarisCallContext, executorId, PageToken.fromLimit(20));
+          metaStoreManager.loadTasks(polarisCallContext, executorId, PageToken.readEverything());
       if (entitiesResult.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
         entitiesResult.getEntities().stream()
             .map(TaskEntity::of)
