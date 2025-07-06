@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
@@ -199,6 +200,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
+  }
+
+  @Override
+  public Iterator<Map.Entry<String, PolarisMetaStoreManager>> getMetaStoreManagerMap() {
+    return metaStoreManagerMap.entrySet().iterator();
   }
 
   /**

@@ -53,6 +53,7 @@ dependencies {
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
+  implementation("io.quarkus:quarkus-scheduler")
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)

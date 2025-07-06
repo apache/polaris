@@ -23,7 +23,9 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
+import io.quarkus.scheduler.Scheduled;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.concurrent.ExecutorService;
@@ -58,6 +60,18 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   @Override
   public void init() {
     super.init();
+  }
+
+  @PostConstruct
+  @Override
+  public void postConstruct() {
+    super.postConstruct();
+  }
+
+  @Scheduled(every = "PT10M")
+  @Override
+  public void scheduled() {
+    super.scheduled();
   }
 
   @Override
