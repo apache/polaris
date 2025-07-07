@@ -217,6 +217,15 @@ module:
     - path: github.com/google/docsy
       # Pin to this release, newer releases _might_ break the customized layouts
       version: v0.10.0
+  mounts:
+    # Keep project's own content explicitly mounted
+    - source: content
+      target: content
+    # Mount from ../../polaris/helm/polaris into the virtual content/in-dev/unreleased/helm path
+    - source: ../../polaris/helm/polaris
+      target: content/in-dev/unreleased/helm
+      excludeFiles: ["**"]
+      includeFiles: ["README.md"]
 
 outputs:
   section:
