@@ -934,7 +934,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         configurationStore.getConfiguration(
             realmContext,
             catalogEntity,
-            FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED);
+            FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED);
     boolean allowUnstructuredTableLocation =
         configurationStore.getConfiguration(
             realmContext, catalogEntity, FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
@@ -952,7 +952,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format(
               "The configuration %s is enabled, but %s is not enabled",
-              FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
+              FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key,
               FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
     } else if (!allowTableLocationOverlap) {
       // TODO consider doing this check any time ALLOW_EXTERNAL_TABLE_LOCATION is enabled, not just
@@ -972,7 +972,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "A table is being created with {} and {} enabled, but with {} disabled. "
                 + "This is a safe combination of configurations which may prevent table overlap, but only if the "
                 + "underlying persistence actually implements %s. Exercise caution.",
-            FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.key,
+            FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key,
             FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key);
       }

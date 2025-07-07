@@ -20,7 +20,7 @@ package org.apache.polaris.service.quarkus.admin;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
-import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED;
 import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -264,7 +264,7 @@ public class PolarisOverlappingTableTest {
             "true",
             ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
             "false",
-            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "false");
     return Stream.of(Arguments.of(Map.of()), Arguments.of(nonRandomCatalog));
   }
@@ -310,13 +310,13 @@ public class PolarisOverlappingTableTest {
   static Stream<Arguments> testInvalidSetupsForRandomLocation() {
     Map<String, Object> randomAndNoOverlapCatalog =
         Map.of(
-            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
             ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
             "false");
     Map<String, Object> randomAndOverlapButNoOptimizedCatalog =
         Map.of(
-            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
             ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
             "true");
@@ -373,7 +373,7 @@ public class PolarisOverlappingTableTest {
             "true");
     Map<String, String> randomAndOverlapButNoOptimizedCatalog =
         Map.of(
-            DEFAULT_LOCATION_RANDOM_PREFIX_ENABLED.catalogConfig(),
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
             ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
             "true");
