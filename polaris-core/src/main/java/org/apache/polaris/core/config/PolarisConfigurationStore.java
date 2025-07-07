@@ -103,13 +103,15 @@ public interface PolarisConfigurationStore {
 
     if (result == null && config.hasLegacyKeys()) {
       for (String legacyKey : config.legacyKeys()) {
-        result = getConfiguration(realmContext, legacyKey);
-        if (result != null) {
+        T legacyResult = getConfiguration(realmContext, legacyKey);
+        if (legacyResult != null) {
           LOGGER.warn(
               "Legacy configuration key '{}' is in use. Please use '{}' instead.",
               legacyKey,
               config.key);
-          break;
+          if (result == null) {
+            result = legacyResult;
+          }
         }
       }
     }
