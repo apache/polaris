@@ -49,7 +49,9 @@ Simply run the `run.sh` script from the Polaris repo root:
 ./run.sh
 ```
 
-This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker images and load them into the Kind cluster (It will also create an example Deployment and Service with in-memory storage.)
+This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
+images with support for Postgres and load them into the Kind cluster. (It will also create an
+example Deployment and Service with in-memory storage.)
 
 ### Running locally with a Minikube cluster
 
