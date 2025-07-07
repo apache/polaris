@@ -2460,7 +2460,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
                     + "or the catalog configuration %s",
                 identifier.name(),
-                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key,
+                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(),
                 FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
       }
     }

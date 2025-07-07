@@ -39,9 +39,9 @@ public abstract class PolarisConfiguration<T> {
 
   private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
 
-  public final String key;
-  public final String description;
-  public final T defaultValue;
+  private final String key;
+  private final String description;
+  private final T defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Optional<String> catalogConfigUnsafeImpl;
   private final Class<T> typ;
@@ -122,6 +122,18 @@ public abstract class PolarisConfiguration<T> {
 
   T cast(Object value) {
     return this.typ.cast(value);
+  }
+
+  public String key() {
+    return key;
+  }
+
+  public String description() {
+    return description;
+  }
+
+  public T defaultValue() {
+    return defaultValue;
   }
 
   public static class Builder<T> {

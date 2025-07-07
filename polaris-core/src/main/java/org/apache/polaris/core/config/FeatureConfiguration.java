@@ -55,7 +55,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
             .getConfigurationStore()
             .getConfiguration(callContext.getRealmContext(), featureConfig);
     if (!enabled) {
-      throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key);
+      throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key());
     }
   }
 
@@ -211,7 +211,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
           .description(
               "How long to store storage credentials in the local cache. This should be less than "
-                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key)
+                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key())
           .defaultValue(30 * 60) // 30 minutes
           .buildFeatureConfiguration();
 
