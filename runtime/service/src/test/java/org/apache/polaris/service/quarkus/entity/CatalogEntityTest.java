@@ -266,4 +266,72 @@ public class CatalogEntityTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
+
+  @Test
+  public void testCatalogTypeDefaultsToInternal() {
+    String baseLocation = "s3://test-bucket/path";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setDefaultBaseLocation(baseLocation)
+            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .build();
+
+    Catalog catalog = catalogEntity.asCatalog();
+    Assertions.assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
+  }
+
+  @Test
+  public void testCatalogTypeExternalPreserved() {
+    String baseLocation = "s3://test-bucket/path";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-external-catalog")
+            .setDefaultBaseLocation(baseLocation)
+            .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
+            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .build();
+
+    Catalog catalog = catalogEntity.asCatalog();
+    Assertions.assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
+  }
+
+  @Test
+  public void testCatalogTypeInternalExplicitlySet() {
+    String baseLocation = "s3://test-bucket/path";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-internal-catalog")
+            .setDefaultBaseLocation(baseLocation)
+            .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
+            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .build();
+
+    Catalog catalog = catalogEntity.asCatalog();
+    Assertions.assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
+  }
 }
