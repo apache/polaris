@@ -181,13 +181,34 @@ Prints the config volume definition for deployments and jobs.
           name: {{ tpl .Values.authentication.tokenBroker.secret.name . }}
           items:
           {{- if eq .Values.authentication.tokenBroker.type "rsa-key-pair" }}
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.rsaKeyPair.publicKey . }}
+            {{- /* Backward compatibility for publicKey: new takes precedence */ -}}
+            {{- $publicKey := "" }}
+            {{- if .Values.authentication.tokenBroker.secret.rsaKeyPair.publicKey }}
+              {{- $publicKey = .Values.authentication.tokenBroker.secret.rsaKeyPair.publicKey }}
+            {{- else if .Values.authentication.tokenBroker.secret.publicKey }}
+              {{- $publicKey = .Values.authentication.tokenBroker.secret.publicKey }}
+            {{- end }}
+            {{- /* Backward compatibility for privateKey: new takes precedence */ -}}
+            {{- $privateKey := "" }}
+            {{- if .Values.authentication.tokenBroker.secret.rsaKeyPair.privateKey }}
+              {{- $privateKey = .Values.authentication.tokenBroker.secret.rsaKeyPair.privateKey }}
+            {{- else if .Values.authentication.tokenBroker.secret.privateKey }}
+              {{- $privateKey = .Values.authentication.tokenBroker.secret.privateKey -}}
+            {{- end }}
+            - key: {{ tpl $publicKey . }}
               path: public.pem
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.rsaKeyPair.privateKey . }}
+            - key: {{ tpl $privateKey . }}
               path: private.pem
           {{- end }}
           {{- if eq .Values.authentication.tokenBroker.type "symmetric-key" }}
-            - key: {{ tpl .Values.authentication.tokenBroker.secret.symmetricKey.secretKey . }}
+            {{- /* Backward compatibility for symmetricKey: new takes precedence */ -}}
+            {{- $secretKey := "" }}
+            {{- if .Values.authentication.tokenBroker.secret.symmetricKey.secretKey }}
+              {{- $secretKey = .Values.authentication.tokenBroker.secret.symmetricKey.secretKey }}
+            {{- else if .Values.authentication.tokenBroker.secret.secretKey }}
+              {{- $secretKey = .Values.authentication.tokenBroker.secret.secretKey }}
+            {{- end }}
+            - key: {{ tpl $secretKey . }}
               path: symmetric.key
           {{- end }}
       {{- end }}

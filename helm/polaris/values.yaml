@@ -590,10 +590,15 @@ authentication:
       # -- The name of the secret to pull the keys from. If not provided, a key pair will be generated.
       # This is not recommended for production.
       name: ~
-
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead.
+      # Key name inside the secret for the public key
       publicKey: public.pem
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead.
+      # Key name inside the secret for the private key
       privateKey: private.pem
-      secretKey: secret
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead.
+      # Key name inside the secret for the symmetric key
+      secretKey: symmetric.pem
       # -- Optional: configuration specific to RSA key pair secret.
       rsaKeyPair:
         # -- Key name inside the secret for the public key
