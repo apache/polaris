@@ -919,7 +919,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Applies the rule controlled by DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED to a tablelike location
+   * Applies the rule controlled by DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED to a tablelike
+   * location
    */
   private String applyDefaultLocationObjectStoragePrefix(
       TableIdentifier tableIdentifier, String location) {
