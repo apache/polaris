@@ -277,7 +277,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "test-format", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "test-format", null, "doc", Map.of()))
         .doesNotThrowAnyException();
   }
 
@@ -286,12 +286,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format1", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format1", null, "doc", Map.of());
 
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -308,7 +308,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -327,7 +327,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String doc = "round-trip-doc";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), format, doc, properties);
+        TableIdentifier.of("ns", tableName), format, null, doc, properties);
 
     GenericTableEntity resultEntity =
         genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName));
@@ -381,7 +381,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String tableName = "t1";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
+        TableIdentifier.of("ns", tableName), "format", null, "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadTable(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -394,7 +394,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String tableName = "t1";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
+        TableIdentifier.of("ns", tableName), "format", null, "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadView(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -406,7 +406,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     for (int i = 0; i < 10; i++) {
       genericTableCatalog.createGenericTable(
-          TableIdentifier.of("ns", "t" + i), "format", "doc", Map.of());
+          TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
     }
 
     List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
@@ -468,7 +468,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     for (int i = 0; i < 10; i++) {
       genericTableCatalog.createGenericTable(
-          TableIdentifier.of("ns", "g" + i), "format", "doc", Map.of());
+          TableIdentifier.of("ns", "g" + i), "format", null, "doc", Map.of());
     }
 
     Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
@@ -514,7 +514,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format", null, "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
@@ -526,7 +526,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format", null, "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))

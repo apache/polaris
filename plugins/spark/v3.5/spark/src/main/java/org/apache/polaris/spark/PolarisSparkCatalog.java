@@ -83,9 +83,21 @@ public class PolarisSparkCatalog implements TableCatalog {
       throws TableAlreadyExistsException, NoSuchNamespaceException {
     try {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+
+      String baseLocation;
+      if (properties.get(TableCatalog.PROP_LOCATION) != null) {
+        baseLocation = properties.get(TableCatalog.PROP_LOCATION);
+      } else {
+        baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
+      }
+      // String location = properties.get()
       GenericTable genericTable =
           this.polarisCatalog.createGenericTable(
-              Spark3Util.identifierToTableIdentifier(identifier), format, null, properties);
+              Spark3Util.identifierToTableIdentifier(identifier),
+              format,
+              baseLocation,
+              null,
+              properties);
       return PolarisCatalogUtils.loadSparkTable(genericTable);
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(identifier);

@@ -23,16 +23,17 @@ import jakarta.annotation.Nonnull;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 
 /**
  * An entity type for all table-like entities including Iceberg tables, Iceberg views, and generic
  * tables. This entity maps to {@link PolarisEntityType#TABLE_LIKE}
  */
-public abstract class TableLikeEntity extends PolarisEntity {
+public abstract class TableLikeEntity extends PolarisEntity implements LocationBasedEntity {
 
   public TableLikeEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
@@ -52,5 +53,11 @@ public abstract class TableLikeEntity extends PolarisEntity {
       return Namespace.empty();
     }
     return RESTUtil.decodeNamespace(encodedNamespace);
+  }
+
+  @Override
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
   }
 }
