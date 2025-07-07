@@ -257,8 +257,8 @@ public class PolarisOverlappingTableTest {
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 
-  static Stream<Arguments> testNonRandomTableLocations() {
-    Map<String, Object> nonRandomCatalog =
+  static Stream<Arguments> testStandardTableLocations() {
+    Map<String, Object> noPrefixCatalog =
         Map.of(
             ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
             "true",
@@ -266,13 +266,13 @@ public class PolarisOverlappingTableTest {
             "false",
             DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "false");
-    return Stream.of(Arguments.of(Map.of()), Arguments.of(nonRandomCatalog));
+    return Stream.of(Arguments.of(Map.of()), Arguments.of(noPrefixCatalog));
   }
 
   @ParameterizedTest
   @MethodSource()
-  @DisplayName("Test tables getting created at non-random locations")
-  void testNonRandomTableLocations(Map<String, String> catalogConfig, @TempDir Path tempDir) {
+  @DisplayName("Test tables getting created at standard locations")
+  void testStandardTableLocations(Map<String, String> catalogConfig, @TempDir Path tempDir) {
     Map<String, Object> strictServices =
         Map.of(
             "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
@@ -307,28 +307,28 @@ public class PolarisOverlappingTableTest {
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 
-  static Stream<Arguments> testInvalidSetupsForRandomLocation() {
-    Map<String, Object> randomAndNoOverlapCatalog =
+  static Stream<Arguments> testInvalidSetupsForObjectStorageLocation() {
+    Map<String, Object> prefixAndNoOverlapCatalog =
         Map.of(
             DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
             ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
             "false");
-    Map<String, Object> randomAndOverlapButNoOptimizedCatalog =
+    Map<String, Object> prefixAndOverlapButNoOptimizedCatalog =
         Map.of(
             DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
             ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
             "true");
     return Stream.of(
-        Arguments.of(randomAndNoOverlapCatalog),
-        Arguments.of(randomAndOverlapButNoOptimizedCatalog));
+        Arguments.of(prefixAndNoOverlapCatalog),
+        Arguments.of(prefixAndOverlapButNoOptimizedCatalog));
   }
 
   @ParameterizedTest
   @MethodSource()
-  @DisplayName("Test invalid configurations for enabling random locations")
-  void testInvalidSetupsForRandomLocation(
+  @DisplayName("Test invalid configurations for enabling prefixed locations")
+  void testInvalidSetupsForObjectStorageLocation(
       Map<String, String> catalogConfig, @TempDir Path tempDir) {
     Map<String, Object> strictServicesNoOptimizedOverlapCheck =
         Map.of(
@@ -357,8 +357,8 @@ public class PolarisOverlappingTableTest {
   }
 
   @Test
-  @DisplayName("Test tables getting created at random locations")
-  public void testRandomTableLocations(@TempDir Path tempDir) {
+  @DisplayName("Test tables getting created at locations with a hash prefix")
+  public void testHashedTableLocations(@TempDir Path tempDir) {
     Map<String, Object> strictServicesWithOptimizedOverlapCheck =
         Map.of(
             "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
@@ -371,7 +371,7 @@ public class PolarisOverlappingTableTest {
             List.of("FILE", "S3"),
             OPTIMIZED_SIBLING_CHECK.key,
             "true");
-    Map<String, String> randomAndOverlapButNoOptimizedCatalog =
+    Map<String, String> hashedAndOverlapButNoOptimizedCatalog =
         Map.of(
             DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(),
             "true",
@@ -385,7 +385,7 @@ public class PolarisOverlappingTableTest {
     if (baseLocation.endsWith("/")) {
       baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
     }
-    createCatalogAndNamespace(services, randomAndOverlapButNoOptimizedCatalog, baseLocation);
+    createCatalogAndNamespace(services, hashedAndOverlapButNoOptimizedCatalog, baseLocation);
 
     String tableName;
     String tableLocation;
@@ -416,7 +416,7 @@ public class PolarisOverlappingTableTest {
     assertThat(createTable(services, tableLocation))
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
 
-    // The random prefix does not actually have to be stable, so this test
+    // The hashed prefix does not actually have to be stable, so this test
     // is okay to change in the future.
     assertThat(createTableWithName(services, "determinism_check").substring(baseLocation.length()))
         .isEqualTo("/test-catalog/1110/1010/0001/01111010/ns/determinism_check");
