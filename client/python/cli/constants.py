@@ -25,10 +25,10 @@ class StorageType(Enum):
     Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, or `file`.
     """
 
-    S3 = 's3'
-    AZURE = 'azure'
-    GCS = 'gcs'
-    FILE = 'file'
+    S3 = "s3"
+    AZURE = "azure"
+    GCS = "gcs"
+    FILE = "file"
 
 
 class CatalogType(Enum):
@@ -36,8 +36,8 @@ class CatalogType(Enum):
     Represents a Catalog Type within the Polaris API -- `internal` or `external`
     """
 
-    INTERNAL = 'internal'
-    EXTERNAL = 'external'
+    INTERNAL = "internal"
+    EXTERNAL = "external"
 
 
 class PrincipalType(Enum):
@@ -45,7 +45,34 @@ class PrincipalType(Enum):
     Represents a Principal Type within the Polaris API -- currently only `service`
     """
 
-    SERVICE = 'service'
+    SERVICE = "service"
+
+
+class CatalogConnectionType(Enum):
+    """
+    Represents a ConnectionType for an EXTERNAL catalog -- see ConnectionConfigInfo in the spec
+    """
+
+    HADOOP = 'hadoop'
+    ICEBERG = 'iceberg-rest'
+
+
+class AuthenticationType(Enum):
+    """
+    Represents a AuthenticationType for an EXTERNAL catalog -- see AuthenticationParameters in the spec
+    """
+
+    OAUTH = 'oauth'
+    BEARER = 'bearer'
+    SIGV4 = 'sigv4'
+
+
+class ServiceIdentityType(Enum):
+    """
+    Represents a Service Identity Type for an EXTERNAL catalog -- see ServiceIdentityInfo in the spec
+    """
+
+    AWS_IAM = 'aws_iam'
 
 
 class Commands:
@@ -53,13 +80,13 @@ class Commands:
     Represents the various commands available in the CLI
     """
 
-    CATALOGS = 'catalogs'
-    PRINCIPALS = 'principals'
-    PRINCIPAL_ROLES = 'principal-roles'
-    CATALOG_ROLES = 'catalog-roles'
-    PRIVILEGES = 'privileges'
-    NAMESPACES = 'namespaces'
-    PROFILES = 'profiles'
+    CATALOGS = "catalogs"
+    PRINCIPALS = "principals"
+    PRINCIPAL_ROLES = "principal-roles"
+    CATALOG_ROLES = "catalog-roles"
+    PRIVILEGES = "privileges"
+    NAMESPACES = "namespaces"
+    PROFILES = "profiles"
 
 
 class Subcommands:
@@ -68,19 +95,19 @@ class Subcommands:
     all these subcommands.
     """
 
-    CREATE = 'create'
-    DELETE = 'delete'
-    GET = 'get'
-    LIST = 'list'
-    UPDATE = 'update'
-    ROTATE_CREDENTIALS = 'rotate-credentials'
-    CATALOG = 'catalog'
-    NAMESPACE = 'namespace'
-    TABLE = 'table'
-    VIEW = 'view'
-    GRANT = 'grant'
-    REVOKE = 'revoke'
-    ACCESS = 'access'
+    CREATE = "create"
+    DELETE = "delete"
+    GET = "get"
+    LIST = "list"
+    UPDATE = "update"
+    ROTATE_CREDENTIALS = "rotate-credentials"
+    CATALOG = "catalog"
+    NAMESPACE = "namespace"
+    TABLE = "table"
+    VIEW = "view"
+    GRANT = "grant"
+    REVOKE = "revoke"
+    ACCESS = "access"
 
 
 class Actions:
@@ -89,8 +116,8 @@ class Actions:
     `privileges` command support actions.
     """
 
-    GRANT = 'grant'
-    REVOKE = 'revoke'
+    GRANT = "grant"
+    REVOKE = "revoke"
 
 
 class Arguments:
@@ -136,6 +163,23 @@ class Arguments:
     REGION = 'region'
     PROFILE = 'profile'
     PROXY = 'proxy'
+    HADOOP_WAREHOUSE = 'hadoop_warehouse'
+    ICEBERG_REMOTE_CATALOG_NAME = 'iceberg_remote_catalog_name'
+    CATALOG_CONNECTION_TYPE = 'catalog_connection_type'
+    CATALOG_AUTHENTICATION_TYPE = 'catalog_authentication_type'
+    CATALOG_SERVICE_IDENTITY_TYPE = 'catalog_service_identity_type'
+    CATALOG_SERVICE_IDENTITY_IAM_ARN = 'catalog_service_identity_iam_arn'
+    CATALOG_URI = 'catalog_uri'
+    CATALOG_TOKEN_URI = 'catalog_token_uri'
+    CATALOG_CLIENT_ID = 'catalog_client_id'
+    CATALOG_CLIENT_SECRET = 'catalog_client_secret'
+    CATALOG_CLIENT_SCOPE = 'catalog_client_scope'
+    CATALOG_BEARER_TOKEN = 'catalog_bearer_token'
+    CATALOG_ROLE_ARN = 'catalog_role_arn'
+    CATALOG_ROLE_SESSION_NAME = 'catalog_role_session_name'
+    CATALOG_EXTERNAL_ID = 'catalog_external_id'
+    CATALOG_SIGNING_REGION = 'catalog_signing_region'
+    CATALOG_SIGNING_NAME = 'catalog_signing_name'
 
 
 class Hints:
@@ -145,97 +189,154 @@ class Hints:
     parameter used by `catalog-roles create` and `catalog-roles delete` may be the same.
     """
 
-    PROPERTY = ('A key/value pair such as: tag=value. Multiple can be provided by specifying this option'
-                ' more than once')
-    SET_PROPERTY = ('A key/value pair such as: tag=value. Merges the specified key/value into an existing'
-                    ' properties map by updating the value if the key already exists or creating a new'
-                    ' entry if not. Multiple can be provided by specifying this option more than once')
-    REMOVE_PROPERTY = ('A key to remove from a properties map. If the key already does not exist then'
-                       ' no action is takn for the specified key. If properties are also being set in'
-                       ' the same update command then the list of removals is applied last. Multiple'
-                       ' can be provided by specifying this option more than once')
+    PROPERTY = (
+        "A key/value pair such as: tag=value. Multiple can be provided by specifying this option"
+        " more than once"
+    )
+    SET_PROPERTY = (
+        "A key/value pair such as: tag=value. Merges the specified key/value into an existing"
+        " properties map by updating the value if the key already exists or creating a new"
+        " entry if not. Multiple can be provided by specifying this option more than once"
+    )
+    REMOVE_PROPERTY = (
+        "A key to remove from a properties map. If the key already does not exist then"
+        " no action is takn for the specified key. If properties are also being set in"
+        " the same update command then the list of removals is applied last. Multiple"
+        " can be provided by specifying this option more than once"
+    )
 
     class Catalogs:
-        GRANT = 'Grant a catalog role to a catalog'
-        REVOKE = 'Revoke a catalog role from a catalog'
+        GRANT = "Grant a catalog role to a catalog"
+        REVOKE = "Revoke a catalog role from a catalog"
 
         class Create:
-            TYPE = 'The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default.'
-            DEFAULT_BASE_LOCATION = '(Required) Default base location of the catalog'
-            STORAGE_TYPE = '(Required) The type of storage to use for the catalog'
-            ALLOWED_LOCATION = ('An allowed location for files tracked by the catalog. '
-                                'Multiple locations can be provided by specifying this option more than once.')
+            TYPE = "The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default."
+            DEFAULT_BASE_LOCATION = "(Required) Default base location of the catalog"
+            STORAGE_TYPE = "(Required) The type of storage to use for the catalog"
+            ALLOWED_LOCATION = (
+                "An allowed location for files tracked by the catalog. "
+                "Multiple locations can be provided by specifying this option more than once."
+            )
 
-            ROLE_ARN = '(Required for S3) A role ARN to use when connecting to S3'
-            EXTERNAL_ID = '(Only for S3) The external ID to use when connecting to S3'
-            REGION = '(Only for S3) The region to use when connecting to S3'
-            USER_ARN = '(Only for S3) A user ARN to use when connecting to S3'
+            ROLE_ARN = "(Required for S3) A role ARN to use when connecting to S3"
+            EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
+            REGION = "(Only for S3) The region to use when connecting to S3"
+            USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"
 
-            TENANT_ID = '(Required for Azure) A tenant ID to use when connecting to Azure Storage'
-            MULTI_TENANT_APP_NAME = '(Only for Azure) The app name to use when connecting to Azure Storage'
-            CONSENT_URL = '(Only for Azure) A consent URL granting permissions for the Azure Storage location'
+            TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
+            MULTI_TENANT_APP_NAME = (
+                "(Only for Azure) The app name to use when connecting to Azure Storage"
+            )
+            CONSENT_URL = "(Only for Azure) A consent URL granting permissions for the Azure Storage location"
 
-            SERVICE_ACCOUNT = '(Only for GCS) The service account to use when connecting to GCS'
+            SERVICE_ACCOUNT = (
+                "(Only for GCS) The service account to use when connecting to GCS"
+            )
 
         class Update:
-            DEFAULT_BASE_LOCATION = 'A new default base location for the catalog'
+            DEFAULT_BASE_LOCATION = "A new default base location for the catalog"
+
+        class External:
+            CATALOG_CONNECTION_TYPE = 'The type of external catalog in [ICEBERG, HADOOP].'
+            CATALOG_AUTHENTICATION_TYPE = 'The type of authentication in [OAUTH, BEARER, SIGV4]'
+            CATALOG_SERVICE_IDENTITY_TYPE = 'The type of service identity in [AWS_IAM]'
+
+            CATALOG_SERVICE_IDENTITY_IAM_ARN = ('When using the AWS_IAM service identity type, this is the ARN '
+                                                'of the IAM user or IAM role Polaris uses to assume roles and '
+                                                'then access external resources.')
+
+            CATALOG_URI = 'The URI of the external catalog'
+            HADOOP_WAREHOUSE = 'The warehouse to use when federating to a HADOOP catalog'
+            ICEBERG_REMOTE_CATALOG_NAME = 'The remote catalog name when federating to an Iceberg REST catalog'
+
+
+            CATALOG_TOKEN_URI = '(For authentication type OAUTH) Token server URI'
+            CATALOG_CLIENT_ID = '(For authentication type OAUTH) oauth client id'
+            CATALOG_CLIENT_SECRET = '(For authentication type OAUTH) oauth client secret (input-only)'
+            CATALOG_CLIENT_SCOPE = ('(For authentication type OAUTH) oauth scopes to specify when exchanging '
+                                    'for a short-lived access token. Multiple can be provided by specifying'
+                                    ' this option more than once')
+
+            CATALOG_BEARER_TOKEN = '(For authentication type BEARER) Bearer token (input-only)'
+
+            CATALOG_ROLE_ARN = ('(For authentication type SIGV4) The aws IAM role arn assumed by polaris '
+                                'userArn when signing requests')
+            CATALOG_ROLE_SESSION_NAME = ('(For authentication type SIGV4) The role session name to be used '
+                                         'by the SigV4 protocol for signing requests')
+            CATALOG_EXTERNAL_ID = ('(For authentication type SIGV4) An optional external id used to establish '
+                                   'a trust relationship with AWS in the trust policy')
+            CATALOG_SIGNING_REGION = ('(For authentication type SIGV4) Region to be used by the SigV4 protocol '
+                                      'for signing requests')
+            CATALOG_SIGNING_NAME = ('(For authentication type SIGV4) The service name to be used by the SigV4 '
+                                    'protocol for signing requests, the default signing name is "execute-api" '
+                                    'is if not provided')
 
     class Principals:
         class Create:
-            TYPE = 'The type of principal to create in [SERVICE]'
-            NAME = 'The principal name'
-            CLIENT_ID = 'The output-only OAuth clientId associated with this principal if applicable'
+            TYPE = "The type of principal to create in [SERVICE]"
+            NAME = "The principal name"
+            CLIENT_ID = "The output-only OAuth clientId associated with this principal if applicable"
 
         class Revoke:
-            PRINCIPAL_ROLE = 'A principal role to revoke from this principal'
+            PRINCIPAL_ROLE = "A principal role to revoke from this principal"
 
     class PrincipalRoles:
-        PRINCIPAL_ROLE = 'The name of a principal role'
-        LIST = 'List principal roles, optionally limited to those held a given principal'
+        PRINCIPAL_ROLE = "The name of a principal role"
+        LIST = (
+            "List principal roles, optionally limited to those held a given principal"
+        )
 
-        GRANT = 'Grant a principal role to a principal'
-        REVOKE = 'Revoke a principal role from a principal'
+        GRANT = "Grant a principal role to a principal"
+        REVOKE = "Revoke a principal role from a principal"
 
         class Grant:
-            PRINCIPAL = 'A principal to grant this principal role to'
+            PRINCIPAL = "A principal to grant this principal role to"
 
         class Revoke:
-            PRINCIPAL = 'A principal to revoke this principal role from'
+            PRINCIPAL = "A principal to revoke this principal role from"
 
         class List:
-            CATALOG_ROLE = ('The name of a catalog role. If provided, show only principal roles assigned to this'
-                            ' catalog role.')
-            PRINCIPAL_NAME = ('The name of a principal. If provided, show only principal roles assigned to this'
-                              ' principal.')
+            CATALOG_ROLE = (
+                "The name of a catalog role. If provided, show only principal roles assigned to this"
+                " catalog role."
+            )
+            PRINCIPAL_NAME = (
+                "The name of a principal. If provided, show only principal roles assigned to this"
+                " principal."
+            )
 
     class CatalogRoles:
-        CATALOG_NAME = 'The name of an existing catalog'
-        CATALOG_ROLE = 'The name of a catalog role'
-        LIST = 'List catalog roles within a catalog. Optionally, specify a principal role.'
-        REVOKE_CATALOG_ROLE = 'Revoke a catalog role from a principal role'
-        GRANT_CATALOG_ROLE = 'Grant a catalog role to a principal role'
+        CATALOG_NAME = "The name of an existing catalog"
+        CATALOG_ROLE = "The name of a catalog role"
+        LIST = (
+            "List catalog roles within a catalog. Optionally, specify a principal role."
+        )
+        REVOKE_CATALOG_ROLE = "Revoke a catalog role from a principal role"
+        GRANT_CATALOG_ROLE = "Grant a catalog role to a principal role"
 
     class Grant:
-        CATALOG_NAME = 'The name of a catalog'
-        CATALOG_ROLE = 'The name of a catalog role'
-        PRIVILEGE = 'The privilege to grant or revoke'
-        NAMESPACE = 'A period-delimited namespace'
-        TABLE = 'The name of a table'
-        VIEW = 'The name of a view'
-        CASCADE = 'When revoking privileges, additionally revoke privileges that depend on the specified privilege'
+        CATALOG_NAME = "The name of a catalog"
+        CATALOG_ROLE = "The name of a catalog role"
+        PRIVILEGE = "The privilege to grant or revoke"
+        NAMESPACE = "A period-delimited namespace"
+        TABLE = "The name of a table"
+        VIEW = "The name of a view"
+        CASCADE = "When revoking privileges, additionally revoke privileges that depend on the specified privilege"
 
     class Namespaces:
-        LOCATION = 'If specified, the location at which to store the namespace and entities inside it'
-        PARENT = 'If specified, list namespaces inside this parent namespace'
+        LOCATION = "If specified, the location at which to store the namespace and entities inside it"
+        PARENT = "If specified, list namespaces inside this parent namespace"
 
 
 UNIT_SEPARATOR = chr(0x1F)
-CLIENT_ID_ENV = 'CLIENT_ID'
-CLIENT_SECRET_ENV = 'CLIENT_SECRET'
-CLIENT_PROFILE_ENV = 'CLIENT_PROFILE'
-DEFAULT_HOSTNAME = 'localhost'
+CLIENT_ID_ENV = "CLIENT_ID"
+CLIENT_SECRET_ENV = "CLIENT_SECRET"
+CLIENT_PROFILE_ENV = "CLIENT_PROFILE"
+DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
-CONFIG_DIR = os.environ.get('SCRIPT_DIR')
+CONFIG_DIR = os.environ.get("SCRIPT_DIR")
 if CONFIG_DIR is None:
-    raise Exception("The SCRIPT_DIR environment variable is not set. Please set it to the Polaris's script directory.")
-CONFIG_FILE = os.path.join(CONFIG_DIR, '.polaris.json')
+    raise Exception(
+        "The SCRIPT_DIR environment variable is not set. Please set it to the Polaris's script directory."
+    )
+CONFIG_FILE = os.path.join(CONFIG_DIR, ".polaris.json")

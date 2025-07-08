@@ -33,7 +33,10 @@ logging:
       size: 50Mi
 
 persistence:
-  type: eclipse-link
-  eclipseLink:
+  type: relational-jdbc
+  relationalJdbc:
     secret:
       name: polaris-persistence
+      username: username
+      password: password
+      jdbcUrl: jdbcUrl

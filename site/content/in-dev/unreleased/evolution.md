@@ -26,7 +26,7 @@ This page discusses what can be expected from Apache Polaris as the project evol
 
 ## Using Polaris as a Catalog
 
-Polaris is primarily intended to be used as a Catalog of Tables and Views. As such, 
+Polaris is primarily intended to be used as a Catalog of Tables and Views. As such,
 it implements the Iceberg REST Catalog API and its own REST APIs.
 
 Revisions of the Iceberg REST Catalog API are controlled by the [Apache Iceberg](https://iceberg.apache.org/)
@@ -35,7 +35,7 @@ optional REST Catalog features may or may not be supported immediately. In gener
 there is no guarantee that Polaris releases always implement the latest version of
 the Iceberg REST Catalog API.
 
-Any API under Polaris control that is not in an "experimental" or "beta" state 
+Any API under Polaris control that is not in an "experimental" or "beta" state
 (e.g. the Management API) is maintained as a versioned REST API. New releases of Polaris
 may include changes to the current version of the API. When that happens those changes
 are intended to be compatible with prior versions of Polaris clients. Certain endpoints
@@ -43,13 +43,13 @@ and parameters may be deprecated.
 
 In case a major change is required to an API that cannot be implemented in a
 backward-compatible way, new endpoints (URI paths) may be introduced. New URI "roots" may
-be introduced too (e.g. `api/catalog/v2`). 
+be introduced too (e.g. `api/catalog/v2`).
 
 Note that those "v1", "v2", etc. URI path segments are not meant to be 1:1 with Polaris
 releases or Polaris project version numbers (e.g. a "v2" path segment does not mean that
 it is added in Polaris 2.0).
 
-Polaris servers will support deprecated API endpoints / parameters / versions / etc. 
+Polaris servers will support deprecated API endpoints / parameters / versions / etc.
 for some transition period to allow clients to migrate.
 
 ### Managing Polaris Database
@@ -83,9 +83,9 @@ whether the class / method is `public` or not.
 
 This approach is not meant to discourage the use of Polaris code in downstream projects, but
 to allow more flexibility in evolving the codebase to support new catalog-level features
-and improve code efficiency. Maintainers of downstream projects are encouraged to join Polaris 
+and improve code efficiency. Maintainers of downstream projects are encouraged to join Polaris
 mailing lists to monitor project changes, suggest improvements, and engage with the Polaris
-community in case of specific compatibility concerns.   
+community in case of specific compatibility concerns.
 
 ## Semantic Versioning
 
@@ -112,4 +112,4 @@ compatible way (e.g. removing or renaming a request parameter) is a major change
 * Dropping support for any previously defined [Policy](../policy/) type or property is a major change.
 
 * Upgrading Quarkus Runtime to its next major version is a major change (because
-Quarkus-managed configuration may change).   
+Quarkus-managed configuration may change).

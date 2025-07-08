@@ -232,16 +232,18 @@ public class TreeMapMetaStore {
     this.sliceEntities =
         new Slice<>(
             entity -> String.format("%d::%d", entity.getCatalogId(), entity.getId()),
-            PolarisBaseEntity::new);
+            entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // the entities active slice; simply acts as a name-based index into the entities slice
-    this.sliceEntitiesActive = new Slice<>(this::buildEntitiesActiveKey, PolarisBaseEntity::new);
+    this.sliceEntitiesActive =
+        new Slice<>(
+            this::buildEntitiesActiveKey, entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // change tracking
     this.sliceEntitiesChangeTracking =
         new Slice<>(
             entity -> String.format("%d::%d", entity.getCatalogId(), entity.getId()),
-            PolarisBaseEntity::new);
+            entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // grant records by securable
     this.sliceGrantRecords =

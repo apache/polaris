@@ -95,6 +95,7 @@ openApiGenerate {
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
+  configOptions.put("hideGenerationTimestamp", "true")
   configOptions.put("openApiNullable", "false")
   additionalProperties.put("apiNamePrefix", "PolarisCatalog")
   additionalProperties.put("apiNameSuffix", "")

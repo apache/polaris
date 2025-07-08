@@ -375,6 +375,14 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
+This binary artifact contains Google FlatBuffers.
+
+Copyright: 2013-2020 Google Inc.
+Home page: https://google.github.io/flatbuffers/
+License: http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 This binary artifact contains ThreeTen.
 
 Copyright: 2007-present, Stephen Colebourne & Michael Nascimento Santos.
@@ -562,6 +570,14 @@ This binary artifact contains Commons Lang3.
 
 Copyright: 2001-2025 The Apache Software Foundation
 Project URL: https://commons.apache.org/proper/commons-lang/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains OpenHFT.
+
+Copyright: 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
+Project URL: https://github.com/OpenHFT
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------

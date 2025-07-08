@@ -16,10 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
+plugins {
+  alias(libs.plugins.jandex)
+  id("polaris-server")
+}
 
-@QuarkusIntegrationTest
-public class QuarkusRestCatalogIT extends PolarisRestCatalogIntegrationTest {}
+dependencies {
+  api(platform(libs.testcontainers.bom))
+  api("org.testcontainers:testcontainers")
+
+  api(platform(libs.awssdk.bom))
+  api("software.amazon.awssdk:s3")
+
+  implementation(project(":polaris-container-spec-helper"))
+  implementation("software.amazon.awssdk:url-connection-client")
+  implementation(libs.guava)
+
+  compileOnly(platform(libs.junit.bom))
+  compileOnly("org.junit.jupiter:junit-jupiter-api")
+}

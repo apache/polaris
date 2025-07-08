@@ -159,45 +159,18 @@ public abstract class PolarisSparkIntegrationTestBase {
 
     managementApi.createCatalog(externalCatalog);
 
-    SparkSession.Builder sessionBuilder =
-        SparkSession.builder()
-            .master("local[1]")
-            .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            .config(
-                "spark.hadoop.fs.s3.aws.credentials.provider",
-                "org.apache.hadoop.fs.s3.TemporaryAWSCredentialsProvider")
-            .config("spark.hadoop.fs.s3.access.key", "foo")
-            .config("spark.hadoop.fs.s3.secret.key", "bar")
-            .config(
-                "spark.sql.extensions",
-                "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-            .config("spark.ui.showConsoleProgress", false)
-            .config("spark.ui.enabled", "false");
-    spark =
-        withCatalog(withCatalog(sessionBuilder, catalogName), externalCatalogName).getOrCreate();
+    spark = buildSparkSession();
 
     onSpark("USE " + catalogName);
   }
 
-  protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
-    return builder
-        .config(
-            String.format("spark.sql.catalog.%s", catalogName),
-            "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.warehouse.dir", warehouseDir.toString())
-        .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalogName),
-            endpoints.catalogApiEndpoint().toString())
-        .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
-        .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
-        .config(
-            String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+  protected SparkSession buildSparkSession() {
+    return SparkSessionBuilder.buildWithTestDefaults()
+        .withWarehouse(warehouseDir)
+        .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .addCatalog(
+            externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .getOrCreate();
   }
 
   @AfterEach

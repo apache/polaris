@@ -21,32 +21,28 @@ package org.apache.polaris.service.quarkus.it;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.lang.reflect.Field;
-import java.nio.file.Path;
 import java.util.Map;
-import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewAwsIntegrationTest;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.io.TempDir;
+import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
 
 @QuarkusTest
-@TestProfile(QuarkusRestCatalogViewAwsIntegrationTest.Profile.class)
-public class QuarkusRestCatalogViewAwsIntegrationTest
-    extends PolarisRestCatalogViewAwsIntegrationTest {
+@TestProfile(QuarkusRestCatalogFileIntegrationTest.Profile.class)
+public class QuarkusRestCatalogFileIntegrationTest extends PolarisRestCatalogFileIntegrationTest {
 
   public static class Profile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"S3\"]");
+      return Map.of(
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"",
+          "false",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.readiness.ignore-severe-issues",
+          "true");
     }
-  }
-
-  @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
-    // see https://github.com/quarkusio/quarkus/issues/13261
-    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
-    field.setAccessible(true);
-    field.set(this, tempDir);
   }
 }

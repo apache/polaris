@@ -106,17 +106,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
             .putAll(propertiesMap)
             .build();
-    return catalogType == Catalog.TypeEnum.INTERNAL
-        ? PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(getName())
-            .setProperties(catalogProps)
-            .setCreateTimestamp(getCreateTimestamp())
-            .setLastUpdateTimestamp(getLastUpdateTimestamp())
-            .setEntityVersion(getEntityVersion())
-            .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .build()
-        : ExternalCatalog.builder()
+    return catalogType == Catalog.TypeEnum.EXTERNAL
+        ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(getName())
             .setProperties(catalogProps)
@@ -125,6 +116,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
             .setConnectionConfigInfo(getConnectionInfo(internalProperties))
+            .build()
+        : PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(getName())
+            .setProperties(catalogProps)
+            .setCreateTimestamp(getCreateTimestamp())
+            .setLastUpdateTimestamp(getLastUpdateTimestamp())
+            .setEntityVersion(getEntityVersion())
+            .setStorageConfigInfo(getStorageInfo(internalProperties))
             .build();
   }
 
@@ -273,7 +273,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion());
+                    awsConfigModel.getRegion(),
+                    awsConfigModel.getEndpoint(),
+                    awsConfigModel.getStsEndpoint());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
