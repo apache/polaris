@@ -109,7 +109,7 @@ menu:
       url: "/in-dev/0.9.0/"
       parent: "releases"
     - name: "1.0.0"
-      url: "/in-dev/1.0.0/"
+      url: "/releases/1.0.0/"
       parent: "releases"
     - name: "In Development"
       url: "/in-dev/unreleased/"
