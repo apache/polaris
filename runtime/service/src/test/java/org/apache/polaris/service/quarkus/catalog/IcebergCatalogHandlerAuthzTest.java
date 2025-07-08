@@ -55,7 +55,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -1792,7 +1791,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
-            new RealmEntityManagerFactory(null) {
+            new RealmEntityManagerFactory(null, null) {
               @Override
               public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
                 return entityManager;
@@ -1801,8 +1800,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             managerFactory,
             userSecretsManagerFactory,
             Mockito.mock(),
-            new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {}),
+            new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory),
             polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(

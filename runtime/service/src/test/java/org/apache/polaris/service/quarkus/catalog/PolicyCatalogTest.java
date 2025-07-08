@@ -197,8 +197,8 @@ public class PolicyCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(configurationStore),
-            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
+            new StorageCredentialCache(),
+            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     callContext = polarisContext;
 
@@ -229,7 +229,7 @@ public class PolicyCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            new PolarisAuthorizerImpl(),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
@@ -263,10 +263,9 @@ public class PolicyCatalogTest {
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
+        new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
     this.fileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
