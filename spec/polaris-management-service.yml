@@ -1056,6 +1056,12 @@ components:
               type: string
               description: endpoint for STS requests (optional). If not set, defaults to 'endpoint'.
               example: "https://sts.example.com:1234"
+            pathStyleAccess:
+              type: boolean
+              description: >- 
+                Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
+                Default: false.
+              example: false
           required:
             - roleArn
 

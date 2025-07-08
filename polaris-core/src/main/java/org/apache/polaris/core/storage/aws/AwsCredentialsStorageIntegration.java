@@ -122,6 +122,10 @@ public class AwsCredentialsStorageIntegration
       credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
 
+    if (storageConfig.forcePathStyleAccess()) {
+      credentialMap.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
+    }
+
     if (storageConfig.getAwsPartition().equals("aws-us-gov")
         && credentialMap.get(StorageAccessProperty.CLIENT_REGION) == null) {
       throw new IllegalArgumentException(
