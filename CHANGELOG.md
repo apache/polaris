@@ -45,6 +45,10 @@ the authentication parameters are picked from the environment or configuration f
 
 ### Deprecations
 
+* The property `polaris.active-roles-provider.type` is deprecated in favor of
+  `polaris.authentication.active-roles-provider.type`. The old property is still supported, but will be removed in a
+  future release.
+
 ### Fixes
 
 ### Commits
