@@ -72,11 +72,9 @@ github:
   ghp_path: /
 
   collaborators:
-    # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
+    # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved.
+    # The list of collaborators is limited to 10 elements.
     - renovate-bot
-    - nssalian
-    - adnanhemani
-    - HotSushi
 
 notifications:
   commits:      commits@polaris.apache.org
