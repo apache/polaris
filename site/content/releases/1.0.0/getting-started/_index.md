@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,8 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-# Created/generated when running Hugo on the local host
-.hugo_build.lock
-public/
-resources/_gen/
+title: 'Getting Started'
+type: docs
+weight: 101
+build:
+  render: never
+---

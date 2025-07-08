@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,8 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+linkTitle: 'Catalog API Spec'
+weight: 900
+params:
+  show_page_toc: false
+---
 
-# Created/generated when running Hugo on the local host
-.hugo_build.lock
-public/
-resources/_gen/
+{{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}

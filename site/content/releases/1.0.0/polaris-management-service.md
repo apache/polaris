@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,8 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris Management Service OpenAPI'
+linkTitle: 'Management OpenAPI'
+weight: 800
+params:
+  show_page_toc: false
+---
 
-# Created/generated when running Hugo on the local host
-.hugo_build.lock
-public/
-resources/_gen/
+{{< redoc-polaris "polaris-management-service.yml" >}}

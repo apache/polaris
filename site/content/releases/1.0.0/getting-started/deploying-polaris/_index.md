@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,8 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+Title: Deploying Polaris on Cloud Providers
+type: docs
+weight: 300
+---
 
-# Created/generated when running Hugo on the local host
-.hugo_build.lock
-public/
-resources/_gen/
+We will now demonstrate how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
+
+Locally, Polaris can be deployed using both Docker and local build. On the cloud, this tutorial will deploy Polaris using Docker only - but local builds can also be executed.
