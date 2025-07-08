@@ -15,7 +15,7 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
-.SILENT:
+# .SILENT:
 
 # Configures the shell for recipes to use bash, enabling bash commands and ensuring
 # that recipes exit on any command failure (including within pipes).
@@ -83,7 +83,7 @@ test-integration: setup-env ## Run integration tests
 		echo "Still waiting for HTTP 200 from /q/health..."; \
 	done
 	@echo "Polaris is healthy. Starting integration tests..."
-	poetry run pytest integration_tests/ ${PYTEST_ARGS}
+	$(VENV_DIR)/bin/poetry run pytest integration_tests/ ${PYTEST_ARGS}
 
 .PHONY: lint
 lint: setup-env ## Run linting checks
