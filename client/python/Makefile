@@ -15,9 +15,30 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
+.SILENT:
+
+# Configures the shell for recipes to use bash, enabling bash commands and ensuring
+# that recipes exit on any command failure (including within pipes).
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+
+# Version information
+VERSION ?= $(shell cat pyproject.toml | grep version | sed 's/version *= *"\(.*\)"/\1/')
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%S%:z")
+GIT_COMMIT := $(shell git rev-parse HEAD)
+
+# Variables
 VENV_DIR := .venv
 
-.PHONY: regenerate-client test-integration lint setup-env install-poetry-deps clean clean-venv
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.PHONY: version
+version: ## Print version information.
+	@echo "Apache Polaris version: ${VERSION}"
+	@echo "Build date: ${BUILD_DATE}"
+	@echo "Git commit: ${GIT_COMMIT}"
 
 # Target to create the virtual environment directory
 $(VENV_DIR):
@@ -25,28 +46,28 @@ $(VENV_DIR):
 	python3 -m venv $(VENV_DIR)
 	@echo "Virtual environment created."
 
-# Target to ensure the virtual environment and poetry/dependencies are set up
+.PHONY: setup-env
 setup-env: $(VENV_DIR) install-poetry-deps
 
-# Target to install poetry and project dependencies
-install-poetry-deps: # This target doesn't *create* $(VENV_DIR), but *uses* it.
+.PHONY: install-poetry-deps
+install-poetry-deps:
 	@echo "Installing Poetry and project dependencies into $(VENV_DIR)..."
 	# Ensure pip is up-to-date within the venv
 	$(VENV_DIR)/bin/pip install --upgrade pip
 	# Install poetry if not already present
 	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
-		$(VENV_DIR)/bin/pip install poetry; \
+		$(VENV_DIR)/bin/pip install --upgrade -r ../../regtests/requirements.txt; \
 	fi
 	# Install needed dependencies using poetry
 	$(VENV_DIR)/bin/poetry install --all-extras
 	@echo "Poetry and dependencies installed."
 
-# Target to regenerate the client code
-regenerate-client:
+.PHONY: regenerate-client
+regenerate-client: ## Regenerate the client code
 	../templates/regenerate.sh
 
-# Target to run integration tests
-test-integration: setup-env
+.PHONY: test-integration
+test-integration: setup-env ## Run integration tests
 	docker compose -f docker-compose.yml kill
 	docker compose -f docker-compose.yml rm -f
 	docker compose -f docker-compose.yml up -d
@@ -58,16 +79,11 @@ test-integration: setup-env
 	@echo "Polaris is healthy. Starting integration tests..."
 	poetry run pytest integration_tests/ ${PYTEST_ARGS}
 
-# Target to run linting checks
-lint: setup-env
+.PHONY: lint
+lint: setup-env ## Run linting checks
 	$(VENV_DIR)/bin/poetry run pre-commit run --files integration_tests/* cli/*
 
-# Clean targets
-clean: clean-venv
-	@echo "Cleaning up Python cache files..."
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
-
+.PHONY: clean-venv
 clean-venv:
 	@echo "Attempting to remove virtual environment directory: $(VENV_DIR)..."
 	# SAFETY CHECK: Ensure VENV_DIR is not empty and exists before attempting to remove
@@ -77,3 +93,9 @@ clean-venv:
 	else \
 		echo "Virtual environment directory '$(VENV_DIR)' not found or VENV_DIR is empty. No action taken."; \
 	fi
+
+.PHONY: clean
+clean: clean-venv ## Cleanup
+	@echo "Cleaning up Python cache files..."
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
