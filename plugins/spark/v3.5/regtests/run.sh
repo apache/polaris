@@ -81,7 +81,7 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   # extract the polaris
   JAR_NAME=$(basename "$JAR_PATH")
   echo "JAR_NAME=${JAR_NAME}"
-  POLARIS_VERSION=$(echo "$JAR_NAME" | sed -n 's/.*-\([0-9][^-]*.*\)-bundle\.jar/\1/p')
+  POLARIS_VERSION=$(echo "$JAR_NAME" | sed -E 's/^polaris-spark-bundle-[^_]+_[^-]+-([^\.]+.*)\.jar/\1/')
   echo "$POLARIS_VERSION"
 
   SPARK_EXISTS="TRUE"
