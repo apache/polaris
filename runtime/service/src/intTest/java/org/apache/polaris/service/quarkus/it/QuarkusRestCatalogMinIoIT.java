@@ -48,6 +48,7 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -68,9 +69,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -145,13 +147,15 @@ public class QuarkusRestCatalogMinIoIT {
     catalogName = client.newEntityName(testInfo.getTestMethod().orElseThrow().getName());
   }
 
-  private RESTCatalog createCatalog(Optional<String> endpoint, Optional<String> stsEndpoint) {
+  private RESTCatalog createCatalog(
+      Optional<String> endpoint, Optional<String> stsEndpoint, boolean pathStyleAccess) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
             .setExternalId("externalId123")
             .setUserArn("arn:aws:iam::123456789012:user/polaris-test")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setPathStyleAccess(pathStyleAccess)
             .setAllowedLocations(List.of(storageBase.toString()));
 
     endpoint.ifPresent(storageConfig::setEndpoint);
@@ -190,9 +194,11 @@ public class QuarkusRestCatalogMinIoIT {
     client.cleanUp(adminCredentials);
   }
 
-  @Test
-  public void testCreateTable() throws IOException {
-    try (RESTCatalog restCatalog = createCatalog(Optional.of(endpoint), Optional.empty())) {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testCreateTable(boolean pathStyle) throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle)) {
       catalogApi.createNamespace(catalogName, "test-ns");
       TableIdentifier id = TableIdentifier.of("test-ns", "t1");
       Table table = restCatalog.createTable(id, SCHEMA);
@@ -212,14 +218,25 @@ public class QuarkusRestCatalogMinIoIT {
               .response();
       assertThat(response.contentLength()).isGreaterThan(0);
 
+      LoadTableResponse loadTableResponse =
+          catalogApi.loadTableWithAccessDelegation(catalogName, id, "ALL");
+      assertThat(loadTableResponse.config()).containsKey("s3.endpoint");
+
+      if (pathStyle) {
+        assertThat(loadTableResponse.config())
+            .containsEntry("s3.path-style-access", Boolean.TRUE.toString());
+      }
+
       restCatalog.dropTable(id);
       assertThat(restCatalog.tableExists(id)).isFalse();
     }
   }
 
-  @Test
-  public void testAppendFiles() throws IOException {
-    try (RESTCatalog restCatalog = createCatalog(Optional.of(endpoint), Optional.of(endpoint))) {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testAppendFiles(boolean pathStyle) throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(Optional.of(endpoint), Optional.of(endpoint), pathStyle)) {
       catalogApi.createNamespace(catalogName, "test-ns");
       TableIdentifier id = TableIdentifier.of("test-ns", "t1");
       Table table = restCatalog.createTable(id, SCHEMA);
@@ -228,7 +245,11 @@ public class QuarkusRestCatalogMinIoIT {
       @SuppressWarnings("resource")
       FileIO io = table.io();
 
-      URI loc = URI.create(table.locationProvider().newDataLocation("test-file1.txt"));
+      URI loc =
+          URI.create(
+              table
+                  .locationProvider()
+                  .newDataLocation(String.format("test-file-%s.txt", pathStyle)));
       OutputFile f1 = io.newOutputFile(loc.toString());
       try (PositionOutputStream os = f1.create()) {
         os.write("Hello World".getBytes(UTF_8));
