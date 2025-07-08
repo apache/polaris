@@ -127,10 +127,7 @@ public class AzureCredentialsStorageIntegration
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(callContext.getRealmContext(), STORAGE_CREDENTIAL_DURATION_SECONDS);
+        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =

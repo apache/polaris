@@ -114,7 +114,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -531,12 +530,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(TABLE_DETACH_POLICY, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
   }
 
-  private final PolarisConfigurationStore featureConfig;
-
   @Inject
-  public PolarisAuthorizerImpl(PolarisConfigurationStore featureConfig) {
-    this.featureConfig = featureConfig;
-  }
+  public PolarisAuthorizerImpl() {}
 
   /**
    * Checks whether the {@code grantedPrivilege} is sufficient to confer {@code desiredPrivilege},
@@ -583,9 +578,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
-        featureConfig.getConfiguration(
-            callContext.getRealmContext(),
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+        callContext
+            .getRealmConfig()
+            .getConfig(
+                FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal
             .getPrincipalEntity()

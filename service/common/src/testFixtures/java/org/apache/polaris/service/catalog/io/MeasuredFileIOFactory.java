@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -55,11 +54,9 @@ public class MeasuredFileIOFactory implements FileIOFactory {
   @Inject
   public MeasuredFileIOFactory(
       RealmEntityManagerFactory realmEntityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore) {
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     defaultFileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
   }
 
   @Override
