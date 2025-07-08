@@ -49,10 +49,6 @@ data:
 
     {{- /* Persistence */ -}}
     {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
-    {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.persistence-unit" .Values.persistence.eclipseLink.persistenceUnit -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.configuration-file" (printf "%s/persistence.xml" .Values.image.configDir ) -}}
-    {{- end -}}
 
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}

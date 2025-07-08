@@ -191,13 +191,6 @@ Prints the config volume definition for deployments and jobs.
               path: symmetric.key
           {{- end }}
       {{- end }}
-      {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name }}
-      - secret:
-          name: {{ tpl .Values.persistence.eclipseLink.secret.name . }}
-          items:
-            - key: {{ tpl .Values.persistence.eclipseLink.secret.key . }}
-              path: persistence.xml
-      {{- end }}
 {{- end -}}
 
 {{/*
