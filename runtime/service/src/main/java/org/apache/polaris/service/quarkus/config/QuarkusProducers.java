@@ -32,7 +32,6 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -77,7 +76,6 @@ import org.apache.polaris.service.quarkus.secrets.QuarkusSecretsManagerConfigura
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 import org.slf4j.Logger;
@@ -342,12 +340,11 @@ public class QuarkusProducers {
 
   @Produces
   public ActiveRolesProvider activeRolesProvider(
-      @ConfigProperty(name = "polaris.active-roles-provider.type")
-          Optional<String> deprecatedActiveRolesProviderType,
       QuarkusAuthenticationRealmConfiguration config,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
-    String type = deprecatedActiveRolesProviderType.orElse(config.activeRolesProvider().type());
-    return activeRolesProviders.select(Identifier.Literal.of(type)).get();
+    return activeRolesProviders
+        .select(Identifier.Literal.of(config.activeRolesProvider().type()))
+        .get();
   }
 
   @Produces
