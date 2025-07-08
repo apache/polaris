@@ -66,8 +66,7 @@ jobs:
       - name: Generated Client Tests
         working-directory: client/python
         run: |
-          export SCRIPT_DIR="non-existing-mock-directory"
-          poetry run pytest test/
+          make test-client
 
       - name: Image build
         run: |

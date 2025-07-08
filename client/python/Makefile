@@ -66,6 +66,10 @@ install-poetry-deps:
 regenerate-client: ## Regenerate the client code
 	../templates/regenerate.sh
 
+.PHONY: test-client
+test-client: setup-env ## Run client tests
+	SCRIPT_DIR="non-existing-mock-directory" $(VENV_DIR)/bin/poetry run pytest test/
+
 .PHONY: test-integration
 test-integration: setup-env ## Run integration tests
 	docker compose -f docker-compose.yml kill
