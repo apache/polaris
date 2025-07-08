@@ -84,9 +84,10 @@ kubectl create namespace polaris
 ```
 
 Create all the required resources in the `polaris` namespace. This usually includes a Postgres
-database and a Kubernetes Secret for Polaris service certification files. The Polaris chart does not create
+database, Kubernetes secrets, and service accounts. The Polaris chart does not create
 these resources automatically, as they are not required for all Polaris deployments. The chart will
-fail if these resources are not created beforehand. You can find a reference for these resources in the `Prerequisites` section within `Development & Testing`.
+fail if these resources are not created beforehand. You can find some examples in the
+`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
