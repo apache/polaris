@@ -26,6 +26,7 @@ SHELL = /usr/bin/env bash -o pipefail
 VERSION ?= $(shell cat pyproject.toml | grep version | sed 's/version *= *"\(.*\)"/\1/')
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%S%:z")
 GIT_COMMIT := $(shell git rev-parse HEAD)
+POETRY_VERSION := $(shell cat pyproject.toml | grep requires-poetry | sed 's/requires-poetry *= *"\(.*\)"/\1/')
 
 # Variables
 VENV_DIR := .venv
@@ -39,6 +40,7 @@ version: ## Print version information.
 	@echo "Apache Polaris version: ${VERSION}"
 	@echo "Build date: ${BUILD_DATE}"
 	@echo "Git commit: ${GIT_COMMIT}"
+	@echo "Poetry version: ${POETRY_VERSION}"
 
 # Target to create the virtual environment directory
 $(VENV_DIR):
@@ -56,7 +58,7 @@ install-poetry-deps:
 	$(VENV_DIR)/bin/pip install --upgrade pip
 	# Install poetry if not already present
 	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
-		$(VENV_DIR)/bin/pip install --upgrade -r ../../regtests/requirements.txt; \
+		$(VENV_DIR)/bin/pip install --upgrade "poetry${POETRY_VERSION}"; \
 	fi
 	# Install needed dependencies using poetry
 	$(VENV_DIR)/bin/poetry install --all-extras
