@@ -33,30 +33,32 @@ params:
 |-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1.0.0 | 7/9/2025     | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) |
 
+**Release Notes:**
 - **Highlights**
     - First release ready for real-world workloads after the public beta 0.9.0
-    - Binary distribution, providing a single downloadable .tgz or .zip artifact.
-    - First release to officially support Helm Chart publishing, enabling seamless integration into Kubernetes-based environments.
+    - **Binary distribution** -- first release with single downloadable .tgz or .zip artifact.
+    - **Helm Chart** – debut of an official Helm chart for seamless Kubernetes deployment
 - **New features & enhancements**
-    - Policy Store — persistence with schema evolution, built‑in TMS policies (Data compaction, Snapshot expiry, etc) and REST CRUD endpoints
-    - Postgres JDBC persistence — native JDBC backend with robust support for concurrent changes.
-    - Rollback Compaction on Conflicts - Makes Polaris smarter, to revert the compaction commits in case of crunch to let the writers who are actually adding or removing the data to the table succeed. In a sense treating compaction as always a lower priority process.
-    - Enhanced runtime — new runtime powered by Quarkus delivers out‑of‑the‑box Kubernetes readiness, quick startup, OIDC integration, and many other benefits. Polaris server and admin tool are now using Quarkus as a runtime framework.
-    - HTTP caching via ETag — the loadTable endpoint supports ETag, reducing bandwidth and improving perceived latency
-    - Support for external identity providers (IdP) — Polaris can now be its own IdP, delegate to an external IdP, or both
-    - Snapshot filtering – Clients can choose to load only referenced snapshots
-    - Catalog Federation (experimental) – Federate requests to an external Iceberg REST or Hadoop Catalog
-    - Generic Tables (experimental) — serve multiple table formats (Delta, CSV, Parquet) besides Iceberg tables; initial Spark 3.5 plugin supports Delta Lake
-    - Event Listener framework (experimental) — subscribe to catalog events (AfterTableCommitedEvent, BeforeViewCommitedEvent, etc)
+    - **Policy Store** — persistence with schema evolution, built‑in TMS policies (Data compaction, Snapshot expiry, etc) and REST CRUD endpoints
+    - **Postgres JDBC persistence** — native JDBC backend with robust support for concurrent changes.
+    - **Rollback Compaction on Conflicts** - Makes Polaris smarter, to revert the compaction commits in case of crunch to let the writers who are actually adding or removing the data to the table succeed. In a sense treating compaction as always a lower priority process.
+    - **Enhanced runtime** — new runtime powered by Quarkus delivers out‑of‑the‑box Kubernetes readiness, quick startup, OIDC integration, and many other benefits. Polaris server and admin tool are now using Quarkus as a runtime framework.
+    - **HTTP caching via ETag** — the loadTable endpoint supports ETag, reducing bandwidth and improving perceived latency
+    - **Support for external identity providers (IdP)** — Polaris can now be its own IdP, delegate to an external IdP, or both
+    - **Snapshot filtering** – Clients can choose to load only referenced snapshots
+    - **Catalog Federation (experimental)** – Federate requests to an external Iceberg REST or Hadoop Catalog
+    - **Generic Tables (experimental)** — serve multiple table formats (Delta, CSV, Parquet) besides Iceberg tables; initial Spark 3.5 plugin supports Delta Lake
+    - **Event Listener framework (experimental)** — subscribe to catalog events (AfterTableCommitedEvent, BeforeViewCommitedEvent, etc)
 - **Notable bug fixes**
-    - CLI and Python Client improvements – Support for new features, CLI repair, changes to the update subcommand, and various fixes
-    - Safe configurations – Catalog-level Polaris configurations follow a strict naming convention to avoid name clashes with user-provided configuration entries. Legacy Polaris configuration names are still supported in 1.0 to allow existing deployments to migrate without rush.
-    - TableOperations optimizations – Changes to BasePolarisTableOperations result in less traffic to object storage during commits
-    - Bounded entity cache – The entity cache is now more memory-aware and less likely to lead to OOMs
-    - Bootstrapping fixes – Users can more easily bootstrap a new realm. Root credentials can be provided by the user or generated by Polaris (and returned to the user).
+    - **CLI and Python Client improvements** – Support for new features, CLI repair, changes to the update subcommand, and various fixes
+    - **Safe configurations** – Catalog-level Polaris configurations follow a strict naming convention to avoid name clashes with user-provided configuration entries. Legacy Polaris configuration names are still supported in 1.0 to allow existing deployments to migrate without rush.
+    - **TableOperations optimizations** – Changes to BasePolarisTableOperations result in less traffic to object storage during commits
+    - **Bounded entity cache** – The entity cache is now more memory-aware and less likely to lead to OOMs
+    - **Bootstrapping fixes** – Users can more easily bootstrap a new realm. Root credentials can be provided by the user or generated by Polaris (and returned to the user).
 - **Breaking changes**
-    - Server Configuration – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations
-    - Bootstrap Flow – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
+    - **Server Configuration** – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations
+    - **Bootstrap Flow** – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
+
 ## 0.9.0 release
 
 | Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       |
