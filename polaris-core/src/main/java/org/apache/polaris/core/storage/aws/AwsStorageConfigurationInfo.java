@@ -158,7 +158,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   /** Returns a flag indicating whether path-style bucket access should be forced in S3 clients. */
   @JsonIgnore
-  public boolean forcePathStyleAccess() {
+  public boolean getPathStyleAccess() {
     return pathStyleAccess;
   }
 
