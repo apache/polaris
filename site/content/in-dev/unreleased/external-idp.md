@@ -205,7 +205,7 @@ The `DefaultAuthenticator` (formerly BasePolarisAuthenticator) is used to implem
 
 ### Token Broker Configuration 
 
-Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
+When internal authentication is enabled, Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
 
 ## Developer Authentication Workflows 
 
