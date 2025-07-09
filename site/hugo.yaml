@@ -93,9 +93,6 @@ imaging:
 
 menu:
   main:
-    - name: GitHub
-      url: https://github.com/apache/polaris
-
     - name: "Documentation"
       identifier: "releases"
       weight: 100
@@ -114,8 +111,11 @@ menu:
 
     - name: "Downloads"
       identifier: "downloads"
-      url: "/downloads"
       weight: 200
+    - name: "Releases"
+      parent: "downloads"
+      url: "/downloads/releases"
+      weight: 10
 
     - name: "Community"
       identifier: "community"
@@ -148,6 +148,10 @@ menu:
       parent: "community"
       url: "/community/release-guide"
       wieght: 70
+
+    - name: "GitHub"
+      url: "https://github.com/apache/polaris"
+      weight: 400
 
     - name: "ASF"
       pre: "<i class='fa-solid fa-feather'></i>"
