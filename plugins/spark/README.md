@@ -87,13 +87,13 @@ bin/spark-shell \
 ```
 
 # Build and run with Polaris spark bundle JAR
-The polaris-spark-bundle project is used to build the Polaris Spark bundle JAR. The resulting JAR will follow this naming format:
-polaris-spark-bundle-<spark_version>_<scala_version>-<polaris_version>.jar
+The polaris-spark project also provides a Spark bundle JAR for the `--jars` use case. The resulting JAR will follow this naming format:
+polaris-spark-<spark_version>_<scala_version>-<polaris_version>-bundle.jar
 For example:
-polaris-spark-bundle-3.5_2.12-1.1.0-incubating-SNAPSHOT.jar
+polaris-spark-bundle-3.5_2.12-1.1.0-incubating-SNAPSHOT-bundle.jar
 
 Run `./gradlew assemble` to build the entire Polaris project without running tests. After the build completes, 
-the bundle JAR can be found under: plugins/spark/v3.5/spark-bundle/build/<scala_version>/libs/.
+the bundle JAR can be found under: plugins/spark/v3.5/spark/build/<scala_version>/libs/.
 To start Spark using the bundle JAR, specify it with the `--jars` option as shown below:
 
 ```shell
