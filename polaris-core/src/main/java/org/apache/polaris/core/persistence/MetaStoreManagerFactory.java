@@ -20,7 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import java.util.Map;
 import java.util.function.Supplier;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -37,9 +37,9 @@ public interface MetaStoreManagerFactory {
   Supplier<? extends BasePersistence> getOrCreateSessionSupplier(RealmContext realmContext);
 
   StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext, PolarisRealmConfig realmConfig);
+      RealmContext realmContext, RealmConfig realmConfig);
 
-  EntityCache getOrCreateEntityCache(RealmContext realmContext, PolarisRealmConfig realmConfig);
+  EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet);

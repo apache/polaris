@@ -22,7 +22,7 @@ import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 /** Realm-specific configuration used to retrieve runtime parameters. */
-public interface PolarisRealmConfig {
+public interface RealmConfig {
 
   /**
    * Retrieve the current value for a configuration key. May be null if not set.

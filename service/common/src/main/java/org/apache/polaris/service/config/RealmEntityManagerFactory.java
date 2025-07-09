@@ -23,8 +23,8 @@ import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.PolarisRealmConfig;
-import org.apache.polaris.core.config.PolarisRealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -60,7 +60,7 @@ public class RealmEntityManagerFactory {
         realm,
         r -> {
           LOGGER.info("Initializing new PolarisEntityManager for realm {}", r);
-          PolarisRealmConfig realmConfig = new PolarisRealmConfigImpl(configurationStore, context);
+          RealmConfig realmConfig = new RealmConfigImpl(configurationStore, context);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context, realmConfig),

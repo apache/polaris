@@ -93,7 +93,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -910,7 +910,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   private String applyDefaultLocationObjectStoragePrefix(
       TableIdentifier tableIdentifier, String location) {
-    PolarisRealmConfig realmConfig = callContext.getRealmConfig();
+    RealmConfig realmConfig = callContext.getRealmConfig();
     boolean prefixEnabled =
         realmConfig.getConfig(
             FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED, catalogEntity);

@@ -41,7 +41,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -100,7 +100,7 @@ public class QuarkusProducers {
 
   @Produces
   @ApplicationScoped
-  public StorageCredentialCache storageCredentialCache(PolarisRealmConfig realmConfig) {
+  public StorageCredentialCache storageCredentialCache(RealmConfig realmConfig) {
     return new StorageCredentialCache(realmConfig);
   }
 
@@ -140,7 +140,7 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public PolarisRealmConfig realmContext(CallContext callContext) {
+  public RealmConfig realmContext(CallContext callContext) {
     return callContext.getRealmConfig();
   }
 

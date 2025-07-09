@@ -34,7 +34,7 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -52,7 +52,7 @@ public class PolarisServiceImplTest {
   private PolarisAuthorizer polarisAuthorizer;
   private CallContext callContext;
   private ReservedProperties reservedProperties;
-  private PolarisRealmConfig realmConfig;
+  private RealmConfig realmConfig;
 
   private PolarisServiceImpl polarisService;
 
@@ -64,7 +64,7 @@ public class PolarisServiceImplTest {
     polarisAuthorizer = Mockito.mock(PolarisAuthorizer.class);
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
-    realmConfig = Mockito.mock(PolarisRealmConfig.class);
+    realmConfig = Mockito.mock(RealmConfig.class);
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))

@@ -22,8 +22,8 @@ import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.PolarisRealmConfig;
-import org.apache.polaris.core.config.PolarisRealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -46,7 +46,7 @@ public class PolarisCallContext implements CallContext {
 
   private final RealmContext realmContext;
 
-  private final PolarisRealmConfig realmConfig;
+  private final RealmConfig realmConfig;
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
@@ -59,7 +59,7 @@ public class PolarisCallContext implements CallContext {
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
     this.clock = clock;
-    this.realmConfig = new PolarisRealmConfigImpl(this.configurationStore, this.realmContext);
+    this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
   }
 
   public PolarisCallContext(
@@ -92,7 +92,7 @@ public class PolarisCallContext implements CallContext {
   }
 
   @Override
-  public PolarisRealmConfig getRealmConfig() {
+  public RealmConfig getRealmConfig() {
     return realmConfig;
   }
 

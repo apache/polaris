@@ -32,7 +32,7 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -49,10 +49,10 @@ public class StorageCredentialCache {
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
 
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
-  private final PolarisRealmConfig realmConfig;
+  private final RealmConfig realmConfig;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(PolarisRealmConfig realmConfig) {
+  public StorageCredentialCache(RealmConfig realmConfig) {
     this.realmConfig = realmConfig;
     cache =
         Caffeine.newBuilder()

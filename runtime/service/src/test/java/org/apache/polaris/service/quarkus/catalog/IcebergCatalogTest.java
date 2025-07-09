@@ -99,7 +99,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -265,7 +265,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   @Nullable
   protected abstract InMemoryEntityCache createEntityCache(
-      PolarisRealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
+      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
 
   @BeforeEach
   @SuppressWarnings("unchecked")

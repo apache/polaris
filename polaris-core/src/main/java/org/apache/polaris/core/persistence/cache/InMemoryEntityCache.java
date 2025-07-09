@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisRealmConfig;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -59,8 +59,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @param polarisMetaStoreManager the meta store manager implementation
    */
   public InMemoryEntityCache(
-      @Nonnull PolarisRealmConfig realmConfig,
-      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
+      @Nonnull RealmConfig realmConfig, @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();

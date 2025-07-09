@@ -22,13 +22,12 @@ import jakarta.annotation.Nullable;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
-public class PolarisRealmConfigImpl implements PolarisRealmConfig {
+public class RealmConfigImpl implements RealmConfig {
 
   private final PolarisConfigurationStore configurationStore;
   private final RealmContext realmContext;
 
-  public PolarisRealmConfigImpl(
-      PolarisConfigurationStore configurationStore, RealmContext realmContext) {
+  public RealmConfigImpl(PolarisConfigurationStore configurationStore, RealmContext realmContext) {
     this.configurationStore = configurationStore;
     this.realmContext = realmContext;
   }
