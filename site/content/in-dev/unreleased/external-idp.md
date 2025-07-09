@@ -131,7 +131,7 @@ When using multiple OIDC tenants, it's your responsibility to configure tenant r
 
 ### Principal Mapping 
 
-While OIDC tenant resolution is entirely delegated to Quarkus, Polaris requires additional configuration to extract the Polaris principal and their roles from the credentials generated and validated by Quarkus. This part of the authentication process is configured with Polaris-specific properties that map JWT claims to Polaris principal fields: 
+While OIDC tenant resolution is entirely delegated to Quarkus, Polaris requires additional configuration to extract the Polaris principal and its roles from the credentials generated and validated by Quarkus. This part of the authentication process is configured with Polaris-specific properties that map JWT claims to Polaris principal fields: 
 
 ```
 polaris.oidc.principal-mapper.type=default 
