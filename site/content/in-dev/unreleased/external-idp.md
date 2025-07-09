@@ -36,7 +36,7 @@ Polaris supports three authentication modes:
 3. `mixed` 
    - Tries internal authentication first; if it fails, it falls back to OIDC. 
 
-Authentication can be configured globally or per realm in `application.properties`: 
+Authentication can be configured globally or per realm by setting the following properties: 
 
 ```properties
 # Global default 
