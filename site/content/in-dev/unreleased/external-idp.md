@@ -127,7 +127,7 @@ quarkus.oidc.oidc-tenant1.client-id=client1
 quarkus.oidc.oidc-tenant1.application-type=service 
 ```
 
-When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenId Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
+When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenID Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
 
 ### Principal Mapping 
 
