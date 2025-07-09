@@ -197,7 +197,7 @@ public class PolicyCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(realmContext, configurationStore),
+            new StorageCredentialCache(configurationStore),
             new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
 
     callContext = polarisContext;
