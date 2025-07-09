@@ -34,9 +34,9 @@ Polaris supports three authentication modes:
    - Authenticates using external OIDC providers (via Quarkus OIDC). 
    - Disables the internal token endpoint (returns HTTP 501). 
 3. `mixed` 
-   - Tries internal authentication first; if it fails, it falls back to OIDC. 
+   - Tries internal authentication first; if this fails, it falls back to OIDC. 
 
-Authentication can be configured globally or per realm in `application.properties`: 
+Authentication can be configured globally or per realm by setting the following properties: 
 
 ```properties
 # Global default 
@@ -106,7 +106,7 @@ External authentication is configured via Quarkus OIDC and Polaris-specific OIDC
 
 At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A [realm]({{% ref "realm" %}}) is a logical partition within Polaris.
 
-- Multiple realms can use a single OIDC tenant. 
+- Multiple realms can share a single OIDC tenant. 
 - Each realm can be associated with only one OIDC tenant. 
 
 Therefore, multi-realm deployments can share a common identity provider while still enforcing realm-level scoping. To configure the default tenant: 
@@ -125,7 +125,7 @@ quarkus.oidc.oidc-tenant1.client-id=client1
 quarkus.oidc.oidc-tenant1.application-type=service 
 ```
 
-When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenId Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
+When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenID Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
 
 ### Principal Mapping 
 
@@ -203,7 +203,7 @@ The `DefaultAuthenticator` is used to implement realm-specific logic based on th
 
 ### Token Broker Configuration 
 
-Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
+When internal authentication is enabled, Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
 
 ## Developer Authentication Workflows 
 
