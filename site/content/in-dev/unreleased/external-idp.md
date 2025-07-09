@@ -301,9 +301,9 @@ Polaris uses token brokers to handle the decoding and validation of authenticati
 { 
   "polaris": 
   { 
-    "roles": ["PRINCIPAL\_ROLE:ALL"], 
-    "principal\_name": "root", 
-    "principal\_id": 1 
+    "roles": ["PRINCIPAL_ROLE:ALL"], 
+    "principal_name": "root", 
+    "principal_id": 1 
   } 
 } 
 ```
