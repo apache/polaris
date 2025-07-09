@@ -114,12 +114,8 @@ menu:
       weight: 200
     - name: "Releases"
       parent: "downloads"
-      url: "/downloads/current-release"
+      url: "/downloads/releases"
       weight: 10
-    - name: "Release Archive"
-      parent: "downloads"
-      url: "/downloads/past-releases"
-      weight: 20
 
     - name: "Community"
       identifier: "community"
