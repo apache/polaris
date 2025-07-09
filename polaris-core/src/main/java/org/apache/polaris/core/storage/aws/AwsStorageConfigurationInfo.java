@@ -26,13 +26,14 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Aws Polaris Storage Configuration information */
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+
+  private static final boolean PATH_STYLE_ACCESS_DEFAULT = false;
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
@@ -84,7 +85,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.region = region;
     this.endpoint = endpoint;
     this.stsEndpoint = stsEndpoint;
-    this.pathStyleAccess = Optional.ofNullable(pathStyleAccess).orElse(false);
+    this.pathStyleAccess = pathStyleAccess == null ? PATH_STYLE_ACCESS_DEFAULT : pathStyleAccess;
   }
 
   public AwsStorageConfigurationInfo(
@@ -92,7 +93,15 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull List<String> allowedLocations,
       @Nonnull String roleARN,
       @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, null, region, null, null, false);
+    this(
+        storageType,
+        allowedLocations,
+        roleARN,
+        null,
+        region,
+        null,
+        null,
+        PATH_STYLE_ACCESS_DEFAULT);
   }
 
   public AwsStorageConfigurationInfo(
@@ -101,7 +110,15 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull String roleARN,
       @Nullable String externalId,
       @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, externalId, region, null, null, false);
+    this(
+        storageType,
+        allowedLocations,
+        roleARN,
+        externalId,
+        region,
+        null,
+        null,
+        PATH_STYLE_ACCESS_DEFAULT);
   }
 
   @Override
