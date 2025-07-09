@@ -1,0 +1,348 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: External Identity Providers 
+type: docs
+weight: 550
+---
+
+Apache Polaris supports authentication via external identity providers (IdPs) using OpenID Connect (OIDC) in addition to the existing internal authentication system. This feature enables flexible identity federation with enterprise IdPs and allows gradual migration or hybrid authentication strategies across realms in Polaris. 
+
+## Overview 
+
+Polaris supports multiple authentication modes to integrate with both internal and external identity systems. Authentication can be configured globally or per realm, allowing for flexible setups in hybrid environments. 
+
+## Authentication Types 
+
+Polaris now supports three authentication modes: 
+
+1. `internal` (Default) 
+   - Only Polaris internal authentication is used. 
+2. `external` 
+   - Authenticates using external OIDC providers (via Quarkus OIDC). 
+   - Disables the internal token endpoint (returns HTTP 501). 
+3. `mixed` 
+   - Tries internal authentication first; if it fails, it falls back to OIDC. 
+
+Authentication can be configured globally or per realm in `application.properties`: 
+
+```
+# Global default 
+polaris.authentication.type=internal 
+# Per-realm override 
+polaris.authentication.realm1.type=external 
+polaris.authentication.realm2.type=mixed 
+```
+
+## Key Components
+
+### Authenticator 
+
+The Authenticator is a component responsible for creating a Polaris principal from the credentials provided by the authentication process. It is common to all authentication types. 
+
+The `type` property is used to define the Authenticator implementation. It is overridable per realm: 
+
+``` 
+polaris.authentication.authenticator.type=default 
+polaris.authentication.realm1.authenticator.type=custom 
+```
+
+### Active Roles Provider 
+
+The Active Roles Provider is a component responsible for determining which roles the principal is requesting and should be activated. It is common to all authentication types. 
+
+Only the `type` property is defined; it is used to define the provider implementation to use: 
+
+```
+polaris.active-roles-provider.type=default 
+```
+
+Contrary to the Authenticator, the Active Roles Provider is defined only once for the entire Polaris instance. It is not overridable per realm.  
+
+## Internal Authentication Configuration 
+
+### Token Broker 
+
+The Token Broker signs and verifies tokens to ensure that they cannot be tampered with and can be validated without requiring contact with the original issuer on every request.  
+
+```
+polaris.authentication.token-broker.type=rsa-key-pair 
+polaris.authentication.token-broker.max-token-generation=PT1H 
+```
+ 
+Two types are available: 
+
+- `rsa-key-pair` (recommended for production): Uses an RSA key pair for token signing and validation. 
+- `symmetric-key`: Uses a shared secret for both operations; suitable for single-node deployments or testing. 
+
+The property `polaris.authentication.token-broker.max-token-generation` specifies the maximum validity duration of tokens issued by the internal Token Broker. 
+
+- Format: ISO-8601 duration (e.g., `PT1H` for 1 hour, `PT30M` for 30 minutes). 
+- Default: `PT1H`. 
+
+### Token Service 
+
+The Token Service is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the Authenticator and Token Broker. The default implementation is `default`, and this must be configured when using internal authentication.  
+
+```
+polaris.authentication.token-service.type=default 
+```
+ 
+## External Authentication Configuration 
+
+External authentication is configured via Quarkus OIDC and Polaris-specific OIDC extensions. The following settings are used to integrate with an identity provider and extract identity and role information from tokens.  
+
+### OIDC Tenant Configuration 
+
+At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A realm is a logical partition within Polaris (used for scoping users, resources, and policies). 
+
+- Multiple realms can use a single OIDC tenant. 
+- Each realm can be associated with only one OIDC tenant. 
+
+Therefore, multi-realm deployments can share a common identity provider while still enforcing realm-level scoping. To configure the default tenant: 
+
+```
+quarkus.oidc.tenant-enabled=true 
+quarkus.oidc.auth-server-url=https://auth.example.com/realms/polaris 
+quarkus.oidc.client-id=polaris 
+```
+
+Alternatively, it is possible to use multiple named tenants. Each OIDC-named tenant is then configured with standard Quarkus settings: 
+
+```
+quarkus.oidc.oidc-tenant1.auth-server-url=http://localhost:8080/realms/polaris 
+quarkus.oidc.oidc-tenant1.client-id=client1 
+quarkus.oidc.oidc-tenant1.application-type=service 
+```
+
+When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenId Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
+
+### Principal Mapping 
+
+While OIDC tenant resolution is entirely delegated to Quarkus, Polaris requires additional configuration to extract the Polaris principal and their roles from the credentials generated and validated by Quarkus. This part of the authentication process is configured with Polaris-specific properties that map JWT claims to Polaris principal fields: 
+
+```
+polaris.oidc.principal-mapper.type=default 
+polaris.oidc.principal-mapper.id-claim-path=polaris/principal_id 
+polaris.oidc.principal-mapper.name-claim-path=polaris/principal_name 
+```
+
+These properties are overridable per OIDC tenant: 
+
+``` 
+polaris.oidc.oidc-tenant1.principal-mapper.id-claim-path=polaris/principal_id 
+polaris.oidc.oidc-tenant1.principal-mapper.name-claim-path=polaris/principal_name 
+```
+
+> [!IMPORTANT]: The default implementation of PrincipalMapper can only work with JWT tokens. If your IDP issues opaque tokens instead, you will need to provide a custom implementation. 
+
+### Role Mapping 
+
+Similarly, Polaris requires additional configuration to map roles provided by Quarkus to roles defined in Polaris. The process happens in two phases: first, Quarkus maps the JWT claims to security roles, using the `quarkus.oidc.roles.*` properties; then, Polaris-specific properties are used to map the Quarkus-provided security roles to Polaris roles: 
+
+```
+quarkus.oidc.roles.role-claim-path=polaris/roles 
+polaris.oidc.principal-roles-mapper.type=default 
+polaris.oidc.principal-roles-mapper.filter=^(?!profile$|email$).* 
+polaris.oidc.principal-roles-mapper.mappings[0].regex=^.*$ 
+polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$0 
+```
+
+These mappings can be overridden per OIDC tenant and used across different realms that rely on external identity providers. For example: 
+
+```
+polaris.oidc.oidc-tenant1.principal-roles-mapper.type=custom 
+polaris.oidc.oidc-tenant1.principal-roles-mapper.filter=POLARIS_ROLE:.* 
+polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].regex=POLARIS_ROLE:(.*) 
+polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].replacement=POLARIS_ROLE:$1 
+```
+
+The default Active Roles Provider expects the security identity to expose role names in the following format: `POLARIS_ROLE: <role name>`. You can use the `filter` and `mappings` properties to adjust the role names as they appear in the JWT claims. 
+
+For example, assume that the security identity produced by Quarkus exposes the following roles: `role_service_admin` and `role_catalog_admin`. Polaris expects `POLARIS_ROLE:service_admin` and `POLARIS_ROLE:catalog_admin` respectively. The following configuration can be used to achieve the desired mapping: 
+
+```
+# Exclude role names that don't start with "role\_" 
+polaris.oidc.principal-roles-mapper.filter=role\_.* 
+# Extract the text after "role\_" 
+polaris.oidc.principal-roles-mapper.mappings[0].regex=role\_(.*) 
+# Replace the extracted text with "POLARIS\_ROLE:" 
+polaris.oidc.principal-roles-mapper.mappings[0].replacement=POLARIS\_ROLE:$1 
+```
+
+See more examples below. 
+ 
+## Developer Architecture Notes 
+
+The following sections describe internal implementation details for developers who want to understand or extend Polaris authentication. 
+
+### Authentication Architecture 
+
+Polaris separates authentication into two logical phases using Quarkus Security: 
+
+1. Credential extraction – parsing headers and tokens 
+2. Credential authentication – validating identity and assigning roles 
+
+### Key Interfaces 
+
+- `Authenticator`: A core interface used to authenticate credentials. 
+- `DecodedToken`: Used in internal auth and inherits from `PrincipalCredential`. 
+- `ActiveRolesProvider`: Resolves the set of roles associated with the authenticated user for the current request. Roles may be derived from OIDC claims or internal mappings. 
+
+The `DefaultAuthenticator` (formerly BasePolarisAuthenticator) is used to implement realm-specific logic based on these abstractions. 
+
+### Token Broker Configuration 
+
+Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
+
+## Developer Authentication Workflows 
+
+### Internal Authentication 
+
+1. `InternalAuthenticationMechanism` parses the auth header. 
+2. Uses `TokenBroker` to decode the token. 
+3. Builds `PrincipalAuthInfo` and generates `SecurityIdentity`. 
+4. `Authenticator.authenticate()` validates the credential. 
+5. `ActiveRolesProvider` assigns roles. 
+
+### External Authentication 
+
+1. `OidcAuthenticationMechanism` (Quarkus) processes the auth header. 
+2. `OidcIdentityProvider` creates `SecurityIdentity`. 
+3. `OidcTenantResolvingAugmentor` selects the OIDC tenant. 
+4. `PrincipalAuthInfoAugmentor` extracts JWT claims. 
+5. `Authenticator.authenticate()` validates the claims. 
+6. `ActiveRolesProvider` assigns roles. 
+ 
+### Mixed Authentication 
+
+1. `InternalAuthenticationMechanism` tries decoding. 
+2. If successful, proceed with internal authentication. 
+3. Otherwise, fall back to external (OIDC) authentication. 
+
+## OIDC Configuration Reference 
+
+### Principal Mapping 
+
+- Interface: `PrincipalMapper` 
+
+  The `PrincipalMapper` is responsible for extracting the Polaris principal ID and display name from OIDC tokens. 
+
+- Implementation selector: 
+
+  This property selects the implementation of the `PrincipalMapper` interface. The default implementation extracts fields from specific claim paths. 
+
+  ``` 
+  polaris.oidc.principal-mapper.type=default 
+  ```
+
+- Configuration properties for the default implementation: 
+
+  ``` 
+  polaris.oidc.principal-mapper.id-claim-path=polaris/principal_id 
+  polaris.oidc.principal-mapper.name-claim-path=polaris/principal_name 
+  ```
+
+- It can be overridden per OIDC tenant. 
+
+### Roles Mapping 
+
+- Interface: `PrincipalRolesMapper` 
+
+  Polaris uses this component to transform role claims from OIDC tokens into Polaris roles. 
+
+- Quarkus OIDC configuration: 
+
+  This setting instructs Quarkus on where to locate roles within the OIDC token. 
+
+  ``` 
+  quarkus.oidc.roles.role-claim-path=polaris/roles 
+  ```
+
+- Implementation selector: 
+
+  This property selects the implementation of `PrincipalRolesMapper`. The `default` implementation applies regular expression (regex) transformations to OIDC roles. 
+
+  ``` 
+  polaris.oidc.principal-roles-mapper.type=default 
+  ```
+
+- Configuration properties for the default implementation: 
+
+  ``` 
+  polaris.oidc.principal-roles-mapper.filter=^(?!profile$|email$).* 
+  polaris.oidc.principal-roles-mapper.mappings[0].regex=^.*$ 
+  polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$0 
+  ```
+
+## Example JWT Mappings 
+
+### Example 1: Custom Claim Paths 
+
+#### JWT 
+
+```json
+{ 
+  "polaris": 
+  { 
+    "roles": ["PRINCIPAL\_ROLE:ALL"], 
+    "principal\_name": "root", 
+    "principal\_id": 1 
+  } 
+} 
+```
+
+#### Configuration 
+
+```
+quarkus.oidc.roles.role-claim-path=polaris/roles 
+polaris.oidc.principal-mapper.id-claim-path=polaris/principal_id 
+polaris.oidc.principal-mapper.name-claim-path=polaris/principal_name 
+```
+
+### Example 2: Generic OIDC Claims 
+
+#### JWT 
+
+```json
+{ 
+  "sub": "1", 
+  "scope": "service_admin catalog_admin profile email", 
+  "preferred_username": "root" 
+} 
+```
+
+#### Configuration 
+
+```
+quarkus.oidc.roles.role-claim-path=scope 
+polaris.oidc.principal-mapper.id-claim-path=sub 
+polaris.oidc.principal-mapper.name-claim-path=preferred_username 
+polaris.oidc.principal-roles-mapper.filter=^(?!profile$|email$).* 
+polaris.oidc.principal-roles-mapper.mappings[0].regex=^.*$ 
+polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$0 
+```
+
+#### Result 
+
+Polaris roles: `PRINCIPAL_ROLE:service_admin` and `PRINCIPAL_ROLE:catalog_admin` 
+ 
+ 
+ 
+ 
