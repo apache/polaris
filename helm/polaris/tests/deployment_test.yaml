@@ -356,31 +356,6 @@ tests:
             mountPath: /deployments/config
             readOnly: true
 
-  - it: should evaluate template expressions in persistence secret name
-    set:
-      persistence:
-        type: eclipse-link
-        eclipseLink:
-          secret:
-            name: "{{ .Release.Name }}-persistence-secret"
-    asserts:
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: config-volume
-            projected:
-              sources:
-                  - configMap:
-                      items:
-                        - key: application.properties
-                          path: application.properties
-                      name: polaris-release
-                  - secret:
-                      items:
-                        - key: persistence.xml
-                          path: persistence.xml
-                      name: polaris-release-persistence-secret
-
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default
     asserts:

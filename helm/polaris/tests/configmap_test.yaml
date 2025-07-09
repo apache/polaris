@@ -102,14 +102,6 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm1\".\"feature1\"=false" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm2\".\"feature2\"=43" }
 
-  - it: should configure persistence
-    set:
-      persistence: { type: "eclipse-link", eclipseLink: { persistenceUnit: "polaris", secret: { name: "polaris-persistence" } } }
-    asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=eclipse-link" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.persistence-unit=polaris" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.configuration-file=/deployments/config/persistence.xml" }
-
   - it: should configure relational-jdbc persistence
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }

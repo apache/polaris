@@ -131,4 +131,42 @@ public class ConnectionConfigInfoDpoTest {
         objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
         connectionConfigInfoApiModel);
   }
+
+  @Test
+  void testImplicitAuthenticationParameters() throws JsonProcessingException {
+    // Test deserialization and reserialization of the persistence JSON.
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 2,"
+            + "  \"uri\": \"file:///hadoop-catalog/warehouse\","
+            + "  \"warehouse\": \"hadoop-catalog\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 3"
+            + "  }"
+            + "}";
+    ConnectionConfigInfoDpo connectionConfigInfoDpo =
+        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
+    Assertions.assertNotNull(connectionConfigInfoDpo);
+    JsonNode tree1 = objectMapper.readTree(json);
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
+    Assertions.assertEquals(tree1, tree2);
+
+    // Test conversion into API model JSON.
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+    String expectedApiModelJson =
+        ""
+            + "{"
+            + "  \"connectionType\": \"HADOOP\","
+            + "  \"uri\": \"file:///hadoop-catalog/warehouse\","
+            + "  \"warehouse\": \"hadoop-catalog\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationType\": \"IMPLICIT\""
+            + "  }"
+            + "}";
+    Assertions.assertEquals(
+        objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
+        connectionConfigInfoApiModel);
+  }
 }
