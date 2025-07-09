@@ -34,7 +34,7 @@ Polaris supports three authentication modes:
    - Authenticates using external OIDC providers (via Quarkus OIDC). 
    - Disables the internal token endpoint (returns HTTP 501). 
 3. `mixed` 
-   - Tries internal authentication first; if it fails, it falls back to OIDC. 
+   - Tries internal authentication first; if this fails, it falls back to OIDC. 
 
 Authentication can be configured globally or per realm by setting the following properties: 
 
