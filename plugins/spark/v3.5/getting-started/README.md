@@ -28,7 +28,7 @@ A Jupyter notebook is started to run PySpark, and Polaris Python client is also 
 directly through Python Client.
 
 ## Build the Spark Client Jar and Polaris image
-If Spark Client Jar is not presented locally under plugins/spark-bundle/v3.5/build/<scala_version>/libs, please build the jar
+If Spark Client Jar is not presented locally under plugins/spark/v3.5/build/<scala_version>/libs, please build the jar
 using
 - `./gradlew assemble` -- build the Polaris project and skip the tests.
 

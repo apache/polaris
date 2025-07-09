@@ -73,15 +73,14 @@ SPARK_SHELL_OPTIONS=("PACKAGE" "JAR")
 for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   echo "RUN REGRESSION TEST FOR SPARK_MAJOR_VERSION=${SPARK_MAJOR_VERSION}, SPARK_VERSION=${SPARK_VERSION}, SCALA_VERSION=${SCALA_VERSION}"
   # find the project jar
-  SPARK_DIR=${SPARK_ROOT_DIR}/spark-bundle
-  SRC_JAR_PATH=$(find ${SPARK_DIR} -name "polaris-spark-bundle-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.*-sources.jar" -print -quit)
-  JAR_PATH=${SRC_JAR_PATH/-sources/}
+  SPARK_DIR=${SPARK_ROOT_DIR}/spark
+  JAR_PATH=$(find ${SPARK_DIR} -name "polaris-spark-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.*-bundle.jar" -print -quit)
   echo "find jar ${JAR_PATH}"
 
   # extract the polaris
   JAR_NAME=$(basename "$JAR_PATH")
   echo "JAR_NAME=${JAR_NAME}"
-  POLARIS_VERSION=$(echo "$JAR_NAME" | sed -E 's/^polaris-spark-bundle-[^_]+_[^-]+-([^\.]+.*)\.jar/\1/')
+  POLARIS_VERSION=$(echo "$JAR_NAME" | sed -n 's/.*-\([0-9][^-]*.*\)-bundle\.jar/\1/p')
   echo "$POLARIS_VERSION"
 
   SPARK_EXISTS="TRUE"

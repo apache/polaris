@@ -32,7 +32,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 ### Breaking changes
-1. The Polaris Spark Client bundle jar name is updated from polaris-spark-<spark-version>_<scala-version>-<polaris-version>-bundle.jar to polaris-spark-bundle-<spark-version>_<scala-version>-<polaris-version>.jar.
 
 ### New Features
 

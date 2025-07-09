@@ -73,16 +73,19 @@ for (sparkVersion in sparkVersions) {
   for (scalaVersion in scalaVersions) {
     val sparkArtifactId = "polaris-spark-${sparkVersion}_${scalaVersion}"
     val sparkIntArtifactId = "polaris-spark-integration-${sparkVersion}_${scalaVersion}"
-    val sparkBundleArtifactId = "polaris-spark-bundle-${sparkVersion}_${scalaVersion}"
-    polarisProject(sparkArtifactId, file("${polarisSparkDir}/v${sparkVersion}/spark"))
-    polarisProject(sparkIntArtifactId, file("${polarisSparkDir}/v${sparkVersion}/integration"))
-    polarisProject(sparkBundleArtifactId, file("${polarisSparkDir}/v${sparkVersion}/spark-bundle"))
+    polarisProject(
+      "polaris-spark-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}/spark"),
+    )
+    polarisProject(
+      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}/integration"),
+    )
     if (first) {
       first = false
     } else {
       noSourceChecksProjects.add(":$sparkArtifactId")
       noSourceChecksProjects.add(":$sparkIntArtifactId")
-      noSourceChecksProjects.add(":$sparkBundleArtifactId")
     }
     // Skip all duplicated spark client projects while using Intelij IDE.
     // This is to avoid problems during dependency analysis and sync when

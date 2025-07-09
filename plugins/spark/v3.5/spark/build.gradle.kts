@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -78,3 +80,33 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 }
+
+tasks.register<ShadowJar>("createPolarisSparkJar") {
+  archiveClassifier = "bundle"
+  isZip64 = true
+
+  // pack both the source code and dependencies
+  from(sourceSets.main.get().output)
+  configurations = listOf(project.configurations.runtimeClasspath.get())
+
+  // recursively remove all LICENSE and NOTICE file under META-INF, includes
+  // directories contains 'license' in the name
+  exclude("META-INF/**/*LICENSE*")
+  exclude("META-INF/**/*NOTICE*")
+  // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+  exclude("LICENSE*")
+  exclude("NOTICE*")
+
+  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
+  // and renamed to LICENSE and NOTICE after include, this is to avoid the file
+  // being excluded due to the exclude pattern matching used above.
+  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
+}
+
+// ensure the shadow jar job (which will automatically run license addition) is run for both
+// `assemble` and `build` task
+tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
+
+tasks.named("build") { dependsOn("createPolarisSparkJar") }
