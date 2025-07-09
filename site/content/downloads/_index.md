@@ -63,8 +63,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 ## 0.9.0 release
 
-| Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       |
-|-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 0.9.0     | 3/11/2025    | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) |
+| Artifact                                                                                                                                 | PGP Sig | SHA-512 |
+|------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+| [0.9.0-incubating source tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) | [.asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) |
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release. 
