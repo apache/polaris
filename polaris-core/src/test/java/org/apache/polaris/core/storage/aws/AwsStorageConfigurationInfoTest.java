@@ -64,8 +64,8 @@ public class AwsStorageConfigurationInfoTest {
 
   @Test
   public void testPathStyleAccess() {
-    assertThat(config(null, null, null).forcePathStyleAccess()).isFalse();
-    assertThat(config(null, null, false).forcePathStyleAccess()).isFalse();
-    assertThat(config(null, null, true).forcePathStyleAccess()).isTrue();
+    assertThat(config(null, null, null).getPathStyleAccess()).isFalse();
+    assertThat(config(null, null, false).getPathStyleAccess()).isFalse();
+    assertThat(config(null, null, true).getPathStyleAccess()).isTrue();
   }
 }
