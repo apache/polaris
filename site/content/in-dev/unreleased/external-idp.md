@@ -24,13 +24,9 @@ weight: 550
 
 Apache Polaris supports authentication via external identity providers (IdPs) using OpenID Connect (OIDC) in addition to the existing internal authentication system. This feature enables flexible identity federation with enterprise IdPs and allows gradual migration or hybrid authentication strategies across realms in Polaris. 
 
-## Overview 
-
-Polaris supports multiple authentication modes to integrate with both internal and external identity systems. Authentication can be configured globally or per realm, allowing for flexible setups in hybrid environments. 
-
 ## Authentication Types 
 
-Polaris now supports three authentication modes: 
+Polaris supports three authentication modes: 
 
 1. `internal` (Default) 
    - Only Polaris internal authentication is used. 
