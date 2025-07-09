@@ -19,16 +19,15 @@
 #
 linkTitle: "Releases"
 weight: 200
+params:
+  show_page_toc: true 
 ---
 
+## 1.0.0 release
+| Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       | 
+|-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1.0.0 | 7/9/2025     | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) |
 
-| Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       | Release Notes   |
-|-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
-| **1.0.0** | 7/9/2025     | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) | [Notes](#0.9.0) |
-| 0.9.0     | 3/11/2025    | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) | [Notes](#0.9.0) |
-
-## Release Notes
-### 1.0.0 release
 - Highlights
   - First release ready for real-world workloads after the public beta 0.9.0
   - Binary distribution, providing a single downloadable .tgz or .zip artifact.
@@ -53,5 +52,10 @@ weight: 200
 - Breaking changes
   - Server Configuration – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations
   - Bootstrap Flow – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
-### 0.9.0 release
+## 0.9.0 release
+
+| Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       |
+|-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0.9.0     | 3/11/2025    | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) |
+
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release. 
