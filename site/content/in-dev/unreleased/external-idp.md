@@ -50,9 +50,9 @@ polaris.authentication.realm2.type=mixed
 
 ### Authenticator 
 
-The Authenticator is a component responsible for creating a Polaris principal from the credentials provided by the authentication process. It is common to all authentication types. 
+The `Authenticator` is a component responsible for creating a Polaris principal from the credentials provided by the authentication process. It is common to all authentication types. 
 
-The `type` property is used to define the Authenticator implementation. It is overridable per realm: 
+The `type` property is used to define the `Authenticator` implementation. It is overridable per realm: 
 
 ```properties
 polaris.authentication.authenticator.type=default 
@@ -61,21 +61,19 @@ polaris.authentication.realm1.authenticator.type=custom
 
 ### Active Roles Provider 
 
-The Active Roles Provider is a component responsible for determining which roles the principal is requesting and should be activated. It is common to all authentication types. 
+The `ActiveRolesProvider` is a component responsible for determining which roles the principal is requesting and should be activated. It is common to all authentication types. 
 
-Only the `type` property is defined; it is used to define the provider implementation to use: 
+Only the `type` property is defined; it is used to define the provider implementation. It is overridable per realm:  
 
 ```properties
-polaris.active-roles-provider.type=default 
+polaris.authentication.active-roles-provider.type=default 
 ```
-
-Contrary to the Authenticator, the Active Roles Provider is defined only once for the entire Polaris instance. It is not overridable per realm.  
 
 ## Internal Authentication Configuration 
 
 ### Token Broker 
 
-The Token Broker signs and verifies tokens to ensure that they cannot be tampered with and can be validated without requiring contact with the original issuer on every request.  
+The `TokenBroker` signs and verifies tokens to ensure that they can be validated and remain unaltered. 
 
 ```properties
 polaris.authentication.token-broker.type=rsa-key-pair 
@@ -87,14 +85,14 @@ Two types are available:
 - `rsa-key-pair` (recommended for production): Uses an RSA key pair for token signing and validation. 
 - `symmetric-key`: Uses a shared secret for both operations; suitable for single-node deployments or testing. 
 
-The property `polaris.authentication.token-broker.max-token-generation` specifies the maximum validity duration of tokens issued by the internal Token Broker. 
+The property `polaris.authentication.token-broker.max-token-generation` specifies the maximum validity duration of tokens issued by the internal `TokenBroker`. 
 
 - Format: ISO-8601 duration (e.g., `PT1H` for 1 hour, `PT30M` for 30 minutes). 
 - Default: `PT1H`. 
 
 ### Token Service 
 
-The Token Service is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the Authenticator and Token Broker. The default implementation is `default`, and this must be configured when using internal authentication.  
+The `TokenService` is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  
 
 ```properties
 polaris.authentication.token-service.type=default 
@@ -106,7 +104,7 @@ External authentication is configured via Quarkus OIDC and Polaris-specific OIDC
 
 ### OIDC Tenant Configuration 
 
-At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A realm is a logical partition within Polaris (used for scoping users, resources, and policies). 
+At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A [realm]({{% ref "realm" %}}) is a logical partition within Polaris.
 
 - Multiple realms can use a single OIDC tenant. 
 - Each realm can be associated with only one OIDC tenant. 
@@ -169,16 +167,16 @@ polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].regex=POLARIS_ROLE:
 polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].replacement=POLARIS_ROLE:$1 
 ```
 
-The default Active Roles Provider expects the security identity to expose role names in the following format: `POLARIS_ROLE: <role name>`. You can use the `filter` and `mappings` properties to adjust the role names as they appear in the JWT claims. 
+The default `ActiveRolesProvider` expects the security identity to expose role names in the following format: `POLARIS_ROLE: <role name>`. You can use the `filter` and `mappings` properties to adjust the role names as they appear in the JWT claims. 
 
 For example, assume that the security identity produced by Quarkus exposes the following roles: `role_service_admin` and `role_catalog_admin`. Polaris expects `POLARIS_ROLE:service_admin` and `POLARIS_ROLE:catalog_admin` respectively. The following configuration can be used to achieve the desired mapping: 
 
 ```properties
-# Exclude role names that don't start with "role\_" 
-polaris.oidc.principal-roles-mapper.filter=role\_.* 
-# Extract the text after "role\_" 
-polaris.oidc.principal-roles-mapper.mappings[0].regex=role\_(.*) 
-# Replace the extracted text with "POLARIS\_ROLE:" 
+# Exclude role names that don't start with "role_" 
+polaris.oidc.principal-roles-mapper.filter=role_.* 
+# Extract the text after "role_" 
+polaris.oidc.principal-roles-mapper.mappings[0].regex=role_(.*) 
+# Replace the extracted text with "POLARIS_ROLE:" 
 polaris.oidc.principal-roles-mapper.mappings[0].replacement=POLARIS\_ROLE:$1 
 ```
 
@@ -190,7 +188,7 @@ The following sections describe internal implementation details for developers w
 
 ### Authentication Architecture 
 
-Polaris separates authentication into two logical phases using Quarkus Security: 
+Polaris separates authentication into two logical phases using [Quarkus Security](https://quarkus.io/guides/security-overview): 
 
 1. Credential extraction – parsing headers and tokens 
 2. Credential authentication – validating identity and assigning roles 
@@ -201,7 +199,7 @@ Polaris separates authentication into two logical phases using Quarkus Security:
 - `DecodedToken`: Used in internal auth and inherits from `PrincipalCredential`. 
 - `ActiveRolesProvider`: Resolves the set of roles associated with the authenticated user for the current request. Roles may be derived from OIDC claims or internal mappings. 
 
-The `DefaultAuthenticator` (formerly BasePolarisAuthenticator) is used to implement realm-specific logic based on these abstractions. 
+The `DefaultAuthenticator` is used to implement realm-specific logic based on these abstractions. 
 
 ### Token Broker Configuration 
 
