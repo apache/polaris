@@ -111,11 +111,8 @@ menu:
 
     - name: "Downloads"
       identifier: "downloads"
+      url: "/downloads"
       weight: 200
-    - name: "Releases"
-      parent: "downloads"
-      url: "/downloads/releases"
-      weight: 10
 
     - name: "Community"
       identifier: "community"
