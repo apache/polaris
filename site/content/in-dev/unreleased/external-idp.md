@@ -108,7 +108,7 @@ External authentication is configured via Quarkus OIDC and Polaris-specific OIDC
 
 At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A realm is a logical partition within Polaris (used for scoping users, resources, and policies). 
 
-- Multiple realms can use a single OIDC tenant. 
+- Multiple realms can share a single OIDC tenant. 
 - Each realm can be associated with only one OIDC tenant. 
 
 Therefore, multi-realm deployments can share a common identity provider while still enforcing realm-level scoping. To configure the default tenant: 
