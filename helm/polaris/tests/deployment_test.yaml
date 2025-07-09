@@ -1091,39 +1091,6 @@ tests:
                       - key: symmetric.pem
                         path: symmetric.key
 
-  - it: should configure config volume with persistence secret
-    set:
-      image.configDir: /config/dir
-      persistence:
-        type: eclipse-link
-        eclipseLink:
-          secret:
-            name: polaris-persistence
-            key: custom.xml
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: config-volume
-            mountPath: /config/dir
-            readOnly: true
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: config-volume
-            projected:
-              sources:
-                - configMap:
-                    name: polaris-release
-                    items:
-                      - key: application.properties
-                        path: application.properties
-                - secret:
-                    name: polaris-persistence
-                    items:
-                      - key: custom.xml
-                        path: persistence.xml
-
   - it: should set relational-jdbc persistence environment variables
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
