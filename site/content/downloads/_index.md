@@ -29,11 +29,13 @@ params:
 ---
 
 ## 1.0.0 release
-| Version   | Release Date | Downloads                                                                                                                                                                                                                                                                                                                                                       | 
-|-----------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1.0.0 | 7/9/2025     | [tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) • [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) • [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) • [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) |
+| Artifact                                                                                                                                 | PGP Sig | SHA-512 |
+|------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+| [1.0.0-incubating source tar.gz](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz) | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.sha512) |
+| [1.0.0-incubating binary tgz](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz)          | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.sha512) |
+| [1.0.0-incubating binary zip](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip)          | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.sha512) |
 
-**Release Notes:**
+Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 - **Highlights**
     - First release ready for real-world workloads after the public beta 0.9.0
     - **Binary distribution** -- first release with single downloadable .tgz or .zip artifact.
