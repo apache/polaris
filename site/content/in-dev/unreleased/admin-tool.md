@@ -29,15 +29,14 @@ example, to build the tool with support for Postgres, run the following:
 
 ```shell
 ./gradlew \
-  :polaris-quarkus-admin:assemble \
-  :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 ```
 
 The above command will generate:
 
-- One standalone JAR in `quarkus/admin/build/polaris-quarkus-admin-*-runner.jar`
-- Two distribution archives in `quarkus/admin/build/distributions`
+- One Fast-JAR in `runtime/admin/build/quarkus-app/quarkus-run.jar`
 - Two Docker images named `apache/polaris-admin-tool:latest` and `apache/polaris-admin-tool:<version>`
 
 ## Usage
@@ -46,7 +45,7 @@ Please make sure the admin tool and Polaris server are with the same version bef
 To run the standalone JAR, use the following command:
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar --help
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar --help
 ```
 
 To run the Docker image, use the following command:
@@ -58,7 +57,7 @@ docker run apache/polaris-admin-tool:latest --help
 The basic usage of the Polaris Admin Tool is outlined below:
 
 ```
-Usage: polaris-quarkus-admin-runner.jar [-hV] [COMMAND]
+Usage: polaris-admin-runner.jar [-hV] [COMMAND]
 Polaris Admin Tool
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
@@ -74,17 +73,12 @@ The Polaris Admin Tool must be executed with the same configuration as the Polar
 configuration can be done via environment variables or system properties.
 
 At a minimum, it is necessary to configure the Polaris Admin Tool to connect to the same database
-used by the Polaris server. This can be done by setting the following system properties:
-
-```shell
-java \
-    -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
-    -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-    -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar
-```
+used by the Polaris server.
 
 See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the
 database connection.
+
+Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ## Bootstrapping Realms and Principal Credentials
 
@@ -94,13 +88,13 @@ issues. If a realm is already bootstrapped, running the `bootstrap` command agai
 effect on that realm.
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap --help
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap --help
 ```
 
 The basic usage of the `bootstrap` command is outlined below:
 
 ```
-Usage: polaris-quarkus-admin-runner.jar bootstrap [-hV] [-c=<realm,clientId,
+Usage: polaris-admin-runner.jar bootstrap [-hV] [-c=<realm,clientId,
        clientSecret>]... -r=<realm> [-r=<realm>]...
 Bootstraps realms and root principal credentials.
   -c, --credential=<realm,clientId,clientSecret>
@@ -115,25 +109,26 @@ For example, to bootstrap the `realm1` realm and create its root principal crede
 client ID `admin` and client secret `admin`, you can run the following command:
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap -r realm1 -c realm1,admin,admin
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -r realm1 -c realm1,admin,admin
 ```
 
 ## Purging Realms and Principal Credentials
 
 The `purge` command is used to remove realms and principal credentials from the Polaris server.
 
-> Warning: Running the `purge` command will remove all data associated with the specified realms!
-  This includes all entities (catalogs, namespaces, tables, views, roles), all principal 
+> [!WARNING]
+> Running the `purge` command will remove all data associated with the specified realms!
+  This includes all entities (catalogs, namespaces, tables, views, roles), all principal
   credentials, grants, and any other data associated with the realms.
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar purge --help
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar purge --help
 ```
 
 The basic usage of the `purge` command is outlined below:
 
 ```
-Usage: polaris-quarkus-admin-runner.jar purge [-hV] -r=<realm> [-r=<realm>]...
+Usage: polaris-admin-runner.jar purge [-hV] -r=<realm> [-r=<realm>]...
 Purge realms and all associated entities.
   -h, --help            Show this help message and exit.
   -r, --realm=<realm>   The name of a realm to purge.
@@ -143,5 +138,5 @@ Purge realms and all associated entities.
 For example, to purge the `realm1` realm, you can run the following command:
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar purge -r realm1
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar purge -r realm1
 ```

@@ -75,8 +75,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.bouncycastle.bcprov)
-
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
@@ -89,6 +87,8 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+
+  implementation(libs.microprofile.fault.tolerance.api)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")

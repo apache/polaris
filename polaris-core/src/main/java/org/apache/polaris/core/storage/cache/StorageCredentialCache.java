@@ -23,6 +23,7 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -31,10 +32,12 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +48,16 @@ public class StorageCredentialCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
+
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
+  private final RealmContext realmContext;
+  private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache() {
+  public StorageCredentialCache(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    this.realmContext = realmContext;
+    this.configurationStore = configurationStore;
     cache =
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
@@ -60,7 +69,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  maxCacheDurationMs()));
+                                  this.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -71,12 +80,13 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private static long maxCacheDurationMs() {
+  private long maxCacheDurationMs() {
     var cacheDurationSeconds =
-        PolarisConfiguration.loadConfig(
-            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
@@ -99,7 +109,7 @@ public class StorageCredentialCache {
    * @param allowedWriteLocations a set of allowed to write locations.
    * @return the a map of string containing the scoped creds information
    */
-  public Map<String, String> getOrGenerateSubScopeCreds(
+  public AccessConfig getOrGenerateSubScopeCreds(
       @Nonnull PolarisCredentialVendor credentialVendor,
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntity polarisEntity,
@@ -142,13 +152,19 @@ public class StorageCredentialCache {
               "Failed to get subscoped credentials: %s",
               scopedCredentialsResult.getExtraInformation());
         };
-    return cache.get(key, loader).convertToMapOfString();
+    return cache.get(key, loader).toAccessConfig();
   }
 
-  public Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+  @VisibleForTesting
+  @Nullable
+  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+    return getAccessConfig(key).map(AccessConfig::credentials).orElse(null);
+  }
+
+  @VisibleForTesting
+  Optional<AccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
-        .map(StorageCredentialCacheEntry::convertToMapOfString)
-        .orElse(null);
+        .map(StorageCredentialCacheEntry::toAccessConfig);
   }
 
   private boolean isTypeSupported(PolarisEntityType type) {

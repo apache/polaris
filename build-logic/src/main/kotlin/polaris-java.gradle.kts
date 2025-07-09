@@ -30,6 +30,7 @@ plugins {
   `java-library`
   `java-test-fixtures`
   `jvm-test-suite`
+  checkstyle
   id("polaris-spotless")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
@@ -37,17 +38,29 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
-if (project.extra.has("duplicated-project-sources")) {
-  // skip the style check for duplicated projects
-  tasks.withType<Checkstyle>().configureEach { enabled = false }
+checkstyle {
+  val checkstyleVersion =
+    versionCatalogs
+      .named("libs")
+      .findVersion("checkstyle")
+      .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
+      .requiredVersion
+  toolVersion = checkstyleVersion
+  configFile = rootProject.file("codestyle/checkstyle.xml")
+  isIgnoreFailures = false
+  maxErrors = 0
+  maxWarnings = 0
 }
+
+// Ensure Checkstyle runs after jandex to avoid task dependency issues
+tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
-    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
   val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
   options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
@@ -212,4 +225,11 @@ configurations.all {
         exclude(group = group, module = module)
       }
     }
+}
+
+// ensure jars conform to reproducible builds
+// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
+tasks.withType<AbstractArchiveTask>().configureEach {
+  isPreserveFileTimestamps = false
+  isReproducibleFileOrder = true
 }

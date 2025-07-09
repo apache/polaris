@@ -36,10 +36,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -136,12 +136,12 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
-      PolarisDiagnostics diagnostics, List<PolarisEntity> entityPath) {
+      PolarisCallContext callContext, List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(
             storageInfo ->
                 deserialize(
-                    diagnostics,
+                    callContext.getDiagServices(),
                     storageInfo
                         .getInternalPropertiesAsMap()
                         .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
@@ -162,11 +162,10 @@ public abstract class PolarisStorageConfigurationInfo {
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
-                  CallContext.getCurrentContext()
-                      .getPolarisCallContext()
+                  callContext
                       .getConfigurationStore()
                       .getConfiguration(
-                          CallContext.getCurrentContext().getPolarisCallContext(),
+                          callContext.getRealmContext(),
                           catalog,
                           FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
@@ -181,6 +180,7 @@ public abstract class PolarisStorageConfigurationInfo {
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
 
+                // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
                 List<String> locs =
                     userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
                 return new StorageConfigurationOverride(
@@ -232,7 +232,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
-    S3("s3://"),
+    S3(List.of("s3://", "s3a://")),
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),

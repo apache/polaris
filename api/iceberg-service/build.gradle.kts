@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
 plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-client")
@@ -45,16 +47,29 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  compileOnly(libs.microprofile.fault.tolerance.api)
 }
 
+val rootDir = rootProject.layout.projectDirectory
+val specsDir = rootDir.dir("spec")
+val templatesDir = rootDir.dir("server-templates")
+// Use a different directory than 'generated/', because OpenAPI generator's `GenerateTask` adds the
+// whole directory to its task output, but 'generated/' is not exclusive to that task and in turn
+// breaks Gradle's caching.
+val generatedDir = project.layout.buildDirectory.dir("generated-openapi")
+val generatedOpenApiSrcDir = project.layout.buildDirectory.dir("generated-openapi/src/main/java")
+
 openApiGenerate {
-  inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
+  // The OpenAPI generator does NOT resolve relative paths correctly against the Gradle project
+  // directory
+  inputSpec = specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath
   generatorName = "jaxrs-resteasy"
-  outputDir = "$projectDir/build/generated"
+  outputDir = generatedDir.get().asFile.absolutePath
   apiPackage = "org.apache.polaris.service.catalog.api"
-  ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
+  ignoreFileOverride = rootDir.file(".openapi-generator-ignore").asFile.absolutePath
   removeOperationIdPrefix = true
-  templateDir = "$rootDir/server-templates"
+  templateDir = templatesDir.asFile.absolutePath
   globalProperties.put("apis", "CatalogApi,ConfigurationApi,OAuth2Api")
   globalProperties.put("models", "false")
   globalProperties.put("apiDocs", "false")
@@ -64,7 +79,7 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
-  openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
+  configOptions.put("hideGenerationTimestamp", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
@@ -107,14 +122,16 @@ openApiGenerate {
     )
 }
 
-listOf("sourcesJar", "compileJava").forEach { task ->
+listOf("sourcesJar", "compileJava", "processResources").forEach { task ->
   tasks.named(task) { dependsOn("openApiGenerate") }
 }
 
-sourceSets {
-  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
+sourceSets { main { java { srcDir(generatedOpenApiSrcDir) } } }
+
+tasks.named<GenerateTask>("openApiGenerate") {
+  inputs.dir(templatesDir)
+  inputs.dir(specsDir)
+  actions.addFirst { delete { delete(generatedDir) } }
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
-
-tasks.named("processResources") { dependsOn("openApiGenerate") }

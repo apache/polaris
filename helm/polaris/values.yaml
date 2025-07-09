@@ -27,7 +27,7 @@ image:
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
-  tag: "latest"
+  tag: "1.1.0-incubating-SNAPSHOT"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # Note: if you are using EclipseLink, then this value must be at least two folders down to the
@@ -507,13 +507,12 @@ realmContext:
 features:
   # -- Features to enable or disable globally. If a feature is not present in the map, the default
   # built-in value is used.
-  defaults: {}
-    # ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
-    # SUPPORTED_CATALOG_STORAGE_TYPES:
-    #   - S3
-    #   - GCS
-    #   - AZURE
-    #   - FILE
+  # ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
+  # SUPPORTED_CATALOG_STORAGE_TYPES:
+  #   - S3
+  #   - GCS
+  #   - AZURE
+  #   - FILE
   # -- Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of
   # feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used.
   realmOverrides: {}
@@ -522,19 +521,21 @@ features:
 
 # -- Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link.
-  type: eclipse-link  # in-memory
-  # -- The configuration for the eclipse-link persistence manager.
-  eclipseLink:
-    # -- The secret name to pull persistence.xml from.
+  # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
+  # The eclipse-link type is also supported but is deprecated.
+  type: in-memory  # relational-jdbc
+  # -- The configuration for the relational-jdbc persistence manager.
+  relationalJdbc:
+    # -- The secret name to pull the database connection properties from.
     secret:
-      # -- The name of the secret to pull persistence.xml from.
-      # If not provided, the default built-in persistence.xml will be used. This is probably not what you want.
+      # -- The secret name to pull database connection properties from
       name: ~
-      # -- The key in the secret to pull persistence.xml from.
-      key: persistence.xml
-    # -- The persistence unit name to use.
-    persistenceUnit: polaris
+      # -- The secret key holding the database username for authentication
+      username: username
+      # -- The secret key holding the database password for authentication
+      password: password
+      # -- The secret key holding the database JDBC connection URL
+      jdbcUrl: jdbcUrl
 
 # -- Polaris FileIO configuration.
 fileIo:

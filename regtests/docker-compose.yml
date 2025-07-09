@@ -31,9 +31,13 @@ services:
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
-      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
+      polaris.features."DROP_WITH_PURGE_ENABLED": "true"
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.readiness.ignore-severe-issues: "true"
     volumes:
       - ./credentials:/tmp/credentials/
     healthcheck:

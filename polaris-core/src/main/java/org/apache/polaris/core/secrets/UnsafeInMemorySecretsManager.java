@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.core.secrets;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
@@ -34,9 +35,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
  * development purposes.
  */
 public class UnsafeInMemorySecretsManager implements UserSecretsManager {
-  // TODO: Remove this and wire into QuarkusProducers; just a placeholder for now to get the
-  // rest of the logic working.
-  public static final UserSecretsManager GLOBAL_INSTANCE = new UnsafeInMemorySecretsManager();
 
   private final Map<String, String> rawSecretStore = new ConcurrentHashMap<>();
   private final SecureRandom rand = new SecureRandom();
@@ -44,6 +42,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   // Keys for information stored in referencePayload
   private static final String CIPHERTEXT_HASH = "ciphertext-hash";
   private static final String ENCRYPTION_KEY = "encryption-key";
+
+  public static final String SECRET_MANAGER_TYPE = "unsafe-in-memory";
 
   /** {@inheritDoc} */
   @Override
@@ -54,12 +54,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.
     // A production implementation will typically use a standard crypto library if applicable.
-    byte[] secretBytes;
-    try {
-      secretBytes = secret.getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
+    byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
     byte[] oneTimeKey = new byte[secretBytes.length];
     byte[] cipherTextBytes = new byte[secretBytes.length];
 
@@ -78,10 +73,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
     String secretUrn;
     for (int secretOrdinal = 0; ; ++secretOrdinal) {
-      secretUrn =
-          String.format(
-              "urn:polaris-secret:unsafe-in-memory:%d:%d", forEntity.getId(), secretOrdinal);
-
+      String typeSpecificIdentifier = forEntity.getId() + ":" + secretOrdinal;
+      secretUrn = buildUrn(SECRET_MANAGER_TYPE, typeSpecificIdentifier);
       // Store the base64-encoded encrypted ciphertext in the simulated "secret store".
       String existingSecret =
           rawSecretStore.putIfAbsent(secretUrn, encryptedSecretCipherTextBase64);
@@ -112,7 +105,14 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   @Override
   @Nonnull
   public String readSecret(@Nonnull UserSecretReference secretReference) {
-    // TODO: Precondition checks and/or wire in PolarisDiagnostics
+    String secretManagerType = secretReference.getUserSecretManagerType();
+    Preconditions.checkState(
+        secretManagerType.equals(SECRET_MANAGER_TYPE),
+        "Invalid secret manager type, expected: "
+            + SECRET_MANAGER_TYPE
+            + " got: "
+            + secretManagerType);
+
     String encryptedSecretCipherTextBase64 = rawSecretStore.get(secretReference.getUrn());
     if (encryptedSecretCipherTextBase64 == null) {
       // Secret at this URN no longer exists.
@@ -143,11 +143,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
       secretBytes[i] = (byte) (cipherTextBytes[i] ^ oneTimeKey[i]);
     }
 
-    try {
-      return new String(secretBytes, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
+    return new String(secretBytes, StandardCharsets.UTF_8);
   }
 
   /** {@inheritDoc} */

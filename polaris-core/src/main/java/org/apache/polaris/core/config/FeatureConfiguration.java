@@ -20,7 +20,9 @@ package org.apache.polaris.core.config;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
@@ -33,8 +35,12 @@ import org.apache.polaris.core.persistence.cache.EntityWeigher;
  */
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   protected FeatureConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
-    super(key, description, defaultValue, catalogConfig);
+      String key,
+      String description,
+      T defaultValue,
+      Optional<String> catalogConfig,
+      Optional<String> catalogConfigUnsafe) {
+    super(key, description, defaultValue, catalogConfig, catalogConfigUnsafe);
   }
 
   /**
@@ -47,7 +53,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
-            .getConfiguration(callContext.getPolarisCallContext(), featureConfig);
+            .getConfiguration(callContext.getRealmContext(), featureConfig);
     if (!enabled) {
       throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key);
     }
@@ -78,10 +84,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
-          .catalogConfig("allow.overlapping.table.location")
+          .catalogConfig("polaris.config.allow.overlapping.table.location")
+          .catalogConfigUnsafe("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
@@ -112,67 +120,80 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
-          .catalogConfig("allow.unstructured.table.location")
+          .catalogConfig("polaris.config.allow.unstructured.table.location")
+          .catalogConfigUnsafe("allow.unstructured.table.location")
           .description("If set to true, allows unstructured table locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
-          .catalogConfig("allow.external.table.location")
+          .catalogConfig("polaris.config.allow.external.table.location")
+          .catalogConfigUnsafe("allow.external.table.location")
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
-          .catalogConfig("enable.credential.vending")
+          .catalogConfig("polaris.config.enable.credential.vending")
+          .catalogConfigUnsafe("enable.credential.vending")
           .description("If set to true, allow credential vending for external catalogs.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
-          .catalogConfig("supported.storage.types")
+          .catalogConfig("polaris.config.supported.storage.types")
+          .catalogConfigUnsafe("supported.storage.types")
           .description("The list of supported storage types for a catalog")
           .defaultValue(
               List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
+                  StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
-          .catalogConfig("cleanup.on.namespace.drop")
+          .catalogConfig("polaris.config.cleanup.on.namespace.drop")
+          .catalogConfigUnsafe("cleanup.on.namespace.drop")
           .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
-          .catalogConfig("cleanup.on.catalog.drop")
+          .catalogConfig("polaris.config.cleanup.on.catalog.drop")
+          .catalogConfigUnsafe("cleanup.on.catalog.drop")
           .description("If set to true, clean up data when a catalog is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
-          .catalogConfig("drop-with-purge.enabled")
+          .catalogConfig("polaris.config.drop-with-purge.enabled")
+          .catalogConfigUnsafe("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
-          .defaultValue(true)
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
@@ -202,6 +223,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
+  public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("LIST_PAGINATION_ENABLED")
+          .description("If set to true, pagination for APIs like listTables is enabled.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
@@ -225,6 +253,103 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If true, allows creating and using ExternalCatalogs containing ConnectionConfigInfos"
                   + " to perform federation to remote catalogs.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_POLICY_STORE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_POLICY_STORE")
+          .description("If true, the policy-store endpoints are enabled")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
+          .description("The list of supported catalog connection types for federation")
+          .defaultValue(List.of(ConnectionType.ICEBERG_REST.name()))
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>>
+      SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES")
+              .description("The list of supported authentication types for catalog federation")
+              .defaultValue(
+                  List.of(
+                      AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
+      PolarisConfiguration.<Integer>builder()
+          .key("ICEBERG_COMMIT_MAX_RETRIES")
+          .catalogConfig("polaris.config.iceberg-commit-max-retries")
+          .description("The max number of times to try committing to an Iceberg table")
+          .defaultValue(4)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_SPECIFYING_FILE_IO_IMPL =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_SPECIFYING_FILE_IO_IMPL")
+          .description(
+              "Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. "
+                  + "Must only be enabled in dev/test environments, should not be in production systems.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_INSECURE_STORAGE_TYPES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_INSECURE_STORAGE_TYPES")
+          .description(
+              "Allow usage of FileIO implementations that are considered insecure. "
+                  + "Enabling this setting may expose the service to possibly severe security risks! "
+                  + "This should only be set to 'true' for tests!")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS")
+          .catalogConfig("polaris.config.rollback.compaction.on-conflicts.enabled")
+          .description(
+              "Rollback replace snapshots created by compaction which have "
+                  + "polaris.internal.conflict-resolution.by-operation-type.replace property set to rollback "
+                  + "in their snapshot summary")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ADD_TRAILING_SLASH_TO_LOCATION")
+          .catalogConfig("polaris.config.add-trailing-slash-to-location")
+          .description(
+              "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
+      PolarisConfiguration.<Boolean>builder()
+          .key("OPTIMIZED_SIBLING_CHECK")
+          .description(
+              "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
+                  + "locations will be checked against previous ones based on components, so the new location "
+                  + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
+                  + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
+                  + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED")
+          .catalogConfig("polaris.config.default-table-location-object-storage-prefix.enabled")
+          .description(
+              "When enabled, Iceberg tables and views created without a location specified will have a prefix "
+                  + "applied to the location within the catalog's base location, rather than a location directly "
+                  + "inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be "
+                  + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
+                  + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }

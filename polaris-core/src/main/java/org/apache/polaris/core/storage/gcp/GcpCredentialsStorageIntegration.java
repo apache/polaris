@@ -38,10 +38,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,8 +69,8 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
-  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+      @Nonnull CallContext callContext,
       @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -106,11 +106,10 @@ public class GcpCredentialsStorageIntegration
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
-    EnumMap<PolarisCredentialProperty, String> propertyMap =
-        new EnumMap<>(PolarisCredentialProperty.class);
-    propertyMap.put(PolarisCredentialProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
+    EnumMap<StorageAccessProperty, String> propertyMap = new EnumMap<>(StorageAccessProperty.class);
+    propertyMap.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     propertyMap.put(
-        PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
+        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
     return propertyMap;
   }

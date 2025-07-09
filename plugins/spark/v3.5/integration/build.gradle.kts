@@ -20,7 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
 }
 
 // get version information
@@ -43,28 +43,34 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-quarkus-service"))
-  implementation(project(":polaris-api-management-model"))
-  implementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
+  implementation(project(":polaris-runtime-service"))
 
-  implementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies
-    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-api")
-    exclude("org.apache.logging.log4j", "log4j-1.2-api")
-    exclude("org.slf4j", "jul-to-slf4j")
-  }
-
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
-
-  implementation(
+  testImplementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   )
+  testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation(project(":polaris-api-management-model"))
+
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
+    // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
+    // enforced below to ensure the version compatibility
+    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+    exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.apache.logging.log4j", "log4j-core")
+    exclude("org.slf4j", "jul-to-slf4j")
+  }
+  // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
+  // of spark-sql dependency
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.24.3")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3")
+
+  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
+
+  testImplementation(platform(libs.jackson.bom))
+  testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
+
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")

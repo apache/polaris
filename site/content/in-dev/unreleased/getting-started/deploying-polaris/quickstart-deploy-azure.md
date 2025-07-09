@@ -28,23 +28,25 @@ Additionally, Polaris will be bootstrapped to use this database and Docker conta
 The requirements to run the script below are:
 * Install the AZ CLI, if it is not already installed on the Azure VM. Instructions to download the AZ CLI can be found [here](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
 * You must be logged into the AZ CLI. Please run `az account show` to ensure that you are logged in prior to running this script.
+* Assign a System-Assigned Managed Identity to the Azure VM.
 
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
+export ASSETS_PATH=$(pwd)/getting-started/assets/
+export CLIENT_ID=root
+export CLIENT_SECRET=s3cr3t
 ./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
 
-Also, set the following static credentials for interacting with the Polaris server in the following exercises: 
+## Next Steps
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
 
-```shell
-export CLIENT_ID=root
-export CLIENT_SECRET=s3cr3t
-```
-
+## Cleanup Instructions
 To shut down the Polaris server, run the following commands:
 
 ```shell
-docker compose -f getting-started/eclipselink/docker-compose.yml down
+export ASSETS_PATH=$(pwd)/getting-started/assets/
+docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml down
 ```
 
 To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../configuring-polaris-for-production" %}}) page.

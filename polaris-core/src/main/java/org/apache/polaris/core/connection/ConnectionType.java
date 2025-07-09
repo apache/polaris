@@ -26,12 +26,13 @@ import java.util.Arrays;
  * the API model. We define integer type codes in this enum for better compatibility within
  * persisted data in case the names of enum types are ever changed in place.
  *
- * <p>Important: Codes must be kept in-sync with JsonSubTypes annotated within {@link
+ * <p>Important: Codes must be kept in-sync wi th JsonSubTypes annotated within {@link
  * ConnectionConfigInfoDpo}.
  */
 public enum ConnectionType {
   NULL_TYPE(0),
   ICEBERG_REST(1),
+  HADOOP(2),
   ;
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
@@ -39,10 +40,7 @@ public enum ConnectionType {
   static {
     // find max array size
     int maxCode =
-        Arrays.stream(AuthenticationType.values())
-            .mapToInt(AuthenticationType::getCode)
-            .max()
-            .orElse(0);
+        Arrays.stream(ConnectionType.values()).mapToInt(ConnectionType::getCode).max().orElse(0);
 
     // allocate mapping array
     REVERSE_MAPPING_ARRAY = new ConnectionType[maxCode + 1];

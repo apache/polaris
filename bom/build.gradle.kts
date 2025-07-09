@@ -30,6 +30,7 @@ dependencies {
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
+    api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))
@@ -43,13 +44,14 @@ dependencies {
 
     api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
-    api(project(":polaris-jpa-model"))
 
-    api(project(":polaris-quarkus-admin"))
-    api(project(":polaris-quarkus-defaults"))
-    api(project(":polaris-quarkus-server"))
-    api(project(":polaris-quarkus-service"))
-    api(project(":polaris-quarkus-spark-tests"))
+    api(project(":polaris-admin"))
+    api(project(":polaris-runtime-common"))
+    api(project(":polaris-runtime-test-common"))
+    api(project(":polaris-runtime-defaults"))
+    api(project(":polaris-server"))
+    api(project(":polaris-runtime-service"))
+    api(project(":polaris-runtime-spark-tests"))
 
     api(project(":polaris-tests"))
   }

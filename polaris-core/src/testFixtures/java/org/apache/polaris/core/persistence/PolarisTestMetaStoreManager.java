@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static org.apache.polaris.core.entity.PolarisBaseEntity.convertPropertiesToJson;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +53,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -409,17 +412,21 @@ public class PolarisTestMetaStoreManager {
   PolarisBaseEntity createPrincipal(String name) {
     // create new principal identity
     PolarisBaseEntity principalEntity =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            name);
-    principalEntity.setInternalProperties(
-        PolarisObjectMapperUtil.serializeProperties(
-            this.polarisCallContext,
-            Map.of(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true")));
+        new PolarisBaseEntity.Builder()
+            .catalogId(PolarisEntityConstants.getNullId())
+            .id(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(PolarisEntityConstants.getRootEntityId())
+            .name(name)
+            .internalProperties(
+                PolarisObjectMapperUtil.serializeProperties(
+                    this.polarisCallContext,
+                    Map.of(
+                        PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE,
+                        "true")))
+            .build();
+
     CreatePrincipalResult createPrincipalResult =
         polarisMetaStoreManager.createPrincipal(this.polarisCallContext, principalEntity);
     Assertions.assertThat(createPrincipalResult).isNotNull();
@@ -659,8 +666,15 @@ public class PolarisTestMetaStoreManager {
       parentId = PolarisEntityConstants.getRootEntityId();
     }
     PolarisBaseEntity newEntity =
-        new PolarisBaseEntity(catalogId, entityId, entityType, entitySubType, parentId, name);
-    newEntity.setPropertiesAsMap(properties);
+        new PolarisBaseEntity.Builder()
+            .catalogId(catalogId)
+            .id(entityId)
+            .typeCode(entityType.getCode())
+            .subTypeCode(entitySubType.getCode())
+            .parentId(parentId)
+            .name(name)
+            .properties(convertPropertiesToJson(properties))
+            .build();
     PolarisBaseEntity entity =
         polarisMetaStoreManager
             .createEntityIfNotExists(this.polarisCallContext, catalogPath, newEntity)
@@ -766,7 +780,8 @@ public class PolarisTestMetaStoreManager {
                     this.polarisCallContext,
                     path,
                     PolarisEntityType.NAMESPACE,
-                    PolarisEntitySubType.NULL_SUBTYPE)
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    PageToken.readEverything())
                 .getEntities();
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
@@ -776,7 +791,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.TABLE_LIKE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
@@ -786,7 +802,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.CATALOG_ROLE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      PageToken.readEverything())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
@@ -835,6 +852,12 @@ public class PolarisTestMetaStoreManager {
       Assertions.assertThat(dropResult.isSuccess()).isFalse();
       Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isTrue();
       Assertions.assertThat(dropResult.isEntityUnDroppable()).isFalse();
+    } else if (entityToDrop.getType() == PolarisEntityType.POLICY) {
+      // When dropping policy with cleanup = true, we do not need cleanup task
+      Assertions.assertThat(dropResult.isSuccess()).isEqualTo(exists);
+      Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isFalse();
+      Assertions.assertThat(dropResult.isEntityUnDroppable()).isFalse();
+      Assertions.assertThat(dropResult.getCleanupTaskId()).isNull();
     } else {
       Assertions.assertThat(dropResult.isSuccess()).isEqualTo(exists);
       Assertions.assertThat(dropResult.failedBecauseNotEmpty()).isFalse();
@@ -995,9 +1018,19 @@ public class PolarisTestMetaStoreManager {
       PolarisBaseEntity target,
       List<PolarisEntityCore> policyCatalogPath,
       PolicyEntity policy) {
+    attachPolicyToTarget(targetCatalogPath, target, policyCatalogPath, policy, null);
+  }
+
+  void attachPolicyToTarget(
+      List<PolarisEntityCore> targetCatalogPath,
+      PolarisBaseEntity target,
+      List<PolarisEntityCore> policyCatalogPath,
+      PolicyEntity policy,
+      Map<String, String> parameters) {
     polarisMetaStoreManager.attachPolicyToEntity(
-        polarisCallContext, targetCatalogPath, target, policyCatalogPath, policy, null);
-    ensurePolicyMappingRecordExists(target, policy);
+        polarisCallContext, targetCatalogPath, target, policyCatalogPath, policy, parameters);
+
+    ensurePolicyMappingRecordExists(target, policy, parameters);
   }
 
   /** detach a policy from a target */
@@ -1016,8 +1049,10 @@ public class PolarisTestMetaStoreManager {
    *
    * @param target the target
    * @param policy the policy
+   * @param parameters the parameters
    */
-  void ensurePolicyMappingRecordExists(PolarisBaseEntity target, PolicyEntity policy) {
+  void ensurePolicyMappingRecordExists(
+      PolarisBaseEntity target, PolicyEntity policy, Map<String, String> parameters) {
     target =
         polarisMetaStoreManager
             .loadEntity(
@@ -1042,7 +1077,7 @@ public class PolarisTestMetaStoreManager {
     validateLoadedPolicyMappings(loadPolicyMappingsResult);
 
     checkPolicyMappingRecordExists(
-        loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy);
+        loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy, parameters);
 
     // also try load by specific type
     LoadPolicyMappingsResult loadPolicyMappingsResultByType =
@@ -1050,7 +1085,7 @@ public class PolarisTestMetaStoreManager {
             this.polarisCallContext, target, policy.getPolicyType());
     validateLoadedPolicyMappings(loadPolicyMappingsResultByType);
     checkPolicyMappingRecordExists(
-        loadPolicyMappingsResultByType.getPolicyMappingRecords(), target, policy);
+        loadPolicyMappingsResultByType.getPolicyMappingRecords(), target, policy, parameters);
   }
 
   /**
@@ -1134,8 +1169,9 @@ public class PolarisTestMetaStoreManager {
   void checkPolicyMappingRecordExists(
       List<PolarisPolicyMappingRecord> policyMappingRecords,
       PolarisBaseEntity target,
-      PolicyEntity policy) {
-    boolean exists = isPolicyMappingRecordExists(policyMappingRecords, target, policy);
+      PolicyEntity policy,
+      Map<String, String> parameters) {
+    boolean exists = isPolicyMappingRecordExists(policyMappingRecords, target, policy, parameters);
     Assertions.assertThat(exists).isTrue();
   }
 
@@ -1175,6 +1211,32 @@ public class PolarisTestMetaStoreManager {
                         && record.getTargetId() == target.getId()
                         && record.getPolicyTypeCode() == policy.getPolicyTypeCode())
             .count();
+    return policyMappingCount == 1;
+  }
+
+  /**
+   * Check if the policy mapping record exists and verify if the parameters also equals
+   *
+   * @param policyMappingRecords list of policy mapping records
+   * @param target the target
+   * @param policy the policy
+   * @param parameters the parameters
+   */
+  boolean isPolicyMappingRecordExists(
+      List<PolarisPolicyMappingRecord> policyMappingRecords,
+      PolarisBaseEntity target,
+      PolicyEntity policy,
+      Map<String, String> parameters) {
+    PolarisPolicyMappingRecord expected =
+        new PolarisPolicyMappingRecord(
+            target.getCatalogId(),
+            target.getId(),
+            policy.getCatalogId(),
+            policy.getId(),
+            policy.getPolicyTypeCode(),
+            parameters);
+    long policyMappingCount =
+        policyMappingRecords.stream().filter(record -> expected.equals(record)).count();
     return policyMappingCount == 1;
   }
 
@@ -1395,34 +1457,43 @@ public class PolarisTestMetaStoreManager {
     long catalogId =
         (catalogPath == null) ? PolarisEntityConstants.getNullId() : catalogPath.get(0).getId();
     Assertions.assertThat(catalogId).isEqualTo(entity.getCatalogId());
-
     // let's make some property updates
-    entity.setProperties(props);
-    entity.setInternalProperties(internalProps);
+    PolarisBaseEntity updatedPropEntity =
+        new PolarisBaseEntity.Builder(entity)
+            .properties(props)
+            .internalProperties(internalProps)
+            .build();
 
     // lookup that entity, ensure it exists
     PolarisBaseEntity beforeUpdateEntity =
         polarisMetaStoreManager
             .loadEntity(
-                this.polarisCallContext, entity.getCatalogId(), entity.getId(), entity.getType())
+                this.polarisCallContext,
+                updatedPropEntity.getCatalogId(),
+                updatedPropEntity.getId(),
+                updatedPropEntity.getType())
             .getEntity();
 
     // update that property
     PolarisBaseEntity updatedEntity =
         polarisMetaStoreManager
-            .updateEntityPropertiesIfNotChanged(this.polarisCallContext, catalogPath, entity)
+            .updateEntityPropertiesIfNotChanged(
+                this.polarisCallContext, catalogPath, updatedPropEntity)
             .getEntity();
 
     // if version mismatch, nothing should be updated
     if (beforeUpdateEntity == null
-        || beforeUpdateEntity.getEntityVersion() != entity.getEntityVersion()) {
+        || beforeUpdateEntity.getEntityVersion() != updatedPropEntity.getEntityVersion()) {
       Assertions.assertThat(updatedEntity).isNull();
 
       // refresh catalog info
       entity =
           polarisMetaStoreManager
               .loadEntity(
-                  this.polarisCallContext, entity.getCatalogId(), entity.getId(), entity.getType())
+                  this.polarisCallContext,
+                  updatedPropEntity.getCatalogId(),
+                  updatedPropEntity.getId(),
+                  updatedPropEntity.getType())
               .getEntity();
 
       // ensure nothing has changed
@@ -1464,20 +1535,21 @@ public class PolarisTestMetaStoreManager {
 
     // update should have been performed
     Assertions.assertThat(jsonNode(updatedEntity.getProperties()))
-        .isEqualTo(jsonNode(entity.getProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
     Assertions.assertThat(jsonNode(afterUpdateEntity.getProperties()))
-        .isEqualTo(jsonNode(entity.getProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
     Assertions.assertThat(jsonNode(updatedEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(entity.getInternalProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
     Assertions.assertThat(jsonNode(afterUpdateEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(entity.getInternalProperties()));
+        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
 
     // lookup the tracking slice to verify this has been updated too
     if (supportsChangeTracking) {
       List<PolarisChangeTrackingVersions> versions =
           polarisMetaStoreManager
               .loadEntitiesChangeTracking(
-                  this.polarisCallContext, List.of(new PolarisEntityId(catalogId, entity.getId())))
+                  this.polarisCallContext,
+                  List.of(new PolarisEntityId(catalogId, updatedPropEntity.getId())))
               .getChangeTrackingVersions();
       Assertions.assertThat(versions).hasSize(1);
       Assertions.assertThat(versions.get(0).getEntityVersion())
@@ -1510,7 +1582,12 @@ public class PolarisTestMetaStoreManager {
     // list the entities under the specified path
     List<EntityNameLookupRecord> result =
         polarisMetaStoreManager
-            .listEntities(this.polarisCallContext, path, entityType, entitySubType)
+            .listEntities(
+                this.polarisCallContext,
+                path,
+                entityType,
+                entitySubType,
+                PageToken.readEverything())
             .getEntities();
     Assertions.assertThat(result).isNotNull();
 
@@ -1827,7 +1904,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -1853,7 +1931,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL_ROLE,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -2167,11 +2246,11 @@ public class PolarisTestMetaStoreManager {
             PolarisEntityType.TABLE_LIKE,
             PolarisEntitySubType.ICEBERG_TABLE,
             "T5");
-    T5v1.setId(100000L);
+    var newId = new PolarisBaseEntity.Builder(T5v1).id(100000L).build();
     PolarisBaseEntity notExists =
         this.updateEntity(
             List.of(catalog, N5, N5_N6),
-            T5v1,
+            newId,
             "{\"v3pproperty\": \"some value\"}",
             "{\"v3pinternal_property\": \"some other value\"}");
     Assertions.assertThat(notExists).isNull();
@@ -2459,15 +2538,17 @@ public class PolarisTestMetaStoreManager {
     // save old name
     String oldName = entity.getName();
 
-    // the renamed entity
-    PolarisEntity renamedEntityInput = new PolarisEntity(entity);
-    renamedEntityInput.setName(newName);
     var updatedInternalProperties = Map.of("key1", "updatedDataForInternalProperties1234");
     var updatedProperties = Map.of("key1", "updatedDataForProperties9876");
 
-    // this is to test that properties are also updated during the rename operation
-    renamedEntityInput.setInternalPropertiesAsMap(updatedInternalProperties);
-    renamedEntityInput.setPropertiesAsMap(updatedProperties);
+    // the renamed entity
+    var newEntity =
+        new PolarisBaseEntity.Builder(entity)
+            .name(newName)
+            .internalPropertiesAsMap(updatedInternalProperties)
+            .propertiesAsMap(updatedProperties)
+            .build();
+    PolarisEntity renamedEntityInput = new PolarisEntity(newEntity);
 
     // check to see if we would have a name conflict
     EntityResult newNameLookup =
@@ -2591,7 +2672,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities();
 
     // ensure not null, one element only
@@ -2775,6 +2857,10 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(policyAttachmentResult.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS);
 
+    // Attach the same policy to same target again should succeed and replace the existing one
+    attachPolicyToTarget(
+        List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1, Map.of("test", "test"));
+
     LoadPolicyMappingsResult loadPolicyMappingsResult =
         polarisMetaStoreManager.loadPoliciesOnEntityByType(
             polarisCallContext, N1_N2_T1, PredefinedPolicyTypes.DATA_COMPACTION);
@@ -2787,5 +2873,58 @@ public class PolarisTestMetaStoreManager {
 
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
+  }
+
+  void testPolicyMappingCleanup() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    Assertions.assertThat(catalog).isNotNull();
+
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity N1_N2 =
+        this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
+    PolarisBaseEntity N1_N2_T1 =
+        this.ensureExistsByName(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "T1");
+
+    PolarisBaseEntity N1_N2_T3 =
+        this.createEntity(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "T3");
+    PolicyEntity N1_P1 =
+        this.createPolicy(List.of(catalog, N1), "P1", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    PolicyEntity N1_P2 =
+        this.createPolicy(List.of(catalog, N1), "P2", PredefinedPolicyTypes.DATA_COMPACTION);
+
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T3, List.of(catalog, N1), N1_P1);
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T3);
+    Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).hasSize(1);
+
+    // Drop N1_N2_T1, the corresponding policy mapping should be cleaned-up
+    this.dropEntity(List.of(catalog, N1, N1_N2), N1_N2_T3);
+
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    Assertions.assertThat(
+            ms.loadAllTargetsOnPolicy(
+                polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
+        .isEmpty();
+
+    attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P2);
+
+    // Drop N1_P2, the dropEntity helper will have cleanup enabled to detach the policy from all
+    // targets
+    this.dropEntity(List.of(catalog, N1), N1_P2);
+    loadPolicyMappingsResult =
+        polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T1);
+    Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).isEmpty();
   }
 }

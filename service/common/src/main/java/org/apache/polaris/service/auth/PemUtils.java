@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -36,8 +37,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemReader;
 
 public class PemUtils {
 
@@ -46,9 +45,40 @@ public class PemUtils {
       throw new FileNotFoundException(
           String.format("The file '%s' doesn't exist.", pemPath.toAbsolutePath()));
     }
-    try (PemReader reader = new PemReader(Files.newBufferedReader(pemPath, UTF_8))) {
-      PemObject pemObject = reader.readPemObject();
-      return pemObject.getContent();
+    try (BufferedReader reader = Files.newBufferedReader(pemPath, UTF_8)) {
+      final StringBuilder encodedBuilder = new StringBuilder();
+
+      boolean headerFound = false;
+      boolean footerFound = false;
+
+      String line = reader.readLine();
+      while (line != null) {
+        if (line.startsWith("-----BEGIN")) {
+          headerFound = true;
+        } else if (line.startsWith("-----END")) {
+          footerFound = true;
+          // Stop reading after finding footer
+          break;
+        } else if (!line.isBlank()) {
+          encodedBuilder.append(line);
+        }
+
+        line = reader.readLine();
+      }
+
+      final byte[] parsed;
+      if (headerFound) {
+        if (footerFound) {
+          final String encoded = encodedBuilder.toString();
+          parsed = Base64.getMimeDecoder().decode(encoded);
+        } else {
+          throw new IOException("PEM Footer not found");
+        }
+      } else {
+        throw new IOException("PEM Header not found");
+      }
+
+      return parsed;
     }
   }
 
@@ -90,15 +120,23 @@ public class PemUtils {
     return PemUtils.getPrivateKey(bytes, algorithm);
   }
 
-  public static void generateKeyPair(Path privateFileLocation, Path publicFileLocation)
-      throws NoSuchAlgorithmException, IOException {
+  public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
-    KeyPair kp = kpg.generateKeyPair();
+    return kpg.generateKeyPair();
+  }
+
+  public static void generateKeyPairFiles(Path privateFileLocation, Path publicFileLocation)
+      throws NoSuchAlgorithmException, IOException {
+    writeKeyPairFiles(generateKeyPair(), privateFileLocation, publicFileLocation);
+  }
+
+  public static void writeKeyPairFiles(
+      KeyPair keyPair, Path privateFileLocation, Path publicFileLocation) throws IOException {
     try (BufferedWriter writer = Files.newBufferedWriter(privateFileLocation, UTF_8)) {
       writer.write("-----BEGIN PRIVATE KEY-----");
       writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
+      writer.write(Base64.getMimeEncoder().encodeToString(keyPair.getPrivate().getEncoded()));
       writer.newLine();
       writer.write("-----END PRIVATE KEY-----");
       writer.newLine();
@@ -106,7 +144,7 @@ public class PemUtils {
     try (BufferedWriter writer = Files.newBufferedWriter(publicFileLocation, UTF_8)) {
       writer.write("-----BEGIN PUBLIC KEY-----");
       writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
+      writer.write(Base64.getMimeEncoder().encodeToString(keyPair.getPublic().getEncoded()));
       writer.newLine();
       writer.write("-----END PUBLIC KEY-----");
       writer.newLine();

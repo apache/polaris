@@ -20,14 +20,6 @@ package org.apache.polaris.spark.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonFactoryBuilder;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.util.Map;
@@ -36,7 +28,14 @@ import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTSerializers;
-import org.apache.polaris.service.types.GenericTable;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonAutoDetect;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.PropertyAccessor;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonFactory;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonFactoryBuilder;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.DeserializationFeature;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -90,7 +89,13 @@ public class DeserializationTest {
   public void testCreateGenericTableRESTRequest(String doc, Map<String, String> properties)
       throws JsonProcessingException {
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest("test-table", "delta", doc, properties);
+        new CreateGenericTableRESTRequest(
+            CreateGenericTableRequest.builder()
+                .setName("test-table")
+                .setFormat("delta")
+                .setDoc(doc)
+                .setProperties(properties)
+                .build());
     String json = mapper.writeValueAsString(request);
     CreateGenericTableRESTRequest deserializedRequest =
         mapper.readValue(json, CreateGenericTableRESTRequest.class);
@@ -128,6 +133,17 @@ public class DeserializationTest {
     for (TableIdentifier identifier : idents) {
       assertThat(deserializedResponse.getIdentifiers()).contains(identifier);
     }
+  }
+
+  @Test
+  public void testLoadGenericTableRestResponse() throws JsonProcessingException {
+    LoadGenericTableRESTResponse request =
+        new LoadGenericTableRESTResponse(
+            GenericTable.builder().setName("test-table").setFormat("delta").build());
+    String json = mapper.writeValueAsString(request);
+    LoadGenericTableRESTResponse deserializedResponse =
+        mapper.readValue(json, LoadGenericTableRESTResponse.class);
+    assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
   }
 
   private static Stream<Arguments> genericTableTestCases() {

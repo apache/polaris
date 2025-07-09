@@ -22,9 +22,11 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -42,6 +44,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
@@ -120,7 +123,8 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType);
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken);
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
@@ -300,11 +304,12 @@ public interface PolarisMetaStoreManager
    *
    * @param callCtx call context
    * @param executorId executor id
-   * @param limit limit
+   * @param pageToken page token to start after
    * @return list of tasks to be completed
    */
   @Nonnull
-  EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
+  EntitiesResult loadTasks(
+      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each
@@ -387,6 +392,22 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
+   * location
+   *
+   * @param callContext the polaris call context
+   * @param entity the entity to check for overlapping siblings for
+   * @return Optional.of(Optional.of ( location)) if the parent entity has children,
+   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   *     this operation
+   */
+  default <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    return Optional.empty();
+  }
 
   /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via

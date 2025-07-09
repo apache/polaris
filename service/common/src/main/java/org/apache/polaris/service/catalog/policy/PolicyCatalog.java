@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
 import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.CATALOG;
 
@@ -49,11 +50,13 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.PolicyValidators;
 import org.apache.polaris.service.types.ApplicablePolicy;
@@ -165,7 +168,8 @@ public class PolicyCatalog {
                 callContext.getPolarisCallContext(),
                 PolarisEntity.toCoreList(catalogPath),
                 PolarisEntityType.POLICY,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
             .getEntities()
             .stream()
             .map(
@@ -254,7 +258,6 @@ public class PolicyCatalog {
   }
 
   public boolean dropPolicy(PolicyIdentifier policyIdentifier, boolean detachAll) {
-    // TODO: Implement detachAll when we support attach/detach policy
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var catalogPath = resolvedPolicyPath.getRawParentPath();
     var policyEntity = resolvedPolicyPath.getRawLeafEntity();
@@ -265,9 +268,13 @@ public class PolicyCatalog {
             PolarisEntity.toCoreList(catalogPath),
             policyEntity,
             Map.of(),
-            false);
+            detachAll);
 
     if (!result.isSuccess()) {
+      if (result.getReturnStatus() == POLICY_HAS_MAPPINGS) {
+        throw new PolicyInUseException("Policy %s is still attached to entities", policyIdentifier);
+      }
+
       throw new IllegalStateException(
           String.format(
               "Failed to drop policy %s error status: %s with extraInfo: %s",

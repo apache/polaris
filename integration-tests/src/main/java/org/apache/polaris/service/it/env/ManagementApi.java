@@ -53,7 +53,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
  * @see PolarisClient#managementApi(ClientCredentials)
  */
 public class ManagementApi extends RestApi {
-  ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
+  public ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }
 
@@ -111,6 +111,16 @@ public class ManagementApi extends RestApi {
                 "v1/catalogs/{cat}/catalog-roles/{role}/grants",
                 Map.of("cat", catalogName, "role", catalogRoleName))
             .put(Entity.json(grant))) {
+      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  public void revokeGrant(String catalogName, String catalogRoleName, GrantResource grant) {
+    try (Response response =
+        request(
+                "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                Map.of("cat", catalogName, "role", catalogRoleName))
+            .post(Entity.json(grant))) {
       assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
     }
   }

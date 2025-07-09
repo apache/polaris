@@ -25,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
@@ -112,15 +113,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
               metaStoreManager,
               polarisCallContext);
 
-      // TODO: handle partition statistics files
       Stream<TaskEntity> metadataFileCleanupTasks =
           getMetadataTaskStream(
-              cleanupTask,
-              tableMetadata,
-              fileIO,
-              tableEntity,
-              metaStoreManager,
-              polarisCallContext);
+              cleanupTask, tableMetadata, fileIO, tableEntity, metaStoreManager, callContext);
 
       List<TaskEntity> taskEntities =
           Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks).toList();
@@ -206,11 +201,12 @@ public class TableCleanupTaskHandler implements TaskHandler {
       FileIO fileIO,
       IcebergTableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext) {
+      CallContext callContext) {
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     int batchSize =
         polarisCallContext
             .getConfigurationStore()
-            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
+            .getConfiguration(callContext.getRealmContext(), BATCH_SIZE_CONFIG_KEY, 10);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
@@ -243,12 +239,13 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata, int batchSize) {
     List<List<String>> result = new ArrayList<>();
     List<String> metadataFiles =
-        Stream.concat(
-                Stream.concat(
-                    tableMetadata.previousFiles().stream()
-                        .map(TableMetadata.MetadataLogEntry::file),
-                    tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation)),
-                tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
+        Stream.of(
+                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation),
+                tableMetadata.statisticsFiles().stream().map(StatisticsFile::path),
+                tableMetadata.partitionStatisticsFiles().stream()
+                    .map(PartitionStatisticsFile::path))
+            .flatMap(s -> s)
             .toList();
 
     for (int i = 0; i < metadataFiles.size(); i += batchSize) {

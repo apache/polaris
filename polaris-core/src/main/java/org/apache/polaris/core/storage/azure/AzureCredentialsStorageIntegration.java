@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
@@ -45,10 +47,9 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -70,14 +71,14 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+      @Nonnull CallContext callContext,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    EnumMap<PolarisCredentialProperty, String> credentialMap =
-        new EnumMap<>(PolarisCredentialProperty.class);
+    EnumMap<StorageAccessProperty, String> credentialMap =
+        new EnumMap<>(StorageAccessProperty.class);
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -126,7 +127,10 @@ public class AzureCredentialsStorageIntegration
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
-        FeatureConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(callContext.getRealmContext(), STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
@@ -170,10 +174,10 @@ public class AzureCredentialsStorageIntegration
       throw new RuntimeException(
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
-    credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
+    credentialMap.put(StorageAccessProperty.AZURE_SAS_TOKEN, sasToken);
+    credentialMap.put(StorageAccessProperty.AZURE_ACCOUNT_HOST, storageDnsName);
     credentialMap.put(
-        PolarisCredentialProperty.EXPIRATION_TIME,
+        StorageAccessProperty.EXPIRATION_TIME,
         String.valueOf(sanitizedEndTime.toInstant().toEpochMilli()));
     return credentialMap;
   }

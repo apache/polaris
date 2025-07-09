@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -45,7 +44,9 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.*;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -53,8 +54,9 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -120,44 +122,37 @@ public class FileIOFactoryTest {
 
     testServices =
         TestServices.builder()
-            .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
+            .config(
+                Map.of(
+                    "ALLOW_SPECIFYING_FILE_IO_IMPL",
+                    true,
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    true,
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE", "S3"),
+                    "DROP_WITH_PURGE_ENABLED",
+                    true))
             .realmContext(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
     callContext =
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return testServices.realmContext();
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return new PolarisCallContext(
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                testServices.polarisDiagnostics(),
-                testServices.configurationStore(),
-                Mockito.mock(Clock.class));
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return new HashMap<>();
-          }
-        };
+        new PolarisCallContext(
+            realmContext,
+            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.polarisDiagnostics(),
+            testServices.configurationStore(),
+            Clock.systemUTC());
   }
 
   @AfterEach
   public void after() {}
 
-  @Test
-  public void testLoadFileIOForTableLike() {
-    IcebergCatalog catalog = createCatalog(testServices);
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testLoadFileIOForTableLike(String scheme) {
+    IcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
 
@@ -173,9 +168,10 @@ public class FileIOFactoryTest {
             Mockito.any());
   }
 
-  @Test
-  public void testLoadFileIOForCleanupTask() {
-    IcebergCatalog catalog = createCatalog(testServices);
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testLoadFileIOForCleanupTask(String scheme) {
+    IcebergCatalog catalog = createCatalog(testServices, scheme);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
     catalog.dropTable(TABLE, true);
@@ -184,7 +180,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
@@ -208,8 +204,8 @@ public class FileIOFactoryTest {
             Mockito.any());
   }
 
-  IcebergCatalog createCatalog(TestServices services) {
-    String storageLocation = "s3://my-bucket/path/to/data";
+  IcebergCatalog createCatalog(TestServices services, String scheme) {
+    String storageLocation = scheme + "://my-bucket/path/to/data";
     AwsStorageConfigInfo awsStorageConfigInfo =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -222,7 +218,7 @@ public class FileIOFactoryTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(CATALOG_NAME)
-            .setProperties(new CatalogProperties("s3://tmp/path/to/data"))
+            .setProperties(new CatalogProperties(scheme + "://tmp/path/to/data"))
             .setStorageConfigInfo(awsStorageConfigInfo)
             .build();
     services
@@ -244,7 +240,8 @@ public class FileIOFactoryTest {
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),
-            services.fileIOFactory());
+            services.fileIOFactory(),
+            services.polarisEventListener());
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

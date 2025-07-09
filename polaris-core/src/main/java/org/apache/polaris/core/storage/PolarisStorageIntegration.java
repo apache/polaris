@@ -21,9 +21,8 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -46,7 +45,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Subscope the creds against the allowed read and write locations.
    *
-   * @param diagnostics the diagnostics service
+   * @param callContext the call context
    * @param storageConfig storage configuration
    * @param allowListOperation whether to allow LIST on all the provided allowed read/write
    *     locations
@@ -54,8 +53,8 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @param allowedWriteLocations a set of allowed to write locations
    * @return An enum map including the scoped credentials
    */
-  public abstract EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull PolarisDiagnostics diagnostics,
+  public abstract EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+      @Nonnull CallContext callContext,
       @Nonnull T storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -129,7 +128,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
 
     @Override
     public int hashCode() {
-      return Objects.hashCode(success);
+      return Boolean.hashCode(success);
     }
 
     @Override

@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -34,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -62,10 +64,14 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   private final PolarisDiagnostics diagnostics;
+  private final PolarisConfigurationStore configurationStore;
   private boolean bootstrap;
 
-  protected LocalPolarisMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
+  protected LocalPolarisMetaStoreManagerFactory(
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisConfigurationStore configurationStore) {
     this.diagnostics = diagnostics;
+    this.configurationStore = configurationStore;
   }
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
@@ -112,17 +118,12 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
-      if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
+      if (!metaStoreManagerMap.containsKey(realm)) {
         initializeForRealm(realmContext, rootCredentialsSet);
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-
-        if (rootCredentialsSet.credentials().containsKey(realm)) {
-          LOGGER.info("Bootstrapped realm {} using preset credentials.", realm);
-        }
-
-        results.put(realmContext.getRealmIdentifier(), secretsResult);
+                realmContext, metaStoreManagerMap.get(realm));
+        results.put(realm, secretsResult);
       }
     }
 
@@ -134,10 +135,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     Map<String, BaseResult> results = new HashMap<>();
 
     for (String realm : realms) {
-      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
-      TransactionalPersistence session = getOrCreateSessionSupplier(() -> realm).get();
+      RealmContext realmContext = () -> realm;
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
+      TransactionalPersistence session = getOrCreateSessionSupplier(realmContext).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -180,7 +182,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
+          realmContext.getRealmIdentifier(),
+          new StorageCredentialCache(realmContext, configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
@@ -190,7 +193,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      entityCacheMap.put(realmContext.getRealmIdentifier(), new EntityCache(metaStoreManager));
+      entityCacheMap.put(
+          realmContext.getRealmIdentifier(),
+          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
@@ -205,11 +210,13 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
     // While bootstrapping we need to act as a fake privileged context since the real
     // CallContext may not have been resolved yet.
-    PolarisCallContext polarisContext =
+    var polarisContext =
         new PolarisCallContext(
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
+            realmContext,
+            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
+            diagServices);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+      CallContext.setCurrentContext(polarisContext);
     }
 
     EntityResult preliminaryRootPrincipalLookup =
@@ -254,9 +261,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
     PolarisCallContext polarisContext =
         new PolarisCallContext(
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
+            realmContext,
+            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
+            diagServices);
     if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+      CallContext.setCurrentContext(polarisContext);
     }
 
     EntityResult rootPrincipalLookup =

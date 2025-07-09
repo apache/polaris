@@ -22,11 +22,11 @@
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
-Apache Spark™, StarRocks, and Trino.
+Apache Spark™, StarRocks, and Trino. 
 
-Documentation is available at https://polaris.apache.org, including
-[Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
-and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
+Documentation is available at https://polaris.apache.org. The REST OpenAPI specifications are available here:
+[Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
+and [Polaris Catalog API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
 [Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
 for contribution guidelines.
@@ -37,7 +37,7 @@ for contribution guidelines.
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Polaris Overview
-Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick overview of Polaris.
+Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
 
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
@@ -53,13 +53,12 @@ Apache Polaris is organized into the following modules:
   - `polaris-api-iceberg-service` - The Iceberg REST service
 - Service modules:
   - `polaris-service-common` - The main components of the Polaris server
-- Quarkus runtime modules:
-  - `polaris-quarkus-service` - The Quarkus-specific components of the Polaris server
-  - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
-  - `polaris-quarkus-server` - The Polaris server runtime
-  - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
+- Runtime modules:
+  - `polaris-runtime-service` - The runtime components of the Polaris server
+  - `polaris-runtime-defaults` - The runtime configuration defaults
+  - `polaris-server` - The Polaris server
+  - `polaris-admin` - The Polaris admin & maintenance tool
 - Persistence modules:
-  - `polaris-jpa-model` - The JPA entity definitions
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
  
@@ -67,9 +66,12 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
-- `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew run` - To run the Polaris server locally; the server is reachable at 
-  localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. 
+- `./gradlew check` - To run all checks, including unit tests and integration tests.
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t` where:
+  - `POLARIS` is the realm
+  - `root` is the CLIENT_ID
+  - `secret` is the CLIENT_SECRET
+  - If credentials are not set, it will use preset credentials `POLARIS,root,s3cr3t`
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -86,8 +88,8 @@ select * from db1.table1;
 - To build the image locally:
   ```bash
   ./gradlew \
-    :polaris-quarkus-server:assemble \
-    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    :polaris-server:assemble \
+    :polaris-server:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true
   ```
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
@@ -114,7 +116,7 @@ Polaris Servers can be configured using a variety of ways.
 Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
 for more information.
 
-Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
+Default configuration values can be found in `runtime/defaults/src/main/resources/application.properties`.
 
 #### Building docs
 

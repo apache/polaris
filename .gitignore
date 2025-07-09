@@ -28,6 +28,11 @@ client/python/poetry.lock
 /poetry.lock
 /polaris-venv/
 /pyproject.toml
+client/python/.openapi-generator/
+client/python/docs/
+client/python/polaris/
+client/python/test/
+!client/python/test/test_cli_parsing.py
 
 # Polaris CLI profile
 .polaris.json

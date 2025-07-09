@@ -25,7 +25,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
@@ -53,23 +52,11 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     this.metaStoreManager = metaStoreManager;
   }
 
-  public void enforceGenericTablesEnabledOrThrow() {
-    boolean enabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
-    if (!enabled) {
-      throw new UnsupportedOperationException("Generic table support is not enabled");
-    }
-  }
-
   @Override
   protected void initializeCatalog() {
-    enforceGenericTablesEnabledOrThrow();
     this.genericTableCatalog =
-        new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+        new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.genericTableCatalog.initialize(catalogName, Map.of());
   }
 
   public ListGenericTablesResponse listGenericTables(Namespace parent) {
@@ -89,11 +76,12 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     GenericTableEntity createdEntity =
         this.genericTableCatalog.createGenericTable(identifier, format, doc, properties);
     GenericTable createdTable =
-        new GenericTable(
-            createdEntity.getName(),
-            createdEntity.getFormat(),
-            createdEntity.getDoc(),
-            createdEntity.getPropertiesAsMap());
+        GenericTable.builder()
+            .setName(createdEntity.getName())
+            .setFormat(createdEntity.getFormat())
+            .setDoc(createdEntity.getDoc())
+            .setProperties(createdEntity.getPropertiesAsMap())
+            .build();
 
     return LoadGenericTableResponse.builder().setTable(createdTable).build();
   }
@@ -111,11 +99,12 @@ public class GenericTableCatalogHandler extends CatalogHandler {
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
-        new GenericTable(
-            loadedEntity.getName(),
-            loadedEntity.getFormat(),
-            loadedEntity.getDoc(),
-            loadedEntity.getPropertiesAsMap());
+        GenericTable.builder()
+            .setName(loadedEntity.getName())
+            .setFormat(loadedEntity.getFormat())
+            .setDoc(loadedEntity.getDoc())
+            .setProperties(loadedEntity.getPropertiesAsMap())
+            .build();
 
     return LoadGenericTableResponse.builder().setTable(loadedTable).build();
   }

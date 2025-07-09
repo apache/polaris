@@ -21,7 +21,7 @@ package org.apache.polaris.service.it.test;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
@@ -334,7 +334,7 @@ public class PolarisApplicationIntegrationTest {
           .isNotNull()
           .isNotEmpty()
           .containsEntry(
-              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1");
+              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1/");
     }
   }
 
@@ -371,8 +371,8 @@ public class PolarisApplicationIntegrationTest {
                           TableIdentifier.of(ns, "the_table"),
                           new Schema(
                               List.of(
-                                  Types.NestedField.of(
-                                      1, false, "theField", Types.StringType.get()))))
+                                  Types.NestedField.required(
+                                      1, "theField", Types.StringType.get()))))
                       .withLocation("file:///tmp/tables")
                       .withSortOrder(SortOrder.unsorted())
                       .withPartitionSpec(PartitionSpec.unpartitioned())
@@ -399,8 +399,8 @@ public class PolarisApplicationIntegrationTest {
                           TableIdentifier.of(ns, "the_table"),
                           new Schema(
                               List.of(
-                                  Types.NestedField.of(
-                                      1, false, "theField", Types.StringType.get()))))
+                                  Types.NestedField.required(
+                                      1, "theField", Types.StringType.get()))))
                       .withSortOrder(SortOrder.unsorted())
                       .withPartitionSpec(PartitionSpec.unpartitioned())
                       .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
@@ -416,8 +416,8 @@ public class PolarisApplicationIntegrationTest {
                           TableIdentifier.of(ns, "the_table"),
                           new Schema(
                               List.of(
-                                  Types.NestedField.of(
-                                      1, false, "theField", Types.StringType.get()))))
+                                  Types.NestedField.required(
+                                      1, "theField", Types.StringType.get()))))
                       .withSortOrder(SortOrder.unsorted())
                       .withPartitionSpec(PartitionSpec.unpartitioned())
                       .withProperties(Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
@@ -454,7 +454,7 @@ public class PolarisApplicationIntegrationTest {
               .assignUUID()
               .addPartitionSpec(PartitionSpec.unpartitioned())
               .addSortOrder(SortOrder.unsorted())
-              .addSchema(new Schema(Types.NestedField.of(1, false, "col1", Types.StringType.get())))
+              .addSchema(new Schema(Types.NestedField.required(1, "col1", Types.StringType.get())))
               .build();
       TableMetadataParser.write(tableMetadata, fileIo.newOutputFile(metadataLocation));
 
@@ -490,7 +490,7 @@ public class PolarisApplicationIntegrationTest {
       String location = baseLocation.resolve("testIcebergUpdateTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
-      Types.NestedField col1 = Types.NestedField.of(1, false, "col1", Types.StringType.get());
+      Types.NestedField col1 = Types.NestedField.required(1, "col1", Types.StringType.get());
       TableMetadata tableMetadata =
           TableMetadata.buildFromEmpty()
               .setLocation(location)
@@ -545,7 +545,7 @@ public class PolarisApplicationIntegrationTest {
               .assignUUID()
               .addPartitionSpec(PartitionSpec.unpartitioned())
               .addSortOrder(SortOrder.unsorted())
-              .addSchema(new Schema(Types.NestedField.of(1, false, "col1", Types.StringType.get())))
+              .addSchema(new Schema(Types.NestedField.required(1, "col1", Types.StringType.get())))
               .build();
       TableMetadataParser.write(tableMetadata, fileIo.newOutputFile(metadataLocation));
 

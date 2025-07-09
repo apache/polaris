@@ -141,6 +141,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -174,6 +175,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
     }
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -211,6 +213,7 @@ public abstract class CatalogHandler {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -239,6 +242,7 @@ public abstract class CatalogHandler {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -289,6 +293,7 @@ public abstract class CatalogHandler {
                                         "View does not exist: %s", identifier)))
             .toList();
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -357,6 +362,7 @@ public abstract class CatalogHandler {
     PolarisResolvedPathWrapper secondary =
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
+        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,

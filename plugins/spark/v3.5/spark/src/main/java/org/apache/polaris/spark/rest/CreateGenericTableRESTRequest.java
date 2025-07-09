@@ -18,11 +18,10 @@
  */
 package org.apache.polaris.spark.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTRequest;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * RESTRequest definition for CreateGenericTable which extends the iceberg RESTRequest. This is
@@ -36,9 +35,19 @@ public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
   public CreateGenericTableRESTRequest(
       @JsonProperty(value = "name", required = true) String name,
       @JsonProperty(value = "format", required = true) String format,
+      @JsonProperty(value = "base-location") String baseLocation,
       @JsonProperty(value = "doc") String doc,
       @JsonProperty(value = "properties") Map<String, String> properties) {
-    super(name, format, doc, properties);
+    super(name, format, baseLocation, doc, properties);
+  }
+
+  public CreateGenericTableRESTRequest(CreateGenericTableRequest request) {
+    this(
+        request.getName(),
+        request.getFormat(),
+        request.getBaseLocation(),
+        request.getDoc(),
+        request.getProperties());
   }
 
   @Override

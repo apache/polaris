@@ -72,8 +72,7 @@ in the catalog, such as catalog namespaces or tables. You can create one or more
 You grant privileges to a catalog role and then grant the catalog role to a principal role to bestow the privileges to one or more service
 principals.
 
-> **Note**
->
+> [!NOTE]
 > If you update the privileges bestowed to a service principal, the updates won't take effect for up to one hour. This means that if you
 > revoke or grant some privileges for a catalog, the updated privileges won't take effect on any service principal with access to that catalog
 > for up to one hour.
@@ -104,11 +103,6 @@ This section describes the privileges that are available in the Polaris access c
 roles are granted to principal roles, and principal roles are granted to service principals to specify the operations that service principals can
 perform on objects in Polaris.
 
-> **Important**
->
-> You can only grant privileges at the catalog level. Fine-grained access controls are not available. For example, you can grant read 
-> privileges to all tables in a catalog but not to an individual table in the catalog.
-
 To grant the full set of privileges (drop, list, read, write, etc.) on an object, you can use the *full privilege* option.
 
 ### Table privileges
@@ -123,6 +117,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_READ_DATA | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog. |
 | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
+| TABLE_ATTACH_POLICY | Enables attaching policy to a table. |
+| TABLE_DETACH_POLICY | Enables detaching policy from a table. |
 
 ### View privileges
 
@@ -145,6 +141,8 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | NAMESPACE_READ_PROPERTIES | Enables reading all the namespace properties. |
 | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace properties. |
 | NAMESPACE_FULL_METADATA | Grants all namespace privileges. |
+| NAMESPACE_ATTACH_POLICY | Enables attaching policy to a namespace. |
+| NAMESPACE_DETACH_POLICY | Enables detaching policy from a namespace. |
 
 ### Catalog privileges
 
@@ -155,6 +153,21 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | CATALOG_MANAGE_METADATA | Enables full management of the catalog, catalog roles, namespaces, and tables.  |
 | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
+| CATALOG_ATTACH_POLICY | Enables attaching policy to a catalog. |
+| CATALOG_DETACH_POLICY | Enables detaching policy from a catalog. |
+
+### Policy privileges
+
+| Privilege | Description |
+| -----------------------| ----------- |
+| POLICY_CREATE | Enables creating a policy under specified namespace. |
+| POLICY_READ | Enables reading policy content and metadata. |
+| POLICY_WRITE | Enables updating the policy details such as its content or description. |
+| POLICY_LIST | Enables listing any policy from the catalog. |
+| POLICY_DROP | Enables dropping a policy if it is not attached to any resource entity. |
+| POLICY_FULL_METADATA | Grants all policy privileges. |
+| POLICY_ATTACH | Enables policy to be attached to entities. |
+| POLICY_DETACH | Enables policy to be detached from entities. |
 
 ## RBAC example
 
@@ -165,7 +178,7 @@ includes the following users:
     create service principals. She can also create catalogs and
     namespaces and configure access control for Polaris resources.
 
-- **Bob:** A data engineer who uses Apache Spark&trade; to 
+- **Bob:** A data engineer who uses Apache Spark&trade; to
     interact with Polaris.
 
     - Alice has created a service principal for Bob. It has been

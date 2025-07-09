@@ -27,18 +27,11 @@
 
 # Polaris Helm chart
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.0.0--incubating--SNAPSHOT-informational?style=flat-square)
+![Version: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.1.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.1.0--incubating--SNAPSHOT-informational?style=flat-square)
 
 A Helm chart for Apache Polaris (incubating).
 
 **Homepage:** <https://polaris.apache.org/>
-
-## Maintainers
-* [MonkeyCanCode](https://github.com/MonkeyCanCode)
-* [adutra](https://github.com/adutra)
-* [collado-mike](https://github.com/collado-mike)
-* [gerrit-k](https://github.com/gerrit-k)
-* [snazy](https://github.com/snazy)
 
 ## Source Code
 
@@ -46,28 +39,11 @@ A Helm chart for Apache Polaris (incubating).
 
 ## Installation
 
-### Optional
-
-When using a custom `persistence.xml`, a Kubernetes Secret must be created for it. Below is a sample command:
-```bash
-kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
-```
-
-### Running the unit tests
-
-Helm unit tests do not require a Kubernetes cluster. To run the unit tests from the Polaris repo
-root:
-
-```bash
-helm unittest helm/polaris
-```
-
 ### Running locally with a Kind cluster
 
 The below instructions assume Kind and Helm are installed.
 
-Simply run the `run.sh` script from the Polaris repo root, making sure to specify the
-`--eclipse-link-deps` option:
+Simply run the `run.sh` script from the Polaris repo root:
 
 ```bash
 ./run.sh
@@ -79,19 +55,21 @@ example Deployment and Service with in-memory storage.)
 
 ### Running locally with a Minikube cluster
 
-The below instructions assume a Minikube cluster is already running and Helm is installed.
+The below instructions assume Minikube and Helm are installed.
 
-If necessary, build and load the Docker images with support for Postgres into Minikube:
+Start the Minikube cluster, build and load image into the Minikube cluster:
 
 ```bash
-eval $(minikube -p minikube docker-env)
+minikube start
+eval $(minikube docker-env)
 
 ./gradlew \
-    :polaris-quarkus-server:assemble \
-    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
-    :polaris-quarkus-admin:assemble \
-    :polaris-quarkus-admin:quarkusAppPartsBuild --rerun \
-    -Dquarkus.container-image.build=true
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.tag=postgres-latest \
+  -Dquarkus.container-image.build=true
 ```
 
 ### Installing the chart locally
@@ -100,35 +78,40 @@ The below instructions assume a local Kubernetes cluster is running and Helm is 
 
 #### Common setup
 
-Create and populate the target namespace:
-
+Create the target namespace:
 ```bash
 kubectl create namespace polaris
-kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
-
-kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
-The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
-different configurations.
-
-You can also run `ct` (chart-testing):
-
-```bash
-ct lint --charts helm/polaris
-ct install --namespace polaris --debug --charts ./helm/polaris
-```
+Create all the required resources in the `polaris` namespace. This usually includes a Postgres
+database, Kubernetes secrets, and service accounts. The Polaris chart does not create
+these resources automatically, as they are not required for all Polaris deployments. The chart will
+fail if these resources are not created beforehand. You can find some examples in the
+`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
+
+> [!WARNING]
+> The examples below use values files located in the `helm/polaris/ci` directory.
+> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
+> For production deployments, create your own values files based on the provided examples.
 
 #### Non-persistent backend
 
 Install the chart with a non-persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-   polaris helm/polaris
+  --values helm/polaris/ci/simple-values.yaml \
+  polaris helm/polaris
+```
+
+Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
+above, then you need to run `helm upgrade` as follows:
+```bash
+helm upgrade --install --namespace polaris \
+  --values helm/polaris/ci/simple-values.yaml \
+  --set=image.repository=localhost:5001/apache/polaris \
+  polaris helm/polaris
 ```
 
 #### Persistent backend
@@ -137,28 +120,14 @@ helm upgrade --install --namespace polaris \
 > The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
 
 Install the chart with a persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/persistence-values.yaml \
+  --values helm/polaris/ci/persistence-values.yaml \
   polaris helm/polaris
-
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
 ```
 
-After deploying the chart with a persistent backend, the `persistence.xml` file, originally loaded into the Kubernetes pod via a secret, can be accessed locally if needed. This file contains the persistence configuration required for the next steps. Use the following command to retrieve it:
-
-```bash
-kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- cat /deployments/config/persistence.xml > persistence.xml
-```
-
-The `persistence.xml` file references the Postgres hostname as postgres. Update it to localhost to enable local connections:
-
-```bash
-sed -i .bak 's/postgres:/localhost:/g' persistence.xml
-```
-
-To access Polaris and Postgres locally, set up port forwarding for both services:
+To access Polaris and Postgres locally, set up port forwarding for both services (This is needed for bootstrap processes):
 ```bash
 kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181
 
@@ -166,12 +135,13 @@ kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.i
 ```
 
 Run the catalog bootstrap using the Polaris admin tool. This step initializes the catalog with the required configuration:
-
 ```bash
-java -Dpolaris.persistence.eclipselink.configuration-file=./persistence.xml \
-  -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-  -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar \
-  bootstrap -c POLARIS,root,pass -r POLARIS
+container_envs=$(kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- env)
+export QUARKUS_DATASOURCE_USERNAME=$(echo "$container_envs" | grep quarkus.datasource.username | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_PASSWORD=$(echo "$container_envs" | grep quarkus.datasource.password | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datasource.jdbc.url | sed 's/postgres/localhost/2' | awk -F '=' '{print $2}' | tr -d '\n\r')
+
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 
 ### Uninstalling
@@ -182,6 +152,65 @@ helm uninstall --namespace polaris polaris
 kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/
 
 kubectl delete namespace polaris
+```
+
+## Development & Testing
+
+This section is intended for developers who want to run the Polaris Helm chart tests.
+
+### Prerequisites
+
+The following tools are required to run the tests:
+
+* [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
+* [Chart Testing](https://github.com/helm/chart-testing)
+
+Quick installation instructions for these tools:
+```bash
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+brew install chart-testing
+```
+
+The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
+contains the required resources. To deploy them, run the following command:
+```bash
+kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+```
+
+The `helm/polaris/ci` contains a number of values files that will be used to install the chart with
+different configurations.
+
+### Running the unit tests
+
+Helm unit tests do not require a Kubernetes cluster. To run the unit tests, execute Helm Unit from
+the Polaris repo root:
+```bash
+helm unittest helm/polaris
+```
+
+You can also lint the chart using the Chart Testing tool, with the following command:
+
+```bash
+ct lint --charts helm/polaris
+```
+
+### Running the integration tests
+
+Integration tests require a Kubernetes cluster. See installation instructions above for setting up
+a local cluster.
+
+Integration tests are run with the Chart Testing tool:
+```bash
+ct install --namespace polaris --charts ./helm/polaris
+```
+
+Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
+above, then you need to run `ct install` as follows:
+
+```bash
+ct install --namespace polaris --debug --charts ./helm/polaris \
+  --helm-extra-set-args "--set=image.repository=localhost:5001/apache/polaris"
 ```
 
 ## Values
@@ -219,15 +248,14 @@ kubectl delete namespace polaris
 | extraServices | list | `[]` | Additional service definitions. All service definitions always select all Polaris pods. Use this if you need to expose specific ports with different configurations, e.g. expose polaris-http with an alternate LoadBalancer service instead of ClusterIP. |
 | extraVolumeMounts | list | `[]` | Extra volume mounts to add to the polaris container. See https://kubernetes.io/docs/concepts/storage/volumes/. |
 | extraVolumes | list | `[]` | Extra volumes to add to the polaris pod. See https://kubernetes.io/docs/concepts/storage/volumes/. |
-| features | object | `{"defaults":{},"realmOverrides":{}}` | Polaris features configuration. |
-| features.defaults | object | `{}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. |
+| features | object | `{"realmOverrides":{}}` | Polaris features configuration. |
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |
 | image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. Note: if you are using EclipseLink, then this value must be at least two folders down to the root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"apache/polaris"` | The image repository to pull from. |
-| image.tag | string | `"latest"` | The image tag. |
+| image.tag | string | `"1.1.0-incubating-SNAPSHOT"` | The image tag. |
 | imagePullSecrets | list | `[]` | References to secrets in the same namespace to use for pulling any of the images used by this chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more information. |
 | ingress.annotations | object | `{}` | Annotations to add to the ingress. |
 | ingress.className | string | `""` | Specifies the ingressClassName; leave empty if you don't want to customize it |
@@ -279,13 +307,14 @@ kubectl delete namespace polaris
 | metrics.enabled | bool | `true` | Specifies whether metrics for the polaris server should be enabled. |
 | metrics.tags | object | `{}` | Additional tags (dimensional labels) to add to the metrics. |
 | nodeSelector | object | `{}` | Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector. |
-| persistence | object | `{"eclipseLink":{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}},"type":"eclipse-link"}` | Polaris persistence configuration. |
-| persistence.eclipseLink | object | `{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}}` | The configuration for the eclipse-link persistence manager. |
-| persistence.eclipseLink.persistenceUnit | string | `"polaris"` | The persistence unit name to use. |
-| persistence.eclipseLink.secret | object | `{"key":"persistence.xml","name":null}` | The secret name to pull persistence.xml from. |
-| persistence.eclipseLink.secret.key | string | `"persistence.xml"` | The key in the secret to pull persistence.xml from. |
-| persistence.eclipseLink.secret.name | string | `nil` | The name of the secret to pull persistence.xml from. If not provided, the default built-in persistence.xml will be used. This is probably not what you want. |
-| persistence.type | string | `"eclipse-link"` | The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link. |
+| persistence | object | `{"relationalJdbc":{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}},"type":"in-memory"}` | Polaris persistence configuration. |
+| persistence.relationalJdbc | object | `{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}}` | The configuration for the relational-jdbc persistence manager. |
+| persistence.relationalJdbc.secret | object | `{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}` | The secret name to pull the database connection properties from. |
+| persistence.relationalJdbc.secret.jdbcUrl | string | `"jdbcUrl"` | The secret key holding the database JDBC connection URL |
+| persistence.relationalJdbc.secret.name | string | `nil` | The secret name to pull database connection properties from |
+| persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
+| persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
+| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. The eclipse-link type is also supported but is deprecated. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
