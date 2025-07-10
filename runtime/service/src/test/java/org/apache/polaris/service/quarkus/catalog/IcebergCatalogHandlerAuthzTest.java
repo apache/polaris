@@ -1792,7 +1792,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
-            new RealmEntityManagerFactory(null) {
+            new RealmEntityManagerFactory(null, null) {
               @Override
               public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
                 return entityManager;

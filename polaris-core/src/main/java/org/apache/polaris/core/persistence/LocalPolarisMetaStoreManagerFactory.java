@@ -41,7 +41,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +53,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     implements MetaStoreManagerFactory {
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
@@ -143,7 +141,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      storageCredentialCacheMap.remove(realm);
       backingStoreMap.remove(realm);
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
@@ -175,17 +172,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
     return sessionSupplierMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext) {
-    if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
-      storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache(configurationStore));
-    }
-
-    return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
   }
 
   @Override
