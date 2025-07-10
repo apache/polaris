@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
@@ -48,4 +49,8 @@ public interface MetaStoreManagerFactory {
 
   /** Purge all metadata for the realms provided */
   Map<String, BaseResult> purgeRealms(Iterable<String> realms);
+
+  default Iterator<Map.Entry<String, PolarisMetaStoreManager>> getMetaStoreManagerMap() {
+    throw new UnsupportedOperationException("getMetaStoreManagerMap not supported");
+  }
 }
