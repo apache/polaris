@@ -31,12 +31,6 @@ cascade:
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
 
-{{< alert title="Warning" color="warning" >}}
-These pages refer to the current state of the main branch, which is still under active development.
-
-Functionalities can be changed, removed or added without prior notice.
-{{< /alert >}}
-
 Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
 With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
