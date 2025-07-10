@@ -98,22 +98,22 @@ public abstract class PolarisConfiguration<T> {
     this.typ = (Class<T>) defaultValue.getClass();
   }
 
-  public boolean hasCatalogConfig() {
+  public final boolean hasCatalogConfig() {
     return catalogConfigImpl.isPresent();
   }
 
-  public String catalogConfig() {
+  public final String catalogConfig() {
     return catalogConfigImpl.orElseThrow(
         () ->
             new IllegalStateException(
                 "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  public boolean hasCatalogConfigUnsafe() {
+  public final boolean hasCatalogConfigUnsafe() {
     return catalogConfigUnsafeImpl.isPresent();
   }
 
-  public String catalogConfigUnsafe() {
+  public final String catalogConfigUnsafe() {
     return catalogConfigUnsafeImpl.orElseThrow(
         () ->
             new IllegalStateException(
@@ -124,15 +124,15 @@ public abstract class PolarisConfiguration<T> {
     return this.typ.cast(value);
   }
 
-  public String key() {
+  public final String key() {
     return key;
   }
 
-  public String description() {
+  public final String description() {
     return description;
   }
 
-  public T defaultValue() {
+  public final T defaultValue() {
     return defaultValue;
   }
 
