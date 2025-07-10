@@ -92,7 +92,7 @@ The property `polaris.authentication.token-broker.max-token-generation` specifie
 
 ### Token Service 
 
-The [`tokenService`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/AuthenticationRealmConfiguration.java) is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  
+The [`TokenService`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/AuthenticationRealmConfiguration.java) is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  
 
 ```properties
 polaris.authentication.token-service.type=default 
