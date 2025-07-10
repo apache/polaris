@@ -33,8 +33,6 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 /** Aws Polaris Storage Configuration information */
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  private static final boolean PATH_STYLE_ACCESS_DEFAULT = false;
-
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
   public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
@@ -66,7 +64,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   /** A flag indicating whether path-style bucket access should be forced in S3 clients. */
   @JsonProperty(value = "pathStyleAccess")
-  private boolean pathStyleAccess;
+  private Boolean pathStyleAccess;
 
   @JsonCreator
   public AwsStorageConfigurationInfo(
@@ -85,7 +83,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.region = region;
     this.endpoint = endpoint;
     this.stsEndpoint = stsEndpoint;
-    this.pathStyleAccess = pathStyleAccess == null ? PATH_STYLE_ACCESS_DEFAULT : pathStyleAccess;
+    this.pathStyleAccess = pathStyleAccess;
   }
 
   public AwsStorageConfigurationInfo(
@@ -93,15 +91,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull List<String> allowedLocations,
       @Nonnull String roleARN,
       @Nullable String region) {
-    this(
-        storageType,
-        allowedLocations,
-        roleARN,
-        null,
-        region,
-        null,
-        null,
-        PATH_STYLE_ACCESS_DEFAULT);
+    this(storageType, allowedLocations, roleARN, null, region, null, null, null);
   }
 
   public AwsStorageConfigurationInfo(
@@ -110,15 +100,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @Nonnull String roleARN,
       @Nullable String externalId,
       @Nullable String region) {
-    this(
-        storageType,
-        allowedLocations,
-        roleARN,
-        externalId,
-        region,
-        null,
-        null,
-        PATH_STYLE_ACCESS_DEFAULT);
+    this(storageType, allowedLocations, roleARN, externalId, region, null, null, null);
   }
 
   @Override
@@ -167,6 +149,11 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.region = region;
   }
 
+  @Nullable
+  public String getEndpoint() {
+    return endpoint;
+  }
+
   @JsonIgnore
   @Nullable
   public URI getEndpointUri() {
@@ -174,9 +161,13 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   }
 
   /** Returns a flag indicating whether path-style bucket access should be forced in S3 clients. */
-  @JsonIgnore
-  public boolean getPathStyleAccess() {
+  public @Nullable Boolean getPathStyleAccess() {
     return pathStyleAccess;
+  }
+
+  @Nullable
+  public String getStsEndpoint() {
+    return stsEndpoint;
   }
 
   /** Returns the STS endpoint if set, defaulting to {@link #getEndpointUri()} otherwise. */
