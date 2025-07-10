@@ -52,10 +52,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.ContentFile;
@@ -114,13 +112,10 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -239,7 +234,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
           "catalog-override-key4");
 
-  @Inject MetaStoreManagerFactory managerFactory;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
@@ -284,12 +279,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
@@ -360,9 +355,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .asCatalog()));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
+        new RealmEntityManagerFactory(metaStoreManagerFactory);
     this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore);
+        new DefaultFileIOFactory(
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -448,42 +444,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   protected boolean supportsNotifications() {
     return true;
-  }
-
-  private MetaStoreManagerFactory createMockMetaStoreManagerFactory() {
-    return new MetaStoreManagerFactory() {
-      @Override
-      public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
-        return metaStoreManager;
-      }
-
-      @Override
-      public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
-          RealmContext realmContext) {
-        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
-      }
-
-      @Override
-      public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache(realmContext, configurationStore);
-      }
-
-      @Override
-      public InMemoryEntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager);
-      }
-
-      @Override
-      public Map<String, PrincipalSecretsResult> bootstrapRealms(
-          Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
-        throw new NotImplementedException("Bootstrapping realms is not supported");
-      }
-
-      @Override
-      public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
-        throw new NotImplementedException("Purging realms is not supported");
-      }
-    };
   }
 
   @Test
@@ -1030,8 +990,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     FileIOFactory fileIOFactory =
         spy(
             new DefaultFileIOFactory(
-                new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
-                managerFactory,
+                new RealmEntityManagerFactory(metaStoreManagerFactory),
+                metaStoreManagerFactory,
                 configurationStore));
     IcebergCatalog catalog =
         new IcebergCatalog(
@@ -1922,7 +1882,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .containsEntry(StorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
-    MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(
@@ -2071,8 +2030,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     MeasuredFileIOFactory measured =
         new MeasuredFileIOFactory(
-            new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
-            managerFactory,
+            new RealmEntityManagerFactory(metaStoreManagerFactory),
+            metaStoreManagerFactory,
             configurationStore);
     IcebergCatalog catalog =
         new IcebergCatalog(
@@ -2144,8 +2103,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             });
 
     TableCleanupTaskHandler handler =
-        new TableCleanupTaskHandler(
-            Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
+        new TableCleanupTaskHandler(Mockito.mock(), metaStoreManagerFactory, taskFileIOSupplier);
     handler.handleTask(taskEntity, polarisContext);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
