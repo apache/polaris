@@ -122,7 +122,7 @@ public class AwsCredentialsStorageIntegration
       credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
 
-    if (storageConfig.getPathStyleAccess()) {
+    if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
       credentialMap.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 

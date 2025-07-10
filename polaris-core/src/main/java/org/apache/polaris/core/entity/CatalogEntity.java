@@ -140,6 +140,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setRegion(awsConfig.getRegion())
+            .setEndpoint(awsConfig.getEndpoint())
+            .setStsEndpoint(awsConfig.getStsEndpoint())
+            .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
