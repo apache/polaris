@@ -92,7 +92,7 @@ The property `polaris.authentication.token-broker.max-token-generation` specifie
 
 ### Token Service 
 
-The `TokenService` (Quarkus) is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  
+The Token Service and `TokenServiceConfiguration` (Quarkus) is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  
 
 ```properties
 polaris.authentication.token-service.type=default 
