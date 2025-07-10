@@ -168,10 +168,11 @@ public class PolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+    StorageCredentialCache storageCredentialCache = new StorageCredentialCache();
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
+            storageCredentialCache,
             new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     PrincipalEntity rootEntity =
@@ -237,7 +238,8 @@ public class PolarisGenericTableCatalogTest {
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
+        new RealmEntityManagerFactory(
+            metaStoreManagerFactory, configurationStore, storageCredentialCache);
     this.fileIOFactory =
         new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 

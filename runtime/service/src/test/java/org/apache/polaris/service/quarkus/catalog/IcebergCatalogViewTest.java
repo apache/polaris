@@ -176,10 +176,11 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             configurationStore,
             Clock.systemDefaultZone());
 
+    StorageCredentialCache storageCredentialCache = new StorageCredentialCache();
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
+            storageCredentialCache,
             new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     CallContext.setCurrentContext(polarisContext);
@@ -236,7 +237,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
-            new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+            new RealmEntityManagerFactory(
+                metaStoreManagerFactory, configurationStore, storageCredentialCache),
             metaStoreManagerFactory);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;

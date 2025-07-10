@@ -54,7 +54,6 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +69,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
@@ -183,7 +181,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      storageCredentialCacheMap.remove(realm);
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
     }
@@ -216,17 +213,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
     return sessionSupplierMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext, RealmConfig realmConfig) {
-    if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
-      storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(), new StorageCredentialCache());
-    }
-
-    return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
   }
 
   @Override

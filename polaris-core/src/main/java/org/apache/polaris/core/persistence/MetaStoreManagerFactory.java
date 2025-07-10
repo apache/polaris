@@ -27,7 +27,6 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
@@ -35,9 +34,6 @@ public interface MetaStoreManagerFactory {
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
   Supplier<? extends BasePersistence> getOrCreateSessionSupplier(RealmContext realmContext);
-
-  StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext, RealmConfig realmConfig);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 

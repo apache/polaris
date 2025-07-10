@@ -248,6 +248,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
+  private StorageCredentialCache storageCredentialCache;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
@@ -286,10 +287,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             configurationStore,
             Clock.systemDefaultZone());
 
+    storageCredentialCache = new StorageCredentialCache();
+
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
+            storageCredentialCache,
             createEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     PrincipalEntity rootEntity =
@@ -352,7 +355,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .asCatalog()));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
+        new RealmEntityManagerFactory(
+            metaStoreManagerFactory, configurationStore, storageCredentialCache);
     this.fileIOFactory =
         new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 
@@ -986,7 +990,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     FileIOFactory fileIOFactory =
         spy(
             new DefaultFileIOFactory(
-                new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+                new RealmEntityManagerFactory(
+                    metaStoreManagerFactory, configurationStore, storageCredentialCache),
                 metaStoreManagerFactory));
     IcebergCatalog catalog =
         new IcebergCatalog(
@@ -1877,7 +1882,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(
-                    new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+                    new RealmEntityManagerFactory(
+                        metaStoreManagerFactory, configurationStore, storageCredentialCache),
                     metaStoreManagerFactory))
             .apply(taskEntity, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
@@ -2021,7 +2027,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     MeasuredFileIOFactory measured =
         new MeasuredFileIOFactory(
-            new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+            new RealmEntityManagerFactory(
+                metaStoreManagerFactory, configurationStore, storageCredentialCache),
             metaStoreManagerFactory);
     IcebergCatalog catalog =
         new IcebergCatalog(

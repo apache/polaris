@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
@@ -152,8 +153,10 @@ public record TestServices(
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               storageIntegrationProvider, polarisDiagnostics);
+      StorageCredentialCache storageCredentialCache = new StorageCredentialCache();
       RealmEntityManagerFactory realmEntityManagerFactory =
-          new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
+          new RealmEntityManagerFactory(
+              metaStoreManagerFactory, configurationStore, storageCredentialCache);
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
