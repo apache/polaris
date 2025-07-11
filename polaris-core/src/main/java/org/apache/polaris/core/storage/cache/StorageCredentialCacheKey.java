@@ -18,105 +18,45 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import java.util.Objects;
+import jakarta.annotation.Nullable;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-public final class StorageCredentialCacheKey {
+@PolarisImmutable
+public interface StorageCredentialCacheKey {
 
-  private final String realmId;
-  private final long catalogId;
+  String realmId();
 
-  /** The serialized string of the storage config. */
-  private final String storageConfigSerializedStr;
+  long catalogId();
 
-  private final boolean allowedListAction;
-  private final Set<String> allowedReadLocations;
+  @Nullable
+  String storageConfigSerializedStr();
 
-  private final Set<String> allowedWriteLocations;
+  boolean allowedListAction();
 
-  public StorageCredentialCacheKey(
+  Set<String> allowedReadLocations();
+
+  Set<String> allowedWriteLocations();
+
+  static StorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations) {
-    this.realmId = realmId;
-    this.catalogId = entity.getCatalogId();
-    this.storageConfigSerializedStr =
+    String storageConfigSerializedStr =
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    this.allowedListAction = allowedListAction;
-    this.allowedReadLocations = allowedReadLocations;
-    this.allowedWriteLocations = allowedWriteLocations;
-  }
-
-  public String getRealmId() {
-    return realmId;
-  }
-
-  public long getCatalogId() {
-    return catalogId;
-  }
-
-  public String getStorageConfigSerializedStr() {
-    return storageConfigSerializedStr;
-  }
-
-  public boolean isAllowedListAction() {
-    return allowedListAction;
-  }
-
-  public Set<String> getAllowedReadLocations() {
-    return allowedReadLocations;
-  }
-
-  public Set<String> getAllowedWriteLocations() {
-    return allowedWriteLocations;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    StorageCredentialCacheKey cacheKey = (StorageCredentialCacheKey) o;
-    return Objects.equals(realmId, cacheKey.getRealmId())
-        && catalogId == cacheKey.getCatalogId()
-        && Objects.equals(storageConfigSerializedStr, cacheKey.getStorageConfigSerializedStr())
-        && allowedListAction == cacheKey.allowedListAction
-        && Objects.equals(allowedReadLocations, cacheKey.allowedReadLocations)
-        && Objects.equals(allowedWriteLocations, cacheKey.allowedWriteLocations);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        realmId,
-        catalogId,
-        storageConfigSerializedStr,
-        allowedListAction,
-        allowedReadLocations,
-        allowedWriteLocations);
-  }
-
-  @Override
-  public String toString() {
-    return "StorageCredentialCacheKey{"
-        + "realmId="
-        + realmId
-        + ", catalogId="
-        + catalogId
-        + ", storageConfigSerializedStr='"
-        + storageConfigSerializedStr
-        + '\''
-        + ", allowedListAction="
-        + allowedListAction
-        + ", allowedReadLocations="
-        + allowedReadLocations
-        + ", allowedWriteLocations="
-        + allowedWriteLocations
-        + '}';
+    return ImmutableStorageCredentialCacheKey.builder()
+        .realmId(realmId)
+        .catalogId(entity.getCatalogId())
+        .storageConfigSerializedStr(storageConfigSerializedStr)
+        .allowedListAction(allowedListAction)
+        .allowedReadLocations(allowedReadLocations)
+        .allowedWriteLocations(allowedWriteLocations)
+        .build();
   }
 }

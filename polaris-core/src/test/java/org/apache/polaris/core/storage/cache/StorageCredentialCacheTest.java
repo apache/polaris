@@ -177,7 +177,7 @@ public class StorageCredentialCacheTest {
             1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
     StorageCredentialCacheKey cacheKey =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
             callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             true,
