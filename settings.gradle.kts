@@ -113,6 +113,7 @@ dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
     mavenCentral()
+    mavenLocal()  // Local builds still take precedence for SNAPSHOT versions
     gradlePluginPortal()
   }
 }

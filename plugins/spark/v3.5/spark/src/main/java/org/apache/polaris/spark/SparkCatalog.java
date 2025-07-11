@@ -30,7 +30,6 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
-import org.apache.polaris.spark.utils.HudiCatalogUtils;
 import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
@@ -167,11 +166,7 @@ public class SparkCatalog
         return deltaCatalog.createTable(ident, schema, transforms, properties);
       }
       if (PolarisCatalogUtils.useHudi(provider)) {
-        // First make a call via polaris's spark catalog
-        // to ensure an entity is created within the catalog and is authorized
-        polarisSparkCatalog.createTable(ident, schema, transforms, properties);
-
-        // Then for actually creating the hudi table, we load HoodieCatalog
+        // For creating the hudi table, we load HoodieCatalog
         // to create the .hoodie folder in cloud storage
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.createTable(ident, schema, transforms, properties);
@@ -280,9 +275,6 @@ public class SparkCatalog
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
     Map<String, String> metadata = this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
-    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      HudiCatalogUtils.loadNamespaceMetadata(namespace, metadata);
-    }
     return metadata;
   }
 
@@ -290,27 +282,18 @@ public class SparkCatalog
   public void createNamespace(String[] namespace, Map<String, String> metadata)
       throws NamespaceAlreadyExistsException {
     this.icebergsSparkCatalog.createNamespace(namespace, metadata);
-    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      HudiCatalogUtils.createNamespace(namespace, metadata);
-    }
   }
 
   @Override
   public void alterNamespace(String[] namespace, NamespaceChange... changes)
       throws NoSuchNamespaceException {
     this.icebergsSparkCatalog.alterNamespace(namespace, changes);
-    if (PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      HudiCatalogUtils.alterNamespace(namespace, changes);
-    }
   }
 
   @Override
   public boolean dropNamespace(String[] namespace, boolean cascade)
       throws NoSuchNamespaceException {
     boolean result = this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
-    if (result && PolarisCatalogUtils.isHudiExtensionEnabled()) {
-      HudiCatalogUtils.dropNamespace(namespace, cascade);
-    }
     return result;
   }
 

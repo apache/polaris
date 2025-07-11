@@ -80,6 +80,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     sql(
         "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
         deltatb1, getTableLocation(deltatb1));
+
     sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob')", deltatb1);
     List<Object[]> results = sql("SELECT * FROM %s WHERE id > 1 ORDER BY id DESC", deltatb1);
     assertThat(results.size()).isEqualTo(1);
