@@ -340,7 +340,7 @@ public class PolarisOverlappingTableTest {
             "true",
             "SUPPORTED_CATALOG_STORAGE_TYPES",
             List.of("FILE", "S3"),
-            OPTIMIZED_SIBLING_CHECK.key,
+            OPTIMIZED_SIBLING_CHECK.key(),
             "false");
 
     TestServices services =
@@ -369,7 +369,7 @@ public class PolarisOverlappingTableTest {
             "true",
             "SUPPORTED_CATALOG_STORAGE_TYPES",
             List.of("FILE", "S3"),
-            OPTIMIZED_SIBLING_CHECK.key,
+            OPTIMIZED_SIBLING_CHECK.key(),
             "true");
     Map<String, String> hashedAndOverlapButNoOptimizedCatalog =
         Map.of(

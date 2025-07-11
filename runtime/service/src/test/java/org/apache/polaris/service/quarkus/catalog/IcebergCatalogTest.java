@@ -1956,7 +1956,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // Attempt to drop the table:
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key);
+        .hasMessageContaining(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key());
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {

@@ -217,26 +217,26 @@ public class ProductionReadinessChecks {
     var insecure = FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(featureConfiguration.defaults().get(insecure.key))) {
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(insecure.key()))) {
       errors.add(
           Error.ofSevere(
               "Must not enable a configuration that exposes known and severe security risks: "
-                  + insecure.description,
-              format("polaris.features.\"%s\"", insecure.key)));
+                  + insecure.description(),
+              format("polaris.features.\"%s\"", insecure.key())));
     }
 
     featureConfiguration
         .realmOverrides()
         .forEach(
             (realmId, overrides) -> {
-              if (Boolean.parseBoolean(overrides.overrides().get(insecure.key))) {
+              if (Boolean.parseBoolean(overrides.overrides().get(insecure.key()))) {
                 errors.add(
                     Error.ofSevere(
                         "Must not enable a configuration that exposes known and severe security risks: "
-                            + insecure.description,
+                            + insecure.description(),
                         format(
                             "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                            realmId, insecure.key)));
+                            realmId, insecure.key())));
               }
             });
 
@@ -245,7 +245,7 @@ public class ProductionReadinessChecks {
     var defaults = featureConfiguration.parseDefaults(mapper);
     var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
     @SuppressWarnings("unchecked")
-    var supported = (List<String>) defaults.getOrDefault(storageTypes.key, List.of());
+    var supported = (List<String>) defaults.getOrDefault(storageTypes.key(), List.of());
     supported.stream()
         .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
         .forEach(
@@ -255,11 +255,11 @@ public class ProductionReadinessChecks {
                         format(
                             "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
                             t),
-                        format("polaris.features.\"%s\"", storageTypes.key))));
+                        format("polaris.features.\"%s\"", storageTypes.key()))));
     realmOverrides.forEach(
         (realmId, overrides) -> {
           @SuppressWarnings("unchecked")
-          var s = (List<String>) overrides.getOrDefault(storageTypes.key, List.of());
+          var s = (List<String>) overrides.getOrDefault(storageTypes.key(), List.of());
           s.stream()
               .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
               .forEach(
@@ -271,7 +271,7 @@ public class ProductionReadinessChecks {
                                   t),
                               format(
                                   "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                                  realmId, storageTypes.key))));
+                                  realmId, storageTypes.key()))));
         });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK

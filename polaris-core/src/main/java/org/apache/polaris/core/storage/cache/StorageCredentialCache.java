@@ -91,8 +91,8 @@ public class StorageCredentialCache {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
-              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
-              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
+              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key(),
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key()));
     } else {
       return cacheDurationSeconds * 1000L;
     }

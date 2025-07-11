@@ -949,8 +949,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format(
               "The configuration %s is enabled, but %s is not enabled",
-              FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key,
-              FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
+              FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key(),
+              FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key()));
     } else if (!allowTableLocationOverlap) {
       // TODO consider doing this check any time ALLOW_EXTERNAL_TABLE_LOCATION is enabled, not just
       // here
@@ -961,17 +961,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                     + " performed, but only within each namespace. However, %s is enabled, which indicates"
                     + " that tables may be created outside of their parent namespace. This is not a safe"
                     + " combination of configurations.",
-                FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key,
-                FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key));
+                FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key(),
+                FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key(),
+                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.key()));
       } else if (!loggedPrefixOverlapWarning.getAndSet(true)) {
         LOGGER.warn(
             "A table is being created with {} and {} enabled, but with {} disabled. "
                 + "This is a safe combination of configurations which may prevent table overlap, but only if the "
                 + "underlying persistence actually implements %s. Exercise caution.",
-            FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key,
-            FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key,
-            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key);
+            FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.key(),
+            FeatureConfiguration.OPTIMIZED_SIBLING_CHECK.key(),
+            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.key());
       }
       return buildPrefixedLocation(tableIdentifier);
     } else {
@@ -2460,7 +2460,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
                     + "or the catalog configuration %s",
                 identifier.name(),
-                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key,
+                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(),
                 FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
       }
     }
