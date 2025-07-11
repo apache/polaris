@@ -119,7 +119,7 @@ public class StorageCredentialCache {
           .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
     StorageCredentialCacheKey key =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
             callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
@@ -132,12 +132,12 @@ public class StorageCredentialCache {
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   callCtx,
-                  k.getCatalogId(),
+                  k.catalogId(),
                   polarisEntity.getId(),
                   polarisEntity.getType(),
-                  k.isAllowedListAction(),
-                  k.getAllowedReadLocations(),
-                  k.getAllowedWriteLocations());
+                  k.allowedListAction(),
+                  k.allowedReadLocations(),
+                  k.allowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmContext());
             return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
