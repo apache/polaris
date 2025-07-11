@@ -177,7 +177,7 @@ polaris.oidc.principal-roles-mapper.filter=role_.*
 # Extract the text after "role_" 
 polaris.oidc.principal-roles-mapper.mappings[0].regex=role_(.*) 
 # Replace the extracted text with "POLARIS_ROLE:" 
-polaris.oidc.principal-roles-mapper.mappings[0].replacement=POLARIS\_ROLE:$1 
+polaris.oidc.principal-roles-mapper.mappings[0].replacement=POLARIS_ROLE:$1 
 ```
 
 See more examples below. 
