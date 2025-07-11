@@ -43,6 +43,7 @@ has the following securable objects:
 - Namespace
 - Iceberg table
 - View
+- Policy
 
 ## Principal role
 
@@ -71,11 +72,6 @@ in the catalog, such as catalog namespaces or tables. You can create one or more
 
 You grant privileges to a catalog role and then grant the catalog role to a principal role to bestow the privileges to one or more service
 principals.
-
-> [!NOTE]
-> If you update the privileges bestowed to a service principal, the updates won't take effect for up to one hour. This means that if you
-> revoke or grant some privileges for a catalog, the updated privileges won't take effect on any service principal with access to that catalog
-> for up to one hour.
 
 Polaris also supports a many-to-many relationship between catalog roles and principal roles. You can grant the same catalog role to one or more
 principal roles. Likewise, a principal role can be granted to one or more catalog roles.
