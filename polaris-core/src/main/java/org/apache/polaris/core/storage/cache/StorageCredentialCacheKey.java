@@ -23,19 +23,13 @@ import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 
-public class StorageCredentialCacheKey {
+public final class StorageCredentialCacheKey {
 
   private final String realmId;
   private final long catalogId;
 
   /** The serialized string of the storage config. */
   private final String storageConfigSerializedStr;
-
-  /**
-   * The entity id is passed to be used to fetch subscoped creds, but is not used to do hash/equals
-   * as part of the cache key.
-   */
-  private final long entityId;
 
   private final boolean allowedListAction;
   private final Set<String> allowedReadLocations;
@@ -54,7 +48,6 @@ public class StorageCredentialCacheKey {
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    this.entityId = entity.getId();
     this.allowedListAction = allowedListAction;
     this.allowedReadLocations = allowedReadLocations;
     this.allowedWriteLocations = allowedWriteLocations;
@@ -70,10 +63,6 @@ public class StorageCredentialCacheKey {
 
   public String getStorageConfigSerializedStr() {
     return storageConfigSerializedStr;
-  }
-
-  public long getEntityId() {
-    return entityId;
   }
 
   public boolean isAllowedListAction() {
@@ -122,8 +111,6 @@ public class StorageCredentialCacheKey {
         + ", storageConfigSerializedStr='"
         + storageConfigSerializedStr
         + '\''
-        + ", entityId="
-        + entityId
         + ", allowedListAction="
         + allowedListAction
         + ", allowedReadLocations="

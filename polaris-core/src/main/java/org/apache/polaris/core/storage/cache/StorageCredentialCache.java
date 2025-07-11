@@ -128,7 +128,7 @@ public class StorageCredentialCache {
               credentialVendor.getSubscopedCredsForEntity(
                   callCtx,
                   k.getCatalogId(),
-                  k.getEntityId(),
+                  polarisEntity.getId(),
                   polarisEntity.getType(),
                   k.isAllowedListAction(),
                   k.getAllowedReadLocations(),
