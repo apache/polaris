@@ -42,20 +42,6 @@ A Helm chart for Apache Polaris (incubating).
 
 ## Installation
 
-### Running locally with a Kind cluster
-
-The below instructions assume Kind and Helm are installed.
-
-Simply run the `run.sh` script from the Polaris repo root:
-
-```bash
-./run.sh
-```
-
-This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
-images with support for Postgres and load them into the Kind cluster. (It will also create an
-example Deployment and Service with in-memory storage.)
-
 ### Running locally with a Minikube cluster
 
 The below instructions assume Minikube and Helm are installed.
@@ -105,15 +91,6 @@ Install the chart with a non-persistent backend. From Polaris repo root:
 ```bash
 helm upgrade --install --namespace polaris \
   --values helm/polaris/ci/simple-values.yaml \
-  polaris helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `helm upgrade` as follows:
-```bash
-helm upgrade --install --namespace polaris \
-  --values helm/polaris/ci/simple-values.yaml \
-  --set=image.repository=localhost:5001/apache/polaris \
   polaris helm/polaris
 ```
 
@@ -206,14 +183,6 @@ a local cluster.
 Integration tests are run with the Chart Testing tool:
 ```bash
 ct install --namespace polaris --charts ./helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `ct install` as follows:
-
-```bash
-ct install --namespace polaris --debug --charts ./helm/polaris \
-  --helm-extra-set-args "--set=image.repository=localhost:5001/apache/polaris"
 ```
 
 ## Values
