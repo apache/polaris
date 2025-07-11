@@ -17,19 +17,22 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'POLARIS VERSION INDEX MD TEMPLATE'
-toc_hide: true
-hide_summary: true
+linkTitle: '0.9.0'
+title: '0.9.0'
+type: docs
+weight: 200
 params:
+  top_hidden: true
   show_page_toc: false
 cascade:
-  # The latest release specifies 'false', all others must be 'true'
-  exclude_search: false
+  type: docs
   params:
     show_page_toc: true
-# This file will be copied as `_index.md` into a new release's versioned docs folder.
+# This file will NOT be copied into a new release's versioned docs folder.
 ---
 
-== Apache Polaris version {{< releaseVersion >}}
+Check out the [Quick Start]({{% ref "quickstart" %}}) page to get started.
 
-Download from ...
+<!--
+Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
+-->
