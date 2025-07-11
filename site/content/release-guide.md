@@ -371,19 +371,19 @@ Next, add a release tag to the git repository based on the candidate tag:
 ```
 git tag -a apache-polaris-x.y.z apache-polaris-x.y.z-rci
 ```
+Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
 Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
 
-### Announcing the release
+### Publishing docs 
+1. Open a PR against branch [`versioned-docs`](https://github.com/apache/polaris/tree/versioned-docs) to publish the documentation
+2. Open a PR against the `main` branch to update website
+    - Add download links and release notes in [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads/_index.md)
+    - Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
 
+### Announcing the release
 To announce the release, wait until Maven Central has mirrored the artifacts.
 
-Create a PR to update website:
-* [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads.md)
-* Copy release documentation from the release source distribution (`cp -r site/content/in-dev/unreleased site/content/in-dev/x.y.z`)
-* Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
-
-Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
 Send a mail to dev@iceberg.apache.org and announce@apache.org:
 
