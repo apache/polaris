@@ -376,8 +376,8 @@ Update GitHub with the release: https://github.com/apache/polaris/releases/tag/a
 Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
 
 ### Publishing docs 
-1. File a PR against branch `versioned-docs` to publish the documentation
-2. Create a PR against the `main` branch to update website
+1. Open a PR against branch [`versioned-docs`](https://github.com/apache/polaris/tree/versioned-docs) to publish the documentation
+2. Open a PR against the `main` branch to update website
     - Add download links and release notes in [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads/_index.md)
     - Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
 
