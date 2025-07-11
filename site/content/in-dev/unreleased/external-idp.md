@@ -167,7 +167,7 @@ polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].regex=POLARIS_ROLE:
 polaris.oidc.oidc-tenant1.principal-roles-mapper.mappings[0].replacement=POLARIS_ROLE:$1 
 ```
 
-The default `ActiveRolesProvider` expects the security identity to expose role names in the following format: `POLARIS_ROLE: <role name>`. You can use the `filter` and `mappings` properties to adjust the role names as they appear in the JWT claims. 
+The default `ActiveRolesProvider` expects the security identity to expose role names in the following format: `POLARIS_ROLE:<role name>`. You can use the `filter` and `mappings` properties to adjust the role names as they appear in the JWT claims. 
 
 For example, assume that the security identity produced by Quarkus exposes the following roles: `role_service_admin` and `role_catalog_admin`. Polaris expects `POLARIS_ROLE:service_admin` and `POLARIS_ROLE:catalog_admin` respectively. The following configuration can be used to achieve the desired mapping: 
 
