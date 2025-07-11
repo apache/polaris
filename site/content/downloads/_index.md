@@ -17,7 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: "Releases"
 weight: 200
 toc_hide: true
 hide_summary: true
@@ -27,6 +26,9 @@ cascade:
 params:
   show_page_toc: true 
 ---
+
+## Helm Chart
+Repo: https://downloads.apache.org/incubator/polaris/helm-chart
 
 ## 1.0.0 release
 | Artifact                                                                                                                                                                                         | PGP Sig                                                                                                                                                  | SHA-512 |
