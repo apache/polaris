@@ -23,13 +23,14 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import java.util.Optional;
 import org.apache.polaris.service.events.EventListenerConfiguration;
+import org.apache.polaris.service.events.PolarisEventListener;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener")
 public interface QuarkusPolarisEventListenerConfiguration extends EventListenerConfiguration {
   /**
    * The type of the event listener to use. Must be a registered {@link
-   * org.apache.polaris.service.events.PolarisEventListener} identifier.
+   * PolarisEventListener} identifier.
    */
   String type();
 

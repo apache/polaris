@@ -95,6 +95,8 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
+  testImplementation(libs.localstack)
+  testImplementation("org.testcontainers:testcontainers")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   testImplementation(libs.logback.classic)

@@ -21,6 +21,7 @@ package org.apache.polaris.service.events;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -76,7 +77,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
 
   @Inject
   public AwsCloudWatchEventListener(
-      EventListenerConfiguration config, ExecutorService executorService) {
+          EventListenerConfiguration config, ExecutorService executorService) {
     this.executorService = executorService;
 
     this.logStream = config.awsCloudwatchlogStream().orElse("polaris-cloudwatch-default-stream");
@@ -86,31 +87,44 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
 
   @PostConstruct
   void start() {
-    client = CloudWatchLogsClient.builder().region(region).build();
+    this.client = createCloudWatchClient();
     ensureLogGroupAndStream();
     backgroundTask = executorService.submit(this::processQueue);
   }
 
+  protected CloudWatchLogsClient createCloudWatchClient() {
+    return CloudWatchLogsClient.builder()
+            .region(region)
+            .build();
+  }
+
   private void processQueue() {
     while (running || !queue.isEmpty()) {
-      List<InputLogEvent> events = new ArrayList<>();
-      try {
-        EventAndTimestamp first = queue.poll(MAX_WAIT_MS, TimeUnit.MILLISECONDS);
+      drainQueue();
+    }
+  }
 
-        if (first != null) {
-          events.add(createLogEvent(first));
-          List<EventAndTimestamp> drainedEvents = new ArrayList<>();
-          queue.drainTo(drainedEvents, MAX_BATCH_SIZE - 1);
-          drainedEvents.forEach(event -> events.add(createLogEvent(event)));
-        }
+  @VisibleForTesting
+  public void drainQueue() {
+    List<EventAndTimestamp> drainedEvents = new ArrayList<>();
+    List<InputLogEvent> transformedEvents = new ArrayList<>();
+    try {
+      EventAndTimestamp first = queue.poll(MAX_WAIT_MS, TimeUnit.MILLISECONDS);
 
-        if (!events.isEmpty()) {
-          sendToCloudWatch(events);
-        }
-      } catch (Exception e) {
-        LOGGER.error("Error writing logs to CloudWatch: {}", e.getMessage());
-        LOGGER.error("Events not logged: {}", events);
+      if (first != null) {
+        drainedEvents.add(first);
+        queue.drainTo(drainedEvents, MAX_BATCH_SIZE - 1);
+      } else {
+        return;
       }
+
+      drainedEvents.forEach(event -> transformedEvents.add(createLogEvent(event)));
+
+      sendToCloudWatch(transformedEvents);
+    } catch (Exception e) {
+      LOGGER.error("Error writing logs to CloudWatch: {}", e.getMessage());
+      LOGGER.error("Events not logged: {}", transformedEvents);
+      queue.addAll(drainedEvents);
     }
   }
 
@@ -195,6 +209,10 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
 
   private record EventAndTimestamp(String event, long timestamp) {}
 
+  private long getCurrentTimestamp(CallContext callContext) {
+    return callContext.getPolarisCallContext().getClock().millis();
+  }
+
   // Event overrides below
   @Override
   public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callContext) {
@@ -203,7 +221,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
       queue.add(
-          new EventAndTimestamp(objectMapper.writeValueAsString(json), System.currentTimeMillis()));
+          new EventAndTimestamp(objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
     } catch (JsonProcessingException e) {
       LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
     }
