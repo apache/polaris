@@ -82,6 +82,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:cloudwatchlogs")
 
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
@@ -94,6 +95,8 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
+  testImplementation(libs.localstack)
+  testImplementation("org.testcontainers:testcontainers")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   testImplementation(libs.logback.classic)

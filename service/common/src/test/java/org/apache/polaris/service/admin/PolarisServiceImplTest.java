@@ -42,6 +42,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -57,6 +58,7 @@ public class PolarisServiceImplTest {
   private PolarisCallContext polarisCallContext;
   private PolarisConfigurationStore configurationStore;
   private RealmContext realmContext;
+  private PolarisEventListener polarisEventListener;
 
   private PolarisServiceImpl polarisService;
 
@@ -71,6 +73,7 @@ public class PolarisServiceImplTest {
     polarisCallContext = Mockito.mock(PolarisCallContext.class);
     configurationStore = Mockito.mock(PolarisConfigurationStore.class);
     realmContext = Mockito.mock(RealmContext.class);
+    polarisEventListener = Mockito.mock(PolarisEventListener.class);
 
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(callContext.getRealmContext()).thenReturn(realmContext);
@@ -89,7 +92,8 @@ public class PolarisServiceImplTest {
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties);
+            reservedProperties,
+            polarisEventListener);
   }
 
   @Test
