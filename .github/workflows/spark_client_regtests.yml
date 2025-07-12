@@ -47,7 +47,7 @@ jobs:
         run: ./gradlew regeneratePythonClient
 
       - name: Project build without testing
-        run: ./gradlew assemble
+        run: ./gradlew assemble publishToMavenLocal
 
       - name: Image build
         run: |

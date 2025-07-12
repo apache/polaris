@@ -22,7 +22,6 @@ Simple class to test OAuth endpoints in the Polaris Service.
 """
 import argparse
 import requests
-import urllib
 
 
 def main(base_uri, client_id, client_secret):

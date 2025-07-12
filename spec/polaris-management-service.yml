@@ -157,6 +157,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
+              example:
+                principal:
+                  name: "alice"
+                  properties:
+                    department: "engineering"
+                credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
@@ -911,6 +917,7 @@ components:
             - OAUTH
             - BEARER
             - SIGV4
+            - IMPLICIT
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -920,6 +927,7 @@ components:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
+          IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -984,6 +992,13 @@ components:
         - roleArn
         - signingRegion
 
+    ImplicitAuthenticationParameters:
+      type: object
+      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+        parameters found in the environment and/or configuration files will be used for this connection.
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
+
     StorageConfigInfo:
       type: object
       description: A storage configuration used by catalogs
@@ -1033,6 +1048,14 @@ components:
               type: string
               description: the aws region where data is stored
               example: "us-east-2"
+            endpoint:
+              type: string
+              description: endpoint for S3 requests (optional)
+              example: "https://s3.example.com:1234"
+            stsEndpoint:
+              type: string
+              description: endpoint for STS requests (optional). If not set, defaults to 'endpoint'.
+              example: "https://sts.example.com:1234"
           required:
             - roleArn
 

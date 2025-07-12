@@ -521,19 +521,21 @@ features:
 
 # -- Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link.
-  type: eclipse-link  # in-memory
-  # -- The configuration for the eclipse-link persistence manager.
-  eclipseLink:
-    # -- The secret name to pull persistence.xml from.
+  # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
+  # The eclipse-link type is also supported but is deprecated.
+  type: in-memory  # relational-jdbc
+  # -- The configuration for the relational-jdbc persistence manager.
+  relationalJdbc:
+    # -- The secret name to pull the database connection properties from.
     secret:
-      # -- The name of the secret to pull persistence.xml from.
-      # If not provided, the default built-in persistence.xml will be used. This is probably not what you want.
+      # -- The secret name to pull database connection properties from
       name: ~
-      # -- The key in the secret to pull persistence.xml from.
-      key: persistence.xml
-    # -- The persistence unit name to use.
-    persistenceUnit: polaris
+      # -- The secret key holding the database username for authentication
+      username: username
+      # -- The secret key holding the database password for authentication
+      password: password
+      # -- The secret key holding the database JDBC connection URL
+      jdbcUrl: jdbcUrl
 
 # -- Polaris FileIO configuration.
 fileIo:
@@ -569,18 +571,32 @@ authentication:
   # -- The type of token broker to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
   tokenBroker:
     type: rsa-key-pair  # symmetric-key
+    # -- Maximum token generation duration (e.g., PT1H for 1 hour).
     maxTokenGeneration: PT1H
     # -- The secret name to pull the public and private keys, or the symmetric key secret from.
     secret:
       # -- The name of the secret to pull the keys from. If not provided, a key pair will be generated.
       # This is not recommended for production.
       name: ~
-      # -- The public key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead.
+      # Key name inside the secret for the public key
       publicKey: public.pem
-      # -- The private key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead.
+      # Key name inside the secret for the private key
       privateKey: private.pem
-      # -- The symmetric key file to use for symmetric key token broker. Only required when using symmetric-key.
-      secretKey: secret
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead.
+      # Key name inside the secret for the symmetric key
+      secretKey: symmetric.pem
+      # -- Optional: configuration specific to RSA key pair secret.
+      rsaKeyPair:
+        # -- Key name inside the secret for the public key
+        publicKey: public.pem
+        # -- Key name inside the secret for the private key
+        privateKey: private.pem
+      # -- Optional: configuration specific to symmetric key secret.
+      symmetricKey:
+        # -- Key name inside the secret for the symmetric key
+        secretKey: symmetric.pem
 
 # -- Polaris CORS configuration.
 cors:

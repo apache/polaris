@@ -41,5 +41,5 @@ jobs:
       with:
         use-quiet-mode: 'yes'
         config-file: '.github/workflows/check-md-link-config.json'
-        folder-path: 'regtests, .github, build-logic, polaris-core, service, runtime, persistence, spec, k8, getting-started, helm'
+        folder-path: 'regtests, .github, build-logic, polaris-core, service, runtime, persistence, spec, getting-started, helm'
         file-path: 'CHAT_BYLAWS.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, README.md, SECURITY.md'

@@ -217,11 +217,12 @@ This product includes code from Apache Iceberg.
 
 * spec/iceberg-rest-catalog-open-api.yaml
 * spec/polaris-catalog-apis/oauth-tokens-api.yaml
-* integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationTest.java
+* integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationBase.java
 * service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 * service/common/src/main/java/org/apache/polaris/service/catalog/iceberg/CatalogHandlerUtils.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
+* service/common/src/main/java/org/apache/polaris/service/catalog/common/LocationUtils.java
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
@@ -309,7 +310,12 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/Minio.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioAccess.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioContainer.java
+* tools/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioExtension.java
 * runtime/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* runtime/service/src/main/java/org/apache/polaris/service/storage/aws/StsClientsPool.java
 * helm/polaris/tests/logging_storage_test.yaml
 * helm/polaris/tests/quantity_test.yaml
 * helm/polaris/tests/service_monitor_test.yaml

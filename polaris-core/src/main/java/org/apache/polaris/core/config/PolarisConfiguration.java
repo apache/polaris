@@ -39,9 +39,9 @@ public abstract class PolarisConfiguration<T> {
 
   private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
 
-  public final String key;
-  public final String description;
-  public final T defaultValue;
+  private final String key;
+  private final String description;
+  private final T defaultValue;
   private final Optional<String> catalogConfigImpl;
   private final Optional<String> catalogConfigUnsafeImpl;
   private final Class<T> typ;
@@ -98,22 +98,22 @@ public abstract class PolarisConfiguration<T> {
     this.typ = (Class<T>) defaultValue.getClass();
   }
 
-  public boolean hasCatalogConfig() {
+  public final boolean hasCatalogConfig() {
     return catalogConfigImpl.isPresent();
   }
 
-  public String catalogConfig() {
+  public final String catalogConfig() {
     return catalogConfigImpl.orElseThrow(
         () ->
             new IllegalStateException(
                 "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  public boolean hasCatalogConfigUnsafe() {
+  public final boolean hasCatalogConfigUnsafe() {
     return catalogConfigUnsafeImpl.isPresent();
   }
 
-  public String catalogConfigUnsafe() {
+  public final String catalogConfigUnsafe() {
     return catalogConfigUnsafeImpl.orElseThrow(
         () ->
             new IllegalStateException(
@@ -122,6 +122,18 @@ public abstract class PolarisConfiguration<T> {
 
   T cast(Object value) {
     return this.typ.cast(value);
+  }
+
+  public final String key() {
+    return key;
+  }
+
+  public final String description() {
+    return description;
+  }
+
+  public final T defaultValue() {
+    return defaultValue;
   }
 
   public static class Builder<T> {

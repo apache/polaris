@@ -60,7 +60,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
-    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
   val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
   options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })

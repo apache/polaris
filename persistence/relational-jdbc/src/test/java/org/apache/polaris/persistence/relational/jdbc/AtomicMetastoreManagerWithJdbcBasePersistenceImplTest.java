@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -49,8 +50,11 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     try {
       datasourceOperations =
           new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
-      datasourceOperations.executeScript(
-          String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
+      ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+      InputStream scriptStream =
+          classLoader.getResourceAsStream(
+              String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
+      datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(

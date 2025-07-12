@@ -56,8 +56,8 @@ public class PolarisConfigurationStoreTest {
           @Override
           public <T> @Nullable T getConfiguration(@Nonnull RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
-              if (c.key.equals(configName)) {
-                return (T) String.valueOf(c.defaultValue);
+              if (c.key().equals(configName)) {
+                return (T) String.valueOf(c.defaultValue());
               }
             }
 
@@ -71,7 +71,7 @@ public class PolarisConfigurationStoreTest {
     // Ensure that we can fetch all the configs and that the value is what we expect, which
     // is the config's default value based on how we've implemented PolarisConfigurationStore above.
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertEquals(c.defaultValue, store.getConfiguration(testRealmContext, c));
+      Assertions.assertEquals(c.defaultValue(), store.getConfiguration(testRealmContext, c));
     }
   }
 

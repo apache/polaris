@@ -55,7 +55,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
             .getConfigurationStore()
             .getConfiguration(callContext.getRealmContext(), featureConfig);
     if (!enabled) {
-      throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key);
+      throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key());
     }
   }
 
@@ -211,7 +211,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
           .description(
               "How long to store storage credentials in the local cache. This should be less than "
-                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key)
+                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key())
           .defaultValue(30 * 60) // 30 minutes
           .buildFeatureConfiguration();
 
@@ -337,6 +337,19 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
                   + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
                   + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED")
+          .catalogConfig("polaris.config.default-table-location-object-storage-prefix.enabled")
+          .description(
+              "When enabled, Iceberg tables and views created without a location specified will have a prefix "
+                  + "applied to the location within the catalog's base location, rather than a location directly "
+                  + "inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be "
+                  + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
+                  + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 }

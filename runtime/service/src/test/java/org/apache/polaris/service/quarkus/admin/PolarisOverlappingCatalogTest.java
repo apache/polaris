@@ -43,10 +43,25 @@ public class PolarisOverlappingCatalogTest {
       TestServices.builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false")).build();
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
-    return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
+    return createCatalog("s3", prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
   }
 
   private Response createCatalog(
+      String s3Scheme, String prefix, String defaultBaseLocation, boolean isExternal) {
+    return createCatalog(
+        s3Scheme, prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
+  }
+
+  private Response createCatalog(
+      String prefix,
+      String defaultBaseLocation,
+      boolean isExternal,
+      List<String> allowedLocations) {
+    return createCatalog("s3", prefix, defaultBaseLocation, isExternal, allowedLocations);
+  }
+
+  private Response createCatalog(
+      String s3Scheme,
       String prefix,
       String defaultBaseLocation,
       boolean isExternal,
@@ -62,7 +77,7 @@ public class PolarisOverlappingCatalogTest {
                 allowedLocations.stream()
                     .map(
                         l -> {
-                          return String.format("s3://bucket/%s/%s", prefix, l);
+                          return String.format(s3Scheme + "://bucket/%s/%s", prefix, l);
                         })
                     .toList())
             .build();
@@ -70,7 +85,8 @@ public class PolarisOverlappingCatalogTest {
         new Catalog(
             isExternal ? Catalog.TypeEnum.EXTERNAL : Catalog.TypeEnum.INTERNAL,
             String.format("overlap_catalog_%s", uuid),
-            new CatalogProperties(String.format("s3://bucket/%s/%s", prefix, defaultBaseLocation)),
+            new CatalogProperties(
+                String.format(s3Scheme + "://bucket/%s/%s", prefix, defaultBaseLocation)),
             System.currentTimeMillis(),
             System.currentTimeMillis(),
             1,
@@ -113,6 +129,20 @@ public class PolarisOverlappingCatalogTest {
   }
 
   @ParameterizedTest
+  @CsvSource({"s3,s3a", "s3a,s3"})
+  public void testBasicOverlappingCatalogWSchemeChange(String rootScheme, String overlapScheme) {
+    String prefix = UUID.randomUUID().toString();
+
+    assertThat(createCatalog(rootScheme, prefix, "root", false))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+
+    // - inside `root` but using different scheme
+    assertThatThrownBy(() -> createCatalog(overlapScheme, prefix, "root/child", false))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+  }
+
+  @ParameterizedTest
   @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   public void testAllowedLocationOverlappingCatalogs(
       boolean initiallyExternal, boolean laterExternal) {
@@ -143,6 +173,39 @@ public class PolarisOverlappingCatalogTest {
     // This AL overlaps with an initial AL
     assertThatThrownBy(
             () -> createCatalog(prefix, "plays", initiallyExternal, Arrays.asList("rent", "cats")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"s3,s3a", "s3a,s3"})
+  public void testAllowedLocationOverlappingCatalogsWSchemeChange(
+      String rootScheme, String overlapScheme) {
+    String prefix = UUID.randomUUID().toString();
+
+    assertThat(createCatalog(rootScheme, prefix, "animals", false, Arrays.asList("dogs", "cats")))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+
+    // This DBL overlaps with initial AL
+    assertThatThrownBy(
+            () ->
+                createCatalog(
+                    overlapScheme, prefix, "dogs", false, Arrays.asList("huskies", "labs")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+
+    // This AL overlaps with initial DBL
+    assertThatThrownBy(
+            () ->
+                createCatalog(
+                    overlapScheme, prefix, "kingdoms", false, Arrays.asList("plants", "animals")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
+
+    // This AL overlaps with an initial AL
+    assertThatThrownBy(
+            () ->
+                createCatalog(overlapScheme, prefix, "plays", false, Arrays.asList("rent", "cats")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
   }

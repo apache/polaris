@@ -20,9 +20,9 @@ package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
 import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
 @TestProfile(RelationalJdbcProfile.class)
 @QuarkusIntegrationTest
-public class JdbcRestCatalogIT extends PolarisRestCatalogIntegrationTest {}
+public class JdbcRestCatalogIT extends PolarisRestCatalogFileIntegrationTest {}

@@ -39,6 +39,12 @@ gpg --armor --export <YOUR KEY ID HERE> >> KEYS # append public key block
 svn commit -m "add key for <YOUR NAME HERE>"
 ```
 
+To send the key to the Ubuntu key-server, Apache Nexus needs it to validate published artifacts:
+```
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys <YOUR KEY ID HERE>
+
+```
+
 ### Dist repository
 
 The Apache dist repository (dist.apache.org) is used to populate download.apache.org and archives.apache.org. There are two spaces on dist:
@@ -55,8 +61,8 @@ Apache uses Nexus as Maven repository (repository.apache.org) where releases are
 You have to use Apache credentials on Nexus, configured in `~/.gradle/gradle.properties` file using `mavenUser` and `mavenPassword`:
 
 ```
-mavenUser=yourApacheId
-mavenPassword=yourPassword
+apacheUsername=yourApacheId
+apachePassword=yourPassword
 ```
 
 Note: an alternative is to use `ORG_GRADLE_PROJECT_apacheUsername` and `ORG_GRADLE_PROJECT_apachePassword` environment variables:
@@ -101,7 +107,7 @@ If it's the first RC for the release, you have to create a release branch:
 
 ```
 git branch release/x.y.z
-git push apache/release/x.y.z
+git push apache release/x.y.z
 ```
 
 Go in the branch, and set the target release version:
@@ -113,6 +119,27 @@ git commit -a
 git push
 ```
 
+Update `CHANGELOG.md`:
+```
+./gradlew patchChangelog
+git commit -a
+git push
+```
+
+Note: You should submit a PR to propagate (automated) CHANGELOG updates from the release
+branch to `main`.
+
+If more changes are cherry-picked for the next RC, and those change introduce CHANGELOG entries,
+follow this update process:
+* Manually add an `-rcN` suffix to the previously generated versioned CHANGELOG section.
+* Rerun the `patchChangelog` command
+* Manually remove RC sections from the CHANGELOG
+* Submit a PR to propagate CHANGELOG updates from the release branch to `main`.
+
+Note: the CHANGELOG patch commit should probably be the last commit on the release branch when
+an RC is cut. If more changes are cherry-picked for the next RC, it is best to drop the
+CHANGELOG patch commit, apply cherry-picks, and re-run `patchChangelog`.
+
 Note: You should also submit a PR on `main` branch to bump the version in the `version.txt` file.
 
 ### Create release tag
@@ -121,7 +148,7 @@ On the release branch, you create a tag for the RC:
 
 ```
 git tag apache-polaris-x.y.z-rci
-git push apache/apache-polaris-x.y.z-rci
+git push apache apache-polaris-x.y.z-rci
 ```
 
 Switch to the tag:
@@ -151,20 +178,20 @@ You can now build the source distribution:
 The source distribution archives are available in `build/distribution` folder.
 
 The binary distributions (for convenience) are available in:
-* `quarkus/admin/build/distribution`
-* `quarkus/server/build/distribution`
+* `runtime/distribution/build/distributions`
 
 Now, we can stage the artifacts to dist dev repository:
 
 ```
 svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
 cd polaris-dist-dev
-mkdir apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/server/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/admin/build/distribution/* apache-polaris-x.y.z
-cp -r /path/to/polaris/gitbub/clone/repo/helm/polaris helm-chart/x.y.z 
-svn commit
+mkdir x.y.z
+cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
+cp /path/to/polaris/github/clone/repo/runtime/distribution/build/distributions/* x.y.z
+cp -r /path/to/polaris/github/clone/repo/helm/polaris helm-chart/x.y.z 
+svn add x.y.z
+svn add helm-chart/x.y.z
+svn commit -m"Stage Apache Polaris x.y.z RCx"
 ```
 
 ### Build and stage Maven artifacts
@@ -208,7 +235,7 @@ Apache Polaris x.y.z release.
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
 
 Helm charts are available on:
 * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
@@ -281,7 +308,7 @@ Vote result thread:
 * https://lists.apache.org/thread/<VOTE RESULT>
 
 The release candidate:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
 
 Git tag for the release:
 * https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z-rci
@@ -335,7 +362,7 @@ After the release votes passed, you need to release the last candidate's artifac
 First, copy the distribution from the dist dev space to the dist release space:
 
 ```
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
+svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
 svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart
 ```
 
@@ -344,19 +371,19 @@ Next, add a release tag to the git repository based on the candidate tag:
 ```
 git tag -a apache-polaris-x.y.z apache-polaris-x.y.z-rci
 ```
+Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
 Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
 
-### Announcing the release
+### Publishing docs 
+1. Open a PR against branch [`versioned-docs`](https://github.com/apache/polaris/tree/versioned-docs) to publish the documentation
+2. Open a PR against the `main` branch to update website
+    - Add download links and release notes in [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads/_index.md)
+    - Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
 
+### Announcing the release
 To announce the release, wait until Maven Central has mirrored the artifacts.
 
-Create a PR to update website:
-* [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads.md)
-* Copy release documentation from the release source distribution (`cp -r site/content/in-dev/unreleased site/content/in-dev/x.y.z`)
-* Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
-
-Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
 Send a mail to dev@iceberg.apache.org and announce@apache.org:
 
