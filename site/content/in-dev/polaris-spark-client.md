@@ -47,7 +47,7 @@ Before starting, ensure that the deployed Polaris service supports Generic Table
 Spark 3.5.5 is recommended, and you can follow the instructions below to get a Spark 3.5.5 distribution.
 ```shell
 cd ~
-wget https://archive.apache.org/dist/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz
+wget https://www.apache.org/dyn/closer.lua/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz?action=download
 mkdir spark-3.5
 tar xzvf spark-3.5.5-bin-hadoop3.tgz  -C spark-3.5 --strip-components=1
 cd spark-3.5
