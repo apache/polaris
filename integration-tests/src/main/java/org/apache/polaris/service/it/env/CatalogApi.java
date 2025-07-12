@@ -154,12 +154,27 @@ public class CatalogApi extends RestApi {
   }
 
   public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(catalog, id, snapshots, Map.of());
+  }
+
+  public LoadTableResponse loadTableWithAccessDelegation(
+      String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(
+        catalog, id, snapshots, Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse loadTable(
+      String catalog, TableIdentifier id, String snapshots, Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
                 Map.of("cat", catalog, "table", id.name()),
-                snapshots == null ? Map.of() : Map.of("snapshots", snapshots))
+                snapshots == null ? Map.of() : Map.of("snapshots", snapshots),
+                allHeaders)
             .get()) {
       if (res.getStatus() == Response.Status.OK.getStatusCode()) {
         return res.readEntity(LoadTableResponse.class);
