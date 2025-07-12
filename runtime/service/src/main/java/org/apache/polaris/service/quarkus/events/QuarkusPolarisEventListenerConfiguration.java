@@ -29,8 +29,8 @@ import org.apache.polaris.service.events.PolarisEventListener;
 @ConfigMapping(prefix = "polaris.event-listener")
 public interface QuarkusPolarisEventListenerConfiguration extends EventListenerConfiguration {
   /**
-   * The type of the event listener to use. Must be a registered {@link
-   * PolarisEventListener} identifier.
+   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
+   * identifier.
    */
   String type();
 

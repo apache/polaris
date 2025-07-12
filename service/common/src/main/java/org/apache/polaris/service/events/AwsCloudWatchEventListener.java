@@ -77,7 +77,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
 
   @Inject
   public AwsCloudWatchEventListener(
-          EventListenerConfiguration config, ExecutorService executorService) {
+      EventListenerConfiguration config, ExecutorService executorService) {
     this.executorService = executorService;
 
     this.logStream = config.awsCloudwatchlogStream().orElse("polaris-cloudwatch-default-stream");
@@ -93,9 +93,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   }
 
   protected CloudWatchLogsClient createCloudWatchClient() {
-    return CloudWatchLogsClient.builder()
-            .region(region)
-            .build();
+    return CloudWatchLogsClient.builder().region(region).build();
   }
 
   private void processQueue() {
@@ -221,7 +219,8 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
       queue.add(
-          new EventAndTimestamp(objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
+          new EventAndTimestamp(
+              objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
     } catch (JsonProcessingException e) {
       LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
     }
