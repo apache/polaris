@@ -1508,9 +1508,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
                   callCtx
-                      .getConfigurationStore()
-                      .getConfiguration(
-                          callCtx.getRealmContext(),
+                      .getRealmConfig()
+                      .getConfig(
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null

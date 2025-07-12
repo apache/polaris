@@ -19,6 +19,7 @@
 package org.apache.polaris.core.context;
 
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 /**
  * Stores elements associated with an individual REST request such as RealmContext, caller
@@ -53,4 +54,6 @@ public interface CallContext {
    * @return the inner context used for delegating services
    */
   PolarisCallContext getPolarisCallContext();
+
+  RealmConfig getRealmConfig();
 }

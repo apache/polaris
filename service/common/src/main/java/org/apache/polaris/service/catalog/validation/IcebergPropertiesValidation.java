@@ -44,13 +44,11 @@ public class IcebergPropertiesValidation {
       @Nonnull CallContext callContext,
       @Nonnull Map<String, String> properties,
       @Nullable PolarisStorageConfigurationInfo storageConfigurationInfo) {
-    var ctx = callContext.getPolarisCallContext();
-    var configStore = ctx.getConfigurationStore();
-    var realmContext = callContext.getRealmContext();
-
+    var realmConfig = callContext.getPolarisCallContext().getRealmConfig();
     var ioImpl = properties.get(CatalogProperties.FILE_IO_IMPL);
+
     if (ioImpl != null) {
-      if (!configStore.getConfiguration(realmContext, ALLOW_SPECIFYING_FILE_IO_IMPL)) {
+      if (!realmConfig.getConfig(ALLOW_SPECIFYING_FILE_IO_IMPL)) {
         throw new ValidationException(
             "Cannot set property '%s' to '%s' for this catalog.",
             CatalogProperties.FILE_IO_IMPL, ioImpl);
@@ -70,16 +68,13 @@ public class IcebergPropertiesValidation {
     if (ioImpl != null) {
       var storageType = StorageTypeFileIO.fromFileIoImplementation(ioImpl);
       if (storageType.validateAllowedStorageType()
-          && !configStore
-              .getConfiguration(realmContext, SUPPORTED_CATALOG_STORAGE_TYPES)
-              .contains(storageType.name())) {
+          && !realmConfig.getConfig(SUPPORTED_CATALOG_STORAGE_TYPES).contains(storageType.name())) {
         throw new ValidationException(
             "File IO implementation '%s', as storage type '%s' is not supported",
             ioImpl, storageType);
       }
 
-      if (!storageType.safe()
-          && !configStore.getConfiguration(realmContext, ALLOW_INSECURE_STORAGE_TYPES)) {
+      if (!storageType.safe() && !realmConfig.getConfig(ALLOW_INSECURE_STORAGE_TYPES)) {
         throw new ValidationException(
             "File IO implementation '%s' (storage type '%s') is considered insecure and must not be used",
             ioImpl, storageType);

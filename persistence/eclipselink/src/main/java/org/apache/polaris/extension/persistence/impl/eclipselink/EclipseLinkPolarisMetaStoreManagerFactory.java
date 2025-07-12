@@ -25,7 +25,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -47,13 +46,12 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null);
   }
 
   @Inject
-  protected EclipseLinkPolarisMetaStoreManagerFactory(
-      PolarisDiagnostics diagnostics, PolarisConfigurationStore configurationStore) {
-    super(diagnostics, configurationStore);
+  protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
+    super(diagnostics);
   }
 
   @Override

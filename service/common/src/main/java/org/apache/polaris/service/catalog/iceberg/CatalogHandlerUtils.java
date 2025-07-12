@@ -95,8 +95,7 @@ import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,13 +127,10 @@ public class CatalogHandlerUtils {
   private final boolean rollbackCompactionEnabled;
 
   @Inject
-  public CatalogHandlerUtils(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+  public CatalogHandlerUtils(RealmConfig realmConfig) {
     this(
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES),
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS));
+        realmConfig.getConfig(FeatureConfiguration.ICEBERG_COMMIT_MAX_RETRIES),
+        realmConfig.getConfig(FeatureConfiguration.ICEBERG_ROLLBACK_COMPACTION_ON_CONFLICTS));
   }
 
   @VisibleForTesting

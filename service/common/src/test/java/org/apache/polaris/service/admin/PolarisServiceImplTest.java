@@ -24,7 +24,6 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -35,9 +34,8 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -54,9 +52,7 @@ public class PolarisServiceImplTest {
   private PolarisAuthorizer polarisAuthorizer;
   private CallContext callContext;
   private ReservedProperties reservedProperties;
-  private PolarisCallContext polarisCallContext;
-  private PolarisConfigurationStore configurationStore;
-  private RealmContext realmContext;
+  private RealmConfig realmConfig;
 
   private PolarisServiceImpl polarisService;
 
@@ -68,18 +64,13 @@ public class PolarisServiceImplTest {
     polarisAuthorizer = Mockito.mock(PolarisAuthorizer.class);
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
-    polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    configurationStore = Mockito.mock(PolarisConfigurationStore.class);
-    realmContext = Mockito.mock(RealmContext.class);
+    realmConfig = Mockito.mock(RealmConfig.class);
 
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-    when(polarisCallContext.getConfigurationStore()).thenReturn(configurationStore);
-    when(configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
         .thenReturn(List.of("ICEBERG_REST"));
-    when(configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("OAUTH"));
 
     polarisService =

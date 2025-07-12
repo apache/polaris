@@ -76,7 +76,7 @@ public class StorageCredentialCacheTest {
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache(callCtx.getRealmContext(), callCtx.getConfigurationStore());
+    return new StorageCredentialCache(callCtx.getRealmConfig());
   }
 
   @Test
