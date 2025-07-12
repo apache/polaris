@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.listeners;
+package org.apache.polaris.service.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -210,7 +210,9 @@ class AwsCloudWatchEventListenerTest {
                 .build());
 
         assertThat(logEvents.events()).hasSize(2);
-        String secondMsg = logEvents.events().get(1).message();
+        List<OutputLogEvent> sortedEvents = new ArrayList<>(logEvents.events());
+        sortedEvents.sort(Comparator.comparingLong(OutputLogEvent::timestamp));
+        String secondMsg = sortedEvents.get(1).message();
         assertThat(secondMsg).contains(catalog2Name);
         assertThat(secondMsg).contains(REALM);
         assertThat(secondMsg).contains(AfterCatalogCreatedEvent.class.getSimpleName());
