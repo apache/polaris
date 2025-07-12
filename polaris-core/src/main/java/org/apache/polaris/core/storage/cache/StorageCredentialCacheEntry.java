@@ -32,10 +32,17 @@ public class StorageCredentialCacheEntry {
   public final EnumMap<StorageAccessProperty, String> credsMap;
 
   private final ScopedCredentialsResult scopedCredentialsResult;
+  private final long maxCacheDurationMs;
 
-  public StorageCredentialCacheEntry(ScopedCredentialsResult scopedCredentialsResult) {
+  public StorageCredentialCacheEntry(
+      ScopedCredentialsResult scopedCredentialsResult, long maxCacheDurationMs) {
     this.scopedCredentialsResult = scopedCredentialsResult;
+    this.maxCacheDurationMs = maxCacheDurationMs;
     this.credsMap = scopedCredentialsResult.getCredentials();
+  }
+
+  public long getMaxCacheDurationMs() {
+    return maxCacheDurationMs;
   }
 
   /** Get the expiration time in millisecond for the cached entry */
