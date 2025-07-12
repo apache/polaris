@@ -64,8 +64,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
-  @Test
-  public void testGetSubscopedCreds() {
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testGetSubscopedCreds(String scheme) {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -76,10 +77,13 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .isInstanceOf(AssumeRoleRequest.class)
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
-                  .returns(roleARN, AssumeRoleRequest::roleArn);
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  // ensure that the policy content does not refer to S3A
+                  .extracting(AssumeRoleRequest::policy)
+                  .doesNotMatch(s -> s.contains("s3a"));
               return ASSUME_ROLE_RESPONSE;
             });
-    String warehouseDir = "s3://bucket/path/to/warehouse";
+    String warehouseDir = scheme + "://bucket/path/to/warehouse";
     EnumMap<StorageAccessProperty, String> credentials =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(

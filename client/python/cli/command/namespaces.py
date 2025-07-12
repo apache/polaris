@@ -27,7 +27,6 @@ from cli.command import Command
 from cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from cli.options.option_tree import Argument
 from polaris.catalog import IcebergCatalogAPI, CreateNamespaceRequest, ApiClient, Configuration
-from polaris.catalog.exceptions import NotFoundException
 from polaris.management import PolarisDefaultApi
 
 
@@ -52,16 +51,19 @@ class NamespacesCommand(Command):
 
     def validate(self):
         if not self.catalog:
-            raise Exception(f'Missing required argument:'
-                            f' {Argument.to_flag_name(Arguments.CATALOG)}')
+            raise Exception(
+                f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
+            )
 
     def _get_catalog_api(self, api: PolarisDefaultApi):
         """
         Convert a management API to a catalog API
         """
-        catalog_host = re.match(r'(https?://.+)/api/management', api.api_client.configuration.host).group(1)
+        catalog_host = re.match(
+            r"(https?://.+)/api/management", api.api_client.configuration.host
+        ).group(1)
         configuration = Configuration(
-            host=f'{catalog_host}/api/catalog',
+            host=f"{catalog_host}/api/catalog",
             username=api.api_client.configuration.username,
             password=api.api_client.configuration.password,
             access_token=api.api_client.configuration.access_token,
@@ -75,26 +77,29 @@ class NamespacesCommand(Command):
             if self.location:
                 req_properties = {**req_properties, Arguments.LOCATION: self.location}
             request = CreateNamespaceRequest(
-                namespace=self.namespace,
-                properties=req_properties
+                namespace=self.namespace, properties=req_properties
             )
             catalog_api.create_namespace(
-                prefix=self.catalog,
-                create_namespace_request=request)
+                prefix=self.catalog, create_namespace_request=request
+            )
         elif self.namespaces_subcommand == Subcommands.LIST:
             if self.parent is not None:
                 result = catalog_api.list_namespaces(
-                    prefix=self.catalog,
-                    parent=UNIT_SEPARATOR.join(self.parent))
+                    prefix=self.catalog, parent=UNIT_SEPARATOR.join(self.parent)
+                )
             else:
                 result = catalog_api.list_namespaces(prefix=self.catalog)
             for namespace in result.namespaces:
-                print(json.dumps({"namespace": '.'.join(namespace)}))
+                print(json.dumps({"namespace": ".".join(namespace)}))
         elif self.namespaces_subcommand == Subcommands.DELETE:
-            catalog_api.drop_namespace(prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace))
+            catalog_api.drop_namespace(
+                prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
+            )
         elif self.namespaces_subcommand == Subcommands.GET:
-            print(catalog_api.load_namespace_metadata(
-                prefix=self.catalog,
-                namespace=UNIT_SEPARATOR.join(self.namespace)).to_json())
+            print(
+                catalog_api.load_namespace_metadata(
+                    prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
+                ).to_json()
+            )
         else:
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")

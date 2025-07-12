@@ -19,6 +19,7 @@
 package org.apache.polaris.service.admin;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -576,7 +578,7 @@ public class PolarisAdminService {
   /** Get all locations where data for a `CatalogEntity` may be stored */
   private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
     HashSet<String> catalogLocations = new HashSet<>();
-    catalogLocations.add(terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
+    catalogLocations.add(terminateWithSlash(catalogEntity.getBaseLocation()));
     if (catalogEntity.getStorageConfigurationInfo() != null) {
       catalogLocations.addAll(
           catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
@@ -614,7 +616,6 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe().stream()
-        .filter(Objects::nonNull)
         .map(CatalogEntity::new)
         .anyMatch(
             existingCatalog -> {
@@ -700,16 +701,10 @@ public class PolarisAdminService {
   /**
    * @see #extractSecretReferences
    */
-  private boolean requiresSecretReferenceExtraction(CreateCatalogRequest catalogRequest) {
-    Catalog catalog = catalogRequest.getCatalog();
-    if (catalog instanceof ExternalCatalog externalCatalog) {
-      if (externalCatalog.getConnectionConfigInfo() != null) {
-        // TODO: Make this more targeted once we have connection configs that don't involve
-        // processing of inline secrets.
-        return true;
-      }
-    }
-    return false;
+  private boolean requiresSecretReferenceExtraction(
+      @NotNull ConnectionConfigInfo connectionConfigInfo) {
+    return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
+        != AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT;
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
@@ -734,24 +729,54 @@ public class PolarisAdminService {
             .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
-    if (requiresSecretReferenceExtraction(catalogRequest)) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("catalogName", entity.getName())
-          .log("Extracting secret references to create federated catalog");
-      FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-      // For fields that contain references to secrets, we'll separately process the secrets from
-      // the original request first, and then populate those fields with the extracted secret
-      // references as part of the construction of the internal persistence entity.
-      Map<String, UserSecretReference> processedSecretReferences =
-          extractSecretReferences(catalogRequest, entity);
-      entity =
-          new CatalogEntity.Builder(entity)
-              .setConnectionConfigInfoDpoWithSecrets(
-                  ((ExternalCatalog) catalogRequest.getCatalog()).getConnectionConfigInfo(),
-                  processedSecretReferences)
-              .build();
+    Catalog catalog = catalogRequest.getCatalog();
+    if (catalog instanceof ExternalCatalog externalCatalog) {
+      ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
+
+      if (connectionConfigInfo != null) {
+        LOGGER
+            .atDebug()
+            .addKeyValue("catalogName", entity.getName())
+            .log("Creating a federated catalog");
+        FeatureConfiguration.enforceFeatureEnabledOrThrow(
+            callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+        Map<String, UserSecretReference> processedSecretReferences = Map.of();
+        List<String> supportedAuthenticationTypes =
+            callContext
+                .getPolarisCallContext()
+                .getConfigurationStore()
+                .getConfiguration(
+                    callContext.getRealmContext(),
+                    FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+                .stream()
+                .map(s -> s.toUpperCase(Locale.ROOT))
+                .toList();
+        if (requiresSecretReferenceExtraction(connectionConfigInfo)) {
+          // For fields that contain references to secrets, we'll separately process the secrets
+          // from the original request first, and then populate those fields with the extracted
+          // secret references as part of the construction of the internal persistence entity.
+          checkState(
+              supportedAuthenticationTypes.contains(
+                  connectionConfigInfo
+                      .getAuthenticationParameters()
+                      .getAuthenticationType()
+                      .name()),
+              "Authentication type %s is not supported.",
+              connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
+          processedSecretReferences = extractSecretReferences(catalogRequest, entity);
+        } else {
+          // Support no-auth catalog federation only when the feature is enabled.
+          checkState(
+              supportedAuthenticationTypes.contains(
+                  AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
+              "Implicit authentication based catalog federation is not supported.");
+        }
+        entity =
+            new CatalogEntity.Builder(entity)
+                .setConnectionConfigInfoDpoWithSecrets(
+                    connectionConfigInfo, processedSecretReferences)
+                .build();
+      }
     }
 
     CreateCatalogResult catalogResult =
@@ -872,7 +897,7 @@ public class PolarisAdminService {
     }
 
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
-    String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
+    String defaultBaseLocation = currentCatalogEntity.getBaseLocation();
     if (updateRequest.getProperties() != null) {
       Map<String, String> updateProperties =
           reservedProperties.removeReservedPropertiesFromUpdate(
@@ -923,18 +948,24 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
+  /**
+   * List all catalogs after checking for permission. Nulls due to non-atomic list-then-get are
+   * filtered out.
+   */
   public List<PolarisEntity> listCatalogs() {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
     return listCatalogsUnsafe();
   }
 
   /**
-   * List all catalogs without checking for permission. May contain NULLs due to multiple non-atomic
-   * API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
-   * returned by listCatalogs, but cannot be loaded afterward because it was purged by another
-   * process before it could be loaded.
+   * List all catalogs without checking for permission. Nulls due to non-atomic list-then-get are
+   * filtered out.
    */
   private List<PolarisEntity> listCatalogsUnsafe() {
+    // loadEntity may return null due to multiple non-atomic
+    // API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
+    // returned by listCatalogs, but cannot be loaded afterward because it was purged by another
+    // process before it could be loaded.
     return metaStoreManager
         .listEntities(
             getCurrentPolarisContext(),
@@ -949,6 +980,7 @@ public class PolarisAdminService {
                 PolarisEntity.of(
                     metaStoreManager.loadEntity(
                         getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+        .filter(Objects::nonNull)
         .toList();
   }
 

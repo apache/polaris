@@ -23,9 +23,10 @@ import io.smallrye.config.WithName;
 import java.time.Duration;
 import java.util.Optional;
 import org.apache.polaris.service.storage.StorageConfiguration;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 
 @ConfigMapping(prefix = "polaris.storage")
-public interface QuarkusStorageConfiguration extends StorageConfiguration {
+public interface QuarkusStorageConfiguration extends StorageConfiguration, S3AccessConfig {
 
   @WithName("aws.access-key")
   @Override

@@ -36,6 +36,14 @@ public interface AuthenticationRealmConfiguration {
   interface AuthenticatorConfiguration {}
 
   /**
+   * The configuration for the active roles provider. The active roles provider is responsible for
+   * determining the active roles for a given Polaris principal.
+   */
+  ActiveRolesProviderConfiguration activeRolesProvider();
+
+  interface ActiveRolesProviderConfiguration {}
+
+  /**
    * The configuration for the OAuth2 service that delivers OAuth2 tokens. Only relevant when using
    * internal authentication (using Polaris as the authorization server).
    */

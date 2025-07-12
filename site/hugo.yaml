@@ -93,24 +93,23 @@ imaging:
 
 menu:
   main:
-    - name: GitHub
-      url: https://github.com/apache/polaris
-
     - name: "Documentation"
       identifier: "releases"
       weight: 100
       params:
         orderby: weight.desc
-    - name: "All Releases"
-      identifier: "all-releases-page"
-      url: "/releases/"
-      parent: "releases"
-    - name: "0.9.0"
-      url: "/in-dev/0.9.0/"
-      parent: "releases"
     - name: "In Development"
-      url: "/in-dev/unreleased/"
+      url: "/in-dev/"
       parent: "releases"
+      weight: 10
+    - name: "1.0.0"
+      url: "/releases/1.0.0/"
+      parent: "releases"
+      weight: 20
+    - name: "0.9.0"
+      url: "/releases/0.9.0/"
+      parent: "releases"
+      weight: 30
 
     - name: "Downloads"
       identifier: "downloads"
@@ -148,6 +147,10 @@ menu:
       parent: "community"
       url: "/community/release-guide"
       wieght: 70
+
+    - name: "GitHub"
+      url: "https://github.com/apache/polaris"
+      weight: 400
 
     - name: "ASF"
       pre: "<i class='fa-solid fa-feather'></i>"

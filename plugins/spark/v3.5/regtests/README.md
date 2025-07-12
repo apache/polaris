@@ -44,7 +44,7 @@ Tests can be run with docker-compose using the provided `./plugins/spark/v3.5/re
 follows:
 
 ```shell
-./gradlew build
+./gradlew assemble publishToMavenLocal
 ./gradlew \
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
@@ -76,7 +76,7 @@ Regression tests can be run locally as well, using the test harness. For local t
 Scala 2.12 and Scala 2.13 are supported.
 
 To run regression tests locally, run the following:
-- `./gradlew build` -- build the Polaris project and Spark Client jars.
+- `./gradlew assemble publishToMavenLocal` -- build the Polaris project and Spark Client jars. Publish the binary to local maven repo.
 - `./gradlew run` -- start a Polaris server on localhost:8181.
 - `env POLARIS_HOST=localhost ./plugins/spark/v3.5/regtests/run.sh` -- run regtests.
 

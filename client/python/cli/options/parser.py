@@ -37,57 +37,82 @@ class Parser(object):
     """
 
     _ROOT_ARGUMENTS = [
-        Argument(Arguments.HOST, str, hint='hostname'),
-        Argument(Arguments.PORT, int, hint='port'),
-        Argument(Arguments.BASE_URL, str, hint='complete base URL instead of hostname:port'),
-        Argument(Arguments.CLIENT_ID, str, hint='client ID for token-based authentication'),
-        Argument(Arguments.CLIENT_SECRET, str, hint='client secret for token-based authentication'),
-        Argument(Arguments.ACCESS_TOKEN, str, hint='access token for token-based authentication'),
-        Argument(Arguments.PROFILE, str, hint='profile for token-based authentication'),
-        Argument(Arguments.PROXY, str, hint='proxy URL'),
+        Argument(Arguments.HOST, str, hint="hostname"),
+        Argument(Arguments.PORT, int, hint="port"),
+        Argument(
+            Arguments.BASE_URL, str, hint="complete base URL instead of hostname:port"
+        ),
+        Argument(
+            Arguments.CLIENT_ID, str, hint="client ID for token-based authentication"
+        ),
+        Argument(
+            Arguments.CLIENT_SECRET,
+            str,
+            hint="client secret for token-based authentication",
+        ),
+        Argument(
+            Arguments.ACCESS_TOKEN,
+            str,
+            hint="access token for token-based authentication",
+        ),
+        Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
+        Argument(Arguments.PROXY, str, hint="proxy URL"),
     ]
 
     @staticmethod
     def _build_parser() -> argparse.ArgumentParser:
-        parser = TreeHelpParser(description='Polaris CLI')
+        parser = TreeHelpParser(description="Polaris CLI")
 
         for arg in Parser._ROOT_ARGUMENTS:
             if arg.default is not None:
-                parser.add_argument(arg.get_flag_name(), type=arg.type, help=arg.hint, default=arg.default)
+                parser.add_argument(
+                    arg.get_flag_name(),
+                    type=arg.type,
+                    help=arg.hint,
+                    default=arg.default,
+                )
             else:
                 parser.add_argument(arg.get_flag_name(), type=arg.type, help=arg.hint)
 
         # Add everything from the option tree to the parser:
         def add_arguments(parser, args: List[Argument]):
             for arg in args:
-                kwargs = {'help': arg.hint, 'type': arg.type}
+                kwargs = {"help": arg.hint, "type": arg.type}
                 if arg.choices:
-                    kwargs['choices'] = arg.choices
+                    kwargs["choices"] = arg.choices
                 if arg.lower:
-                    kwargs['type'] = kwargs['type'].lower
+                    kwargs["type"] = kwargs["type"].lower
                 if arg.default:
-                    kwargs['default'] = arg.default
+                    kwargs["default"] = arg.default
 
-                if arg.type == bool:
+                if arg.type is bool:
                     del kwargs['type']
                     parser.add_argument(arg.get_flag_name(), **kwargs, action='store_true')
                 elif arg.allow_repeats:
-                    parser.add_argument(arg.get_flag_name(), **kwargs, action='append')
+                    parser.add_argument(arg.get_flag_name(), **kwargs, action="append")
                 else:
                     parser.add_argument(arg.get_flag_name(), **kwargs)
 
         def recurse_options(subparser, options: List[Option]):
             for option in options:
-                option_parser = subparser.add_parser(option.name, help=option.hint or option.name)
+                option_parser = subparser.add_parser(
+                    option.name, help=option.hint or option.name
+                )
                 add_arguments(option_parser, option.args)
                 if option.input_name:
-                    option_parser.add_argument(option.input_name, type=str,
-                                               help=option.input_name.replace('_', ' '), default=None)
+                    option_parser.add_argument(
+                        option.input_name,
+                        type=str,
+                        help=option.input_name.replace("_", " "),
+                        default=None,
+                    )
                 if option.children:
-                    children_subparser = option_parser.add_subparsers(dest=f'{option.name}_subcommand', required=False)
+                    children_subparser = option_parser.add_subparsers(
+                        dest=f"{option.name}_subcommand", required=False
+                    )
                     recurse_options(children_subparser, option.children)
 
-        subparser = parser.add_subparsers(dest='command', required=False)
+        subparser = parser.add_subparsers(dest="command", required=False)
         recurse_options(subparser, OptionTree.get_tree())
         return parser
 
@@ -102,13 +127,13 @@ class Parser(object):
             return None
         results = dict()
         for property in properties:
-            if '=' not in property:
-                raise Exception(f'Could not parse property `{property}`')
-            key, value = property.split('=', 1)
+            if "=" not in property:
+                raise Exception(f"Could not parse property `{property}`")
+            key, value = property.split("=", 1)
             if not value:
-                raise Exception(f'Could not parse property `{property}`')
+                raise Exception(f"Could not parse property `{property}`")
             if key in results:
-                raise Exception(f'Duplicate property key `{key}`')
+                raise Exception(f"Duplicate property key `{key}`")
             results[key] = value
         return results
 
@@ -118,19 +143,21 @@ class TreeHelpParser(argparse.ArgumentParser):
     Replaces the default help behavior with a more readable message.
     """
 
-    INDENT = ' ' * 2
+    INDENT = " " * 2
 
     def parse_args(self, args=None, namespace=None):
         if args is None:
             args = sys.argv[1:]
-        help_index = min([float('inf')] + [args.index(x) for x in ['-h', '--help'] if x in args])
-        if help_index < float('inf'):
+        help_index = min(
+            [float("inf")] + [args.index(x) for x in ["-h", "--help"] if x in args]
+        )
+        if help_index < float("inf"):
             tree_str = self._get_tree_str(args[:help_index])
             if tree_str:
                 print(f'input: polaris {" ".join(args)}')
-                print(f'options:')
+                print('options:')
                 print(tree_str)
-                print('\n')
+                print("\n")
                 self.print_usage()
                 super().exit()
             else:
@@ -141,11 +168,15 @@ class TreeHelpParser(argparse.ArgumentParser):
     def _get_tree_str(self, args: List[str]) -> Optional[str]:
         command_path = self._get_command_path(args, OptionTree.get_tree())
         if len(command_path) == 0:
-            result = TreeHelpParser.INDENT + 'polaris'
+            result = TreeHelpParser.INDENT + "polaris"
             for arg in Parser._ROOT_ARGUMENTS:
-                result += '\n' + (TreeHelpParser.INDENT * 2) + f"{arg.get_flag_name()}  {arg.hint}"
+                result += (
+                    "\n"
+                    + (TreeHelpParser.INDENT * 2)
+                    + f"{arg.get_flag_name()}  {arg.hint}"
+                )
             for option in OptionTree.get_tree():
-                result += '\n' + self._get_tree_for_option(option, indent=2)
+                result += "\n" + self._get_tree_for_option(option, indent=2)
             return result
         else:
             option_node = self._get_option_node(command_path, OptionTree.get_tree())
@@ -159,19 +190,25 @@ class TreeHelpParser(argparse.ArgumentParser):
         result += (TreeHelpParser.INDENT * indent) + option.name
 
         if option.args:
-            result += '\n' + (TreeHelpParser.INDENT * (indent + 1)) + "Named arguments:"
+            result += "\n" + (TreeHelpParser.INDENT * (indent + 1)) + "Named arguments:"
         for arg in option.args:
-            result += '\n' + (TreeHelpParser.INDENT * (indent + 2)) + f"{arg.get_flag_name()}  {arg.hint}"
+            result += (
+                "\n"
+                + (TreeHelpParser.INDENT * (indent + 2))
+                + f"{arg.get_flag_name()}  {arg.hint}"
+            )
 
         if option.input_name:
-            result += '\n' + (TreeHelpParser.INDENT * (indent + 1)) + "Positional arguments:"
-            result += '\n' + (TreeHelpParser.INDENT * (indent + 2)) + option.input_name
+            result += (
+                "\n" + (TreeHelpParser.INDENT * (indent + 1)) + "Positional arguments:"
+            )
+            result += "\n" + (TreeHelpParser.INDENT * (indent + 2)) + option.input_name
 
         if len(option.args) > 0 and len(option.children) > 0:
-            result += '\n'
+            result += "\n"
 
         for child in sorted(option.children, key=lambda o: o.name):
-            result += '\n' + self._get_tree_for_option(child, indent + 1)
+            result += "\n" + self._get_tree_for_option(child, indent + 1)
 
         return result
 
@@ -187,14 +224,16 @@ class TreeHelpParser(argparse.ArgumentParser):
                     parser = parser._subparsers._group_actions[0].choices.get(arg)
                     if not parser:
                         break
-                except Exception as e:
+                except Exception:
                     break
                 options = list(filter(lambda o: o.name == arg, options))[0].children
                 if options is None:
                     break
         return command_path
 
-    def _get_option_node(self, command_path: List[str], nodes: List[Option]) -> Optional[Option]:
+    def _get_option_node(
+        self, command_path: List[str], nodes: List[Option]
+    ) -> Optional[Option]:
         if len(command_path) > 0:
             for node in nodes:
                 if node.name == command_path[0]:
@@ -203,4 +242,3 @@ class TreeHelpParser(argparse.ArgumentParser):
                     else:
                         return self._get_option_node(command_path[1:], node.children)
         return None
-

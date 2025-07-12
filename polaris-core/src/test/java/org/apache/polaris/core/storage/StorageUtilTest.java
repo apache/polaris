@@ -31,7 +31,7 @@ public class StorageUtilTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"s3", "gcs", "abfs", "wasb", "file"})
+  @ValueSource(strings = {"s3", "s3a", "gcs", "abfs", "wasb", "file"})
   public void testAbsolutePaths(String scheme) {
     Assertions.assertThat(StorageUtil.getBucket(scheme + "://bucket/path/file.txt"))
         .isEqualTo("bucket");

@@ -127,7 +127,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
           CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3", "catalog-override-key3",
           CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4", "catalog-override-key4");
 
-  @Inject MetaStoreManagerFactory managerFactory;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
@@ -166,12 +166,12 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
@@ -236,7 +236,9 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
-            new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
+            new RealmEntityManagerFactory(metaStoreManagerFactory),
+            metaStoreManagerFactory,
+            configurationStore);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
