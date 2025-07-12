@@ -182,8 +182,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(),
-          new StorageCredentialCache(realmContext, configurationStore));
+          realmContext.getRealmIdentifier(), new StorageCredentialCache(configurationStore));
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
