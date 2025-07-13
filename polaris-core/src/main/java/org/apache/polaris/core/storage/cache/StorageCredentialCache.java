@@ -50,13 +50,10 @@ public class StorageCredentialCache {
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
 
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
-  private final RealmContext realmContext;
   private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    this.realmContext = realmContext;
+  public StorageCredentialCache(PolarisConfigurationStore configurationStore) {
     this.configurationStore = configurationStore;
     cache =
         Caffeine.newBuilder()
@@ -69,7 +66,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  this.maxCacheDurationMs()));
+                                  entry.getMaxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -80,7 +77,7 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private long maxCacheDurationMs() {
+  private long maxCacheDurationMs(RealmContext realmContext) {
     var cacheDurationSeconds =
         configurationStore.getConfiguration(
             realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
@@ -123,18 +120,18 @@ public class StorageCredentialCache {
     }
     StorageCredentialCacheKey key =
         new StorageCredentialCacheKey(
+            callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
-            allowedWriteLocations,
-            callCtx);
+            allowedWriteLocations);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
-                  k.getCallContext(),
+                  callCtx,
                   k.getCatalogId(),
                   k.getEntityId(),
                   polarisEntity.getType(),
@@ -142,7 +139,8 @@ public class StorageCredentialCache {
                   k.getAllowedReadLocations(),
                   k.getAllowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
-            return new StorageCredentialCacheEntry(scopedCredentialsResult);
+            long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmContext());
+            return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
           }
           LOGGER
               .atDebug()
