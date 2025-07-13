@@ -64,12 +64,6 @@ jobs:
               :polaris-server:quarkusAppPartsBuild --rerun \
               -Dquarkus.container-image.build=true
 
-      - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: spark-plugin-regtest
-
       # NOTE: the regression test runs with spark 3.5.5 and scala 2.12 in Java 17. We also have integration
       # tests runs with the existing gradle.yml, which only runs on Java 21. Since spark Java compatibility
       # for 3.5 is 8, 11, and 17, we should run spark client with those compatible java versions.
@@ -77,28 +71,3 @@ jobs:
       - name: Regression Test
         run: |
           docker compose -f plugins/spark/v3.5/regtests/docker-compose.yml up --build --exit-code-from regtest
-
-  store-gradle-cache:
-    name: Store Gradle Cache
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - spark-plugin-regtest
-    steps:
-      - name: Set up JDK 21
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4
-        with:
-          validate-wrappers: false
-      - name: Collect partial Gradle build caches
-        uses: ./.github/actions/ci-incr-build-cache-prepare
-        with:
-          cache-read-only: false
-      - name: Trigger Gradle home cleanup
-        run: ./gradlew --no-daemon :showVersion
-      # Note: the "Post Gradle invocation" archives the updated build cache.
