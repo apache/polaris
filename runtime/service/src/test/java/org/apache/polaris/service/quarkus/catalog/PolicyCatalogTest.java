@@ -284,7 +284,8 @@ public class PolicyCatalogTest {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog =
+        new PolicyCatalog(metaStoreManager, securityContext, callContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,
