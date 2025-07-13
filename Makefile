@@ -24,15 +24,23 @@ SHELL = /usr/bin/env bash -o pipefail
 BUILD_IMAGE ?= true
 CONTAINER_TOOL ?= docker
 MINIKUBE_PROFILE ?= minikube
-DEPENDENCIES ?= ct helm helm-docs java21
+DEPENDENCIES ?= ct helm helm-docs java21 git
 OPTIONAL_DEPENDENCIES := jq kubectl minikube
-BUILD_VERSION := $(shell ./gradlew properties | grep version: | cut -d' ' -f2)
+
+## Version information
+BUILD_VERSION := $(shell cat version.txt)
+GIT_COMMIT := $(shell git rev-parse HEAD)
 
 ##@ General
 
 .PHONY: help
-help: ## Display this help.
+help: ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9\.-]+:.*?##/ { printf "  \033[36m%-40s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.PHONY: version
+version: ## Display version information
+	@echo "Build version: ${BUILD_VERSION}"
+	@echo "Git commit: ${GIT_COMMIT}"
 
 ##@ Polaris Build
 
@@ -180,8 +188,8 @@ check-dependencies: ## Check if all requested dependencies are present
 	@for dependency in $(DEPENDENCIES); do \
 		echo "Checking for $$dependency..."; \
 		if [ "$$dependency" = "java21" ]; then \
-			if java -version 2>&1 | grep -q 'openjdk version "21\.' >/dev/null 2>&1; then \
-				echo "Java 21 is installed."; \
+			if java --version | head -n1 | cut -d' ' -f2 | grep -q '^21\.'; then \
+			echo "Java 21 is installed."; \
 			else \
 				echo "Java 21 is NOT installed."; \
 				echo "--- ERROR: Dependency 'Java 21' is missing. Please install it to proceed. Exiting. ---"; \
