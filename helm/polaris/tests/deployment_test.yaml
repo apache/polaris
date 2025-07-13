@@ -356,31 +356,6 @@ tests:
             mountPath: /deployments/config
             readOnly: true
 
-  - it: should evaluate template expressions in persistence secret name
-    set:
-      persistence:
-        type: eclipse-link
-        eclipseLink:
-          secret:
-            name: "{{ .Release.Name }}-persistence-secret"
-    asserts:
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: config-volume
-            projected:
-              sources:
-                  - configMap:
-                      items:
-                        - key: application.properties
-                          path: application.properties
-                      name: polaris-release
-                  - secret:
-                      items:
-                        - key: persistence.xml
-                          path: persistence.xml
-                      name: polaris-release-persistence-secret
-
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default
     asserts:
@@ -952,15 +927,22 @@ tests:
                       - key: application.properties
                         path: application.properties
 
-  - it: should configure config volume with token broker secret
+  - it: should configure config volume with token broker secret (rsa-key-pair - deprecation)
     set:
       image.configDir: /config/dir
       authentication:
         tokenBroker:
           secret:
             name: polaris-token-broker
+            type: rsa-key-pair
             publicKey: public.key
             privateKey: private.key
+            secretKey: symmetric.pem
+            rsaKeyPair:
+              publicKey: ~
+              privateKey: ~
+            symmetricKey:
+              secretKey: ~
     asserts:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
@@ -987,15 +969,22 @@ tests:
                       - key: private.key
                         path: private.pem
 
-  - it: should configure config volume with persistence secret
+  - it: should configure config volume with token broker secret (symmetric-key - deprecation)
     set:
       image.configDir: /config/dir
-      persistence:
-        type: eclipse-link
-        eclipseLink:
+      authentication:
+        tokenBroker:
+          type: symmetric-key
           secret:
-            name: polaris-persistence
-            key: custom.xml
+            name: polaris-token-broker
+            publicKey: public.key
+            privateKey: private.key
+            secretKey: symmetric.pem
+            rsaKeyPair:
+              publicKey: ~
+              privateKey: ~
+            symmetricKey:
+              secretKey: ~
     asserts:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
@@ -1015,10 +1004,92 @@ tests:
                       - key: application.properties
                         path: application.properties
                 - secret:
-                    name: polaris-persistence
+                    name: polaris-token-broker
                     items:
-                      - key: custom.xml
-                        path: persistence.xml
+                      - key: symmetric.pem
+                        path: symmetric.key
+
+  - it: should configure config volume with token broker secret (rsa-key-pair)
+    set:
+      image.configDir: /config/dir
+      authentication:
+        tokenBroker:
+          secret:
+            name: polaris-token-broker
+            type: rsa-key-pair
+            publicKey: deprecation_public.key
+            privateKey: deprecation_private.key
+            secretKey: deprecation_symmetric.pem
+            rsaKeyPair:
+              publicKey: public.key
+              privateKey: private.key
+            symmetricKey:
+              secretKey: symmetric.pem
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+                - secret:
+                    name: polaris-token-broker
+                    items:
+                      - key: public.key
+                        path: public.pem
+                      - key: private.key
+                        path: private.pem
+
+  - it: should configure config volume with token broker secret (symmetric-key)
+    set:
+      image.configDir: /config/dir
+      authentication:
+        tokenBroker:
+          type: symmetric-key
+          secret:
+            name: polaris-token-broker
+            publicKey: deprecation_public.key
+            privateKey: deprecation_private.key
+            secretKey: deprecation_symmetric.pem
+            rsaKeyPair:
+              publicKey: public.key
+              privateKey: private.key
+            symmetricKey:
+              secretKey: symmetric.pem
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            projected:
+              sources:
+                - configMap:
+                    name: polaris-release
+                    items:
+                      - key: application.properties
+                        path: application.properties
+                - secret:
+                    name: polaris-token-broker
+                    items:
+                      - key: symmetric.pem
+                        path: symmetric.key
 
   - it: should set relational-jdbc persistence environment variables
     set:

@@ -41,9 +41,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 providing authentication parameters to Polaris. When the authentication type is set to `IMPLICIT`, 
 the authentication parameters are picked from the environment or configuration files. 
 
+- The `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` feature was added to support placing tables
+at locations that better optimize for object storage.
+
 ### Changes
 
 ### Deprecations
+
+* The property `polaris.active-roles-provider.type` is deprecated in favor of
+  `polaris.authentication.active-roles-provider.type`. The old property is still supported, but will be removed in a
+  future release.
 
 ### Fixes
 

@@ -89,96 +89,20 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  // Optimization: Minimize the JAR (remove unused classes from dependencies)
-  // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
-  // therefore excluded from the optimization.
-  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
+  // recursively remove all LICENSE and NOTICE file under META-INF, includes
+  // directories contains 'license' in the name
+  exclude("META-INF/**/*LICENSE*")
+  exclude("META-INF/**/*NOTICE*")
+  // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+  exclude("LICENSE*")
+  exclude("NOTICE*")
 
-  // Always run the license file addition after this task completes
-  finalizedBy("addLicenseFilesToJar")
-}
-
-// Post-processing task to add our project's LICENSE and NOTICE files to the jar and remove any
-// other LICENSE or NOTICE files that were shaded in.
-tasks.register("addLicenseFilesToJar") {
-  dependsOn("createPolarisSparkJar")
-
-  doLast {
-    val shadowTask = tasks.named("createPolarisSparkJar", ShadowJar::class.java).get()
-    val jarFile = shadowTask.archiveFile.get().asFile
-    val tempDir =
-      File(
-        "${project.layout.buildDirectory.get().asFile}/tmp/jar-cleanup-${shadowTask.archiveBaseName.get()}-${shadowTask.archiveClassifier.get()}"
-      )
-    val projectLicenseFile = File(projectDir, "LICENSE")
-    val projectNoticeFile = File(projectDir, "NOTICE")
-
-    // Validate that required license files exist
-    if (!projectLicenseFile.exists()) {
-      throw GradleException("Project LICENSE file not found at: ${projectLicenseFile.absolutePath}")
-    }
-    if (!projectNoticeFile.exists()) {
-      throw GradleException("Project NOTICE file not found at: ${projectNoticeFile.absolutePath}")
-    }
-
-    logger.info("Processing jar: ${jarFile.absolutePath}")
-    logger.info("Using temp directory: ${tempDir.absolutePath}")
-
-    // Clean up temp directory
-    if (tempDir.exists()) {
-      tempDir.deleteRecursively()
-    }
-    tempDir.mkdirs()
-
-    // Extract the jar
-    copy {
-      from(zipTree(jarFile))
-      into(tempDir)
-    }
-
-    fileTree(tempDir)
-      .matching {
-        include("**/*LICENSE*")
-        include("**/*NOTICE*")
-      }
-      .forEach { file ->
-        logger.info("Removing license file: ${file.relativeTo(tempDir)}")
-        file.delete()
-      }
-
-    // Remove META-INF/licenses directory if it exists
-    val licensesDir = File(tempDir, "META-INF/licenses")
-    if (licensesDir.exists()) {
-      licensesDir.deleteRecursively()
-      logger.info("Removed META-INF/licenses directory")
-    }
-
-    // Copy our project's license files to root
-    copy {
-      from(projectLicenseFile)
-      into(tempDir)
-    }
-    logger.info("Added project LICENSE file")
-
-    copy {
-      from(projectNoticeFile)
-      into(tempDir)
-    }
-    logger.info("Added project NOTICE file")
-
-    // Delete the original jar
-    jarFile.delete()
-
-    // Create new jar with only project LICENSE and NOTICE files
-    ant.withGroovyBuilder {
-      "jar"("destfile" to jarFile.absolutePath) { "fileset"("dir" to tempDir.absolutePath) }
-    }
-
-    logger.info("Recreated jar with only project LICENSE and NOTICE files")
-
-    // Clean up temp directory
-    tempDir.deleteRecursively()
-  }
+  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
+  // and renamed to LICENSE and NOTICE after include, this is to avoid the file
+  // being excluded due to the exclude pattern matching used above.
+  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
 }
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both

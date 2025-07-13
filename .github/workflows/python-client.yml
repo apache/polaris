@@ -58,15 +58,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          pip install --user --upgrade -r regtests/requirements.txt
-
-      # TODO: add cache for poetry dependencies once we have poetry.lock in the repo
-      - name: Install dependencies
-        working-directory: client/python
-        run: poetry install --all-extras
-
       - name: Lint
         working-directory: client/python
         run: |
@@ -75,15 +66,14 @@ jobs:
       - name: Generated Client Tests
         working-directory: client/python
         run: |
-          export SCRIPT_DIR="non-existing-mock-directory"
-          poetry run pytest test/
+          make test-client
 
       - name: Image build
         run: |
           ./gradlew \
-              :polaris-server:assemble \
-              :polaris-server:quarkusAppPartsBuild --rerun \
-              -Dquarkus.container-image.build=true
+            :polaris-server:assemble \
+            :polaris-server:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true
 
       - name: Integration Tests
         working-directory: client/python

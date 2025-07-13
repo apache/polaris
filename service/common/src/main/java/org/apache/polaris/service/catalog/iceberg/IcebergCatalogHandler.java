@@ -474,7 +474,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
       if (baseCatalog instanceof IcebergCatalog) {
-        location = ((IcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
+        location =
+            ((IcebergCatalog) baseCatalog).transformTableLikeLocation(ident, request.location());
       } else {
         location = request.location();
       }
@@ -800,7 +801,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
                     String filteredLocation =
                         ((IcebergCatalog) baseCatalog)
-                            .transformTableLikeLocation(requestedLocation);
+                            .transformTableLikeLocation(identifier, requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
                     return update;

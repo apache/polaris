@@ -33,6 +33,9 @@ public interface QuarkusAuthenticationRealmConfiguration extends AuthenticationR
   QuarkusAuthenticatorConfiguration authenticator();
 
   @Override
+  QuarkusActiveRolesProviderConfiguration activeRolesProvider();
+
+  @Override
   QuarkusTokenServiceConfiguration tokenService();
 
   @Override
@@ -68,6 +71,16 @@ public interface QuarkusAuthenticationRealmConfiguration extends AuthenticationR
      * org.apache.polaris.service.auth.TokenBrokerFactory} identifier.
      */
     @WithDefault("rsa-key-pair")
+    String type();
+  }
+
+  interface QuarkusActiveRolesProviderConfiguration extends ActiveRolesProviderConfiguration {
+
+    /**
+     * The type of the active roles provider. Must be a registered {@link
+     * org.apache.polaris.service.auth.ActiveRolesProvider} identifier.
+     */
+    @WithDefault("default")
     String type();
   }
 }
