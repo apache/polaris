@@ -19,7 +19,9 @@
 
 package org.apache.polaris.core.policy.content;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.Strings;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +39,7 @@ public class AccessControlPolicyContent implements PolicyContent {
   // Iceberg expressions without context functions for now.
   // Use a custom deserializer for the list of Iceberg Expressions
   @JsonDeserialize(using = IcebergExpressionListDeserializer.class)
+  @JsonSerialize(using = IcebergExpressionListSerializer.class)
   private List<Expression> rowFilters;
 
   private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
@@ -62,6 +65,17 @@ public class AccessControlPolicyContent implements PolicyContent {
     }
 
     return policy;
+  }
+
+  public static String toString(AccessControlPolicyContent content) {
+    if (content == null) {
+      return null;
+    }
+    try {
+      return PolicyContentUtil.MAPPER.writeValueAsString(content);
+    } catch (JsonProcessingException e) {
+      throw new InvalidPolicyException("Failed to convert policy content to JSON string", e);
+    }
   }
 
   // Constructors, getters, and setters

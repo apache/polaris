@@ -25,9 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.polaris.core.policy.content.AccessControlPolicyContent;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -67,6 +70,44 @@ class AccessControlPolicyContentTest {
     Expression filter2 = policy.getRowFilters().get(1);
     assertEquals("ref(name=\"country\") == \"USA\"", filter1.toString());
     assertEquals("ref(name=\"name\") == \"PK\"", filter2.toString());
+  }
+
+  @Test
+  @DisplayName(
+      "Should deserialize a full policy with all fields correctly - with context variables")
+  void testFromString_fullPolicy_withContextVariable() {
+    String jsonContent =
+        "{\n"
+            + "  \"principalRole\": \"ANALYST\",\n"
+            + "  \"columnProjections\": [\"name\", \"location\"],\n"
+            + "  \"rowFilters\": [\n"
+            + "    {\n"
+            + "      \"type\": \"eq\",\n"
+            + "      \"term\": \"country\",\n"
+            + "      \"value\": \"USA\"\n"
+            + "    },\n"
+            + "    {\n"
+            + "      \"type\": \"eq\",\n"
+            + "      \"term\": \"$current_principal_role\",\n"
+            + "      \"value\": \"PK\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+
+    AccessControlPolicyContent policy = AccessControlPolicyContent.fromString(jsonContent);
+
+    assertNotNull(policy);
+    assertEquals("ANALYST", policy.getPrincipalRole());
+    assertEquals(Arrays.asList("name", "location"), policy.getColumnProjections());
+
+    // Validate rowFilters
+    assertNotNull(policy.getRowFilters());
+    assertEquals(2, policy.getRowFilters().size());
+
+    Expression filter1 = policy.getRowFilters().get(0);
+    Expression filter2 = policy.getRowFilters().get(1);
+    assertEquals("ref(name=\"country\") == \"USA\"", filter1.toString());
+    assertEquals("ref(name=\"$current_principal_role\") == \"PK\"", filter2.toString());
   }
 
   @Test
@@ -187,6 +228,64 @@ class AccessControlPolicyContentTest {
         () -> {
           AccessControlPolicyContent.fromString(jsonContent);
         });
+  }
+
+  @Test
+  void testToString_basicPolicy() {
+    AccessControlPolicyContent policy = new AccessControlPolicyContent();
+    policy.setPrincipalRole("analyst");
+    policy.setAllowedColumns(Arrays.asList("col1", "col2"));
+    policy.setRowFilters(null);
+
+    String expectedJson =
+        "{\"principalRole\":\"analyst\",\"columnProjections\":[\"col1\",\"col2\"],\"rowFilters\":null}";
+    String actualJson = AccessControlPolicyContent.toString(policy);
+
+    assertEquals(expectedJson, actualJson);
+  }
+
+  @Test
+  void testToString_policyWithRowFilters() {
+    AccessControlPolicyContent policy = new AccessControlPolicyContent();
+    policy.setPrincipalRole("data_engineer");
+    policy.setAllowedColumns(List.of());
+
+    Expression filter1 = Expressions.equal("name", "Alice");
+    Expression filter2 = Expressions.greaterThan("age", 30);
+    policy.setRowFilters(Arrays.asList(filter1, filter2));
+
+    String expectedJson =
+        "{\"principalRole\":\"data_engineer\",\"columnProjections\":[],\"rowFilters\":[\"{\\\"type\\\":\\\"eq\\\",\\\"term\\\":\\\"name\\\",\\\"value\\\":\\\"Alice\\\"}\",\"{\\\"type\\\":\\\"gt\\\",\\\"term\\\":\\\"age\\\",\\\"value\\\":30}\"]}";
+
+    String actualJson = AccessControlPolicyContent.toString(policy);
+
+    assertEquals(expectedJson, actualJson);
+  }
+
+  @Test
+  void testToString_emptyPolicy() {
+    AccessControlPolicyContent policy = new AccessControlPolicyContent();
+    policy.setPrincipalRole(null);
+    policy.setAllowedColumns(List.of());
+    policy.setRowFilters(List.of());
+
+    String expectedJson = "{\"principalRole\":null,\"columnProjections\":[],\"rowFilters\":[]}";
+    String actualJson = AccessControlPolicyContent.toString(policy);
+
+    assertEquals(expectedJson, actualJson);
+  }
+
+  @Test
+  void testToString_nullInput() {
+    String actualJson = AccessControlPolicyContent.toString(null);
+    Assertions.assertNull(actualJson);
+  }
+
+  @Test
+  void testToString_exceptionHandling() {
+    AccessControlPolicyContent policy = new AccessControlPolicyContent();
+    policy.setAllowedColumns(Arrays.asList("id"));
+    Assertions.assertDoesNotThrow(() -> AccessControlPolicyContent.toString(policy));
   }
 
   @Test
