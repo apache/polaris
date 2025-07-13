@@ -102,6 +102,10 @@ public class PolicyValidators {
       case ORPHAN_FILE_REMOVAL:
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
 
+      case ACCESS_CONTROL:
+        // TODO: Add validator for attaching this only to table
+        return true;
+
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
         return false;

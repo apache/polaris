@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.policy;
 
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ACCESS_CONTROL;
 import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.CATALOG;
 
 import com.google.common.base.Strings;
@@ -57,7 +56,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.policy.content.AccessControlPolicyContent;
+import org.apache.polaris.core.policy.PolicyUtil;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -429,10 +428,10 @@ public class PolicyCatalog {
 
     return Stream.concat(
             nonInheritablePolicies.stream()
-                .filter(policy -> filterApplicablePolicy(policy))
+                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
                 .map(policy -> constructApplicablePolicy(policy, false)),
             inheritablePolicies.values().stream()
-                .filter(policy -> filterApplicablePolicy(policy))
+                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
                 .map(
                     policy ->
                         constructApplicablePolicy(
@@ -536,23 +535,7 @@ public class PolicyCatalog {
         .build();
   }
 
-  private boolean filterApplicablePolicy(PolicyEntity policyEntity) {
-    // check the type
-    if (policyEntity.getPolicyType().equals(ACCESS_CONTROL)) {
-      AccessControlPolicyContent content =
-          AccessControlPolicyContent.fromString(policyEntity.getContent());
-      String applicablePrincipal = content.getPrincipalRole();
-      return applicablePrincipal == null
-          || authenticatedPrincipal
-              .getActivatedPrincipalRoleNames()
-              .contains(content.getPrincipalRole());
-    }
-
-    return true;
-  }
-
-  private static ApplicablePolicy constructApplicablePolicy(
-      PolicyEntity policyEntity, boolean inherited) {
+  private ApplicablePolicy constructApplicablePolicy(PolicyEntity policyEntity, boolean inherited) {
     Namespace parentNamespace = policyEntity.getParentNamespace();
 
     return ApplicablePolicy.builder()
@@ -560,7 +543,9 @@ public class PolicyCatalog {
         .setInheritable(policyEntity.getPolicyType().isInheritable())
         .setName(policyEntity.getName())
         .setDescription(policyEntity.getDescription())
-        .setContent(policyEntity.getContent())
+        .setContent(
+            PolicyUtil.replaceContextVariable(
+                policyEntity.getContent(), policyEntity.getPolicyType(), authenticatedPrincipal))
         .setVersion(policyEntity.getPolicyVersion())
         .setInherited(inherited)
         .setNamespace(Arrays.asList(parentNamespace.levels()))
