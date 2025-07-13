@@ -72,7 +72,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   @Override
   protected void initializeCatalog() {
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.policyCatalog =
+        new PolicyCatalog(metaStoreManager, securityContext, callContext, this.resolutionManifest);
   }
 
   public ListPoliciesResponse listPolicies(Namespace parent, PolicyType policyType) {

@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.content.AccessControlPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
@@ -65,6 +66,9 @@ public class PolicyValidators {
         break;
       case ORPHAN_FILE_REMOVAL:
         OrphanFileRemovalPolicyContent.fromString(policy.getContent());
+        break;
+      case ACCESS_CONTROL:
+        AccessControlPolicyContent.fromString(policy.getContent());
         break;
       default:
         throw new IllegalArgumentException("Unsupported policy type: " + type.getName());

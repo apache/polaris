@@ -20,10 +20,12 @@ package org.apache.polaris.service.catalog.policy;
 
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ACCESS_CONTROL;
 import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.CATALOG;
 
 import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -54,6 +57,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.content.AccessControlPolicyContent;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -70,6 +74,7 @@ public class PolicyCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalog.class);
 
   private final CallContext callContext;
+  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private long catalogId = -1;
@@ -77,9 +82,12 @@ public class PolicyCatalog {
 
   public PolicyCatalog(
       PolarisMetaStoreManager metaStoreManager,
+      SecurityContext securityContext,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
+    this.authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
@@ -420,8 +428,11 @@ public class PolicyCatalog {
     }
 
     return Stream.concat(
-            nonInheritablePolicies.stream().map(policy -> constructApplicablePolicy(policy, false)),
+            nonInheritablePolicies.stream()
+                .filter(policy -> filterApplicablePolicy(policy))
+                .map(policy -> constructApplicablePolicy(policy, false)),
             inheritablePolicies.values().stream()
+                .filter(policy -> filterApplicablePolicy(policy))
                 .map(
                     policy ->
                         constructApplicablePolicy(
@@ -523,6 +534,21 @@ public class PolicyCatalog {
         .setContent(policyEntity.getContent())
         .setVersion(policyEntity.getPolicyVersion())
         .build();
+  }
+
+  private boolean filterApplicablePolicy(PolicyEntity policyEntity) {
+    // check the type
+    if (policyEntity.getPolicyType().equals(ACCESS_CONTROL)) {
+      AccessControlPolicyContent content =
+          AccessControlPolicyContent.fromString(policyEntity.getContent());
+      String applicablePrincipal = content.getPrincipalRole();
+      return applicablePrincipal == null
+          || authenticatedPrincipal
+              .getActivatedPrincipalRoleNames()
+              .contains(content.getPrincipalRole());
+    }
+
+    return true;
   }
 
   private static ApplicablePolicy constructApplicablePolicy(

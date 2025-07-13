@@ -20,6 +20,7 @@ package org.apache.polaris.core.policy.content;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.iceberg.rest.RESTSerializers;
 
 public class PolicyContentUtil {
   public static final ObjectMapper MAPPER = configureMapper();
@@ -30,6 +31,8 @@ public class PolicyContentUtil {
     mapper.configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true);
     // Fails if a required field is present but explicitly null, e.g., {"enable": null}
     mapper.configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true);
+    // This will make sure all the Iceberg parsers are loaded.
+    RESTSerializers.registerAll(mapper);
     return mapper;
   }
 }
