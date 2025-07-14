@@ -20,7 +20,7 @@
 services:
 
   polaris:
-    image: apache/polaris:1.1.0-incubating-SNAPSHOT
+    image: apache/polaris:latest
     ports:
       # API port
       - "8181:8181"
