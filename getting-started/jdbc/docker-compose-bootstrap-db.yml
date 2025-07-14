@@ -19,7 +19,7 @@
 
 services:
   polaris-bootstrap:
-    image: apache/polaris-admin-tool:postgres-latest
+    image: apache/polaris-admin-tool:1.1.0-incubating-SNAPSHOT
     environment:
       - POLARIS_PERSISTENCE_TYPE=relational-jdbc
       - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}

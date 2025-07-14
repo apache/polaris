@@ -20,7 +20,7 @@
 services:
 
   polaris:
-    image: apache/polaris:postgres-latest
+    image: apache/polaris:1.1.0-incubating-SNAPSHOT
     ports:
       # API port
       - "8181:8181"

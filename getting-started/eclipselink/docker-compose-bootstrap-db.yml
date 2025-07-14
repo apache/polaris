@@ -20,7 +20,7 @@
 services:
   polaris-bootstrap:
     # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
-    image: apache/polaris-admin-tool:postgres-latest
+    image: apache/polaris-admin-tool:1.1.0-incubating-SNAPSHOT
     environment:
       polaris.persistence.type: eclipse-link
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
