@@ -30,38 +30,58 @@ for arg in "$@"; do
   fi
 done
 
+# --- Client Setup Logic ---
+
 # Check if the python client needs regeneration
 if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
+  echo "--> Regenerating Python client from specification..."
   "${dir}/gradlew" regeneratePythonClient
 fi
 
+# Check if the virtual environment needs to be created or repaired
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
-  rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
-
   if [ ! -d "${dir}/polaris-venv" ]; then
-    echo "Performing first-time setup for the Python client..."
+    echo "--> Performing first-time setup for the Python client..."
     python3 -m venv "${dir}"/polaris-venv
   else
-    echo "Repair dependencies for the Python client..."
+    echo "--> Repairing dependencies for the Python client..."
+    rm -rf "${dir}/polaris-venv"
+    python3 -m venv "${dir}"/polaris-venv
   fi
 
-  rm -f "${dir}"/poetry.lock
-  . "${dir}"/polaris-venv/bin/activate
-  pip install --upgrade pip
-  pip install --upgrade -r regtests/requirements.txt
+  source "${dir}"/polaris-venv/bin/activate
 
-  cp "${dir}"/client/python/pyproject.toml "${dir}"
-  pushd "$dir" && poetry install ; popd
+  echo "--> Upgrading pip in virtual environment..."
+  pip install --upgrade pip
+  
+  echo "--> Installing test requirements (including Poetry) into virtual environment..."
+  pip install -r "${dir}/regtests/requirements.txt"
+  
+  echo "--> Installing 'polaris' package using Poetry..."
+  (cd "${dir}/client/python" && poetry install)
 
   deactivate
 
-  if [ ! -d ${dir}/polaris-venv ]; then
-    echo "First time setup complete."
+  if [ ! -d "${dir}/polaris-venv" ]; then
+    echo "✅ First time setup complete."
   else
-    echo "Dependencies repaired."
+    echo "✅ Dependencies repaired."
   fi
 fi
 
-cd "$dir"
-env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
+# --- Execution Logic ---
+
+# Check if the correct virtual environment is already active, if not, activate it.
+if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir}/polaris-venv")" ]; then
+  echo "--> Activating virtual environment for CLI execution: source ${dir}/polaris-venv/bin/activate"
+  source "${dir}/polaris-venv/bin/activate"
+fi
+
+# Set SCRIPT_DIR to the project root for the Python CLI
+export SCRIPT_DIR="${dir}"
+echo "--> SCRIPT_DIR is set to: ${SCRIPT_DIR}"
+
+echo "--> Running Polaris CLI..."
+# Execute the 'polaris' command installed by Poetry within the venv
+exec polaris "$@"
