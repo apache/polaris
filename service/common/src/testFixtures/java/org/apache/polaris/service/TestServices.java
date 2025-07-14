@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -65,7 +66,6 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
-import org.assertj.core.util.TriFunction;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 
@@ -89,11 +89,7 @@ public record TestServices(
 
   @FunctionalInterface
   public interface FileIOFactorySupplier
-      extends TriFunction<
-          RealmEntityManagerFactory,
-          MetaStoreManagerFactory,
-          PolarisConfigurationStore,
-          FileIOFactory> {}
+      extends BiFunction<RealmEntityManagerFactory, MetaStoreManagerFactory, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -155,9 +151,9 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics, configurationStore);
+              storageIntegrationProvider, polarisDiagnostics);
       RealmEntityManagerFactory realmEntityManagerFactory =
-          new RealmEntityManagerFactory(metaStoreManagerFactory) {};
+          new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
@@ -178,8 +174,7 @@ public record TestServices(
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
       FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(
-              realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+          fileIOFactorySupplier.apply(realmEntityManagerFactory, metaStoreManagerFactory);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
@@ -196,7 +191,7 @@ public record TestServices(
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
+          new CatalogHandlerUtils(callContext.getRealmConfig());
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(

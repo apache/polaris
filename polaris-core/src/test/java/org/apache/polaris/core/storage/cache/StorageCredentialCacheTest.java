@@ -60,7 +60,7 @@ public class StorageCredentialCacheTest {
   // the meta store manager
   private final PolarisMetaStoreManager metaStoreManager;
 
-  StorageCredentialCache storageCredentialCache;
+  private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
     // diag services
@@ -76,7 +76,7 @@ public class StorageCredentialCacheTest {
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache(callCtx.getConfigurationStore());
+    return new StorageCredentialCache();
   }
 
   @Test

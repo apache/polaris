@@ -80,11 +80,7 @@ public class PolarisEndpoints {
   public static Set<Endpoint> getSupportedGenericTableEndpoints(CallContext callContext) {
     // add the generic table endpoints as supported endpoints if generic table feature is enabled.
     boolean genericTableEnabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
+        callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
 
     return genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
   }
@@ -95,11 +91,7 @@ public class PolarisEndpoints {
    */
   public static Set<Endpoint> getSupportedPolicyEndpoints(CallContext callContext) {
     boolean policyStoreEnabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(), FeatureConfiguration.ENABLE_POLICY_STORE);
+        callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
     return policyStoreEnabled ? POLICY_STORE_ENDPOINTS : ImmutableSet.of();
   }
 }

@@ -31,7 +31,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -57,16 +56,13 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
   private final RealmEntityManagerFactory realmEntityManagerFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final PolarisConfigurationStore configurationStore;
 
   @Inject
   public DefaultFileIOFactory(
       RealmEntityManagerFactory realmEntityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore) {
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     this.realmEntityManagerFactory = realmEntityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.configurationStore = configurationStore;
   }
 
   @Override
@@ -95,7 +91,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
                     callContext,
                     entityManager,
                     credentialVendor,
-                    configurationStore,
                     identifier,
                     tableLocations,
                     storageActions,

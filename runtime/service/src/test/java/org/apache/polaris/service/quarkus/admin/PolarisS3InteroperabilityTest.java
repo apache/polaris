@@ -76,7 +76,7 @@ public class PolarisS3InteroperabilityTest {
 
   public PolarisS3InteroperabilityTest() {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (entityManagerFactory, metaStoreManagerFactory, configurationStore) ->
+        (entityManagerFactory, metaStoreManagerFactory) ->
             (FileIOFactory)
                 (callContext,
                     ioImplClassName,
