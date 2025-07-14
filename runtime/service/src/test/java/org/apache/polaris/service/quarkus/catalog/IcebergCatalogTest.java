@@ -126,6 +126,7 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
@@ -237,6 +238,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisDiagnostics diagServices;
@@ -287,7 +289,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             configurationStore,
             Clock.systemDefaultZone());
 
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = new StorageCredentialCache(storageCredentialCacheConfig);
 
     entityManager =
         new PolarisEntityManager(

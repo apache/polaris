@@ -46,15 +46,13 @@ public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
-
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache() {
+  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
     cache =
         Caffeine.newBuilder()
-            .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
+            .maximumSize(cacheConfig.maxEntryCount())
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
