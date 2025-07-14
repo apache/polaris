@@ -46,8 +46,10 @@ COPY ./regtests/requirements.txt /tmp/
 RUN python3 -m venv /home/spark/polaris/polaris-venv && \
     . /home/spark/polaris/polaris-venv/bin/activate && \
     pip install -r /tmp/requirements.txt && \
+    cd /home/spark/polaris/client/python && \
+    poetry install && \
     deactivate \
-    ./regtests/setup.sh
+    /home/spark/polaris/regtests/setup.sh
 
 COPY --chown=spark ./regtests /home/spark/polaris/regtests
 
