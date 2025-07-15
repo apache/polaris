@@ -58,4 +58,14 @@ public interface FileIOFactory {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath);
+
+  static FileIOFactory wrapExisting(FileIO fileIO) {
+    return (callContext,
+        ioImplClassName,
+        properties,
+        identifier,
+        tableLocations,
+        storageActions,
+        resolvedEntityPath) -> fileIO;
+  }
 }
