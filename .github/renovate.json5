@@ -33,7 +33,6 @@
   // BE CAREFUL WITH THIS OPTION and make sure that the changes work.
   baseBranches: [
     "main",
-    "release/1.0.x",
   ],
   additionalBranchPrefix: "{{baseBranch}}/",
   commitMessagePrefix: "{{baseBranch}}: ",
