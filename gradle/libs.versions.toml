@@ -23,6 +23,7 @@ hadoop = "3.4.1"
 iceberg = "1.9.0" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
 quarkus = "3.23.3"
 immutables = "2.10.1"
+jmh = "1.37"
 picocli = "4.7.7"
 scala212 = "2.12.19"
 spark35 = "3.5.6"
@@ -71,6 +72,9 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
+jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
+jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
+jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.1" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.1" }
@@ -99,6 +103,8 @@ threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
 jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }
+jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.8.15" }
+jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
