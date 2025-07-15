@@ -16,25 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence;
+package org.apache.polaris.admintool.nosql;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Set;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.List;
+import java.util.Map;
+import org.apache.polaris.admintool.MongoTestResourceLifecycleManager;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface PersistenceConfiguration {
+public class NoSqlMongoProfile implements QuarkusTestProfile {
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return Map.of(
+        "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "MongoDb");
+  }
 
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
-
-  @WithDefault("in-memory,nosql")
-  Set<String> autoBootstrapTypes();
-
-  default boolean isAutoBootstrap() {
-    return autoBootstrapTypes().contains(type());
+  @Override
+  public List<TestResourceEntry> testResources() {
+    return List.of(new TestResourceEntry(MongoTestResourceLifecycleManager.class));
   }
 }

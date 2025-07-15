@@ -16,12 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.iceberg;
+package org.apache.polaris.service.catalog.generic;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import jakarta.inject.Inject;
+import java.util.List;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.service.catalog.Profiles;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
-public class IcebergCatalogHandlerAuthzTest extends AbstractIcebergCatalogHandlerAuthzTest {}
+@TestProfile(Profiles.DefaultNoSqlProfile.class)
+public class PolarisGenericTableCatalogNoSqlInMemTest
+    extends AbstractPolarisGenericTableCatalogTest {
+
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+
+  @Override
+  protected void bootstrapRealm(String realmName) {
+    metaStoreManagerFactory
+        .bootstrapRealms(
+            List.of(realmName),
+            RootCredentialsSet.fromList(List.of(realmName + ",aClientId,aSecret")))
+        .get(realmName);
+  }
+}

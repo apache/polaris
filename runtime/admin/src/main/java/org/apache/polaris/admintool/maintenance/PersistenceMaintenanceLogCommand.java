@@ -16,25 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence;
+package org.apache.polaris.admintool.maintenance;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Set;
+import picocli.CommandLine;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface PersistenceConfiguration {
+@CommandLine.Command(
+    name = "log",
+    mixinStandardHelpOptions = true,
+    description = "Show Polaris persistence maintenance log.")
+public class PersistenceMaintenanceLogCommand extends BaseMaintenanceCommand {
+  @Override
+  public Integer call() {
+    checkInMemory();
 
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
+    var infos = maintenanceService.maintenanceRunLog();
+    var out = spec.commandLine().getOut();
 
-  @WithDefault("in-memory,nosql")
-  Set<String> autoBootstrapTypes();
+    out.println("Recorded Polaris persistence maintenance runs:");
+    if (!infos.isEmpty()) {
+      infos.forEach(i -> printRunInformation(i, false));
+    } else {
+      out.println("(none)");
+    }
 
-  default boolean isAutoBootstrap() {
-    return autoBootstrapTypes().contains(type());
+    return 0;
   }
 }
