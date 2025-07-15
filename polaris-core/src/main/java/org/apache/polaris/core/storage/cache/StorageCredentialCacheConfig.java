@@ -21,5 +21,5 @@ package org.apache.polaris.core.storage.cache;
 
 public interface StorageCredentialCacheConfig {
 
-  long maxEntryCount();
+  long maxEntries();
 }

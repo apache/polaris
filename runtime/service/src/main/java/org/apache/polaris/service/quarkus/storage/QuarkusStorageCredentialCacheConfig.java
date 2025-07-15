@@ -27,9 +27,9 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 
 @ConfigMapping(prefix = "polaris.storage-credential-cache")
 public interface QuarkusStorageCredentialCacheConfig extends StorageCredentialCacheConfig {
-  @WithName("max-entry-count")
+  @WithName("max-entries")
   @WithDefault("10000")
   @Min(0)
   @Override
-  long maxEntryCount();
+  long maxEntries();
 }

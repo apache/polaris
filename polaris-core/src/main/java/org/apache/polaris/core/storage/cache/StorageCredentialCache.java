@@ -52,7 +52,7 @@ public class StorageCredentialCache {
   public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
     cache =
         Caffeine.newBuilder()
-            .maximumSize(cacheConfig.maxEntryCount())
+            .maximumSize(cacheConfig.maxEntries())
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
