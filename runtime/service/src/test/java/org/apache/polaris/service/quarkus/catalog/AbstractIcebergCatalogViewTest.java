@@ -22,9 +22,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -58,7 +55,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -89,32 +85,20 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
-@QuarkusTest
-@TestProfile(IcebergCatalogViewTest.Profile.class)
-public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
-  public static class Profile implements QuarkusTestProfile {
-
+  public static class Profile extends Profiles.DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_WILDCARD_LOCATION\"",
-          "true",
-          "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
-          "true",
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\"]",
-          "polaris.event-listener.type",
-          "test",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
+          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
+          .build();
     }
   }
 
@@ -159,12 +143,15 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     field.set(this, tempDir);
   }
 
+  protected void bootstrapRealm(String realmName) {}
+
   @BeforeEach
   public void before(TestInfo testInfo) {
     realmName =
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    bootstrapRealm(realmName);
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
@@ -184,7 +171,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
         new PolarisEntityManager(
             metaStoreManager,
             storageCredentialCache,
-            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+            metaStoreManagerFactory.getOrCreateEntityCache(
+                polarisContext.getRealmContext(), polarisContext.getRealmConfig()));
 
     CallContext.setCurrentContext(polarisContext);
 
