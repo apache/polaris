@@ -114,7 +114,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     verify(polarisMetaStoreManager, times(1))
         .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
     verify(polarisMetaStoreManager, times(0))
-            .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBufferRealm2));
+        .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBufferRealm2));
   }
 
   @Test
