@@ -85,7 +85,7 @@ public interface StorageConfiguration {
       return StaticCredentialsProvider.create(
           AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
     } else {
-      return DefaultCredentialsProvider.create();
+      return DefaultCredentialsProvider.builder().build();
     }
   }
 
