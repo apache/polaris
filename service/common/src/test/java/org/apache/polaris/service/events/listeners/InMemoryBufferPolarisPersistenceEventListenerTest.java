@@ -99,7 +99,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
   public void testAddToBufferFlushesAfterMaxEvents() {
     String realm1 = "realm1";
     List<PolarisEvent> eventsAddedToBuffer = addEventsWithoutTriggeringFlush(realm1);
-    addEventsWithoutTriggeringFlush("realm2");
+    List<PolarisEvent> eventsAddedToBufferRealm2 = addEventsWithoutTriggeringFlush("realm2");
 
     // Add the last event for realm1 and verify that it did trigger the flush
     PolarisEvent triggeringEvent = createSampleEvent();
@@ -108,16 +108,13 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     eventListener.addToBuffer(triggeringEvent, callContext);
     eventsAddedToBuffer.add(triggeringEvent);
 
-    // Given the call to checkAndFlushBufferIfNecessary is async, the calling thread should not have
-    // blocked and nothing would've been done immediately
-    verify(polarisMetaStoreManager, times(0))
-        .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
-
     // Calling checkAndFlushBufferIfNecessary manually to replicate the behavior of the executor
     // service
     eventListener.checkAndFlushBufferIfNecessary(realm1);
-    verify(polarisMetaStoreManager, times(0))
+    verify(polarisMetaStoreManager, times(1))
         .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
+    verify(polarisMetaStoreManager, times(0))
+            .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBufferRealm2));
   }
 
   @Test
