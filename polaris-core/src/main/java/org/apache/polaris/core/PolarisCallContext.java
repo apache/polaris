@@ -19,11 +19,10 @@
 package org.apache.polaris.core;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.UUID;
-
-import jakarta.ws.rs.container.ContainerRequestContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -87,7 +86,7 @@ public class PolarisCallContext implements CallContext {
         diagServices,
         new PolarisConfigurationStore() {},
         Clock.system(ZoneId.systemDefault()),
-            null);
+        null);
   }
 
   public BasePersistence getMetaStore() {

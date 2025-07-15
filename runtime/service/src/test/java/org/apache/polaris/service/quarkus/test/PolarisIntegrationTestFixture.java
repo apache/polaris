@@ -119,7 +119,7 @@ public class PolarisIntegrationTestFixture {
             helper.diagServices,
             helper.configurationStore,
             helper.clock,
-                null);
+            null);
     try {
       PolarisMetaStoreManager metaStoreManager =
           helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);

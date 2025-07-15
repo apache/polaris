@@ -25,4 +25,5 @@ import org.apache.iceberg.catalog.TableIdentifier;
  *
  * @param viewIdentifier The identifier of the view that was refreshed.
  */
-public record AfterViewRefreshedEvent(String eventId, TableIdentifier viewIdentifier) implements PolarisEvent {}
+public record AfterViewRefreshedEvent(String eventId, TableIdentifier viewIdentifier)
+    implements PolarisEvent {}

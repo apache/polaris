@@ -34,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -52,7 +51,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Clock clock;
 
-  private final ConcurrentHashMap<String, ConcurrentLinkedQueue<EventAndContext>> buffer = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, ConcurrentLinkedQueue<EventAndContext>> buffer =
+      new ConcurrentHashMap<>();
   private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
   private final ConcurrentHashMap<Future<?>, Integer> futures = new ConcurrentHashMap<>();
   private final Duration timeToFlush;
@@ -75,7 +75,9 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   @PostConstruct
   void start() {
     futures.put(
-        executor.scheduleAtFixedRate(this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS), 1);
+        executor.scheduleAtFixedRate(
+            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS),
+        1);
   }
 
   void runCleanup() {
@@ -104,7 +106,9 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   void addToBuffer(PolarisEvent polarisEvent, CallContext callCtx) {
     String realmId = callCtx.getRealmContext().getRealmIdentifier();
 
-    buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueue<>()).add(new EventAndContext(polarisEvent, callCtx.getPolarisCallContext().copy()));
+    buffer
+        .computeIfAbsent(realmId, k -> new ConcurrentLinkedQueue<>())
+        .add(new EventAndContext(polarisEvent, callCtx.getPolarisCallContext().copy()));
     futures.put(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId)), 1);
   }
 
@@ -115,7 +119,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
       return;
     }
 
-    // Given that we are using a ConcurrentLinkedQueue, this should not lock any calls to `add` on the queue.
+    // Given that we are using a ConcurrentLinkedQueue, this should not lock any calls to `add` on
+    // the queue.
     synchronized (queue) {
       // Double-check inside synchronized block
       if (queue.isEmpty()) {
@@ -137,7 +142,11 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
           return;
         }
 
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(() -> realmId).writeEvents(head.callContext(), new ArrayList<>(queue.stream().map(EventAndContext::polarisEvent).toList()));
+        metaStoreManagerFactory
+            .getOrCreateMetaStoreManager(() -> realmId)
+            .writeEvents(
+                head.callContext(),
+                new ArrayList<>(queue.stream().map(EventAndContext::polarisEvent).toList()));
       }
     }
   }

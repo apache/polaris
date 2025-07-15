@@ -1974,7 +1974,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Nonnull
   @Override
-  public void writeEvents(@Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+  public void writeEvents(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 

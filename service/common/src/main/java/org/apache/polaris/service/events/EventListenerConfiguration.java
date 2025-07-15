@@ -26,6 +26,7 @@ import java.util.Optional;
  * Configuration for event listeners.
  *
  * <p>bufferTime() specifies the buffer time in milliseconds.
+ *
  * <p>maxBufferSize() specifies the maximum number of cached entries.
  */
 public interface EventListenerConfiguration {

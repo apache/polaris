@@ -20,7 +20,6 @@ package org.apache.polaris.service.quarkus.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-
 import java.time.Duration;
 import java.util.Optional;
 import org.apache.polaris.service.events.EventListenerConfiguration;

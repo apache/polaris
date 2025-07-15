@@ -285,7 +285,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone(),
-                null);
+            null);
 
     entityManager =
         new PolarisEntityManager(

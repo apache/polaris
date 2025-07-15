@@ -175,7 +175,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone(),
-                null);
+            null);
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(

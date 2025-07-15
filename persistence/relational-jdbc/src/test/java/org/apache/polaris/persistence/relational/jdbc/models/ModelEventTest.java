@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
@@ -53,7 +52,8 @@ public class ModelEventTest {
   private static final String TEST_EVENT_TYPE = "CREATE";
   private static final long TEST_TIMESTAMP_MS = 1234567890L;
   private static final String TEST_USER = "test-user";
-  private static final PolarisEvent.ResourceType TEST_RESOURCE_TYPE = PolarisEvent.ResourceType.TABLE;
+  private static final PolarisEvent.ResourceType TEST_RESOURCE_TYPE =
+      PolarisEvent.ResourceType.TABLE;
   private static final String TEST_RESOURCE_TYPE_STRING = "TABLE";
   private static final String TEST_RESOURCE_IDENTIFIER = "test-table";
   private static final String EMPTY_JSON = "{}";
@@ -62,7 +62,8 @@ public class ModelEventTest {
   // Dummy values for test initialization
   private static final String DUMMY = "dummy";
   private static final long DUMMY_TIMESTAMP = 0L;
-  private static final PolarisEvent.ResourceType DUMMY_RESOURCE_TYPE = PolarisEvent.ResourceType.CATALOG;
+  private static final PolarisEvent.ResourceType DUMMY_RESOURCE_TYPE =
+      PolarisEvent.ResourceType.CATALOG;
 
   @Test
   public void testFromResultSet() throws SQLException {
@@ -79,17 +80,18 @@ public class ModelEventTest {
     when(mockResultSet.getString(ADDITIONAL_PARAMETERS)).thenReturn(EMPTY_JSON);
 
     // Create a concrete implementation of ModelEvent for testing
-    ModelEvent modelEvent = ImmutableModelEvent.builder()
-        .catalogId(DUMMY)
-        .eventId(DUMMY)
-        .requestId(DUMMY)
-        .eventType(DUMMY)
-        .timestampMs(DUMMY_TIMESTAMP)
-        .principalName(DUMMY)
-        .resourceType(DUMMY_RESOURCE_TYPE)
-        .resourceIdentifier(DUMMY)
-        .additionalParameters(EMPTY_JSON)
-        .build();
+    ModelEvent modelEvent =
+        ImmutableModelEvent.builder()
+            .catalogId(DUMMY)
+            .eventId(DUMMY)
+            .requestId(DUMMY)
+            .eventType(DUMMY)
+            .timestampMs(DUMMY_TIMESTAMP)
+            .principalName(DUMMY)
+            .resourceType(DUMMY_RESOURCE_TYPE)
+            .resourceIdentifier(DUMMY)
+            .additionalParameters(EMPTY_JSON)
+            .build();
 
     // Act
     PolarisEvent result = modelEvent.fromResultSet(mockResultSet);
@@ -109,17 +111,18 @@ public class ModelEventTest {
   @Test
   public void testToMapWithH2DatabaseType() {
     // Arrange
-    ModelEvent modelEvent = ImmutableModelEvent.builder()
-        .catalogId(TEST_CATALOG_ID)
-        .eventId(TEST_EVENT_ID)
-        .requestId(TEST_REQUEST_ID)
-        .eventType(TEST_EVENT_TYPE)
-        .timestampMs(TEST_TIMESTAMP_MS)
-        .principalName(TEST_USER)
-        .resourceType(TEST_RESOURCE_TYPE)
-        .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-        .additionalParameters(TEST_JSON)
-        .build();
+    ModelEvent modelEvent =
+        ImmutableModelEvent.builder()
+            .catalogId(TEST_CATALOG_ID)
+            .eventId(TEST_EVENT_ID)
+            .requestId(TEST_REQUEST_ID)
+            .eventType(TEST_EVENT_TYPE)
+            .timestampMs(TEST_TIMESTAMP_MS)
+            .principalName(TEST_USER)
+            .resourceType(TEST_RESOURCE_TYPE)
+            .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
+            .additionalParameters(TEST_JSON)
+            .build();
 
     // Act
     Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2);
@@ -139,17 +142,18 @@ public class ModelEventTest {
   @Test
   public void testToMapWithPostgresType() {
     // Arrange
-    ModelEvent modelEvent = ImmutableModelEvent.builder()
-        .catalogId(TEST_CATALOG_ID)
-        .eventId(TEST_EVENT_ID)
-        .requestId(TEST_REQUEST_ID)
-        .eventType(TEST_EVENT_TYPE)
-        .timestampMs(TEST_TIMESTAMP_MS)
-        .principalName(TEST_USER)
-        .resourceType(TEST_RESOURCE_TYPE)
-        .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-        .additionalParameters(TEST_JSON)
-        .build();
+    ModelEvent modelEvent =
+        ImmutableModelEvent.builder()
+            .catalogId(TEST_CATALOG_ID)
+            .eventId(TEST_EVENT_ID)
+            .requestId(TEST_REQUEST_ID)
+            .eventType(TEST_EVENT_TYPE)
+            .timestampMs(TEST_TIMESTAMP_MS)
+            .principalName(TEST_USER)
+            .resourceType(TEST_RESOURCE_TYPE)
+            .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
+            .additionalParameters(TEST_JSON)
+            .build();
 
     // Act
     Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.POSTGRES);
@@ -182,15 +186,16 @@ public class ModelEventTest {
   @Test
   public void testFromEvent() {
     // Arrange
-    PolarisEvent polarisEvent = new PolarisEvent(
-        TEST_CATALOG_ID,
-        TEST_EVENT_ID,
-        TEST_REQUEST_ID,
-        TEST_EVENT_TYPE,
-        TEST_TIMESTAMP_MS,
-        TEST_USER,
-        TEST_RESOURCE_TYPE,
-        TEST_RESOURCE_IDENTIFIER);
+    PolarisEvent polarisEvent =
+        new PolarisEvent(
+            TEST_CATALOG_ID,
+            TEST_EVENT_ID,
+            TEST_REQUEST_ID,
+            TEST_EVENT_TYPE,
+            TEST_TIMESTAMP_MS,
+            TEST_USER,
+            TEST_RESOURCE_TYPE,
+            TEST_RESOURCE_IDENTIFIER);
     polarisEvent.setAdditionalParameters(TEST_JSON);
 
     // Act
@@ -220,17 +225,18 @@ public class ModelEventTest {
   @Test
   public void testToEvent() {
     // Arrange
-    ModelEvent modelEvent = ImmutableModelEvent.builder()
-        .catalogId(TEST_CATALOG_ID)
-        .eventId(TEST_EVENT_ID)
-        .requestId(TEST_REQUEST_ID)
-        .eventType(TEST_EVENT_TYPE)
-        .timestampMs(TEST_TIMESTAMP_MS)
-        .principalName(TEST_USER)
-        .resourceType(TEST_RESOURCE_TYPE)
-        .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-        .additionalParameters(TEST_JSON)
-        .build();
+    ModelEvent modelEvent =
+        ImmutableModelEvent.builder()
+            .catalogId(TEST_CATALOG_ID)
+            .eventId(TEST_EVENT_ID)
+            .requestId(TEST_REQUEST_ID)
+            .eventType(TEST_EVENT_TYPE)
+            .timestampMs(TEST_TIMESTAMP_MS)
+            .principalName(TEST_USER)
+            .resourceType(TEST_RESOURCE_TYPE)
+            .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
+            .additionalParameters(TEST_JSON)
+            .build();
 
     // Act
     PolarisEvent result = ModelEvent.toEvent(modelEvent);

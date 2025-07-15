@@ -245,14 +245,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     try {
       // Generate the SQL using the first event as the reference
-      PreparedQuery firstPreparedQuery = QueryGenerator.generateInsertQuery(
+      PreparedQuery firstPreparedQuery =
+          QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
               ModelEvent.fromEvent(events.get(0))
-                      .toMap(datasourceOperations.getDatabaseType())
-                      .values()
-                      .stream()
-                      .toList(),
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
               realmId);
       String expectedSql = firstPreparedQuery.sql();
 
@@ -262,14 +263,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       // Process remaining events and verify SQL consistency
       for (int i = 1; i < events.size(); i++) {
         PolarisEvent event = events.get(i);
-        PreparedQuery pq = QueryGenerator.generateInsertQuery(
+        PreparedQuery pq =
+            QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
                 ModelEvent.fromEvent(event)
-                        .toMap(datasourceOperations.getDatabaseType())
-                        .values()
-                        .stream()
-                        .toList(),
+                    .toMap(datasourceOperations.getDatabaseType())
+                    .values()
+                    .stream()
+                    .toList(),
                 realmId);
 
         if (!expectedSql.equals(pq.sql())) {
@@ -279,7 +281,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         parametersList.add(pq.parameters());
       }
 
-      int totalUpdated = datasourceOperations.executeBatchUpdate(
+      int totalUpdated =
+          datasourceOperations.executeBatchUpdate(
               new QueryGenerator.PreparedBatchQuery(expectedSql, parametersList));
 
       if (totalUpdated == 0) {
@@ -287,7 +290,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       }
     } catch (SQLException e) {
       throw new RuntimeException(
-              String.format("Failed to write events due to %s", e.getMessage()), e);
+          String.format("Failed to write events due to %s", e.getMessage()), e);
     }
   }
 

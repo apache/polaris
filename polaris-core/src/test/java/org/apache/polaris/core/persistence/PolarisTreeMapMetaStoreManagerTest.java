@@ -42,7 +42,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault()),
-                null);
+            null);
 
     return new PolarisTestMetaStoreManager(new TransactionalMetaStoreManagerImpl(), callCtx);
   }

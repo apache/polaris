@@ -107,7 +107,7 @@ class TableCleanupTaskHandlerTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone(),
-                null);
+            null);
   }
 
   @Test

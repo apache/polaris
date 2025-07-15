@@ -102,7 +102,8 @@ public class DatasourceOperationsTest {
     // There is no way to track how many statements are in a batch, so we are testing how many times
     // `executeBatch` is being called
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    String sql = "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_parameters, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
+    String sql =
+        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_parameters, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
     List<List<Object>> queryParams = new ArrayList<>();
     for (int i = 0; i < 1000; i++) {
       ModelEvent modelEvent =
@@ -118,14 +119,17 @@ public class DatasourceOperationsTest {
               .additionalParameters("")
               .build();
       queryParams.add(
-              modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
+          modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
     }
     when(mockConnection.prepareStatement(any())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeBatch()).thenReturn(new int[] {100});
 
-    int result = datasourceOperations.executeBatchUpdate(new QueryGenerator.PreparedBatchQuery(sql, queryParams));
+    int result =
+        datasourceOperations.executeBatchUpdate(
+            new QueryGenerator.PreparedBatchQuery(sql, queryParams));
     assertEquals(
-        queryParams.size() + 100, result); // ExecuteBatch will be called once more than actual batches
+        queryParams.size() + 100,
+        result); // ExecuteBatch will be called once more than actual batches
   }
 
   @Test

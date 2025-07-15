@@ -22,8 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Clock;
-
-import jakarta.ws.rs.container.ContainerRequestContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;

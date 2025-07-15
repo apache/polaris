@@ -168,7 +168,7 @@ public class PolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone(),
-                null);
+            null);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,

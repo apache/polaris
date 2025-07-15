@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
-
 /**
  * Emitted before an attempt of an async task, such as manifest file cleanup, begins.
  *

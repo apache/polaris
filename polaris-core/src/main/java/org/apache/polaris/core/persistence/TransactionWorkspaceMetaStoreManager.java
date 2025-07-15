@@ -448,9 +448,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Nonnull
   @Override
-  public void writeEvents(@Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
-    callCtx
-            .getDiagServices()
-            .fail("illegal_method_in_transaction_workspace", "writeEvents");
+  public void writeEvents(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "writeEvents");
   }
 }

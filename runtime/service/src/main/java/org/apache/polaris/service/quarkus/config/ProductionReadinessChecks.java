@@ -202,7 +202,9 @@ public class ProductionReadinessChecks {
       PolarisEventListener polarisEventListener) {
     if (polarisEventListener instanceof TestPolarisEventListener) {
       return ProductionReadinessCheck.of(
-          Error.of("TestPolarisEventListener is intended for tests only.", "polaris.event-listener.type"));
+          Error.of(
+              "TestPolarisEventListener is intended for tests only.",
+              "polaris.event-listener.type"));
     }
     return ProductionReadinessCheck.OK;
   }

@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
-
 /**
  * Emitted after an attempt of an async task, such as manifest file cleanup, finishes.
  *
@@ -29,5 +27,4 @@ import org.apache.polaris.core.context.CallContext;
  * @param success Whether the attempt succeeded.
  */
 public record AfterTaskAttemptedEvent(
-    String eventId, long taskEntityId, int attempt, boolean success)
-    implements PolarisEvent {}
+    String eventId, long taskEntityId, int attempt, boolean success) implements PolarisEvent {}
