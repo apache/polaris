@@ -238,11 +238,11 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, CATALOG_NAME);
+    RealmEntityManagerFactory realmEntityManagerFactory =
+        new RealmEntityManagerFactory(
+            metaStoreManagerFactory, configurationStore, storageCredentialCache);
     FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(
-            new RealmEntityManagerFactory(
-                metaStoreManagerFactory, configurationStore, storageCredentialCache),
-            metaStoreManagerFactory);
+        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
