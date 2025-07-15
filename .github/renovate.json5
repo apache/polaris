@@ -35,8 +35,6 @@
     "main",
     "release/1.0.x",
   ],
-  additionalBranchPrefix: "{{baseBranch}}/",
-  commitMessagePrefix: "{{baseBranch}}: ",
 
   pip_requirements: {
     // fileMatch default: (^|/)([\\w-]*)requirements\\.(txt|pip)$
