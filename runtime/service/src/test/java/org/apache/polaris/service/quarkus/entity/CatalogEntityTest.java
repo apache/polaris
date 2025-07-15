@@ -352,7 +352,6 @@ public class CatalogEntityTest {
     assertThat(MAPPER.writeValueAsString(b.build())).contains("roleArn");
     assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("endpoint");
     assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("stsEndpoint");
-    assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("pathStyleAccess");
 
     b.setEndpoint("http://s3.example.com");
     b.setStsEndpoint("http://sts.example.com");

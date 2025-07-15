@@ -46,6 +46,8 @@ at locations that better optimize for object storage.
 
 ### Changes
 
+- Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
+
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated in favor of
