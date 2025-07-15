@@ -43,6 +43,9 @@ public class QueryGenerator {
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
 
+  /** A container for the SQL string and a list of the ordered parameter values. */
+  public record PreparedBatchQuery(String sql, List<List<Object>> parametersList) {}
+
   /** A container for the query fragment SQL string and the ordered parameter values. */
   record QueryFragment(String sql, List<Object> parameters) {}
 
