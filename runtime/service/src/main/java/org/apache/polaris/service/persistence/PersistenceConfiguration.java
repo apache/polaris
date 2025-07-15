@@ -31,7 +31,7 @@ public interface PersistenceConfiguration {
    */
   String type();
 
-  @WithDefault("in-memory")
+  @WithDefault("in-memory,nosql")
   Set<String> autoBootstrapTypes();
 
   default boolean isAutoBootstrap() {

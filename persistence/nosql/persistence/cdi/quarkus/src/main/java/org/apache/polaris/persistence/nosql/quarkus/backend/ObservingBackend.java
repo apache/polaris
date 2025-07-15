@@ -50,7 +50,7 @@ import org.apache.polaris.persistence.nosql.api.ref.Reference;
 @ApplicationScoped
 @Default
 public class ObservingBackend implements Backend {
-  public static final String TELEMETRY_PREFIX = "polaris.persistence";
+  public static final String TELEMETRY_PREFIX = "polaris.persistence.nosql";
 
   private final Backend backend;
 
