@@ -66,7 +66,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   protected final MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
-  private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
+  protected PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
   @BeforeEach
   public void setupPolariMetaStoreManager() {
