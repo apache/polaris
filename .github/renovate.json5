@@ -79,13 +79,6 @@
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
     },
-
-    // Turn off major & minor version updates on version-branches
-    {
-      matchBaseBranches: ["/^release/.*/"],
-      matchUpdateTypes: ["major", "minor"],
-      enabled: false
-    },
   ],
 
   // Max 50 PRs in total, 5 per hour.
