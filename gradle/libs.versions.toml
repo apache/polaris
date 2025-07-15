@@ -47,7 +47,7 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
-eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.6" }
+eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.40.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.53.3" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
