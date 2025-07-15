@@ -85,7 +85,7 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/all-in-one:1.70.0
+    image: docker.io/jaegertracing/all-in-one:1.71.0
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"
