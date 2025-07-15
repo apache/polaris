@@ -26,6 +26,14 @@ description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
   ":polaris-async-api",
+  ":polaris-nodes-api",
+  ":polaris-persistence-nosql-api",
+  ":polaris-persistence-nosql-impl",
+  ":polaris-persistence-nosql-cdi-quarkus",
+  ":polaris-persistence-nosql-cdi-quarkus-distcache",
+  ":polaris-persistence-nosql-maintenance-api",
+  ":polaris-persistence-nosql-mongodb",
+  ":polaris-persistence-nosql-types",
   ":polaris-runtime-service",
   ":polaris-eclipselink",
 )
