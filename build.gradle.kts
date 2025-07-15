@@ -92,6 +92,11 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("logs/**")
   excludes.add("**/*.lock")
 
+  // Binary files
+  excludes.add(
+    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz"
+  )
+
   // Polaris service startup banner
   excludes.add("runtime/service/src/**/banner.txt")
 
