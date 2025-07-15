@@ -33,7 +33,6 @@
   // BE CAREFUL WITH THIS OPTION and make sure that the changes work.
   baseBranches: [
     "main",
-    "release/1.0.x",
   ],
 
   pip_requirements: {
@@ -77,13 +76,6 @@
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
-    },
-
-    // Turn off major & minor version updates on version-branches
-    {
-      matchBaseBranches: ["/^release/.*/"],
-      matchUpdateTypes: ["major", "minor"],
-      enabled: false
     },
   ],
 
