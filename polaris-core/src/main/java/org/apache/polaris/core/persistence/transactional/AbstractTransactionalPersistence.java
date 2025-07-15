@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -259,6 +260,11 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   public void writeToGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     runActionInTransaction(callCtx, () -> this.writeToGrantRecordsInCurrentTxn(callCtx, grantRec));
+  }
+
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    throw new UnsupportedOperationException("Not implemented for transactional persistence.");
   }
 
   /** {@inheritDoc} */

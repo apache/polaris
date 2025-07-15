@@ -42,8 +42,8 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.eclipse.microprofile.config.Config;
@@ -202,7 +202,7 @@ public class ProductionReadinessChecks {
       PolarisEventListener polarisEventListener) {
     if (polarisEventListener instanceof TestPolarisEventListener) {
       return ProductionReadinessCheck.of(
-          Error.of("TestPolarisEventListener is intended for tests only.", "polaris.events.type"));
+          Error.of("TestPolarisEventListener is intended for tests only.", "polaris.event-listener.type"));
     }
     return ProductionReadinessCheck.OK;
   }

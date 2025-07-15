@@ -30,4 +30,5 @@ import org.apache.iceberg.view.ViewMetadata;
  * @param metadata The new metadata.
  */
 public record AfterViewCommitedEvent(
-    TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}
+    String eventId, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+    implements PolarisEvent {}

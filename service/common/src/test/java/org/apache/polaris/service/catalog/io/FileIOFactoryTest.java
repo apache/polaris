@@ -142,7 +142,8 @@ public class FileIOFactoryTest {
             testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             testServices.polarisDiagnostics(),
             testServices.configurationStore(),
-            Clock.systemUTC());
+            Clock.systemUTC(),
+            null);
   }
 
   @AfterEach

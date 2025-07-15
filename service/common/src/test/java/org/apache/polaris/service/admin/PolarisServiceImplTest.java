@@ -40,6 +40,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -53,6 +55,7 @@ public class PolarisServiceImplTest {
   private CallContext callContext;
   private ReservedProperties reservedProperties;
   private RealmConfig realmConfig;
+  private PolarisEventListener polarisEventListener;
 
   private PolarisServiceImpl polarisService;
 
@@ -65,6 +68,7 @@ public class PolarisServiceImplTest {
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
     realmConfig = Mockito.mock(RealmConfig.class);
+    polarisEventListener = new NoOpPolarisEventListener();
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
@@ -80,7 +84,8 @@ public class PolarisServiceImplTest {
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties);
+            reservedProperties,
+            polarisEventListener);
   }
 
   @Test

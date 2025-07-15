@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
@@ -64,6 +65,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
@@ -232,6 +234,60 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to grant records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    if (events.isEmpty()) {
+      return; // or throw if empty list is invalid
+    }
+
+    try {
+      // Generate the SQL using the first event as the reference
+      PreparedQuery firstPreparedQuery = QueryGenerator.generateInsertQuery(
+              ModelEvent.ALL_COLUMNS,
+              ModelEvent.TABLE_NAME,
+              ModelEvent.fromEvent(events.get(0))
+                      .toMap(datasourceOperations.getDatabaseType())
+                      .values()
+                      .stream()
+                      .toList(),
+              realmId);
+      String expectedSql = firstPreparedQuery.sql();
+
+      List<List<Object>> parametersList = new ArrayList<>();
+      parametersList.add(firstPreparedQuery.parameters());
+
+      // Process remaining events and verify SQL consistency
+      for (int i = 1; i < events.size(); i++) {
+        PolarisEvent event = events.get(i);
+        PreparedQuery pq = QueryGenerator.generateInsertQuery(
+                ModelEvent.ALL_COLUMNS,
+                ModelEvent.TABLE_NAME,
+                ModelEvent.fromEvent(event)
+                        .toMap(datasourceOperations.getDatabaseType())
+                        .values()
+                        .stream()
+                        .toList(),
+                realmId);
+
+        if (!expectedSql.equals(pq.sql())) {
+          throw new RuntimeException("All events did not generate the same SQL");
+        }
+
+        parametersList.add(pq.parameters());
+      }
+
+      int totalUpdated = datasourceOperations.executeBatchUpdate(
+              new QueryGenerator.PreparedBatchQuery(expectedSql, parametersList));
+
+      if (totalUpdated == 0) {
+        throw new SQLException("No events were inserted.");
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(
+              String.format("Failed to write events due to %s", e.getMessage()), e);
     }
   }
 

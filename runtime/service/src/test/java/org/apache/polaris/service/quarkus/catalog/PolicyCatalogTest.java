@@ -89,7 +89,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.ApplicablePolicy;
@@ -193,7 +193,8 @@ public class PolicyCatalogTest {
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+                null);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,

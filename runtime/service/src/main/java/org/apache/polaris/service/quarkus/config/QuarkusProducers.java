@@ -63,7 +63,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationRealmConfiguration;
 import org.apache.polaris.service.quarkus.auth.external.tenant.OidcTenantResolver;
@@ -131,16 +131,17 @@ public class QuarkusProducers {
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      Clock clock) {
+      Clock clock,
+      ContainerRequestContext containerRequestContext) {
     BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     return new PolarisCallContext(
-        realmContext, metaStoreSession, diagServices, configurationStore, clock);
+        realmContext, metaStoreSession, diagServices, configurationStore, clock, containerRequestContext);
   }
 
   @Produces
   @RequestScoped
-  public RealmConfig realmContext(CallContext callContext) {
+  public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
   }
 

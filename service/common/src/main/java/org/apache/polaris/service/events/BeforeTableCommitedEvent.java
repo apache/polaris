@@ -26,10 +26,10 @@ import org.apache.iceberg.catalog.TableIdentifier;
  * of this event relative to the validation checks we've performed, which means the commit may still
  * fail Polaris-side validation checks.
  *
- * @param identifier The identifier.
+ * @param tableIdentifier The identifier.
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
 public record BeforeTableCommitedEvent(
-    TableIdentifier identifier, TableMetadata base, TableMetadata metadata)
+    String eventId, TableIdentifier tableIdentifier, TableMetadata base, TableMetadata metadata)
     implements PolarisEvent {}

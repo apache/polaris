@@ -24,9 +24,8 @@ import org.apache.polaris.core.context.CallContext;
  * Emitted before an attempt of an async task, such as manifest file cleanup, begins.
  *
  * @param taskEntityId The ID of the TaskEntity
- * @param callContext The CallContext the task is being executed under.
  * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
  *     initial (non-retried) attempt starts counting from 1.
  */
-public record BeforeTaskAttemptedEvent(long taskEntityId, CallContext callContext, int attempt)
+public record BeforeTaskAttemptedEvent(String eventId, long taskEntityId, int attempt)
     implements PolarisEvent {}

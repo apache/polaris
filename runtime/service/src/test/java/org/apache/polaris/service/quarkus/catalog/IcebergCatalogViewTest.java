@@ -73,8 +73,8 @@ import org.apache.polaris.service.events.AfterViewCommitedEvent;
 import org.apache.polaris.service.events.AfterViewRefreshedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.assertj.core.api.Assertions;
@@ -174,7 +174,8 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+                null);
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(

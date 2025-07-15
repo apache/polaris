@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -1969,5 +1970,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             .distinct()
             .collect(Collectors.toList());
     return ms.lookupEntities(callCtx, policyEntityIds);
+  }
+
+  @Nonnull
+  @Override
+  public void writeEvents(@Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    ms.writeEvents(polarisEvents);
   }
 }

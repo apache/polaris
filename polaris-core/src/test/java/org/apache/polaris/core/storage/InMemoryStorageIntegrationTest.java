@@ -111,7 +111,8 @@ class InMemoryStorageIntegrationTest {
                 return (T) config.get(configName);
               }
             },
-            Clock.systemUTC());
+            Clock.systemUTC(),
+            null);
     CallContext.setCurrentContext(polarisCallContext);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(

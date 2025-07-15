@@ -98,6 +98,9 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.AfterTableCreatedEvent;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -127,6 +130,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final PolarisEventListener polarisEventListener;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -147,13 +151,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      PolarisEventListener polarisEventListener) {
     super(callContext, entityManager, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.polarisEventListener = polarisEventListener;
   }
 
   /**
@@ -390,8 +396,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withWriteOrder(request.writeOrder())
             .setProperties(reservedProperties.removeReservedProperties(request.properties()))
             .build();
-    return catalogHandlerUtils.createTable(
-        baseCatalog, namespace, requestWithoutReservedProperties);
+    LoadTableResponse resp =
+        catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
+    polarisEventListener.onAfterTableCreated(
+        new AfterTableCreatedEvent(
+            PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), identifier),
+        callContext,
+        securityContext);
+    return resp;
   }
 
   /**
@@ -439,15 +451,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      return buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier,
-              tableMetadata,
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL)
-          .build();
+      LoadTableResponse resp =
+          buildLoadTableResponseWithDelegationCredentials(
+                  tableIdentifier,
+                  tableMetadata,
+                  Set.of(
+                      PolarisStorageActions.READ,
+                      PolarisStorageActions.WRITE,
+                      PolarisStorageActions.LIST),
+                  SNAPSHOTS_ALL)
+              .build();
+      polarisEventListener.onAfterTableCreated(
+          new AfterTableCreatedEvent(
+              PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), tableIdentifier),
+          callContext,
+          securityContext);
+      return resp;
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

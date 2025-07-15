@@ -106,7 +106,8 @@ class TableCleanupTaskHandlerTest {
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+                null);
   }
 
   @Test

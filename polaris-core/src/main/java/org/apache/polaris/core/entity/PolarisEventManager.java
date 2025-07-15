@@ -16,12 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.core.entity;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+import jakarta.annotation.Nonnull;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.persistence.BasePersistence;
+
+import java.util.List;
+
+public interface PolarisEventManager {
+    @Nonnull
+    default void writeEvents(@Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+        BasePersistence ms = callCtx.getMetaStore();
+        ms.writeEvents(polarisEvents);
+    }
+}

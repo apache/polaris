@@ -96,7 +96,8 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
             session,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            timeSource.withZone(ZoneId.systemDefault()),
+                null));
   }
 
   @ParameterizedTest
