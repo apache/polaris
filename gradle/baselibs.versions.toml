@@ -18,7 +18,7 @@
 #
 
 [libraries]
-errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "4.2.0" }
+errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "4.3.0" }
 idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.1.10" }
 license-report = { module = "com.github.jk1:gradle-license-report", version = "2.9" }
 nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version = "2.0.0" }
