@@ -19,11 +19,18 @@
 
 package org.apache.polaris.service.catalog;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.Map;
 
 public final class Profiles {
   private Profiles() {}
+
+  public static final Map<String, String> NOSQL_IN_MEM =
+      ImmutableMap.<String, String>builder()
+          .put("polaris.persistence.type", "nosql")
+          .put("polaris.persistence.backend.type", "InMemory")
+          .build();
 
   public static class DefaultProfile implements QuarkusTestProfile {
     @Override
@@ -39,6 +46,16 @@ public final class Profiles {
           "test",
           "polaris.readiness.ignore-severe-issues",
           "true");
+    }
+  }
+
+  public static class DefaultNoSqlProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .putAll(NOSQL_IN_MEM)
+          .build();
     }
   }
 }

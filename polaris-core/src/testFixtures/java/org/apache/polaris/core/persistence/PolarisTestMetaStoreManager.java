@@ -94,6 +94,14 @@ public class PolarisTestMetaStoreManager {
     this.doRetry = false;
   }
 
+  public PolarisCallContext polarisCallContext() {
+    return polarisCallContext;
+  }
+
+  public PolarisMetaStoreManager polarisMetaStoreManager() {
+    return polarisMetaStoreManager;
+  }
+
   public void forceRetry() {
     this.doRetry = true;
   }
