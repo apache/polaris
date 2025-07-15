@@ -16,25 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence;
+package org.apache.polaris.admintool.nosql;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Set;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.admintool.BootstrapCommandTestBase;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface PersistenceConfiguration {
-
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
-
-  @WithDefault("in-memory,nosql")
-  Set<String> autoBootstrapTypes();
-
-  default boolean isAutoBootstrap() {
-    return autoBootstrapTypes().contains(type());
-  }
-}
+@TestProfile(NoSqlMongoProfile.class)
+class NoSqlMongoBootstrapCommandTest extends BootstrapCommandTestBase {}

@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence;
+package org.apache.polaris.admintool.nosql;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Set;
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
+import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface PersistenceConfiguration {
+@TestProfile(NoSqlInMemoryPurgeCommandTest.Profile.class)
+class NoSqlInMemoryPurgeCommandTest extends PurgeCommandTestBase {
 
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
-
-  @WithDefault("in-memory,nosql")
-  Set<String> autoBootstrapTypes();
-
-  default boolean isAutoBootstrap() {
-    return autoBootstrapTypes().contains(type());
+  public static class Profile extends NoSqlInMemoryProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("pre-bootstrap", "true")
+          .build();
+    }
   }
 }
