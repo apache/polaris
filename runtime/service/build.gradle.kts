@@ -36,6 +36,11 @@ dependencies {
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
 
+  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -154,6 +159,10 @@ dependencies {
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("org.postgresql:postgresql")
+
+  testImplementation(project(":polaris-persistence-nosql-api"))
+  testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))
+  testImplementation(project(":polaris-persistence-nosql-impl"))
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
