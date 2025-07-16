@@ -51,7 +51,7 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.TestFileIOFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -74,7 +74,7 @@ class TableCleanupTaskHandlerTest {
   private final RealmContext realmContext = () -> "realmName";
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
-    return new TaskFileIOSupplier(FileIOFactory.wrapExisting(fileIO));
+    return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
   }
 
   @BeforeEach
