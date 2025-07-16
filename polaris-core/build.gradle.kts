@@ -36,6 +36,11 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-guava")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
   implementation(libs.caffeine)
   implementation(libs.commons.lang3)
   implementation(libs.commons.codec1)
@@ -59,7 +64,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.3") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.3.1") {
       because("Vulnerability detected in 9.8.1")
     }
   }
@@ -84,10 +89,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.2.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.3.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.7") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.8") {
       because("Vulnerability detected in 1.0.45")
     }
   }
@@ -95,6 +100,9 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-gcp")
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
+
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")

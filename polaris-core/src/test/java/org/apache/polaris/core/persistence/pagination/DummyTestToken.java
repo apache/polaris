@@ -18,25 +18,36 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.Optional;
+import java.util.OptionalInt;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-/**
- * A {@link PageToken} implementation for readers who want to read everything. The behavior when
- * using this token should be the same as when reading without a token.
- */
-public class ReadEverythingPageToken extends PageToken {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableDummyTestToken.class)
+@JsonDeserialize(as = ImmutableDummyTestToken.class)
+public interface DummyTestToken extends Token {
+  String ID = "test-dummy";
 
-  public static String PREFIX = "read-everything";
+  Optional<String> s();
 
-  public ReadEverythingPageToken() {}
+  OptionalInt i();
 
   @Override
-  public String toTokenString() {
-    return PREFIX;
+  default String getT() {
+    return ID;
   }
 
-  @Override
-  protected PageToken updated(List<?> newData) {
-    return new DonePageToken();
+  final class DummyTestTokenType implements TokenType {
+    @Override
+    public String id() {
+      return ID;
+    }
+
+    @Override
+    public Class<? extends Token> javaType() {
+      return DummyTestToken.class;
+    }
   }
 }

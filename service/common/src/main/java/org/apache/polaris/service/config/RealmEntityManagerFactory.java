@@ -28,6 +28,7 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,7 @@ public class RealmEntityManagerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisConfigurationStore configurationStore;
+  private final StorageCredentialCache storageCredentialCache;
 
   // Key: realmIdentifier
   private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
@@ -46,9 +48,11 @@ public class RealmEntityManagerFactory {
   @Inject
   public RealmEntityManagerFactory(
       MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore) {
+      PolarisConfigurationStore configurationStore,
+      StorageCredentialCache storageCredentialCache) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.configurationStore = configurationStore;
+    this.storageCredentialCache = storageCredentialCache;
   }
 
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
@@ -63,7 +67,7 @@ public class RealmEntityManagerFactory {
           RealmConfig realmConfig = new RealmConfigImpl(configurationStore, context);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              metaStoreManagerFactory.getOrCreateStorageCredentialCache(context, realmConfig),
+              storageCredentialCache,
               metaStoreManagerFactory.getOrCreateEntityCache(context, realmConfig));
         });
   }

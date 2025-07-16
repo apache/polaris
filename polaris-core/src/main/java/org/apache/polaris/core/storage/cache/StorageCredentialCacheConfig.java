@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
 
-/**
- * A light interface for {@link PageToken} implementations to express that they have a page size
- * that should be respected
- */
-public interface HasPageSize {
-  int getPageSize();
+package org.apache.polaris.core.storage.cache;
+
+public interface StorageCredentialCacheConfig {
+
+  long maxEntries();
 }

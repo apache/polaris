@@ -17,21 +17,4 @@
 # under the License.
 #
 
----
-jobs:
-  stale:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/stale@128b2c81d01bedfe5b59d56fc08176aecd3fe6b9
-        with:
-          days-before-close: 5
-          days-before-stale: 30
-          stale-issue-message: "This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-          stale-pr-message: "This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-name: "Close stale issues and PRs"
-on:
-  schedule:
-    - cron: "30 1 * * *"
-permissions:
-  issues: read
-  pull-requests: write
+org.apache.polaris.core.persistence.pagination.DummyTestToken$DummyTestTokenType
