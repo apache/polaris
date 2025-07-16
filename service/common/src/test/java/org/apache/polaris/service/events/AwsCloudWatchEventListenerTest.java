@@ -56,6 +56,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRe
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.OutputLogEvent;
 
 class AwsCloudWatchEventListenerTest {
@@ -178,7 +179,9 @@ class AwsCloudWatchEventListenerTest {
     listener.onAfterCatalogCreated(event, callContext);
 
     // Wait a bit for the background thread to process
-    listener.drainQueue();
+    List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
+    List<InputLogEvent> transformedEvents = new ArrayList<>();
+    listener.drainQueue(drainedEvents, transformedEvents);
 
     // Verify the event was sent to CloudWatch
     GetLogEventsResponse logEvents =
@@ -199,12 +202,15 @@ class AwsCloudWatchEventListenerTest {
               assertThat(message).contains(AfterCatalogCreatedEvent.class.getSimpleName());
             });
 
+    assertThat(transformedEvents).isEmpty();
+    assertThat(drainedEvents).isEmpty();
+
     // Redo above procedure to ensure that non-cold-start events can also be submitted
     event = new AfterCatalogCreatedEvent(getTestCatalog(catalog2Name));
     listener.onAfterCatalogCreated(event, callContext);
 
     // Wait a bit for the background thread to process
-    listener.drainQueue();
+    listener.drainQueue(drainedEvents, transformedEvents);
 
     // Verify the event was sent to CloudWatch
     logEvents =
@@ -221,6 +227,9 @@ class AwsCloudWatchEventListenerTest {
     assertThat(secondMsg).contains(catalog2Name);
     assertThat(secondMsg).contains(REALM);
     assertThat(secondMsg).contains(AfterCatalogCreatedEvent.class.getSimpleName());
+
+    assertThat(transformedEvents).isEmpty();
+    assertThat(drainedEvents).isEmpty();
   }
 
   @Test
@@ -234,7 +243,9 @@ class AwsCloudWatchEventListenerTest {
 
     listener.onAfterCatalogCreated(event1, callContext);
     listener.onAfterCatalogCreated(event2, callContext);
-    listener.drainQueue();
+    List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
+    List<InputLogEvent> transformedEvents = new ArrayList<>();
+    listener.drainQueue(drainedEvents, transformedEvents);
 
     // Verify the events were sent to CloudWatch
     GetLogEventsResponse logEvents =
@@ -249,6 +260,9 @@ class AwsCloudWatchEventListenerTest {
     sortedEvents.sort(Comparator.comparingLong(OutputLogEvent::timestamp));
     assertThat(sortedEvents.get(0).message()).contains(catalog1Name);
     assertThat(sortedEvents.get(1).message()).contains(catalog2Name);
+
+    assertThat(transformedEvents).isEmpty();
+    assertThat(drainedEvents).isEmpty();
   }
 
   private Catalog getTestCatalog(String catalogName) {
