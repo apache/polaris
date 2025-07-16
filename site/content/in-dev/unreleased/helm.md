@@ -231,7 +231,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. Note: if you are using EclipseLink, then this value must be at least two folders down to the root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"apache/polaris"` | The image repository to pull from. |
-| image.tag | string | `"1.1.0-incubating-SNAPSHOT"` | The image tag. |
+| image.tag | string | `"latest"` | The image tag. |
 | imagePullSecrets | list | `[]` | References to secrets in the same namespace to use for pulling any of the images used by this chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more information. |
 | ingress.annotations | object | `{}` | Annotations to add to the ingress. |
 | ingress.className | string | `""` | Specifies the ingressClassName; leave empty if you don't want to customize it |

@@ -27,7 +27,7 @@ image:
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
-  tag: "1.1.0-incubating-SNAPSHOT"
+  tag: "latest"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # Note: if you are using EclipseLink, then this value must be at least two folders down to the
