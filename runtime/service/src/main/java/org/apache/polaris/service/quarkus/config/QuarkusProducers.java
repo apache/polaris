@@ -41,6 +41,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -51,6 +52,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
@@ -100,14 +102,14 @@ public class QuarkusProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    return new StorageCredentialCache(realmContext, configurationStore);
+      StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Produces
   @ApplicationScoped
-  public PolarisAuthorizer polarisAuthorizer(PolarisConfigurationStore configurationStore) {
-    return new PolarisAuthorizerImpl(configurationStore);
+  public PolarisAuthorizer polarisAuthorizer() {
+    return new PolarisAuthorizerImpl();
   }
 
   @Produces
@@ -136,6 +138,12 @@ public class QuarkusProducers {
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     return new PolarisCallContext(
         realmContext, metaStoreSession, diagServices, configurationStore, clock);
+  }
+
+  @Produces
+  @RequestScoped
+  public RealmConfig realmContext(CallContext callContext) {
+    return callContext.getRealmConfig();
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

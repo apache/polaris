@@ -57,7 +57,6 @@ eval $(minikube docker-env)
   :polaris-server:quarkusAppPartsBuild --rerun \
   :polaris-admin:assemble \
   :polaris-admin:quarkusAppPartsBuild --rerun \
-  -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 ```
 
@@ -90,7 +89,6 @@ Below are two sample deployment models for installing the chart: one with a non-
 Install the chart with a non-persistent backend. From Polaris repo root:
 ```bash
 helm upgrade --install --namespace polaris \
-  --values helm/polaris/ci/simple-values.yaml \
   polaris helm/polaris
 ```
 

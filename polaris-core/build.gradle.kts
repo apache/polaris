@@ -59,7 +59,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.3") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.3.1") {
       because("Vulnerability detected in 9.8.1")
     }
   }
@@ -84,10 +84,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.2.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.3.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.7") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.8") {
       because("Vulnerability detected in 1.0.45")
     }
   }

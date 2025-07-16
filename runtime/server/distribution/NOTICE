@@ -141,10 +141,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.15.1
-Group: io.micrometer Name: micrometer-core Version: 1.15.1
-Group: io.micrometer Name: micrometer-observation Version: 1.15.1
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.15.1
+Group: io.micrometer Name: micrometer-commons Version: 1.14.7
+Group: io.micrometer Name: micrometer-core Version: 1.14.7
+Group: io.micrometer Name: micrometer-observation Version: 1.14.7
+Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.7
 
 NOTICE:
 | Micrometer
@@ -195,28 +195,28 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.119.Final
-Group: io.netty Name: netty-codec Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-haproxy Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.119.Final
-Group: io.netty Name: netty-common Version: 4.1.119.Final
-Group: io.netty Name: netty-handler Version: 4.1.119.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.119.Final
+Group: io.netty Name: netty-buffer Version: 4.1.121.Final
+Group: io.netty Name: netty-codec Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-dns Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-haproxy Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-http Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-http2 Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-socks Version: 4.1.121.Final
+Group: io.netty Name: netty-common Version: 4.1.121.Final
+Group: io.netty Name: netty-handler Version: 4.1.121.Final
+Group: io.netty Name: netty-handler-proxy Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.121.Final
 Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.70.Final
 Group: io.netty Name: netty-tcnative-classes Version: 2.0.70.Final
-Group: io.netty Name: netty-transport Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.119.Final
+Group: io.netty Name: netty-transport Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-epoll Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.121.Final
 
 NOTICE:
 | 
@@ -554,10 +554,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
-Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.12.4
+Group: io.smallrye.config Name: smallrye-config Version: 3.13.1
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.1
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.1
+Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.13.1
 
 NOTICE:
 | Copyright 2009-2017 Mark Struberg
@@ -581,8 +581,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.2
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.2
+Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.3
+Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.3
 
 NOTICE:
 | # Jackson JSON processor

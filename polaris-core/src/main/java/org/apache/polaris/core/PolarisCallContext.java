@@ -22,6 +22,8 @@ import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -42,8 +44,9 @@ public class PolarisCallContext implements CallContext {
 
   private final Clock clock;
 
-  // will make it final once we remove deprecated constructor
-  private RealmContext realmContext = null;
+  private final RealmContext realmContext;
+
+  private final RealmConfig realmConfig;
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
@@ -56,17 +59,19 @@ public class PolarisCallContext implements CallContext {
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
     this.clock = clock;
+    this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
   }
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices) {
-    this.realmContext = realmContext;
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = new PolarisConfigurationStore() {};
-    this.clock = Clock.system(ZoneId.systemDefault());
+    this(
+        realmContext,
+        metaStore,
+        diagServices,
+        new PolarisConfigurationStore() {},
+        Clock.system(ZoneId.systemDefault()));
   }
 
   public BasePersistence getMetaStore() {
@@ -77,10 +82,6 @@ public class PolarisCallContext implements CallContext {
     return diagServices;
   }
 
-  public PolarisConfigurationStore getConfigurationStore() {
-    return configurationStore;
-  }
-
   public Clock getClock() {
     return clock;
   }
@@ -88,6 +89,11 @@ public class PolarisCallContext implements CallContext {
   @Override
   public RealmContext getRealmContext() {
     return realmContext;
+  }
+
+  @Override
+  public RealmConfig getRealmConfig() {
+    return realmConfig;
   }
 
   @Override

@@ -230,7 +230,7 @@ public class ManagementServiceTest {
             return "";
           }
         },
-        new PolarisAuthorizerImpl(services.configurationStore()),
+        new PolarisAuthorizerImpl(),
         new ReservedProperties() {
           @Override
           public List<String> prefixes() {

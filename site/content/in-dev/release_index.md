@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,12 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'POLARIS VERSION INDEX MD TEMPLATE'
+toc_hide: true
+hide_summary: true
+params:
+  show_page_toc: false
+cascade:
+  # The latest release specifies 'false', all others must be 'true'
+  exclude_search: false
+  params:
+    show_page_toc: true
+# This file will be copied as `_index.md` into a new release's versioned docs folder.
+---
 
-image:
-  pullPolicy: Never
+== Apache Polaris version {{< releaseVersion >}}
 
-storage:
-  secret:
-    name: polaris-storage
-    awsAccessKeyId: access-key
-    awsSecretAccessKey: secret-key
+Download from ...

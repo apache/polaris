@@ -67,6 +67,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -120,6 +121,7 @@ public class PolarisGenericTableCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
@@ -168,11 +170,13 @@ public class PolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
+    StorageCredentialCache storageCredentialCache =
+        new StorageCredentialCache(storageCredentialCacheConfig);
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(realmContext, configurationStore),
-            new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
+            storageCredentialCache,
+            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -201,7 +205,7 @@ public class PolarisGenericTableCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            new PolarisAuthorizerImpl(),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
@@ -237,10 +241,10 @@ public class PolarisGenericTableCatalogTest {
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
+        new RealmEntityManagerFactory(
+            metaStoreManagerFactory, configurationStore, storageCredentialCache);
     this.fileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
