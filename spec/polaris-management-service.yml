@@ -1060,7 +1060,6 @@ components:
               type: boolean
               description: >- 
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
-                Default: false.
               example: true
               default: false
           required:
