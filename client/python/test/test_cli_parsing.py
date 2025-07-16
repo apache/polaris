@@ -520,6 +520,28 @@ class TestCliParsing(unittest.TestCase):
         check_arguments(
             mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
                           '--storage-type', 'gcs', '--default-base-location', 'dbl',
+                          '--catalog-connection-type', 'iceberg-rest',
+                          '--iceberg-remote-catalog-name', 'c',
+                          '--catalog-uri', 'u', '--catalog-authentication-type', 'oauth',
+                          '--catalog-token-uri', 'u', '--catalog-client-id', 'i',
+                          '--catalog-client-secret', 'k', '--catalog-client-scope', 's1',
+                          '--catalog-client-scope', 's2']),
+            'create_catalog', {
+                (0, 'catalog.name'): 'my-catalog',
+                (0, 'catalog.type'): 'EXTERNAL',
+                (0, 'catalog.connection_config_info.connection_type'): 'ICEBERG_REST',
+                (0, 'catalog.connection_config_info.remote_catalog_name'): 'c',
+                (0, 'catalog.connection_config_info.uri'): 'u',
+                (0, 'catalog.connection_config_info.authentication_parameters.authentication_type'): 'OAUTH',
+                (0, 'catalog.connection_config_info.authentication_parameters.token_uri'): 'u',
+                (0, 'catalog.connection_config_info.authentication_parameters.client_id'): 'i',
+                (0, 'catalog.connection_config_info.authentication_parameters.scopes'): ['s1', 's2'],
+                (0, 'catalog.storage_config_info.storage_type'): 'GCS',
+                (0, 'catalog.properties.default_base_location'): 'dbl',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
+                          '--storage-type', 'gcs', '--default-base-location', 'dbl',
                           '--catalog-connection-type', 'iceberg-rest', '--iceberg-remote-catalog-name', 'i',
                           '--catalog-uri', 'u', '--catalog-authentication-type', 'sigv4',
                           '--catalog-role-arn', 'a', '--catalog-signing-region', 's']),
