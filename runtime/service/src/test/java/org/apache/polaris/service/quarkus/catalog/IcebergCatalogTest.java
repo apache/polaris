@@ -99,6 +99,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -255,10 +256,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
 
-  protected String getRealmName() {
-    return realmName;
-  }
-
   @BeforeAll
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
@@ -268,7 +265,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   @Nullable
   protected abstract InMemoryEntityCache createEntityCache(
-      PolarisMetaStoreManager metaStoreManager);
+      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -292,8 +289,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(realmContext, configurationStore),
-            createEntityCache(metaStoreManager));
+            new StorageCredentialCache(),
+            createEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -323,7 +320,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}),
+            new PolarisAuthorizerImpl(),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
@@ -355,10 +352,9 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                     .asCatalog()));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
+        new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
     this.fileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -990,9 +986,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     FileIOFactory fileIOFactory =
         spy(
             new DefaultFileIOFactory(
-                new RealmEntityManagerFactory(metaStoreManagerFactory),
-                metaStoreManagerFactory,
-                configurationStore));
+                new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+                metaStoreManagerFactory));
     IcebergCatalog catalog =
         new IcebergCatalog(
             entityManager,
@@ -1356,9 +1351,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     if (!polarisContext
-        .getConfigurationStore()
-        .getConfiguration(
-            polarisContext.getRealmContext(), FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .getRealmConfig()
+        .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
@@ -1424,9 +1418,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     if (!polarisContext
-        .getConfigurationStore()
-        .getConfiguration(
-            polarisContext.getRealmContext(), FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .getRealmConfig()
+        .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
@@ -1446,9 +1439,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     if (!polarisContext
-        .getConfigurationStore()
-        .getConfiguration(
-            polarisContext.getRealmContext(), FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .getRealmConfig()
+        .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
           .isInstanceOf(ForbiddenException.class)
@@ -1885,9 +1877,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(
-                    new RealmEntityManagerFactory(metaStoreManagerFactory),
-                    metaStoreManagerFactory,
-                    configurationStore))
+                    new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+                    metaStoreManagerFactory))
             .apply(taskEntity, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -2030,9 +2021,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     MeasuredFileIOFactory measured =
         new MeasuredFileIOFactory(
-            new RealmEntityManagerFactory(metaStoreManagerFactory),
-            metaStoreManagerFactory,
-            configurationStore);
+            new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore),
+            metaStoreManagerFactory);
     IcebergCatalog catalog =
         new IcebergCatalog(
             entityManager,

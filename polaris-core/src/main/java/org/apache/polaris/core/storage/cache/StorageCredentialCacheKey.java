@@ -18,16 +18,14 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import jakarta.annotation.Nullable;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 
 public class StorageCredentialCacheKey {
 
+  private final String realmId;
   private final long catalogId;
 
   /** The serialized string of the storage config. */
@@ -44,18 +42,13 @@ public class StorageCredentialCacheKey {
 
   private final Set<String> allowedWriteLocations;
 
-  /**
-   * The callContext is passed to be used to fetch subscoped creds, but is not used to hash/equals
-   * as part of the cache key.
-   */
-  private @Nullable PolarisCallContext callContext;
-
   public StorageCredentialCacheKey(
+      String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
-      Set<String> allowedWriteLocations,
-      @Nullable PolarisCallContext callContext) {
+      Set<String> allowedWriteLocations) {
+    this.realmId = realmId;
     this.catalogId = entity.getCatalogId();
     this.storageConfigSerializedStr =
         entity
@@ -65,10 +58,10 @@ public class StorageCredentialCacheKey {
     this.allowedListAction = allowedListAction;
     this.allowedReadLocations = allowedReadLocations;
     this.allowedWriteLocations = allowedWriteLocations;
-    this.callContext = callContext;
-    if (this.callContext == null) {
-      this.callContext = CallContext.getCurrentContext().getPolarisCallContext();
-    }
+  }
+
+  public String getRealmId() {
+    return realmId;
   }
 
   public long getCatalogId() {
@@ -95,16 +88,13 @@ public class StorageCredentialCacheKey {
     return allowedWriteLocations;
   }
 
-  public @Nullable PolarisCallContext getCallContext() {
-    return callContext;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StorageCredentialCacheKey cacheKey = (StorageCredentialCacheKey) o;
-    return catalogId == cacheKey.getCatalogId()
+    return Objects.equals(realmId, cacheKey.getRealmId())
+        && catalogId == cacheKey.getCatalogId()
         && Objects.equals(storageConfigSerializedStr, cacheKey.getStorageConfigSerializedStr())
         && allowedListAction == cacheKey.allowedListAction
         && Objects.equals(allowedReadLocations, cacheKey.allowedReadLocations)
@@ -114,6 +104,7 @@ public class StorageCredentialCacheKey {
   @Override
   public int hashCode() {
     return Objects.hash(
+        realmId,
         catalogId,
         storageConfigSerializedStr,
         allowedListAction,
@@ -124,7 +115,9 @@ public class StorageCredentialCacheKey {
   @Override
   public String toString() {
     return "StorageCredentialCacheKey{"
-        + "catalogId="
+        + "realmId="
+        + realmId
+        + ", catalogId="
         + catalogId
         + ", storageConfigSerializedStr='"
         + storageConfigSerializedStr

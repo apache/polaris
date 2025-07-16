@@ -32,8 +32,7 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -50,14 +49,9 @@ public class StorageCredentialCache {
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
 
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
-  private final RealmContext realmContext;
-  private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    this.realmContext = realmContext;
-    this.configurationStore = configurationStore;
+  public StorageCredentialCache() {
     cache =
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
@@ -69,7 +63,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  this.maxCacheDurationMs()));
+                                  entry.getMaxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -80,13 +74,11 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private long maxCacheDurationMs() {
+  private long maxCacheDurationMs(RealmConfig realmConfig) {
     var cacheDurationSeconds =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
@@ -123,18 +115,18 @@ public class StorageCredentialCache {
     }
     StorageCredentialCacheKey key =
         new StorageCredentialCacheKey(
+            callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
-            allowedWriteLocations,
-            callCtx);
+            allowedWriteLocations);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
-                  k.getCallContext(),
+                  callCtx,
                   k.getCatalogId(),
                   k.getEntityId(),
                   polarisEntity.getType(),
@@ -142,7 +134,8 @@ public class StorageCredentialCache {
                   k.getAllowedReadLocations(),
                   k.getAllowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
-            return new StorageCredentialCacheEntry(scopedCredentialsResult);
+            long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
+            return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
           }
           LOGGER
               .atDebug()

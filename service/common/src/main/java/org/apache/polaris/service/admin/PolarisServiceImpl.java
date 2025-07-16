@@ -27,7 +27,6 @@ import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -161,13 +160,10 @@ public class PolarisServiceImpl
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
-    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     List<String> allowedStorageTypes =
-        polarisCallContext
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
@@ -195,11 +191,8 @@ public class PolarisServiceImpl
     String connectionType = connectionConfigInfo.getConnectionType().name();
     List<String> supportedConnectionTypes =
         callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
@@ -213,11 +206,8 @@ public class PolarisServiceImpl
     String authenticationType = authenticationParameters.getAuthenticationType().name();
     List<String> supportedAuthenticationTypes =
         callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(),
-                FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();

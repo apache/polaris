@@ -238,3 +238,11 @@ changelog {
   )
   version.set(provider { project.version.toString() })
 }
+
+tasks.register("showVersion") {
+  actions.add {
+    logger.lifecycle(
+      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}"
+    )
+  }
+}

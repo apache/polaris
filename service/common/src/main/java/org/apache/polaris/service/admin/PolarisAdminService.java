@@ -605,11 +605,7 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        getCurrentPolarisContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(), FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
-
+        callContext.getRealmConfig().getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
     if (allowOverlappingCatalogUrls) {
       return false;
     }
@@ -743,11 +739,8 @@ public class PolarisAdminService {
         Map<String, UserSecretReference> processedSecretReferences = Map.of();
         List<String> supportedAuthenticationTypes =
             callContext
-                .getPolarisCallContext()
-                .getConfigurationStore()
-                .getConfiguration(
-                    callContext.getRealmContext(),
-                    FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+                .getRealmConfig()
+                .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
                 .stream()
                 .map(s -> s.toUpperCase(Locale.ROOT))
                 .toList();
@@ -799,12 +792,8 @@ public class PolarisAdminService {
         findCatalogByName(name)
             .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
     // TODO: Handle return value in case of concurrent modification
-    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     boolean cleanup =
-        polarisCallContext
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getRealmContext(), FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
+        callContext.getRealmConfig().getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
