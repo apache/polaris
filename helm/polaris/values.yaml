@@ -569,10 +569,11 @@ authentication:
   activeRolesProvider:
     type: default
   # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
-  # The disabled type is always used when `authentication.type` is set to external.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
   tokenService:
     type: default
   # -- The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.
   tokenBroker:
     type: rsa-key-pair  # symmetric-key
     # -- Maximum token generation duration (e.g., PT1H for 1 hour).
@@ -618,11 +619,14 @@ oidc:
   authServeUrl: ~  # https://auth.example.com/realms/polaris
   # -- The client to use when authenticating with the authentication server.
   client:
-    # -- The client ID to use when authenticating with the authentication server.
+    # -- The client ID to use when contacting the authentication server's introspection endpoint in
+    # order to validate tokens.
     id: polaris
-    # -- The secret to pull the client secret from.
+    # -- The secret to pull the client secret from. If no client secret is required, leave the secret
+    # name unset.
     secret:
-      # -- The name of the secret to pull the client secret from.
+      # -- The name of the secret to pull the client secret from. If not provided, the client is assumed
+      # to not require a client secret when contacting the introspection endpoint.
       name: ~
       # -- The key name inside the secret to pull the client secret from.
       key: clientSecret
