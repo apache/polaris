@@ -211,12 +211,9 @@ public class PolarisServiceImpl
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogCreated(
-        new BeforeCatalogCreatedEvent(
-            request.getCatalog().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCatalogCreatedEvent(eventId, request.getCatalog().getName()));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
@@ -224,10 +221,7 @@ public class PolarisServiceImpl
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     polarisEventListener.onAfterCatalogCreated(
-        new AfterCatalogCreatedEvent(
-            newCatalog.getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogCreatedEvent(eventId, newCatalog),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -278,19 +272,13 @@ public class PolarisServiceImpl
   @Override
   public Response deleteCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogDeleted(
-        new BeforeCatalogDeletedEvent(
-            catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCatalogDeletedEvent(eventId, catalogName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalog(catalogName);
     polarisEventListener.onAfterCatalogDeleted(
-        new AfterCatalogDeletedEvent(
-            catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogDeletedEvent(eventId, catalogName),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -299,19 +287,14 @@ public class PolarisServiceImpl
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogGet(
-        new BeforeCatalogGetEvent(
-            catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCatalogGetEvent(eventId, catalogName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    Response resp = Response.ok(adminService.getCatalog(catalogName).asCatalog()).build();
+    Catalog catalog = adminService.getCatalog(catalogName).asCatalog();
+    Response resp = Response.ok(catalog).build();
     polarisEventListener.onAfterCatalogGet(
-        new AfterCatalogGetEvent(
-            catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogGetEvent(eventId, catalog),
         callContext);
     return resp;
   }
@@ -323,24 +306,16 @@ public class PolarisServiceImpl
       UpdateCatalogRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogUpdated(
-        new BeforeCatalogUpdatedEvent(
-            catalogName,
-            updateRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCatalogUpdatedEvent(eventId, catalogName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
     Catalog catalog = adminService.updateCatalog(catalogName, updateRequest).asCatalog();
     polarisEventListener.onAfterCatalogUpdated(
-        new AfterCatalogUpdatedEvent(
-            catalogName,
-            catalog,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogUpdatedEvent(eventId, catalog),
         callContext);
     return Response.ok(catalog).build();
   }
@@ -348,10 +323,9 @@ public class PolarisServiceImpl
   /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogList(
-        new BeforeCatalogListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCatalogListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Catalog> catalogList =
         adminService.listCatalogs().stream()
@@ -361,8 +335,7 @@ public class PolarisServiceImpl
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
     polarisEventListener.onAfterCatalogList(
-        new AfterCatalogListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogListEvent(eventId),
         callContext);
     return Response.ok(catalogs).build();
   }
@@ -371,10 +344,9 @@ public class PolarisServiceImpl
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalCreate(
-        new BeforePrincipalCreateEvent(
-            request.getPrincipal().getName(),
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalCreateEvent(eventId, request.getPrincipal().getName()));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalEntity principal =
         new PrincipalEntity.Builder()
@@ -390,9 +362,7 @@ public class PolarisServiceImpl
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
     LOGGER.info("Created new principal {}", createdPrincipal);
     polarisEventListener.onAfterPrincipalCreate(
-        new AfterPrincipalCreateEvent(
-            request.getPrincipal().getName(),
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalCreateEvent(eventId, createdPrincipal.getPrincipal()),
         callContext);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
   }
@@ -401,19 +371,13 @@ public class PolarisServiceImpl
   @Override
   public Response deletePrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalDelete(
-        new BeforePrincipalDeleteEvent(
-            principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalDeleteEvent(eventId, principalName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipal(principalName);
     polarisEventListener.onAfterPrincipalDelete(
-        new AfterPrincipalDeleteEvent(
-            principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalDeleteEvent(eventId, principalName),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -422,19 +386,14 @@ public class PolarisServiceImpl
   @Override
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalGet(
-        new BeforePrincipalGetEvent(
-            principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalGetEvent(eventId, principalName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    Response resp = Response.ok(adminService.getPrincipal(principalName).asPrincipal()).build();
+    Principal principal = adminService.getPrincipal(principalName).asPrincipal();
+    Response resp = Response.ok(principal).build();
     polarisEventListener.onAfterPrincipalGet(
-        new AfterPrincipalGetEvent(
-            principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalGetEvent(eventId, principal),
         callContext);
     return resp;
   }
@@ -446,22 +405,14 @@ public class PolarisServiceImpl
       UpdatePrincipalRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalUpdate(
-        new BeforePrincipalUpdateEvent(
-            principalName,
-            updateRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalUpdateEvent(eventId, principalName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Principal updatedPrincipal =
         adminService.updatePrincipal(principalName, updateRequest).asPrincipal();
     polarisEventListener.onAfterPrincipalUpdate(
-        new AfterPrincipalUpdateEvent(
-            principalName,
-            updatedPrincipal,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalUpdateEvent(eventId, updatedPrincipal),
         callContext);
     return Response.ok(updatedPrincipal).build();
   }
@@ -470,20 +421,13 @@ public class PolarisServiceImpl
   @Override
   public Response rotateCredentials(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCredentialsRotate(
-        new BeforeCredentialsRotateEvent(
-            principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforeCredentialsRotateEvent(principalName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalWithCredentials rotatedPrincipal = adminService.rotateCredentials(principalName);
     polarisEventListener.onAfterCredentialsRotate(
-        new AfterCredentialsRotateEvent(
-            principalName,
-            rotatedPrincipal,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCredentialsRotateEvent(eventId, principalName, rotatedPrincipal),
         callContext);
     return Response.ok(rotatedPrincipal).build();
   }
@@ -491,10 +435,9 @@ public class PolarisServiceImpl
   /** From PolarisPrincipalsApiService */
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalsList(
-        new BeforePrincipalsListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalsListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList =
         adminService.listPrincipals().stream()
@@ -504,8 +447,7 @@ public class PolarisServiceImpl
     Principals principals = new Principals(principalList);
     LOGGER.debug("listPrincipals returning: {}", principals);
     polarisEventListener.onAfterPrincipalsList(
-        new AfterPrincipalsListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalsListEvent(eventId),
         callContext);
     return Response.ok(principals).build();
   }
@@ -516,12 +458,9 @@ public class PolarisServiceImpl
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleCreate(
-        new BeforePrincipalRoleCreateEvent(
-            request.getPrincipalRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalRoleCreateEvent(eventId, request));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRoleEntity entity =
         new PrincipalRoleEntity.Builder()
@@ -534,10 +473,7 @@ public class PolarisServiceImpl
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
     polarisEventListener.onAfterPrincipalRoleCreate(
-        new AfterPrincipalRoleCreateEvent(
-            newPrincipalRole,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalRoleCreateEvent(eventId, newPrincipalRole),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -546,19 +482,17 @@ public class PolarisServiceImpl
   @Override
   public Response deletePrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleDelete(
         new BeforePrincipalRoleDeleteEvent(
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipalRole(principalRoleName);
     polarisEventListener.onAfterPrincipalRoleDelete(
         new AfterPrincipalRoleDeleteEvent(
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -567,20 +501,16 @@ public class PolarisServiceImpl
   @Override
   public Response getPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleGet(
         new BeforePrincipalRoleGetEvent(
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRole principalRole =
         adminService.getPrincipalRole(principalRoleName).asPrincipalRole();
     polarisEventListener.onAfterPrincipalRoleGet(
-        new AfterPrincipalRoleGetEvent(
-            principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalRoleGetEvent(eventId, principalRole),
         callContext);
     return Response.ok(principalRole).build();
   }
@@ -592,22 +522,15 @@ public class PolarisServiceImpl
       UpdatePrincipalRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleUpdate(
         new BeforePrincipalRoleUpdateEvent(
-            principalRoleName,
-            updateRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId, principalRoleName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRole updatedPrincipalRole =
         adminService.updatePrincipalRole(principalRoleName, updateRequest).asPrincipalRole();
     polarisEventListener.onAfterPrincipalRoleUpdate(
-        new AfterPrincipalRoleUpdateEvent(
-            principalRoleName,
-            updatedPrincipalRole,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalRoleUpdateEvent(eventId, updatedPrincipalRole),
         callContext);
     return Response.ok(updatedPrincipalRole).build();
   }
@@ -615,10 +538,9 @@ public class PolarisServiceImpl
   /** From PolarisPrincipalRolesApiService */
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRolesList(
-        new BeforePrincipalRolesListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+        new BeforePrincipalRolesListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listPrincipalRoles().stream()
@@ -628,8 +550,7 @@ public class PolarisServiceImpl
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
     LOGGER.debug("listPrincipalRoles returning: {}", principalRoles);
     polarisEventListener.onAfterPrincipalRolesList(
-        new AfterPrincipalRolesListEvent(
-            requestId, (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterPrincipalRolesListEvent(eventId),
         callContext);
     return Response.ok(principalRoles).build();
   }
@@ -641,13 +562,12 @@ public class PolarisServiceImpl
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleCreate(
         new BeforeCatalogRoleCreateEvent(
             catalogName,
             request.getCatalogRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     CatalogRoleEntity entity =
         new CatalogRoleEntity.Builder()
@@ -660,11 +580,7 @@ public class PolarisServiceImpl
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
     polarisEventListener.onAfterCatalogRoleCreate(
-        new AfterCatalogRoleCreateEvent(
-            catalogName,
-            newCatalogRole.getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogRoleCreateEvent(eventId, catalogName, newCatalogRole),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -676,21 +592,19 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleDelete(
         new BeforeCatalogRoleDeleteEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalogRole(catalogName, catalogRoleName);
     polarisEventListener.onAfterCatalogRoleDelete(
         new AfterCatalogRoleDeleteEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -702,23 +616,17 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleGet(
         new BeforeCatalogRoleGetEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    Response resp =
-        Response.ok(adminService.getCatalogRole(catalogName, catalogRoleName).asCatalogRole())
-            .build();
+    CatalogRole catalogRole = adminService.getCatalogRole(catalogName, catalogRoleName).asCatalogRole();
+    Response resp = Response.ok(catalogRole).build();
     polarisEventListener.onAfterCatalogRoleGet(
-        new AfterCatalogRoleGetEvent(
-            catalogName,
-            catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogRoleGetEvent(eventId, catalogName, catalogRole),
         callContext);
     return resp;
   }
@@ -731,23 +639,15 @@ public class PolarisServiceImpl
       UpdateCatalogRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleUpdate(
         new BeforeCatalogRoleUpdateEvent(
-            catalogName,
-            catalogRoleName,
-            updateRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId, catalogName, catalogRoleName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     CatalogRole updatedCatalogRole =
         adminService.updateCatalogRole(catalogName, catalogRoleName, updateRequest).asCatalogRole();
     polarisEventListener.onAfterCatalogRoleUpdate(
-        new AfterCatalogRoleUpdateEvent(
-            catalogName,
-            updatedCatalogRole,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+        new AfterCatalogRoleUpdateEvent(eventId, catalogName, updatedCatalogRole),
         callContext);
     return Response.ok(updatedCatalogRole).build();
   }
@@ -757,12 +657,11 @@ public class PolarisServiceImpl
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     LOGGER.info("Listing catalog roles for catalog {}", catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRolesList(
         new BeforeCatalogRolesListEvent(
             catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList =
         adminService.listCatalogRoles(catalogName).stream()
@@ -773,8 +672,7 @@ public class PolarisServiceImpl
     polarisEventListener.onAfterCatalogRolesList(
         new AfterCatalogRolesListEvent(
             catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     LOGGER.debug("listCatalogRoles returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
@@ -791,21 +689,15 @@ public class PolarisServiceImpl
         "Assigning principalRole {} to principal {}",
         request.getPrincipalRole().getName(),
         principalName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeAssignPrincipalRole(
         new BeforeAssignPrincipalRoleEvent(
-            principalName,
-            request.getPrincipalRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId, principalName, request.getPrincipalRole()));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     polarisEventListener.onAfterAssignPrincipalRole(
         new AfterAssignPrincipalRoleEvent(
-            principalName,
-            request.getPrincipalRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId, principalName, request.getPrincipalRole()),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -818,21 +710,19 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeRevokePrincipalRole(
         new BeforeRevokePrincipalRoleEvent(
             principalName,
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.revokePrincipalRole(principalName, principalRoleName);
     polarisEventListener.onAfterRevokePrincipalRole(
         new AfterRevokePrincipalRoleEvent(
             principalName,
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -841,12 +731,11 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipalRolesAssigned(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRolesAssignedList(
         new BeforePrincipalRolesAssignedListEvent(
             principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listPrincipalRolesAssigned(principalName).stream()
@@ -858,8 +747,7 @@ public class PolarisServiceImpl
     polarisEventListener.onAfterPrincipalRolesAssignedList(
         new AfterPrincipalRolesAssignedListEvent(
             principalName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.ok(principalRoles).build();
   }
@@ -872,14 +760,10 @@ public class PolarisServiceImpl
       GrantCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleAssignToPrincipalRole(
         new BeforeCatalogRoleAssignToPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            request.getCatalogRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId, principalRoleName, catalogName, request.getCatalogRole()));
     LOGGER.info(
         "Assigning catalogRole {} in catalog {} to principalRole {}",
         request.getCatalogRole().getName(),
@@ -893,8 +777,7 @@ public class PolarisServiceImpl
             principalRoleName,
             catalogName,
             request.getCatalogRole().getName(),
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -907,14 +790,13 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleRevokeFromPrincipalRole(
         new BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
             principalRoleName,
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     LOGGER.info(
         "Revoking catalogRole {} in catalog {} from principalRole {}",
         catalogRoleName,
@@ -928,8 +810,7 @@ public class PolarisServiceImpl
             principalRoleName,
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -939,12 +820,11 @@ public class PolarisServiceImpl
   public Response listAssigneePrincipalsForPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     LOGGER.info("Listing assignee principals for principalRole {}", principalRoleName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListAssigneePrincipalsForPrincipalRole(
         new BeforeListAssigneePrincipalsForPrincipalRoleEvent(
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList =
         adminService.listAssigneePrincipalsForPrincipalRole(principalRoleName).stream()
@@ -955,8 +835,7 @@ public class PolarisServiceImpl
     polarisEventListener.onAfterListAssigneePrincipalsForPrincipalRole(
         new AfterListAssigneePrincipalsForPrincipalRoleEvent(
             principalRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     LOGGER.debug("listAssigneePrincipalsForPrincipalRole returning: {}", principals);
     return Response.ok(principals).build();
@@ -971,13 +850,12 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     LOGGER.info(
         "Listing catalog roles for principalRole {} in catalog {}", principalRoleName, catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListCatalogRolesForPrincipalRole(
         new BeforeListCatalogRolesForPrincipalRoleEvent(
             principalRoleName,
             catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList =
         adminService.listCatalogRolesForPrincipalRole(principalRoleName, catalogName).stream()
@@ -989,8 +867,7 @@ public class PolarisServiceImpl
         new AfterListCatalogRolesForPrincipalRoleEvent(
             principalRoleName,
             catalogName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     LOGGER.debug("listCatalogRolesForPrincipalRole returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
@@ -1009,14 +886,10 @@ public class PolarisServiceImpl
         grantRequest,
         catalogRoleName,
         catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeAddGrantToCatalogRole(
         new BeforeAddGrantToCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            grantRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId, catalogName, catalogRoleName, grantRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
@@ -1082,12 +955,7 @@ public class PolarisServiceImpl
     }
     polarisEventListener.onAfterAddGrantToCatalogRole(
         new AfterAddGrantToCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            privilege,
-            grantRequest,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId, catalogName, catalogRoleName, privilege, grantRequest),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -1106,15 +974,14 @@ public class PolarisServiceImpl
         grantRequest,
         catalogRoleName,
         catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeRevokeGrantFromCatalogRole(
         new BeforeRevokeGrantFromCatalogRoleEvent(
+            eventId,
             catalogName,
             catalogRoleName,
             grantRequest,
-            cascade,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            cascade));
     if (cascade != null && cascade) {
       LOGGER.warn("Tried to use unimplemented 'cascade' feature when revoking grants.");
       return Response.status(501).build(); // not implemented
@@ -1185,13 +1052,7 @@ public class PolarisServiceImpl
     }
     polarisEventListener.onAfterRevokeGrantFromCatalogRole(
         new AfterRevokeGrantFromCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            privilege,
-            grantRequest,
-            cascade,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId, catalogName, catalogRoleName, privilege, grantRequest.getGrant(), cascade),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -1207,13 +1068,12 @@ public class PolarisServiceImpl
         "Listing assignee principal roles for catalog role {} in catalog {}",
         catalogRoleName,
         catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListAssigneePrincipalRolesForCatalogRole(
         new BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listAssigneePrincipalRolesForCatalogRole(catalogName, catalogRoleName).stream()
@@ -1226,8 +1086,7 @@ public class PolarisServiceImpl
         new AfterListAssigneePrincipalRolesForCatalogRoleEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.ok(principalRoles).build();
   }
@@ -1240,13 +1099,12 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     LOGGER.info("Listing grants for catalog role {} in catalog {}", catalogRoleName, catalogName);
-    String requestId = PolarisEvent.createRequestId();
+    String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListGrantsForCatalogRole(
         new BeforeListGrantsForCatalogRoleEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()));
+            eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<GrantResource> grantList =
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
@@ -1256,8 +1114,7 @@ public class PolarisServiceImpl
         new AfterListGrantsForCatalogRoleEvent(
             catalogName,
             catalogRoleName,
-            requestId,
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal()),
+            eventId),
         callContext);
     return Response.ok(grantResources).build();
   }

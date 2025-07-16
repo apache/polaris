@@ -20,43 +20,7 @@
 package org.apache.polaris.service.events;
 
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
-/** Emitted when Polaris intends to create a table. */
-public final class BeforeCatalogUpdatedEvent implements PolarisEvent {
-  private final String catalogName;
-  private final UpdateCatalogRequest updateRequest;
-  private final String requestId;
-  private final String user;
+/** Emitted when Polaris intends to update a catalog. */
 
-  public BeforeCatalogUpdatedEvent(
-      String catalogName,
-      UpdateCatalogRequest updateCatalogRequest,
-      String requestId,
-      AuthenticatedPolarisPrincipal principal) {
-    this.catalogName = catalogName;
-    this.requestId = requestId;
-    this.updateRequest = updateCatalogRequest;
-    if (principal != null) {
-      this.user = principal.getName();
-    } else {
-      this.user = null;
-    }
-  }
-
-  public String getUser() {
-    return user;
-  }
-
-  public String getRequestId() {
-    return requestId;
-  }
-
-  public String getCatalogName() {
-    return catalogName;
-  }
-
-  public UpdateCatalogRequest getUpdateRequest() {
-    return updateRequest;
-  }
-}
+public record BeforeCatalogUpdatedEvent(String eventId, String catalogName, UpdateCatalogRequest updateRequest) implements PolarisEvent {}

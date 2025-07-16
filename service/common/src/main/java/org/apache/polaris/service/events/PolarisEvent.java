@@ -25,7 +25,7 @@ import java.util.UUID;
  * just a marker interface. *
  */
 public interface PolarisEvent {
-  public static String createRequestId() {
+  static String createEventId() {
     return UUID.randomUUID().toString();
   }
 }

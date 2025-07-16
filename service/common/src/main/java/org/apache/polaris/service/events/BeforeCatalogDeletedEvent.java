@@ -19,34 +19,5 @@
 
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-
-/** Emitted when Polaris intends to create a table. */
-public final class BeforeCatalogDeletedEvent implements PolarisEvent {
-  private final String catalogName;
-  private final String requestId;
-  private final String user;
-
-  public BeforeCatalogDeletedEvent(
-      String catalogName, String requestId, AuthenticatedPolarisPrincipal principal) {
-    this.catalogName = catalogName;
-    this.requestId = requestId;
-    if (principal != null) {
-      this.user = principal.getName();
-    } else {
-      this.user = null;
-    }
-  }
-
-  public String getUser() {
-    return user;
-  }
-
-  public String getRequestId() {
-    return requestId;
-  }
-
-  public String getCatalogName() {
-    return catalogName;
-  }
-}
+/** Emitted when Polaris intends to delete a catalog. */
+public record BeforeCatalogDeletedEvent(String eventId, String catalogName) implements PolarisEvent {}

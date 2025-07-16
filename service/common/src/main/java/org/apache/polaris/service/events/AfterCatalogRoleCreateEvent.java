@@ -19,47 +19,13 @@
 
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.admin.model.CatalogRole;
 
-/** Event fired after a catalog role is created in Polaris. */
-public class AfterCatalogRoleCreateEvent implements PolarisEvent {
-  private final String catalogName;
-  private final String catalogRoleName;
-  private final String requestId;
-  private final AuthenticatedPolarisPrincipal principal;
-
-  /**
-   * Constructs a new AfterCatalogRoleCreateEvent.
-   *
-   * @param catalogName the name of the catalog
-   * @param catalogRoleName the name of the catalog role that was created
-   * @param requestId the request ID for this operation
-   * @param principal the authenticated principal performing the operation
-   */
-  public AfterCatalogRoleCreateEvent(
-      String catalogName,
-      String catalogRoleName,
-      String requestId,
-      AuthenticatedPolarisPrincipal principal) {
-    this.catalogName = catalogName;
-    this.catalogRoleName = catalogRoleName;
-    this.requestId = requestId;
-    this.principal = principal;
-  }
-
-  public String getCatalogName() {
-    return catalogName;
-  }
-
-  public String getCatalogRoleName() {
-    return catalogRoleName;
-  }
-
-  public String getRequestId() {
-    return requestId;
-  }
-
-  public AuthenticatedPolarisPrincipal getPrincipal() {
-    return principal;
-  }
-}
+/**
+ * Event fired after a catalog role is created in Polaris.
+ *
+ * @param eventId the unique identifier for this event
+ * @param catalogName the name of the catalog
+ * @param catalogRole the catalog role that was created
+ */
+public record AfterCatalogRoleCreateEvent(String eventId, String catalogName, CatalogRole catalogRole) implements PolarisEvent {}
