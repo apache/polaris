@@ -1,0 +1,173 @@
+#!/bin/bash
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+#
+# Test Script for 05-build-and-stage-distributions.sh
+#
+# Tests the dry-run functionality of the build and stage distributions script
+# by verifying the exact commands that would be executed.
+#
+
+set -euo pipefail
+
+test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+releases_dir="${test_dir}/.."
+libs_dir="${releases_dir}/libs"
+
+source "${libs_dir}/_log.sh"
+source "${libs_dir}/_constants.sh"
+source "${libs_dir}/_files.sh"
+
+function usage() {
+  cat <<EOF
+$(basename "$0") <tag> [--help | -h]
+
+  Tests the 05-build-and-stage-distributions.sh script by running it in dry-run mode
+  and verifying the commands that would be executed.
+
+  Arguments:
+    tag
+        The git tag to checkout before running the test (e.g., apache-polaris-1.1.0-incubating-rc1)
+
+  Options:
+    -h --help
+        Print usage information.
+
+  Examples:
+    $(basename "$0") apache-polaris-1.1.0-incubating-rc1
+
+EOF
+}
+
+ensure_cwd_is_project_root
+
+# Parse arguments
+tag=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  *)
+    if [[ -z "$tag" ]]; then
+      tag="$1"
+    else
+      print_error "Unknown option/argument $1"
+      usage >&2
+      exit 1
+    fi
+    ;;
+  esac
+  shift
+done
+
+# Validate required arguments
+if [[ -z "$tag" ]]; then
+  print_error "Tag parameter is required"
+  usage >&2
+  exit 1
+fi
+
+# Validate tag format
+tag_regex="^apache-polaris-([0-9]+)\.([0-9]+)\.([0-9]+)-incubating-rc([0-9]+)$"
+if [[ ! ${tag} =~ ${tag_regex} ]]; then
+  print_error "Invalid tag format: ${tag}"
+  print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
+  exit 1
+fi
+
+# Extract version components from tag
+major="${BASH_REMATCH[1]}"
+minor="${BASH_REMATCH[2]}"
+patch="${BASH_REMATCH[3]}"
+rc_number="${BASH_REMATCH[4]}"
+version="${major}.${minor}.${patch}-incubating"
+
+print_info "Starting test for 05-build-and-stage-distributions.sh..."
+print_info "Tag: ${tag}"
+print_info "Version: ${version}"
+
+# Save current git branch or ref
+print_info "Saving current git state..."
+if current_branch=$(git symbolic-ref --short HEAD 2>/dev/null); then
+  print_info "Current branch: ${current_branch}"
+  restore_target="${current_branch}"
+else
+  current_ref=$(git rev-parse HEAD)
+  print_info "Current ref (detached HEAD): ${current_ref}"
+  restore_target="${current_ref}"
+fi
+
+# Checkout the specified tag
+print_info "Checking out tag: ${tag}..."
+if ! git checkout "${tag}" >/dev/null 2>&1; then
+  print_error "Failed to checkout tag: ${tag}"
+  exit 1
+fi
+trap 'rm -f "$temp_file"; git checkout "$restore_target" >/dev/null 2>&1' EXIT
+
+print_info "Create temporary file to capture the commands that would be executed..."
+temp_file=$(mktemp)
+
+print_info "Running script (version determined from current git tag)..."
+DRY_RUN=1 \
+  "${releases_dir}/05-build-and-stage-distributions.sh" \
+  3>"$temp_file"
+
+# Restore original git state
+print_info "Restoring original git state: ${restore_target}..."
+if ! git checkout "${restore_target}" >/dev/null 2>&1; then
+  print_error "Failed to restore original git state: ${restore_target}"
+  exit 1
+fi
+
+print_info "Verifying output content..."
+actual_content=$(cat "$temp_file")
+
+# Generate expected content based on the tag
+# Note: The wildcard expansion will depend on what files actually exist
+# We need to get the actual files that would be expanded
+binary_files=$(ls runtime/distribution/build/distributions/* 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+
+expected_content="./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
+mkdir -p polaris-dist-dev/${version}
+mkdir -p polaris-dist-dev/helm-chart/${version}
+cp build/distribution/* polaris-dist-dev/${version}/
+cp ${binary_files} polaris-dist-dev/${version}/
+cp -r helm/polaris polaris-dist-dev/helm-chart/${version}/
+svn add polaris-dist-dev/${version}
+svn add polaris-dist-dev/helm-chart/${version}
+svn commit -m Stage Apache Polaris ${version} RC${rc_number}
+./gradlew publishToApache -Prelease -PuseGpgAgent"
+
+# Compare content
+if [[ "$actual_content" == "$expected_content" ]]; then
+  print_success "🎉 Test passed! Output content matches expected result."
+else
+  print_error "❌ Test failed! Output content does not match expected result."
+  echo
+  diff -u <(echo "$expected_content") <(echo "$actual_content")
+  echo
+  print_error "Content verification failed"
+  exit 1
+fi
