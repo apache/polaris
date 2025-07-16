@@ -36,6 +36,11 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-guava")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
+  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
   implementation(libs.caffeine)
   implementation(libs.commons.lang3)
   implementation(libs.commons.codec1)
@@ -95,6 +100,9 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-gcp")
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
+
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
