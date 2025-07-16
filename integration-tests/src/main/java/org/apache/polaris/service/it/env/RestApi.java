@@ -47,14 +47,18 @@ public class RestApi {
     return request(path, templateValues, Map.of());
   }
 
-  public Invocation.Builder request(
-      String path, Map<String, String> templateValues, Map<String, String> queryParams) {
+  protected Map<String, String> defaultHeaders() {
     Map<String, String> headers = new HashMap<>();
     headers.put(endpoints.realmHeaderName(), endpoints.realmId());
     if (authToken != null) {
       headers.put("Authorization", "Bearer " + authToken);
     }
-    return request(path, templateValues, queryParams, headers);
+    return headers;
+  }
+
+  public Invocation.Builder request(
+      String path, Map<String, String> templateValues, Map<String, String> queryParams) {
+    return request(path, templateValues, queryParams, defaultHeaders());
   }
 
   public Invocation.Builder request(
