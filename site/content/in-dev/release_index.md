@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,22 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+title: 'POLARIS VERSION INDEX MD TEMPLATE'
+toc_hide: true
+hide_summary: true
+params:
+  show_page_toc: false
+cascade:
+  # The latest release specifies 'false', all others must be 'true'
+  exclude_search: false
+  params:
+    show_page_toc: true
+# This file will be copied as `_index.md` into a new release's versioned docs folder.
 ---
-jobs:
-  stale:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/stale@128b2c81d01bedfe5b59d56fc08176aecd3fe6b9
-        with:
-          days-before-close: 5
-          days-before-stale: 30
-          stale-issue-message: "This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-          stale-pr-message: "This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-name: "Close stale issues and PRs"
-on:
-  schedule:
-    - cron: "30 1 * * *"
-permissions:
-  issues: read
-  pull-requests: write
+
+== Apache Polaris version {{< releaseVersion >}}
+
+Download from ...

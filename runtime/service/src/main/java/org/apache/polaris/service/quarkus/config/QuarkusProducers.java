@@ -52,6 +52,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
@@ -100,8 +101,9 @@ public class QuarkusProducers {
 
   @Produces
   @ApplicationScoped
-  public StorageCredentialCache storageCredentialCache() {
-    return new StorageCredentialCache();
+  public StorageCredentialCache storageCredentialCache(
+      StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Produces
