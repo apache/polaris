@@ -29,4 +29,9 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
  * @param catalogRoleName the name of the catalog role to be updated
  * @param updateRequest the update request object
  */
-public record BeforeCatalogRoleUpdateEvent(String eventId, String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest) implements PolarisEvent {}
+public record BeforeCatalogRoleUpdateEvent(
+    String eventId,
+    String catalogName,
+    String catalogRoleName,
+    UpdateCatalogRoleRequest updateRequest)
+    implements PolarisEvent {}

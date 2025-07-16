@@ -24,4 +24,5 @@ package org.apache.polaris.service.events;
  * @param eventId the unique identifier for this event
  * @param principalName the name of the principal
  */
-public record BeforePrincipalRolesAssignedListEvent(String eventId, String principalName) implements PolarisEvent {}
+public record BeforePrincipalRolesAssignedListEvent(String eventId, String principalName)
+    implements PolarisEvent {}

@@ -26,4 +26,5 @@ package org.apache.polaris.service.events;
  * @param principalRoleName the name of the principal role
  * @param catalogName the name of the catalog
  */
-public record AfterListCatalogRolesForPrincipalRoleEvent(String eventId, String principalRoleName, String catalogName) implements PolarisEvent {}
+public record AfterListCatalogRolesForPrincipalRoleEvent(
+    String eventId, String principalRoleName, String catalogName) implements PolarisEvent {}

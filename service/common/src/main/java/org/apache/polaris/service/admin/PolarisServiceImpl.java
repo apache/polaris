@@ -221,8 +221,7 @@ public class PolarisServiceImpl
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     polarisEventListener.onAfterCatalogCreated(
-        new AfterCatalogCreatedEvent(eventId, newCatalog),
-        callContext);
+        new AfterCatalogCreatedEvent(eventId, newCatalog), callContext);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -278,8 +277,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalog(catalogName);
     polarisEventListener.onAfterCatalogDeleted(
-        new AfterCatalogDeletedEvent(eventId, catalogName),
-        callContext);
+        new AfterCatalogDeletedEvent(eventId, catalogName), callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -288,14 +286,11 @@ public class PolarisServiceImpl
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
-    polarisEventListener.onBeforeCatalogGet(
-        new BeforeCatalogGetEvent(eventId, catalogName));
+    polarisEventListener.onBeforeCatalogGet(new BeforeCatalogGetEvent(eventId, catalogName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = adminService.getCatalog(catalogName).asCatalog();
     Response resp = Response.ok(catalog).build();
-    polarisEventListener.onAfterCatalogGet(
-        new AfterCatalogGetEvent(eventId, catalog),
-        callContext);
+    polarisEventListener.onAfterCatalogGet(new AfterCatalogGetEvent(eventId, catalog), callContext);
     return resp;
   }
 
@@ -315,8 +310,7 @@ public class PolarisServiceImpl
     }
     Catalog catalog = adminService.updateCatalog(catalogName, updateRequest).asCatalog();
     polarisEventListener.onAfterCatalogUpdated(
-        new AfterCatalogUpdatedEvent(eventId, catalog),
-        callContext);
+        new AfterCatalogUpdatedEvent(eventId, catalog), callContext);
     return Response.ok(catalog).build();
   }
 
@@ -324,8 +318,7 @@ public class PolarisServiceImpl
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
-    polarisEventListener.onBeforeCatalogList(
-        new BeforeCatalogListEvent(eventId));
+    polarisEventListener.onBeforeCatalogList(new BeforeCatalogListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Catalog> catalogList =
         adminService.listCatalogs().stream()
@@ -334,9 +327,7 @@ public class PolarisServiceImpl
             .toList();
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
-    polarisEventListener.onAfterCatalogList(
-        new AfterCatalogListEvent(eventId),
-        callContext);
+    polarisEventListener.onAfterCatalogList(new AfterCatalogListEvent(eventId), callContext);
     return Response.ok(catalogs).build();
   }
 
@@ -362,8 +353,7 @@ public class PolarisServiceImpl
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
     LOGGER.info("Created new principal {}", createdPrincipal);
     polarisEventListener.onAfterPrincipalCreate(
-        new AfterPrincipalCreateEvent(eventId, createdPrincipal.getPrincipal()),
-        callContext);
+        new AfterPrincipalCreateEvent(eventId, createdPrincipal.getPrincipal()), callContext);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
   }
 
@@ -377,8 +367,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipal(principalName);
     polarisEventListener.onAfterPrincipalDelete(
-        new AfterPrincipalDeleteEvent(eventId, principalName),
-        callContext);
+        new AfterPrincipalDeleteEvent(eventId, principalName), callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -387,14 +376,12 @@ public class PolarisServiceImpl
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
-    polarisEventListener.onBeforePrincipalGet(
-        new BeforePrincipalGetEvent(eventId, principalName));
+    polarisEventListener.onBeforePrincipalGet(new BeforePrincipalGetEvent(eventId, principalName));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Principal principal = adminService.getPrincipal(principalName).asPrincipal();
     Response resp = Response.ok(principal).build();
     polarisEventListener.onAfterPrincipalGet(
-        new AfterPrincipalGetEvent(eventId, principal),
-        callContext);
+        new AfterPrincipalGetEvent(eventId, principal), callContext);
     return resp;
   }
 
@@ -412,8 +399,7 @@ public class PolarisServiceImpl
     Principal updatedPrincipal =
         adminService.updatePrincipal(principalName, updateRequest).asPrincipal();
     polarisEventListener.onAfterPrincipalUpdate(
-        new AfterPrincipalUpdateEvent(eventId, updatedPrincipal),
-        callContext);
+        new AfterPrincipalUpdateEvent(eventId, updatedPrincipal), callContext);
     return Response.ok(updatedPrincipal).build();
   }
 
@@ -427,8 +413,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalWithCredentials rotatedPrincipal = adminService.rotateCredentials(principalName);
     polarisEventListener.onAfterCredentialsRotate(
-        new AfterCredentialsRotateEvent(eventId, principalName, rotatedPrincipal),
-        callContext);
+        new AfterCredentialsRotateEvent(eventId, principalName, rotatedPrincipal), callContext);
     return Response.ok(rotatedPrincipal).build();
   }
 
@@ -436,8 +421,7 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
-    polarisEventListener.onBeforePrincipalsList(
-        new BeforePrincipalsListEvent(eventId));
+    polarisEventListener.onBeforePrincipalsList(new BeforePrincipalsListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList =
         adminService.listPrincipals().stream()
@@ -446,9 +430,7 @@ public class PolarisServiceImpl
             .toList();
     Principals principals = new Principals(principalList);
     LOGGER.debug("listPrincipals returning: {}", principals);
-    polarisEventListener.onAfterPrincipalsList(
-        new AfterPrincipalsListEvent(eventId),
-        callContext);
+    polarisEventListener.onAfterPrincipalsList(new AfterPrincipalsListEvent(eventId), callContext);
     return Response.ok(principals).build();
   }
 
@@ -473,8 +455,7 @@ public class PolarisServiceImpl
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
     polarisEventListener.onAfterPrincipalRoleCreate(
-        new AfterPrincipalRoleCreateEvent(eventId, newPrincipalRole),
-        callContext);
+        new AfterPrincipalRoleCreateEvent(eventId, newPrincipalRole), callContext);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -484,16 +465,11 @@ public class PolarisServiceImpl
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleDelete(
-        new BeforePrincipalRoleDeleteEvent(
-            principalRoleName,
-            eventId));
+        new BeforePrincipalRoleDeleteEvent(principalRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipalRole(principalRoleName);
     polarisEventListener.onAfterPrincipalRoleDelete(
-        new AfterPrincipalRoleDeleteEvent(
-            principalRoleName,
-            eventId),
-        callContext);
+        new AfterPrincipalRoleDeleteEvent(principalRoleName, eventId), callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -503,15 +479,12 @@ public class PolarisServiceImpl
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleGet(
-        new BeforePrincipalRoleGetEvent(
-            principalRoleName,
-            eventId));
+        new BeforePrincipalRoleGetEvent(principalRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRole principalRole =
         adminService.getPrincipalRole(principalRoleName).asPrincipalRole();
     polarisEventListener.onAfterPrincipalRoleGet(
-        new AfterPrincipalRoleGetEvent(eventId, principalRole),
-        callContext);
+        new AfterPrincipalRoleGetEvent(eventId, principalRole), callContext);
     return Response.ok(principalRole).build();
   }
 
@@ -524,14 +497,12 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRoleUpdate(
-        new BeforePrincipalRoleUpdateEvent(
-            eventId, principalRoleName, updateRequest));
+        new BeforePrincipalRoleUpdateEvent(eventId, principalRoleName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRole updatedPrincipalRole =
         adminService.updatePrincipalRole(principalRoleName, updateRequest).asPrincipalRole();
     polarisEventListener.onAfterPrincipalRoleUpdate(
-        new AfterPrincipalRoleUpdateEvent(eventId, updatedPrincipalRole),
-        callContext);
+        new AfterPrincipalRoleUpdateEvent(eventId, updatedPrincipalRole), callContext);
     return Response.ok(updatedPrincipalRole).build();
   }
 
@@ -539,8 +510,7 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
-    polarisEventListener.onBeforePrincipalRolesList(
-        new BeforePrincipalRolesListEvent(eventId));
+    polarisEventListener.onBeforePrincipalRolesList(new BeforePrincipalRolesListEvent(eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listPrincipalRoles().stream()
@@ -550,8 +520,7 @@ public class PolarisServiceImpl
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
     LOGGER.debug("listPrincipalRoles returning: {}", principalRoles);
     polarisEventListener.onAfterPrincipalRolesList(
-        new AfterPrincipalRolesListEvent(eventId),
-        callContext);
+        new AfterPrincipalRolesListEvent(eventId), callContext);
     return Response.ok(principalRoles).build();
   }
 
@@ -564,10 +533,7 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleCreate(
-        new BeforeCatalogRoleCreateEvent(
-            catalogName,
-            request.getCatalogRole().getName(),
-            eventId));
+        new BeforeCatalogRoleCreateEvent(catalogName, request.getCatalogRole().getName(), eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     CatalogRoleEntity entity =
         new CatalogRoleEntity.Builder()
@@ -580,8 +546,7 @@ public class PolarisServiceImpl
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
     polarisEventListener.onAfterCatalogRoleCreate(
-        new AfterCatalogRoleCreateEvent(eventId, catalogName, newCatalogRole),
-        callContext);
+        new AfterCatalogRoleCreateEvent(eventId, catalogName, newCatalogRole), callContext);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -594,18 +559,11 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleDelete(
-        new BeforeCatalogRoleDeleteEvent(
-            catalogName,
-            catalogRoleName,
-            eventId));
+        new BeforeCatalogRoleDeleteEvent(catalogName, catalogRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalogRole(catalogName, catalogRoleName);
     polarisEventListener.onAfterCatalogRoleDelete(
-        new AfterCatalogRoleDeleteEvent(
-            catalogName,
-            catalogRoleName,
-            eventId),
-        callContext);
+        new AfterCatalogRoleDeleteEvent(catalogName, catalogRoleName, eventId), callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -618,16 +576,13 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleGet(
-        new BeforeCatalogRoleGetEvent(
-            catalogName,
-            catalogRoleName,
-            eventId));
+        new BeforeCatalogRoleGetEvent(catalogName, catalogRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    CatalogRole catalogRole = adminService.getCatalogRole(catalogName, catalogRoleName).asCatalogRole();
+    CatalogRole catalogRole =
+        adminService.getCatalogRole(catalogName, catalogRoleName).asCatalogRole();
     Response resp = Response.ok(catalogRole).build();
     polarisEventListener.onAfterCatalogRoleGet(
-        new AfterCatalogRoleGetEvent(eventId, catalogName, catalogRole),
-        callContext);
+        new AfterCatalogRoleGetEvent(eventId, catalogName, catalogRole), callContext);
     return resp;
   }
 
@@ -641,14 +596,12 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleUpdate(
-        new BeforeCatalogRoleUpdateEvent(
-            eventId, catalogName, catalogRoleName, updateRequest));
+        new BeforeCatalogRoleUpdateEvent(eventId, catalogName, catalogRoleName, updateRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     CatalogRole updatedCatalogRole =
         adminService.updateCatalogRole(catalogName, catalogRoleName, updateRequest).asCatalogRole();
     polarisEventListener.onAfterCatalogRoleUpdate(
-        new AfterCatalogRoleUpdateEvent(eventId, catalogName, updatedCatalogRole),
-        callContext);
+        new AfterCatalogRoleUpdateEvent(eventId, catalogName, updatedCatalogRole), callContext);
     return Response.ok(updatedCatalogRole).build();
   }
 
@@ -659,9 +612,7 @@ public class PolarisServiceImpl
     LOGGER.info("Listing catalog roles for catalog {}", catalogName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRolesList(
-        new BeforeCatalogRolesListEvent(
-            catalogName,
-            eventId));
+        new BeforeCatalogRolesListEvent(catalogName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList =
         adminService.listCatalogRoles(catalogName).stream()
@@ -670,10 +621,7 @@ public class PolarisServiceImpl
             .toList();
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
     polarisEventListener.onAfterCatalogRolesList(
-        new AfterCatalogRolesListEvent(
-            catalogName,
-            eventId),
-        callContext);
+        new AfterCatalogRolesListEvent(catalogName, eventId), callContext);
     LOGGER.debug("listCatalogRoles returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
   }
@@ -691,13 +639,11 @@ public class PolarisServiceImpl
         principalName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeAssignPrincipalRole(
-        new BeforeAssignPrincipalRoleEvent(
-            eventId, principalName, request.getPrincipalRole()));
+        new BeforeAssignPrincipalRoleEvent(eventId, principalName, request.getPrincipalRole()));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     polarisEventListener.onAfterAssignPrincipalRole(
-        new AfterAssignPrincipalRoleEvent(
-            eventId, principalName, request.getPrincipalRole()),
+        new AfterAssignPrincipalRoleEvent(eventId, principalName, request.getPrincipalRole()),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -712,18 +658,11 @@ public class PolarisServiceImpl
     LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeRevokePrincipalRole(
-        new BeforeRevokePrincipalRoleEvent(
-            principalName,
-            principalRoleName,
-            eventId));
+        new BeforeRevokePrincipalRoleEvent(principalName, principalRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.revokePrincipalRole(principalName, principalRoleName);
     polarisEventListener.onAfterRevokePrincipalRole(
-        new AfterRevokePrincipalRoleEvent(
-            principalName,
-            principalRoleName,
-            eventId),
-        callContext);
+        new AfterRevokePrincipalRoleEvent(principalName, principalRoleName, eventId), callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -733,9 +672,7 @@ public class PolarisServiceImpl
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforePrincipalRolesAssignedList(
-        new BeforePrincipalRolesAssignedListEvent(
-            principalName,
-            eventId));
+        new BeforePrincipalRolesAssignedListEvent(principalName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listPrincipalRolesAssigned(principalName).stream()
@@ -745,10 +682,7 @@ public class PolarisServiceImpl
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
     LOGGER.debug("listPrincipalRolesAssigned returning: {}", principalRoles);
     polarisEventListener.onAfterPrincipalRolesAssignedList(
-        new AfterPrincipalRolesAssignedListEvent(
-            principalName,
-            eventId),
-        callContext);
+        new AfterPrincipalRolesAssignedListEvent(principalName, eventId), callContext);
     return Response.ok(principalRoles).build();
   }
 
@@ -774,10 +708,7 @@ public class PolarisServiceImpl
         principalRoleName, catalogName, request.getCatalogRole().getName());
     polarisEventListener.onAfterCatalogRoleAssignToPrincipalRole(
         new AfterCatalogRoleAssignToPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            request.getCatalogRole().getName(),
-            eventId),
+            principalRoleName, catalogName, request.getCatalogRole().getName(), eventId),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -793,10 +724,7 @@ public class PolarisServiceImpl
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeCatalogRoleRevokeFromPrincipalRole(
         new BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            catalogRoleName,
-            eventId));
+            principalRoleName, catalogName, catalogRoleName, eventId));
     LOGGER.info(
         "Revoking catalogRole {} in catalog {} from principalRole {}",
         catalogRoleName,
@@ -807,10 +735,7 @@ public class PolarisServiceImpl
         principalRoleName, catalogName, catalogRoleName);
     polarisEventListener.onAfterCatalogRoleRevokeFromPrincipalRole(
         new AfterCatalogRoleRevokeFromPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            catalogRoleName,
-            eventId),
+            principalRoleName, catalogName, catalogRoleName, eventId),
         callContext);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -822,9 +747,7 @@ public class PolarisServiceImpl
     LOGGER.info("Listing assignee principals for principalRole {}", principalRoleName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListAssigneePrincipalsForPrincipalRole(
-        new BeforeListAssigneePrincipalsForPrincipalRoleEvent(
-            principalRoleName,
-            eventId));
+        new BeforeListAssigneePrincipalsForPrincipalRoleEvent(principalRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList =
         adminService.listAssigneePrincipalsForPrincipalRole(principalRoleName).stream()
@@ -833,9 +756,7 @@ public class PolarisServiceImpl
             .toList();
     Principals principals = new Principals(principalList);
     polarisEventListener.onAfterListAssigneePrincipalsForPrincipalRole(
-        new AfterListAssigneePrincipalsForPrincipalRoleEvent(
-            principalRoleName,
-            eventId),
+        new AfterListAssigneePrincipalsForPrincipalRoleEvent(principalRoleName, eventId),
         callContext);
     LOGGER.debug("listAssigneePrincipalsForPrincipalRole returning: {}", principals);
     return Response.ok(principals).build();
@@ -852,10 +773,7 @@ public class PolarisServiceImpl
         "Listing catalog roles for principalRole {} in catalog {}", principalRoleName, catalogName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListCatalogRolesForPrincipalRole(
-        new BeforeListCatalogRolesForPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            eventId));
+        new BeforeListCatalogRolesForPrincipalRoleEvent(principalRoleName, catalogName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList =
         adminService.listCatalogRolesForPrincipalRole(principalRoleName, catalogName).stream()
@@ -864,10 +782,7 @@ public class PolarisServiceImpl
             .toList();
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
     polarisEventListener.onAfterListCatalogRolesForPrincipalRole(
-        new AfterListCatalogRolesForPrincipalRoleEvent(
-            principalRoleName,
-            catalogName,
-            eventId),
+        new AfterListCatalogRolesForPrincipalRoleEvent(principalRoleName, catalogName, eventId),
         callContext);
     LOGGER.debug("listCatalogRolesForPrincipalRole returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
@@ -888,8 +803,7 @@ public class PolarisServiceImpl
         catalogName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeAddGrantToCatalogRole(
-        new BeforeAddGrantToCatalogRoleEvent(
-            eventId, catalogName, catalogRoleName, grantRequest));
+        new BeforeAddGrantToCatalogRoleEvent(eventId, catalogName, catalogRoleName, grantRequest));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
@@ -977,11 +891,7 @@ public class PolarisServiceImpl
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeRevokeGrantFromCatalogRole(
         new BeforeRevokeGrantFromCatalogRoleEvent(
-            eventId,
-            catalogName,
-            catalogRoleName,
-            grantRequest,
-            cascade));
+            eventId, catalogName, catalogRoleName, grantRequest, cascade));
     if (cascade != null && cascade) {
       LOGGER.warn("Tried to use unimplemented 'cascade' feature when revoking grants.");
       return Response.status(501).build(); // not implemented
@@ -1071,9 +981,7 @@ public class PolarisServiceImpl
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListAssigneePrincipalRolesForCatalogRole(
         new BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            eventId));
+            catalogName, catalogRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listAssigneePrincipalRolesForCatalogRole(catalogName, catalogRoleName).stream()
@@ -1084,9 +992,7 @@ public class PolarisServiceImpl
     LOGGER.debug("listAssigneePrincipalRolesForCatalogRole returning: {}", principalRoles);
     polarisEventListener.onAfterListAssigneePrincipalRolesForCatalogRole(
         new AfterListAssigneePrincipalRolesForCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            eventId),
+            catalogName, catalogRoleName, eventId),
         callContext);
     return Response.ok(principalRoles).build();
   }
@@ -1101,21 +1007,14 @@ public class PolarisServiceImpl
     LOGGER.info("Listing grants for catalog role {} in catalog {}", catalogRoleName, catalogName);
     String eventId = PolarisEvent.createEventId();
     polarisEventListener.onBeforeListGrantsForCatalogRole(
-        new BeforeListGrantsForCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            eventId));
+        new BeforeListGrantsForCatalogRoleEvent(catalogName, catalogRoleName, eventId));
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<GrantResource> grantList =
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
     GrantResources grantResources = new GrantResources(grantList);
     LOGGER.debug("listGrantsForCatalogRole returning: {}", grantResources);
     polarisEventListener.onAfterListGrantsForCatalogRole(
-        new AfterListGrantsForCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            eventId),
-        callContext);
+        new AfterListGrantsForCatalogRoleEvent(catalogName, catalogRoleName, eventId), callContext);
     return Response.ok(grantResources).build();
   }
 }

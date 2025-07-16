@@ -26,4 +26,5 @@ package org.apache.polaris.service.events;
  * @param principalName the name of the principal
  * @param principalRoleName the name of the principal role that was revoked
  */
-public record AfterRevokePrincipalRoleEvent(String eventId, String principalName, String principalRoleName) implements PolarisEvent {}
+public record AfterRevokePrincipalRoleEvent(
+    String eventId, String principalName, String principalRoleName) implements PolarisEvent {}

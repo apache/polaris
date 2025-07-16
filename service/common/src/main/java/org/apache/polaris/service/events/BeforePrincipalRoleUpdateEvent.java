@@ -27,4 +27,6 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
  * @param principalRoleName the name of the principal role to be updated
  * @param updateRequest the update request object
  */
-public record BeforePrincipalRoleUpdateEvent(String eventId, String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}
+public record BeforePrincipalRoleUpdateEvent(
+    String eventId, String principalRoleName, UpdatePrincipalRoleRequest updateRequest)
+    implements PolarisEvent {}

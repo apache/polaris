@@ -25,4 +25,5 @@ package org.apache.polaris.service.events;
  * @param eventId the unique identifier for this event
  * @param principalName the name of the principal to be deleted
  */
-public record BeforePrincipalDeleteEvent(String eventId, String principalName) implements PolarisEvent {}
+public record BeforePrincipalDeleteEvent(String eventId, String principalName)
+    implements PolarisEvent {}

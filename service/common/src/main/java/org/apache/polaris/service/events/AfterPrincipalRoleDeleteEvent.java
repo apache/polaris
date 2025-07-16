@@ -25,4 +25,5 @@ package org.apache.polaris.service.events;
  * @param eventId the unique identifier for this event
  * @param principalRoleName the name of the principal role that was deleted
  */
-public record AfterPrincipalRoleDeleteEvent(String eventId, String principalRoleName) implements PolarisEvent {}
+public record AfterPrincipalRoleDeleteEvent(String eventId, String principalRoleName)
+    implements PolarisEvent {}

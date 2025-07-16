@@ -26,4 +26,5 @@ package org.apache.polaris.service.events;
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role to be deleted
  */
-public record BeforeCatalogRoleDeleteEvent(String eventId, String catalogName, String catalogRoleName) implements PolarisEvent {}
+public record BeforeCatalogRoleDeleteEvent(
+    String eventId, String catalogName, String catalogRoleName) implements PolarisEvent {}

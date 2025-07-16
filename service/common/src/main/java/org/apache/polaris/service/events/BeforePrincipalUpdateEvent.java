@@ -27,4 +27,6 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
  * @param principalName the name of the principal to be updated
  * @param updateRequest the update request object
  */
-public record BeforePrincipalUpdateEvent(String eventId, String principalName, UpdatePrincipalRequest updateRequest) implements PolarisEvent {}
+public record BeforePrincipalUpdateEvent(
+    String eventId, String principalName, UpdatePrincipalRequest updateRequest)
+    implements PolarisEvent {}

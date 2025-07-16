@@ -31,4 +31,10 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
  * @param privilege the privilege granted
  * @param grantRequest the grant request
  */
-public record AfterAddGrantToCatalogRoleEvent(String eventId, String catalogName, String catalogRoleName, PolarisPrivilege privilege, AddGrantRequest grantRequest) implements PolarisEvent {}
+public record AfterAddGrantToCatalogRoleEvent(
+    String eventId,
+    String catalogName,
+    String catalogRoleName,
+    PolarisPrivilege privilege,
+    AddGrantRequest grantRequest)
+    implements PolarisEvent {}

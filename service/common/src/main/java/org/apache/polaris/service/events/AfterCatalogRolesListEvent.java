@@ -25,4 +25,5 @@ package org.apache.polaris.service.events;
  * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  */
-public record AfterCatalogRolesListEvent(String eventId, String catalogName) implements PolarisEvent {}
+public record AfterCatalogRolesListEvent(String eventId, String catalogName)
+    implements PolarisEvent {}

@@ -27,4 +27,6 @@ import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
  * @param eventId the unique identifier for this event
  * @param createPrincipalRoleRequest the principal role requested to be created
  */
-public record BeforePrincipalRoleCreateEvent(String eventId, CreatePrincipalRoleRequest createPrincipalRoleRequest) implements PolarisEvent {}
+public record BeforePrincipalRoleCreateEvent(
+    String eventId, CreatePrincipalRoleRequest createPrincipalRoleRequest)
+    implements PolarisEvent {}

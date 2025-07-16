@@ -26,4 +26,6 @@ package org.apache.polaris.service.events;
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role to be revoked
  */
-public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(String eventId, String principalRoleName, String catalogName, String catalogRoleName) implements PolarisEvent {}
+public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
+    String eventId, String principalRoleName, String catalogName, String catalogRoleName)
+    implements PolarisEvent {}

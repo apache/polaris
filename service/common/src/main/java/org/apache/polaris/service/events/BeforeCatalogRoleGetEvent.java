@@ -18,6 +18,7 @@
  */
 
 package org.apache.polaris.service.events;
+
 /**
  * Event fired before a catalog role is retrieved in Polaris.
  *
@@ -25,4 +26,5 @@ package org.apache.polaris.service.events;
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role to be retrieved
  */
-public record BeforeCatalogRoleGetEvent(String eventId, String catalogName, String catalogRoleName) implements PolarisEvent {}
+public record BeforeCatalogRoleGetEvent(String eventId, String catalogName, String catalogRoleName)
+    implements PolarisEvent {}

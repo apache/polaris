@@ -27,4 +27,5 @@ import org.apache.polaris.core.admin.model.Principal;
  * @param eventId the unique identifier for this event
  * @param updatedPrincipal the updated principal object
  */
-public record AfterPrincipalUpdateEvent(String eventId, Principal updatedPrincipal) implements PolarisEvent {}
+public record AfterPrincipalUpdateEvent(String eventId, Principal updatedPrincipal)
+    implements PolarisEvent {}

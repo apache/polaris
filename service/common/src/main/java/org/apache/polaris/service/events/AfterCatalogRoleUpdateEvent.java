@@ -28,4 +28,5 @@ import org.apache.polaris.core.admin.model.CatalogRole;
  * @param catalogName the name of the catalog
  * @param updatedCatalogRole the updated catalog role object
  */
-public record AfterCatalogRoleUpdateEvent(String eventId, String catalogName, CatalogRole updatedCatalogRole) implements PolarisEvent {}
+public record AfterCatalogRoleUpdateEvent(
+    String eventId, String catalogName, CatalogRole updatedCatalogRole) implements PolarisEvent {}

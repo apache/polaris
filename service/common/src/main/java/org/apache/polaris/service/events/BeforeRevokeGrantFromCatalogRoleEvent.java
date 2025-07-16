@@ -29,4 +29,10 @@ import org.apache.polaris.core.admin.model.RevokeGrantRequest;
  * @param grantRequest the revoke grant request
  * @param cascade whether the revoke is cascading
  */
-public record BeforeRevokeGrantFromCatalogRoleEvent(String eventId, String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade) implements PolarisEvent {}
+public record BeforeRevokeGrantFromCatalogRoleEvent(
+    String eventId,
+    String catalogName,
+    String catalogRoleName,
+    RevokeGrantRequest grantRequest,
+    Boolean cascade)
+    implements PolarisEvent {}

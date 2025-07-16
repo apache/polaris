@@ -28,4 +28,5 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
  * @param principalName the name of the principal
  * @param principalRole the principal role to be assigned
  */
-public record BeforeAssignPrincipalRoleEvent(String eventId, String principalName, PrincipalRole principalRole) implements PolarisEvent {}
+public record BeforeAssignPrincipalRoleEvent(
+    String eventId, String principalName, PrincipalRole principalRole) implements PolarisEvent {}
