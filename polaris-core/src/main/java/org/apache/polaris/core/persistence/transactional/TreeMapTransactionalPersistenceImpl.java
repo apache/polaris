@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -45,7 +44,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.persistence.pagination.EntityIdToken;
+import org.apache.polaris.core.persistence.pagination.HasPageSize;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -368,23 +367,13 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .map(
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
+            .filter(entityFilter);
+    if (pageToken instanceof HasPageSize) {
+      data = data.limit(((HasPageSize) pageToken).getPageSize());
+    }
 
-    Predicate<PolarisBaseEntity> tokenFilter =
-        pageToken
-            .valueAs(EntityIdToken.class)
-            .map(
-                entityIdToken -> {
-                  var nextId = entityIdToken.entityId();
-                  return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
-                })
-            .orElse(e -> true);
-
-    data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
-
-    data = data.filter(entityFilter);
-
-    return Page.mapped(pageToken, data, transformer, EntityIdToken::fromEntity);
+    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */

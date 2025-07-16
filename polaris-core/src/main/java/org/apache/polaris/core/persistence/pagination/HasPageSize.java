@@ -18,25 +18,10 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
-
 /**
- * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
- * continue the listing operation that generated the `items`.
+ * A light interface for {@link PageToken} implementations to express that they have a page size
+ * that should be respected
  */
-public class Page<T> {
-  public final PageToken pageToken;
-  public final List<T> items;
-
-  public Page(PageToken pageToken, List<T> items) {
-    this.pageToken = pageToken;
-    this.items = items;
-  }
-
-  /**
-   * Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages
-   */
-  public static <T> Page<T> fromItems(List<T> items) {
-    return new Page<>(new DonePageToken(), items);
-  }
+public interface HasPageSize {
+  int getPageSize();
 }

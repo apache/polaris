@@ -21,22 +21,22 @@ package org.apache.polaris.core.persistence.pagination;
 import java.util.List;
 
 /**
- * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
- * continue the listing operation that generated the `items`.
+ * A {@link PageToken} implementation for readers who want to read everything. The behavior when
+ * using this token should be the same as when reading without a token.
  */
-public class Page<T> {
-  public final PageToken pageToken;
-  public final List<T> items;
+public class ReadEverythingPageToken extends PageToken {
 
-  public Page(PageToken pageToken, List<T> items) {
-    this.pageToken = pageToken;
-    this.items = items;
+  public static String PREFIX = "read-everything";
+
+  public ReadEverythingPageToken() {}
+
+  @Override
+  public String toTokenString() {
+    return PREFIX;
   }
 
-  /**
-   * Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages
-   */
-  public static <T> Page<T> fromItems(List<T> items) {
-    return new Page<>(new DonePageToken(), items);
+  @Override
+  protected PageToken updated(List<?> newData) {
+    return new DonePageToken();
   }
 }

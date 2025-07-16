@@ -21,22 +21,20 @@ package org.apache.polaris.core.persistence.pagination;
 import java.util.List;
 
 /**
- * An immutable page of items plus their paging cursor. The {@link PageToken} here can be used to
- * continue the listing operation that generated the `items`.
+ * A {@link PageToken} string that represents the lack of a page token. Returns `null` in
+ * `toTokenString`, which the client will interpret as there being no more data available.
  */
-public class Page<T> {
-  public final PageToken pageToken;
-  public final List<T> items;
+public class DonePageToken extends PageToken {
 
-  public Page(PageToken pageToken, List<T> items) {
-    this.pageToken = pageToken;
-    this.items = items;
+  public DonePageToken() {}
+
+  @Override
+  public String toTokenString() {
+    return null;
   }
 
-  /**
-   * Used to wrap a {@link List<T>} of items into a {@link Page <T>} when there are no more pages
-   */
-  public static <T> Page<T> fromItems(List<T> items) {
-    return new Page<>(new DonePageToken(), items);
+  @Override
+  protected PageToken updated(List<?> newData) {
+    throw new IllegalStateException("DonePageToken.updated is invalid");
   }
 }
