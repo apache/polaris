@@ -59,6 +59,12 @@ public class GenericTableEntity extends TableLikeEntity {
     return getInternalPropertiesAsMap().get(GenericTableEntity.DOC_KEY);
   }
 
+  @Override
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getInternalPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
   public static class Builder
       extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
     public Builder(TableIdentifier tableIdentifier, String format) {
@@ -80,6 +86,11 @@ public class GenericTableEntity extends TableLikeEntity {
       return this;
     }
 
+    public GenericTableEntity.Builder setBaseLocation(String location) {
+      internalProperties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
+      return this;
+    }
+
     public GenericTableEntity.Builder setTableIdentifier(TableIdentifier identifier) {
       Namespace namespace = identifier.namespace();
       setParentNamespace(namespace);
@@ -92,11 +103,6 @@ public class GenericTableEntity extends TableLikeEntity {
         internalProperties.put(
             NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
       }
-      return this;
-    }
-
-    public GenericTableEntity.Builder setBaseLocation(String location) {
-      properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
     }
 

@@ -67,6 +67,12 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
         .map(Long::parseLong);
   }
 
+  @Override
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();

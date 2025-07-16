@@ -27,7 +27,6 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 
 /**
  * An entity type for all table-like entities including Iceberg tables, Iceberg views, and generic
@@ -53,11 +52,5 @@ public abstract class TableLikeEntity extends PolarisEntity implements LocationB
       return Namespace.empty();
     }
     return RESTUtil.decodeNamespace(encodedNamespace);
-  }
-
-  @Override
-  @JsonIgnore
-  public String getBaseLocation() {
-    return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
   }
 }
