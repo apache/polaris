@@ -69,7 +69,6 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   private static final String DEFAULT_LOG_GROUP_NAME = "polaris-cloudwatch-default-group";
   private static final String DEFAULT_REGION = "us-east-1";
 
-
   private final BlockingQueue<EventWithTimestamp> queue = new LinkedBlockingQueue<>();
   private CloudWatchLogsClient client;
   private volatile String sequenceToken;
@@ -114,7 +113,8 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   }
 
   @VisibleForTesting
-  public void drainQueue(List<EventWithTimestamp> drainedEvents, List<InputLogEvent> transformedEvents) {
+  public void drainQueue(
+      List<EventWithTimestamp> drainedEvents, List<InputLogEvent> transformedEvents) {
     try {
       EventWithTimestamp first = queue.poll(MAX_WAIT_MS, TimeUnit.MILLISECONDS);
 
@@ -136,8 +136,12 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
     } catch (DataAlreadyAcceptedException e) {
       LOGGER.debug("Data already accepted: {}", e.getMessage());
     } catch (RuntimeException e) {
-      if (e instanceof SdkClientException || e instanceof InvalidParameterException || e instanceof UnrecognizedClientException) {
-        LOGGER.error("Error writing logs to CloudWatch - client-side error. Please adjust Polaris configurations: {}", e.getMessage());
+      if (e instanceof SdkClientException
+          || e instanceof InvalidParameterException
+          || e instanceof UnrecognizedClientException) {
+        LOGGER.error(
+            "Error writing logs to CloudWatch - client-side error. Please adjust Polaris configurations: {}",
+            e.getMessage());
       } else {
         LOGGER.error("Error writing logs to CloudWatch - server-side error: {}", e.getMessage());
       }
@@ -246,8 +250,8 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
       queue.add(
-              new EventWithTimestamp(
-                      objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
+          new EventWithTimestamp(
+              objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
     } catch (JsonProcessingException e) {
       LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
     }
