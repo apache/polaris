@@ -20,7 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-quarkus")
+  id("polaris-runtime")
 }
 
 // get version information
@@ -43,10 +43,14 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-runtime-service"))
+
+  testImplementation(
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+  )
+  testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
   testImplementation(project(":polaris-api-management-model"))
-  testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
 
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
@@ -64,15 +68,9 @@ dependencies {
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
   testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-annotations")
-  testImplementation("com.fasterxml.jackson.core:jackson-core")
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
+  testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
 
-  testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
-
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")

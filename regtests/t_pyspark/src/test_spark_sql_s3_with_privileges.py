@@ -28,10 +28,9 @@ import botocore
 import pytest
 from py4j.protocol import Py4JJavaError
 
-from botocore.exceptions import ClientError
 
 from iceberg_spark import IcebergSparkSession
-from polaris.catalog import CreateNamespaceRequest, CreateTableRequest, ModelSchema, StructField
+from polaris.catalog import CreateNamespaceRequest, CreateTableRequest, ModelSchema
 from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
 from polaris.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
 from polaris.catalog.api_client import ApiClient as CatalogApiClient
@@ -353,17 +352,17 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
     spark.sql('CREATE NAMESPACE db1')
     spark.sql(f"CREATE NAMESPACE db1.schema LOCATION '{namespace_location}'")
     spark.sql('USE db1.schema')
-    spark.sql(f"CREATE TABLE table_in_custom_namespace_location (col1 int, col2 string)")
+    spark.sql("CREATE TABLE table_in_custom_namespace_location (col1 int, col2 string)")
     assert spark.sql("SELECT * FROM table_in_custom_namespace_location").count() == 0
     # check the metadata and assert the custom namespace location is used
     entries = spark.sql(
-      f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
+      "SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
     assert namespace_location in entries[0][0]
     try:
         assert spark.sql("SELECT * FROM table_in_custom_namespace_location").count() == 0
         # check the metadata and assert the custom namespace location is used
         entries = spark.sql(
-            f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
+            "SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
         assert namespace_location in entries[0][0]
     finally:
         spark.sql('DROP TABLE table_in_custom_namespace_location PURGE')
@@ -1233,7 +1232,7 @@ def create_catalog_role(api, catalog, role_name):
     api.create_catalog_role(catalog_name=catalog.name,
                             create_catalog_role_request=CreateCatalogRoleRequest(catalog_role=catalog_role))
     return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
-  except ApiException as e:
+  except ApiException:
     return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
   else:
     raise e
@@ -1244,5 +1243,5 @@ def create_principal_role(api, role_name):
   try:
     api.create_principal_role(CreatePrincipalRoleRequest(principal_role=principal_role))
     return api.get_principal_role(principal_role_name=role_name)
-  except ApiException as e:
+  except ApiException:
     return api.get_principal_role(principal_role_name=role_name)

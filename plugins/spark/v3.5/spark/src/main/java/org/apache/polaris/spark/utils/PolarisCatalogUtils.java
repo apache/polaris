@@ -27,7 +27,7 @@ import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SparkCatalog;
-import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;

@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -79,17 +78,15 @@ public class FileIOUtil {
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisCredentialVendor credentialVendor,
-      PolarisConfigurationStore configurationStore,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity) {
 
     boolean skipCredentialSubscopingIndirection =
-        configurationStore.getConfiguration(
-            callContext.getRealmContext(),
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
       LOGGER
           .atDebug()

@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -64,14 +64,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   private final PolarisDiagnostics diagnostics;
-  private final PolarisConfigurationStore configurationStore;
-  private boolean bootstrap;
 
-  protected LocalPolarisMetaStoreManagerFactory(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisConfigurationStore configurationStore) {
+  protected LocalPolarisMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
-    this.configurationStore = configurationStore;
   }
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
@@ -179,23 +174,23 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   @Override
   public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext) {
+      RealmContext realmContext, RealmConfig realmConfig) {
     if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(),
-          new StorageCredentialCache(realmContext, configurationStore));
+          realmContext.getRealmIdentifier(), new StorageCredentialCache());
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
   }
 
   @Override
-  public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
+  public synchronized EntityCache getOrCreateEntityCache(
+      RealmContext realmContext, RealmConfig realmConfig) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
           realmContext.getRealmIdentifier(),
-          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
+          new InMemoryEntityCache(realmConfig, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

@@ -25,7 +25,7 @@ from cli.command import Command
 from cli.constants import Subcommands, Arguments
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
-    GrantCatalogRoleRequest, CatalogRole, GrantPrincipalRoleRequest
+    GrantPrincipalRoleRequest
 
 
 @dataclass
@@ -52,19 +52,22 @@ class PrincipalRolesCommand(Command):
     def validate(self):
         if self.principal_roles_subcommand == Subcommands.LIST:
             if self.principal_name and self.catalog_role_name:
-                raise Exception(f'You may provide either {Argument.to_flag_name(Arguments.PRINCIPAL)} or'
-                                f' {Argument.to_flag_name(Arguments.CATALOG_ROLE)}, but not both')
+                raise Exception(
+                    f"You may provide either {Argument.to_flag_name(Arguments.PRINCIPAL)} or"
+                    f" {Argument.to_flag_name(Arguments.CATALOG_ROLE)}, but not both"
+                )
         if self.principal_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_name:
-                raise Exception(f'Missing required argument for {self.principal_roles_subcommand}:'
-                                f' {Argument.to_flag_name(Arguments.PRINCIPAL)}')
+                raise Exception(
+                    f"Missing required argument for {self.principal_roles_subcommand}:"
+                    f" {Argument.to_flag_name(Arguments.PRINCIPAL)}"
+                )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.principal_roles_subcommand == Subcommands.CREATE:
             request = CreatePrincipalRoleRequest(
                 principal_role=PrincipalRole(
-                    name=self.principal_role_name,
-                    properties=self.properties
+                    name=self.principal_role_name, properties=self.properties
                 )
             )
             api.create_principal_role(request)
@@ -74,10 +77,14 @@ class PrincipalRolesCommand(Command):
             print(api.get_principal_role(self.principal_role_name).to_json())
         elif self.principal_roles_subcommand == Subcommands.LIST:
             if self.catalog_role_name:
-                for principal_role in api.list_principal_roles(self.catalog_role_name).roles:
+                for principal_role in api.list_principal_roles(
+                    self.catalog_role_name
+                ).roles:
                     print(principal_role.to_json())
             elif self.principal_name:
-                for principal_role in api.list_principal_roles_assigned(self.principal_name).roles:
+                for principal_role in api.list_principal_roles_assigned(
+                    self.principal_name
+                ).roles:
                     print(principal_role.to_json())
             else:
                 for principal_role in api.list_principal_roles().roles:
@@ -97,17 +104,17 @@ class PrincipalRolesCommand(Command):
 
             request = UpdatePrincipalRoleRequest(
                 current_entity_version=principal_role.entity_version,
-                properties=new_properties
+                properties=new_properties,
             )
             api.update_principal_role(self.principal_role_name, request)
         elif self.principal_roles_subcommand == Subcommands.GRANT:
             request = GrantPrincipalRoleRequest(
-                principal_role=PrincipalRole(
-                    name=self.principal_role_name
-                ),
+                principal_role=PrincipalRole(name=self.principal_role_name),
             )
             api.assign_principal_role(self.principal_name, request)
         elif self.principal_roles_subcommand == Subcommands.REVOKE:
             api.revoke_principal_role(self.principal_name, self.principal_role_name)
         else:
-            raise Exception(f"{self.principal_roles_subcommand} is not supported in the CLI")
+            raise Exception(
+                f"{self.principal_roles_subcommand} is not supported in the CLI"
+            )

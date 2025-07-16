@@ -25,7 +25,7 @@ services:
       - "8182"
     environment:
       AWS_REGION: us-west-2
-      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
@@ -46,4 +46,5 @@ services:
       polaris:
         condition: service_healthy
     volumes:
+      - ~/.m2:/home/spark/.m2
       - ./output:/tmp/polaris-regtests/

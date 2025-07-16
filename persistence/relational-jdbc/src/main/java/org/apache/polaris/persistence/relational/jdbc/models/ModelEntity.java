@@ -24,8 +24,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
@@ -47,7 +49,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "last_update_timestamp",
           "properties",
           "internal_properties",
-          "grant_records_version");
+          "grant_records_version",
+          "location_without_scheme");
 
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
@@ -94,6 +97,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   // current version for that entity, will be monotonically incremented
   private int grantRecordsVersion;
+
+  // location for the entity but without a scheme, when applicable
+  private String locationWithoutScheme;
 
   public long getId() {
     return id;
@@ -155,6 +161,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return grantRecordsVersion;
   }
 
+  public String getLocationWithoutScheme() {
+    return locationWithoutScheme;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -180,6 +190,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+            .locationWithoutScheme(r.getString("location_without_scheme"))
             .build();
 
     return toEntity(modelEntity);
@@ -208,6 +219,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       map.put("internal_properties", this.getInternalProperties());
     }
     map.put("grant_records_version", this.getGrantRecordsVersion());
+    map.put("location_without_scheme", this.getLocationWithoutScheme());
     return map;
   }
 
@@ -293,29 +305,52 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
+    public Builder locationWithoutScheme(String location) {
+      entity.locationWithoutScheme = location;
+      return this;
+    }
+
     public ModelEntity build() {
       return entity;
     }
   }
 
   public static ModelEntity fromEntity(PolarisBaseEntity entity) {
-    return ModelEntity.builder()
-        .catalogId(entity.getCatalogId())
-        .id(entity.getId())
-        .parentId(entity.getParentId())
-        .typeCode(entity.getTypeCode())
-        .name(entity.getName())
-        .entityVersion(entity.getEntityVersion())
-        .subTypeCode(entity.getSubTypeCode())
-        .createTimestamp(entity.getCreateTimestamp())
-        .dropTimestamp(entity.getDropTimestamp())
-        .purgeTimestamp(entity.getPurgeTimestamp())
-        .toPurgeTimestamp(entity.getToPurgeTimestamp())
-        .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
-        .properties(entity.getProperties())
-        .internalProperties(entity.getInternalProperties())
-        .grantRecordsVersion(entity.getGrantRecordsVersion())
-        .build();
+    var builder =
+        ModelEntity.builder()
+            .catalogId(entity.getCatalogId())
+            .id(entity.getId())
+            .parentId(entity.getParentId())
+            .typeCode(entity.getTypeCode())
+            .name(entity.getName())
+            .entityVersion(entity.getEntityVersion())
+            .subTypeCode(entity.getSubTypeCode())
+            .createTimestamp(entity.getCreateTimestamp())
+            .dropTimestamp(entity.getDropTimestamp())
+            .purgeTimestamp(entity.getPurgeTimestamp())
+            .toPurgeTimestamp(entity.getToPurgeTimestamp())
+            .lastUpdateTimestamp(entity.getLastUpdateTimestamp())
+            .properties(entity.getProperties())
+            .internalProperties(entity.getInternalProperties())
+            .grantRecordsVersion(entity.getGrantRecordsVersion());
+
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+        builder.locationWithoutScheme(
+            StorageLocation.of(
+                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+                .withoutScheme());
+      }
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      builder.locationWithoutScheme(
+          StorageLocation.of(
+                  entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+              .withoutScheme());
+    }
+
+    return builder.build();
   }
 
   public static PolarisBaseEntity toEntity(ModelEntity model) {
@@ -334,23 +369,22 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       throw new IllegalArgumentException("Invalid entity subtype: " + model.getSubTypeCode());
     }
 
-    var entity =
-        new PolarisBaseEntity(
-            model.getCatalogId(),
-            model.getId(),
-            entityType,
-            subType,
-            model.getParentId(),
-            model.getName());
-    entity.setEntityVersion(model.getEntityVersion());
-    entity.setCreateTimestamp(model.getCreateTimestamp());
-    entity.setDropTimestamp(model.getDropTimestamp());
-    entity.setPurgeTimestamp(model.getPurgeTimestamp());
-    entity.setToPurgeTimestamp(model.getToPurgeTimestamp());
-    entity.setLastUpdateTimestamp(model.getLastUpdateTimestamp());
-    entity.setProperties(model.getProperties());
-    entity.setInternalProperties(model.getInternalProperties());
-    entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
-    return entity;
+    return new PolarisBaseEntity.Builder()
+        .catalogId(model.getCatalogId())
+        .id(model.getId())
+        .typeCode(model.getTypeCode())
+        .subTypeCode(model.getSubTypeCode())
+        .parentId(model.getParentId())
+        .name(model.getName())
+        .entityVersion(model.getEntityVersion())
+        .createTimestamp(model.getCreateTimestamp())
+        .dropTimestamp(model.getDropTimestamp())
+        .purgeTimestamp(model.getPurgeTimestamp())
+        .toPurgeTimestamp(model.getToPurgeTimestamp())
+        .lastUpdateTimestamp(model.getLastUpdateTimestamp())
+        .properties(model.getProperties())
+        .internalProperties(model.getInternalProperties())
+        .grantRecordsVersion(model.getGrantRecordsVersion())
+        .build();
   }
 }

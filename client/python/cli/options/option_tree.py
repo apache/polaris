@@ -19,7 +19,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions
+from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, \
+    CatalogConnectionType, AuthenticationType, ServiceIdentityType
 
 
 @dataclass
@@ -37,16 +38,17 @@ class Argument:
     default: object = None
 
     def __post_init__(self):
-        if self.name.startswith('--'):
-            raise Exception(f'Argument name {self.name} starts with `--`: should this be a flag_name?')
+        if self.name.startswith("--"):
+            raise Exception(
+                f"Argument name {self.name} starts with `--`: should this be a flag_name?"
+            )
 
     @staticmethod
     def to_flag_name(argument_name):
-        return '--' + argument_name.replace('_', '-')
+        return "--" + argument_name.replace("_", "-")
 
     def get_flag_name(self):
         return Argument.to_flag_name(self.name)
-
 
 
 @dataclass
@@ -60,7 +62,7 @@ class Option:
     hint: str = None
     input_name: str = None
     args: List[Argument] = field(default_factory=list)
-    children: List['Option'] = field(default_factory=list)
+    children: List["Option"] = field(default_factory=list)
 
 
 class OptionTree:
@@ -71,7 +73,37 @@ class OptionTree:
 
     _CATALOG_ROLE_AND_CATALOG = [
         Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
-        Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
+        Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE),
+    ]
+
+    _FEDERATION_ARGS = [
+        Argument(Arguments.CATALOG_CONNECTION_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_CONNECTION_TYPE, lower=True,
+                 choices=[ct.value for ct in CatalogConnectionType]),
+        Argument(Arguments.ICEBERG_REMOTE_CATALOG_NAME, str,
+                 Hints.Catalogs.External.ICEBERG_REMOTE_CATALOG_NAME),
+        Argument(Arguments.HADOOP_WAREHOUSE, str,
+                 Hints.Catalogs.External.HADOOP_WAREHOUSE),
+        Argument(Arguments.CATALOG_AUTHENTICATION_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_AUTHENTICATION_TYPE, lower=True,
+                 choices=[at.value for at in AuthenticationType]),
+        Argument(Arguments.CATALOG_SERVICE_IDENTITY_TYPE, str,
+                 Hints.Catalogs.External.CATALOG_SERVICE_IDENTITY_TYPE, lower=True,
+                 choices=[st.value for st in ServiceIdentityType]),
+        Argument(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN, str,
+                 Hints.Catalogs.External.CATALOG_SERVICE_IDENTITY_IAM_ARN),
+        Argument(Arguments.CATALOG_URI, str, Hints.Catalogs.External.CATALOG_URI),
+        Argument(Arguments.CATALOG_TOKEN_URI, str, Hints.Catalogs.External.CATALOG_TOKEN_URI),
+        Argument(Arguments.CATALOG_CLIENT_ID, str, Hints.Catalogs.External.CATALOG_CLIENT_ID),
+        Argument(Arguments.CATALOG_CLIENT_SECRET, str, Hints.Catalogs.External.CATALOG_CLIENT_SECRET),
+        Argument(Arguments.CATALOG_CLIENT_SCOPE, str,
+                 Hints.Catalogs.External.CATALOG_CLIENT_SCOPE, allow_repeats=True),
+        Argument(Arguments.CATALOG_BEARER_TOKEN, str, Hints.Catalogs.External.CATALOG_BEARER_TOKEN),
+        Argument(Arguments.CATALOG_ROLE_ARN, str, Hints.Catalogs.External.CATALOG_ROLE_ARN),
+        Argument(Arguments.CATALOG_ROLE_SESSION_NAME, str, Hints.Catalogs.External.CATALOG_ROLE_SESSION_NAME),
+        Argument(Arguments.CATALOG_EXTERNAL_ID, str, Hints.Catalogs.External.CATALOG_EXTERNAL_ID),
+        Argument(Arguments.CATALOG_SIGNING_REGION, str, Hints.Catalogs.External.CATALOG_SIGNING_REGION),
+        Argument(Arguments.CATALOG_SIGNING_NAME, str, Hints.Catalogs.External.CATALOG_SIGNING_NAME, lower=True)
     ]
 
     @staticmethod
@@ -94,7 +126,7 @@ class OptionTree:
                     Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
                     Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
-                ], input_name=Arguments.CATALOG),
+                ] + OptionTree._FEDERATION_ARGS, input_name=Arguments.CATALOG),
                 Option(Subcommands.DELETE, input_name=Arguments.CATALOG),
                 Option(Subcommands.GET, input_name=Arguments.CATALOG),
                 Option(Subcommands.LIST, args=[

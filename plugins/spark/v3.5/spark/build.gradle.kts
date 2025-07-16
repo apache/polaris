@@ -21,6 +21,14 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins { id("polaris-client") }
 
+checkstyle {
+  configProperties =
+    mapOf(
+      "org.checkstyle.google.suppressionfilter.config" to
+        project.file("checkstyle_suppressions.xml").absolutePath
+    )
+}
+
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
@@ -37,53 +45,11 @@ val scalaLibraryVersion =
 dependencies {
   // TODO: extract a polaris-rest module as a thin layer for
   //  client to depends on.
-  implementation(project(":polaris-api-iceberg-service")) {
-    // exclude the iceberg dependencies, use the ones pulled
-    // by iceberg-core
-    exclude("org.apache.iceberg", "*")
-    // exclude all cloud and quarkus specific dependencies to avoid
-    // running into problems with signature files.
-    exclude("com.azure", "*")
-    exclude("software.amazon.awssdk", "*")
-    exclude("com.google.cloud", "*")
-    exclude("io.airlift", "*")
-    exclude("io.smallrye", "*")
-    exclude("io.smallrye.common", "*")
-    exclude("io.swagger", "*")
-    exclude("org.apache.commons", "*")
-  }
-  implementation(project(":polaris-api-catalog-service")) {
-    exclude("org.apache.iceberg", "*")
-    exclude("com.azure", "*")
-    exclude("software.amazon.awssdk", "*")
-    exclude("com.google.cloud", "*")
-    exclude("io.airlift", "*")
-    exclude("io.smallrye", "*")
-    exclude("io.smallrye.common", "*")
-    exclude("io.swagger", "*")
-    exclude("org.apache.commons", "*")
-  }
-  implementation(project(":polaris-core")) {
-    exclude("org.apache.iceberg", "*")
-    exclude("com.azure", "*")
-    exclude("software.amazon.awssdk", "*")
-    exclude("com.google.cloud", "*")
-    exclude("io.airlift", "*")
-    exclude("io.smallrye", "*")
-    exclude("io.smallrye.common", "*")
-    exclude("io.swagger", "*")
-    exclude("org.apache.commons", "*")
-  }
-
-  implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
+  implementation(project(":polaris-core")) { isTransitive = false }
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  ) {
-    // exclude the iceberg rest dependencies, use the ones pulled
-    // with iceberg-core dependency
-    exclude("org.apache.iceberg", "iceberg-core")
-  }
+  )
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
   compileOnly("org.scala-lang:scala-reflect:${scalaLibraryVersion}")
@@ -94,6 +60,9 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+
+  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.validation.api)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
@@ -112,69 +81,32 @@ dependencies {
   }
 }
 
-// TODO: replace the check using gradlew checkstyle plugin
-tasks.register("checkNoDisallowedImports") {
-  doLast {
-    // List of disallowed imports. Right now, we disallow usage of shaded or
-    // relocated libraries in the iceberg spark runtime jar.
-    val disallowedImports =
-      listOf("import org.apache.iceberg.shaded.", "org.apache.iceberg.relocated.")
-
-    // Directory to scan for Java files
-    val sourceDirs = listOf(file("src/main/java"), file("src/test/java"))
-
-    val violations = mutableListOf<String>()
-    // Scan Java files in each directory
-    sourceDirs.forEach { sourceDir ->
-      fileTree(sourceDir)
-        .matching {
-          include("**/*.java") // Only include Java files
-        }
-        .forEach { file ->
-          val content = file.readText()
-          disallowedImports.forEach { importStatement ->
-            if (content.contains(importStatement)) {
-              violations.add(
-                "Disallowed import found in ${file.relativeTo(projectDir)}: $importStatement"
-              )
-            }
-          }
-        }
-    }
-
-    if (violations.isNotEmpty()) {
-      throw GradleException("Disallowed imports found! $violations")
-    }
-  }
-}
-
-tasks.named("check") { dependsOn("checkNoDisallowedImports") }
-
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
-
-  // include the LICENSE and NOTICE files for the shadow Jar
-  from(projectDir) {
-    include("LICENSE")
-    include("NOTICE")
-  }
 
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  // Optimization: Minimize the JAR (remove unused classes from dependencies)
-  // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
-  // therefore excluded from the optimization.
-  minimize {
-    exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*"))
-    exclude(dependency("org.apache.iceberg:iceberg-core*.*"))
-    exclude(dependency("org.apache.avro:avro*.*"))
-  }
+  // recursively remove all LICENSE and NOTICE file under META-INF, includes
+  // directories contains 'license' in the name
+  exclude("META-INF/**/*LICENSE*")
+  exclude("META-INF/**/*NOTICE*")
+  // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+  exclude("LICENSE*")
+  exclude("NOTICE*")
 
-  relocate("com.fasterxml", "org.apache.polaris.shaded.com.fasterxml.jackson")
-  relocate("org.apache.avro", "org.apache.polaris.shaded.org.apache.avro")
+  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
+  // and renamed to LICENSE and NOTICE after include, this is to avoid the file
+  // being excluded due to the exclude pattern matching used above.
+  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
 }
 
-tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
+// ensure the shadow jar job (which will automatically run license addition) is run for both
+// `assemble` and `build` task
+tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
+
+tasks.named("build") { dependsOn("createPolarisSparkJar") }

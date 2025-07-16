@@ -53,11 +53,11 @@ Apache Polaris is organized into the following modules:
   - `polaris-api-iceberg-service` - The Iceberg REST service
 - Service modules:
   - `polaris-service-common` - The main components of the Polaris server
-- Quarkus runtime modules:
-  - `polaris-quarkus-service` - The Quarkus-specific components of the Polaris server
-  - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
-  - `polaris-quarkus-server` - The Polaris server runtime
-  - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
+- Runtime modules:
+  - `polaris-runtime-service` - The runtime components of the Polaris server
+  - `polaris-runtime-defaults` - The runtime configuration defaults
+  - `polaris-server` - The Polaris server
+  - `polaris-admin` - The Polaris admin & maintenance tool
 - Persistence modules:
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
@@ -67,11 +67,11 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew check` - To run all checks, including unit tests and integration tests.
-- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,secret` where:
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t` where:
   - `POLARIS` is the realm
   - `root` is the CLIENT_ID
   - `secret` is the CLIENT_SECRET
-  - If credentials are not set, it will use preset credentials `POLARIS,root,secret`
+  - If credentials are not set, it will use preset credentials `POLARIS,root,s3cr3t`
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -88,8 +88,8 @@ select * from db1.table1;
 - To build the image locally:
   ```bash
   ./gradlew \
-    :polaris-quarkus-server:assemble \
-    :polaris-quarkus-server:quarkusAppPartsBuild --rerun \
+    :polaris-server:assemble \
+    :polaris-server:quarkusAppPartsBuild --rerun \
     -Dquarkus.container-image.build=true
   ```
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
@@ -99,24 +99,14 @@ using different configurations. Check the `./getting-started` directory for more
 
 #### Running in Kubernetes
 
-- `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
-  then deploy one pod and one service. The service is available on ports `8181` and `8182`.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure 
-  connections between a local machine and a pod within the cluster for both service and 
-  health/metrics endpoints:
-  - http://localhost:8182/q/metrics
-  - http://localhost:8182/q/health
-- `kubectl get pods -n polaris` - To check the status of the pods.
-- `kubectl get deployment -n polaris` - To check the status of the deployment.
-- `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
+- See [README in `helm/polaris`](helm/polaris/README.md) for more information.
 
 #### Configuring Polaris
 
 Polaris Servers can be configured using a variety of ways.
-Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
-for more information.
+Please see the [Configuration Guide](site/content/in-dev/configuration.md) for more information.
 
-Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
+Default configuration values can be found in `runtime/defaults/src/main/resources/application.properties`.
 
 #### Building docs
 

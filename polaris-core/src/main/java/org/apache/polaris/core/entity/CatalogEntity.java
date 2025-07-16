@@ -55,7 +55,7 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
  * Catalog} model to the persistent entity model.
  */
-public class CatalogEntity extends PolarisEntity {
+public class CatalogEntity extends PolarisEntity implements LocationBasedEntity {
   public static final String CATALOG_TYPE_PROPERTY = "catalogType";
 
   // Specifies the object-store base location used for all Table file locations under the
@@ -91,7 +91,7 @@ public class CatalogEntity extends PolarisEntity {
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getDefaultBaseLocation(catalog));
+        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
@@ -106,17 +106,8 @@ public class CatalogEntity extends PolarisEntity {
         CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
             .putAll(propertiesMap)
             .build();
-    return catalogType == Catalog.TypeEnum.INTERNAL
-        ? PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(getName())
-            .setProperties(catalogProps)
-            .setCreateTimestamp(getCreateTimestamp())
-            .setLastUpdateTimestamp(getLastUpdateTimestamp())
-            .setEntityVersion(getEntityVersion())
-            .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .build()
-        : ExternalCatalog.builder()
+    return catalogType == Catalog.TypeEnum.EXTERNAL
+        ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(getName())
             .setProperties(catalogProps)
@@ -125,6 +116,15 @@ public class CatalogEntity extends PolarisEntity {
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
             .setConnectionConfigInfo(getConnectionInfo(internalProperties))
+            .build()
+        : PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(getName())
+            .setProperties(catalogProps)
+            .setCreateTimestamp(getCreateTimestamp())
+            .setLastUpdateTimestamp(getLastUpdateTimestamp())
+            .setEntityVersion(getEntityVersion())
+            .setStorageConfigInfo(getStorageInfo(internalProperties))
             .build();
   }
 
@@ -179,7 +179,8 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public String getDefaultBaseLocation() {
+  @Override
+  public String getBaseLocation() {
     return getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY);
   }
 
@@ -272,7 +273,9 @@ public class CatalogEntity extends PolarisEntity {
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion());
+                    awsConfigModel.getRegion(),
+                    awsConfigModel.getEndpoint(),
+                    awsConfigModel.getStsEndpoint());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
@@ -310,11 +313,8 @@ public class CatalogEntity extends PolarisEntity {
         CallContext callContext, Collection<String> allowedLocations) {
       int maxAllowedLocations =
           callContext
-              .getPolarisCallContext()
-              .getConfigurationStore()
-              .getConfiguration(
-                  callContext.getRealmContext(),
-                  BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+              .getRealmConfig()
+              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(
@@ -342,7 +342,7 @@ public class CatalogEntity extends PolarisEntity {
     }
   }
 
-  protected static @Nonnull String getDefaultBaseLocation(Catalog catalog) {
+  protected static @Nonnull String getBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }

@@ -18,11 +18,10 @@
  */
 package org.apache.polaris.spark.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTRequest;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * RESTRequest definition for CreateGenericTable which extends the iceberg RESTRequest. This is
