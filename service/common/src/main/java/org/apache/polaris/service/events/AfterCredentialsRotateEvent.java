@@ -25,9 +25,8 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
  * Event fired after credentials are rotated for a principal in Polaris.
  *
  * @param eventId the unique identifier for this event
- * @param principalName the name of the principal whose credentials were rotated
  * @param rotatedPrincipal the updated principal with new credentials
  */
 public record AfterCredentialsRotateEvent(
-    String eventId, String principalName, PrincipalWithCredentials rotatedPrincipal)
+    String eventId, PrincipalWithCredentials rotatedPrincipal)
     implements PolarisEvent {}

@@ -429,7 +429,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalWithCredentials rotatedPrincipal = adminService.rotateCredentials(principalName);
     polarisEventListener.onAfterCredentialsRotate(
-        new AfterCredentialsRotateEvent(eventId, principalName, rotatedPrincipal), callContext);
+        new AfterCredentialsRotateEvent(eventId, rotatedPrincipal), callContext);
     return Response.ok(rotatedPrincipal).build();
   }
 
@@ -885,7 +885,7 @@ public class PolarisServiceImpl
     }
     polarisEventListener.onAfterAddGrantToCatalogRole(
         new AfterAddGrantToCatalogRoleEvent(
-            eventId, catalogName, catalogRoleName, privilege, grantRequest),
+            eventId, catalogName, catalogRoleName, privilege, grantRequest.getGrant()),
         callContext);
     return Response.status(Response.Status.CREATED).build();
   }
