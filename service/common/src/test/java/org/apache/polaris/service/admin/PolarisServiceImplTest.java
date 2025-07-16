@@ -40,6 +40,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -80,7 +82,8 @@ public class PolarisServiceImplTest {
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties);
+            reservedProperties,
+            new NoOpPolarisEventListener());
   }
 
   @Test
