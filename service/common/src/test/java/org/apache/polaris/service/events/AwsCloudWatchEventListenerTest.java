@@ -22,6 +22,7 @@ package org.apache.polaris.service.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import java.security.Principal;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +77,7 @@ class AwsCloudWatchEventListenerTest {
   private static final String LOG_GROUP = "test-log-group";
   private static final String LOG_STREAM = "test-log-stream";
   private static final String REALM = "test-realm";
+  private static final String TEST_USER = "test-user";
 
   @Mock private EventListenerConfiguration config;
 
@@ -92,6 +97,7 @@ class AwsCloudWatchEventListenerTest {
     when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
     when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
 
+
     // Create CloudWatch client pointing to LocalStack
     cloudWatchLogsClient =
         CloudWatchLogsClient.builder()
@@ -110,6 +116,20 @@ class AwsCloudWatchEventListenerTest {
             return cloudWatchLogsClient;
           }
         };
+
+    CallContext callContext = Mockito.mock(CallContext.class);
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    RealmContext realmContext = Mockito.mock(RealmContext.class);
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    Principal principal = Mockito.mock(Principal.class);
+    when(callContext.getRealmContext()).thenReturn(realmContext);
+    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
+    when(polarisCallContext.getClock()).thenReturn(Clock.systemUTC());
+    when(realmContext.getRealmIdentifier()).thenReturn(REALM);
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    when(principal.getName()).thenReturn(TEST_USER);
+    listener.callContext = callContext;
+    listener.securityContext = securityContext;
   }
 
   @AfterEach
@@ -190,6 +210,7 @@ class AwsCloudWatchEventListenerTest {
               assertThat(message).contains(catalog1Name);
               assertThat(message).contains(REALM);
               assertThat(message).contains(AfterCatalogCreatedEvent.class.getSimpleName());
+              assertThat(message).contains(TEST_USER);
             });
 
     assertThat(transformedEvents).isEmpty();
@@ -217,6 +238,7 @@ class AwsCloudWatchEventListenerTest {
     assertThat(secondMsg).contains(catalog2Name);
     assertThat(secondMsg).contains(REALM);
     assertThat(secondMsg).contains(AfterCatalogCreatedEvent.class.getSimpleName());
+    assertThat(secondMsg).contains(TEST_USER);
 
     assertThat(transformedEvents).isEmpty();
     assertThat(drainedEvents).isEmpty();
