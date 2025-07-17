@@ -38,6 +38,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +85,12 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   private final String logGroup;
   private final String logStream;
   private final Region region;
+
+  @Inject
+  CallContext callContext;
+
+  @Context
+  SecurityContext securityContext;
 
   @Inject
   public AwsCloudWatchEventListener(
@@ -244,11 +253,12 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   }
 
   // Event overrides below
-  private void queueEvent(PolarisEvent event, CallContext callContext) {
+  private void queueEvent(PolarisEvent event) {
     try {
       Map<String, Object> json = objectMapper.convertValue(event, new TypeReference<>() {});
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
+      json.put("principal", securityContext.getUserPrincipal().getName());
       queue.add(
           new EventWithTimestamp(
               objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
@@ -258,7 +268,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callContext) {
-    queueEvent(event, callContext);
+  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {
+    queueEvent(event);
   }
 }

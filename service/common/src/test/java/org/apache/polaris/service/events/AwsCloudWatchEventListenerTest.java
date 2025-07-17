@@ -76,12 +76,6 @@ class AwsCloudWatchEventListenerTest {
 
   @Mock private EventListenerConfiguration config;
 
-  @Mock private CallContext callContext;
-
-  @Mock private RealmContext realmContext;
-
-  @Mock private PolarisCallContext polarisCallContext;
-
   private ExecutorService executorService;
   private AwsCloudWatchEventListener listener;
   private CloudWatchLogsClient cloudWatchLogsClient;
@@ -97,10 +91,6 @@ class AwsCloudWatchEventListenerTest {
     when(config.awsCloudwatchlogGroup()).thenReturn(Optional.of(LOG_GROUP));
     when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
     when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getClock()).thenReturn(Clock.systemUTC());
-    when(realmContext.getRealmIdentifier()).thenReturn(REALM);
 
     // Create CloudWatch client pointing to LocalStack
     cloudWatchLogsClient =
@@ -176,7 +166,7 @@ class AwsCloudWatchEventListenerTest {
 
     // Create and send the event
     AfterCatalogCreatedEvent event = new AfterCatalogCreatedEvent(getTestCatalog(catalog1Name));
-    listener.onAfterCatalogCreated(event, callContext);
+    listener.onAfterCatalogCreated(event);
 
     // Wait a bit for the background thread to process
     List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
@@ -207,7 +197,7 @@ class AwsCloudWatchEventListenerTest {
 
     // Redo above procedure to ensure that non-cold-start events can also be submitted
     event = new AfterCatalogCreatedEvent(getTestCatalog(catalog2Name));
-    listener.onAfterCatalogCreated(event, callContext);
+    listener.onAfterCatalogCreated(event);
 
     // Wait a bit for the background thread to process
     listener.drainQueue(drainedEvents, transformedEvents);
@@ -241,8 +231,8 @@ class AwsCloudWatchEventListenerTest {
     AfterCatalogCreatedEvent event1 = new AfterCatalogCreatedEvent(getTestCatalog(catalog1Name));
     AfterCatalogCreatedEvent event2 = new AfterCatalogCreatedEvent(getTestCatalog(catalog2Name));
 
-    listener.onAfterCatalogCreated(event1, callContext);
-    listener.onAfterCatalogCreated(event2, callContext);
+    listener.onAfterCatalogCreated(event1);
+    listener.onAfterCatalogCreated(event2);
     List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
     List<InputLogEvent> transformedEvents = new ArrayList<>();
     listener.drainQueue(drainedEvents, transformedEvents);

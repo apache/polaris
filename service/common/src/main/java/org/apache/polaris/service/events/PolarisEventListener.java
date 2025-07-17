@@ -59,5 +59,5 @@ public abstract class PolarisEventListener {
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
 
   /** {@link AfterCatalogCreatedEvent} */
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callContext) {}
+  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {}
 }
