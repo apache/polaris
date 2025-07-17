@@ -17,11 +17,4 @@
 # under the License.
 #
 
-image:
-  pullPolicy: Never
-
-storage:
-  secret:
-    name: polaris-storage
-    awsAccessKeyId: access-key
-    awsSecretAccessKey: secret-key
+org.apache.polaris.core.persistence.pagination.EntityIdToken$EntityIdTokenType

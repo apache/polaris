@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
+package org.apache.polaris.service.quarkus.catalog;
 
-import java.util.List;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 
-/**
- * A {@link PageToken} string that represents the lack of a page token. Returns `null` in
- * `toTokenString`, which the client will interpret as there being no more data available.
- */
-public class DonePageToken extends PageToken {
+@QuarkusTest
+@TestProfile(AbstractIcebergCatalogTest.Profile.class)
+public class IcebergCatalogRelationalNoEntityCacheTest extends AbstractIcebergCatalogTest {
 
-  public DonePageToken() {}
-
+  @Nullable
   @Override
-  public String toTokenString() {
+  protected InMemoryEntityCache createEntityCache(
+      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
     return null;
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    throw new IllegalStateException("DonePageToken.updated is invalid");
   }
 }

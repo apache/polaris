@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -698,23 +699,20 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // return list of active entities
     // TODO: Clean up shared logic for catalogId/parentId
-    long catalogId =
-        catalogPath == null || catalogPath.size() == 0 ? 0l : catalogPath.get(0).getId();
+    long catalogId = catalogPath == null || catalogPath.isEmpty() ? 0L : catalogPath.get(0).getId();
     long parentId =
-        catalogPath == null || catalogPath.size() == 0
-            ? 0l
+        catalogPath == null || catalogPath.isEmpty()
+            ? 0L
             : catalogPath.get(catalogPath.size() - 1).getId();
-    Page<EntityNameLookupRecord> resultPage =
-        ms.listEntities(callCtx, catalogId, parentId, entityType, pageToken);
 
     // prune the returned list with only entities matching the entity subtype
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      resultPage =
-          pageToken.buildNextPage(
-              resultPage.items.stream()
-                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-                  .collect(Collectors.toList()));
-    }
+    Predicate<PolarisBaseEntity> filter =
+        entitySubType != PolarisEntitySubType.ANY_SUBTYPE
+            ? e -> e.getSubTypeCode() == entitySubType.getCode()
+            : entity -> true;
+
+    Page<EntityNameLookupRecord> resultPage =
+        ms.listEntities(callCtx, catalogId, parentId, entityType, filter, pageToken);
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
     // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
@@ -957,7 +955,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               e.getExistingEntity().getSubTypeCode()));
     }
 
-    return new EntitiesResult(createdEntities);
+    return new EntitiesResult(Page.fromItems(createdEntities));
   }
 
   /** {@inheritDoc} */
@@ -1020,7 +1018,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // good, all success
-    return new EntitiesResult(updatedEntities);
+    return new EntitiesResult(Page.fromItems(updatedEntities));
   }
 
   /** {@inheritDoc} */
@@ -1185,7 +1183,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   entity -> true,
                   Function.identity(),
                   PageToken.fromLimit(2))
-              .items;
+              .items();
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1508,9 +1506,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
                   callCtx
-                      .getConfigurationStore()
-                      .getConfiguration(
-                          callCtx.getRealmContext(),
+                      .getRealmConfig()
+                      .getConfig(
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
@@ -1520,32 +1517,38 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             Function.identity(),
             pageToken);
 
-    List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     final AtomicInteger failedLeaseCount = new AtomicInteger(0);
-    availableTasks.items.forEach(
-        task -> {
-          PolarisBaseEntity.Builder updatedTaskBuilder = new PolarisBaseEntity.Builder(task);
-          Map<String, String> properties =
-              PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
-          properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-          properties.put(
-              PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-              String.valueOf(callCtx.getClock().millis()));
-          properties.put(
-              PolarisTaskConstants.ATTEMPT_COUNT,
-              String.valueOf(
-                  Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                      + 1));
-          updatedTaskBuilder.properties(
-              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          EntityResult result =
-              updateEntityPropertiesIfNotChanged(callCtx, null, updatedTaskBuilder.build());
-          if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
-            loadedTasks.add(result.getEntity());
-          } else {
-            failedLeaseCount.getAndIncrement();
-          }
-        });
+    List<PolarisBaseEntity> loadedTasks =
+        availableTasks.items().stream()
+            .map(
+                task -> {
+                  PolarisBaseEntity.Builder updatedTaskBuilder =
+                      new PolarisBaseEntity.Builder(task);
+                  Map<String, String> properties =
+                      PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
+                  properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+                  properties.put(
+                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
+                      String.valueOf(callCtx.getClock().millis()));
+                  properties.put(
+                      PolarisTaskConstants.ATTEMPT_COUNT,
+                      String.valueOf(
+                          Integer.parseInt(
+                                  properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                              + 1));
+                  updatedTaskBuilder.properties(
+                      PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+                  EntityResult result =
+                      updateEntityPropertiesIfNotChanged(callCtx, null, updatedTaskBuilder.build());
+                  if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+                    return result.getEntity();
+                  } else {
+                    failedLeaseCount.getAndIncrement();
+                    return null;
+                  }
+                })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
 
     // Since the contract of this method is to only return an empty list once no available tasks
     // are found anymore, if we happen to fail to lease any tasks at all due to all of them

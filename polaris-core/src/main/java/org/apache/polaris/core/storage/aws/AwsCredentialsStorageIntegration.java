@@ -73,10 +73,7 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     int storageCredentialDurationSeconds =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(callContext.getRealmContext(), STORAGE_CREDENTIAL_DURATION_SECONDS);
+        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())
@@ -123,6 +120,10 @@ public class AwsCredentialsStorageIntegration
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
       credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+    }
+
+    if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
+      credentialMap.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
     if (storageConfig.getAwsPartition().equals("aws-us-gov")

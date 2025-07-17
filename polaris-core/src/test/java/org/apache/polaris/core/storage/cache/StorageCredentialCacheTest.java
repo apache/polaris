@@ -25,9 +25,9 @@ import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -54,13 +54,11 @@ import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
 
-  // polaris call context
   private final PolarisCallContext callCtx;
-
-  // the meta store manager
+  private final StorageCredentialCacheConfig storageCredentialCacheConfig;
   private final PolarisMetaStoreManager metaStoreManager;
 
-  StorageCredentialCache storageCredentialCache;
+  private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
     // diag services
@@ -71,12 +69,13 @@ public class StorageCredentialCacheTest {
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    storageCredentialCacheConfig = () -> 10_000;
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = newStorageCredentialCache();
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache(callCtx.getRealmContext(), callCtx.getConfigurationStore());
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Test
@@ -106,8 +105,8 @@ public class StorageCredentialCacheTest {
                     callCtx,
                     polarisEntity,
                     true,
-                    new HashSet<>(Arrays.asList("s3://bucket1/path")),
-                    new HashSet<>(Arrays.asList("s3://bucket3/path"))))
+                    Set.of("s3://bucket1/path"),
+                    Set.of("s3://bucket3/path")))
         .isInstanceOf(UnprocessableEntityException.class)
         .hasMessage("Failed to get subscoped credentials: extra_error_info");
   }
@@ -140,8 +139,8 @@ public class StorageCredentialCacheTest {
         callCtx,
         polarisEntity,
         true,
-        new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-        new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"));
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
     // subscope for the same entity and same allowed locations, will hit the cache
@@ -150,8 +149,8 @@ public class StorageCredentialCacheTest {
         callCtx,
         polarisEntity,
         true,
-        new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-        new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"));
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
@@ -177,12 +176,12 @@ public class StorageCredentialCacheTest {
             1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
     StorageCredentialCacheKey cacheKey =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
+            callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             true,
-            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-            new HashSet<>(Arrays.asList("s3://bucket/path")),
-            callCtx);
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket/path"));
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -190,8 +189,8 @@ public class StorageCredentialCacheTest {
         callCtx,
         polarisEntity,
         true,
-        new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-        new HashSet<>(Arrays.asList("s3://bucket/path")));
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket/path"));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -199,8 +198,8 @@ public class StorageCredentialCacheTest {
         callCtx,
         polarisEntity,
         true,
-        new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-        new HashSet<>(Arrays.asList("s3://bucket/path")));
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket/path"));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -208,8 +207,8 @@ public class StorageCredentialCacheTest {
         callCtx,
         polarisEntity,
         true,
-        new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-        new HashSet<>(Arrays.asList("s3://bucket/path")));
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket/path"));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
 
@@ -239,8 +238,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           entity,
           true,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // update the entity's storage config, since StorageConfig changed, cache will generate new
@@ -258,8 +257,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ true,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // allowedListAction changed to different value FALSE, will generate new entry
@@ -269,8 +268,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           entity,
           /* allowedListAction= */ false,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedWriteLocations, will generate new entry
@@ -280,8 +279,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           entity,
           /* allowedListAction= */ false,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://differentbucket/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://differentbucket/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedReadLocations, will generate new try
@@ -298,8 +297,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ false,
-          new HashSet<>(Arrays.asList("s3://differentbucket/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket/path")));
+          Set.of("s3://differentbucket/path", "s3://bucket2/path"),
+          Set.of("s3://bucket/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
   }
@@ -329,8 +328,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           entity,
           true,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket3/path", "s3://bucket4/path"));
     }
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
 
@@ -341,8 +340,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
           true,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket3/path", "s3://bucket4/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -353,8 +352,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
-          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-          new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+          Set.of("s3://bucket1/path", "s3://bucket2/path"),
+          Set.of("s3://bucket3/path", "s3://bucket4/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
     // order of the allowedReadLocations does not affect the cache
@@ -364,8 +363,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
-          new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
-          new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+          Set.of("s3://bucket2/path", "s3://bucket1/path"),
+          Set.of("s3://bucket3/path", "s3://bucket4/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -376,8 +375,8 @@ public class StorageCredentialCacheTest {
           callCtx,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
-          new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
-          new HashSet<>(Arrays.asList("s3://bucket4/path", "s3://bucket3/path")));
+          Set.of("s3://bucket2/path", "s3://bucket1/path"),
+          Set.of("s3://bucket4/path", "s3://bucket3/path"));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
   }
@@ -497,8 +496,8 @@ public class StorageCredentialCacheTest {
                 callCtx,
                 entityList.get(0),
                 true,
-                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+                Set.of("s3://bucket1/path", "s3://bucket2/path"),
+                Set.of("s3://bucket3/path", "s3://bucket4/path"))
             .credentials();
     Assertions.assertThat(noSuffixResult.size()).isEqualTo(2);
     Assertions.assertThat(noSuffixResult).containsKey("adls.sas-token.some_account");
@@ -510,8 +509,8 @@ public class StorageCredentialCacheTest {
                 callCtx,
                 entityList.get(1),
                 true,
-                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+                Set.of("s3://bucket1/path", "s3://bucket2/path"),
+                Set.of("s3://bucket3/path", "s3://bucket4/path"))
             .credentials();
     Assertions.assertThat(adlsSuffixResult.size()).isEqualTo(3);
     Assertions.assertThat(adlsSuffixResult).containsKey("adls.sas-token.some_account");
@@ -525,8 +524,8 @@ public class StorageCredentialCacheTest {
                 callCtx,
                 entityList.get(2),
                 true,
-                new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-                new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")))
+                Set.of("s3://bucket1/path", "s3://bucket2/path"),
+                Set.of("s3://bucket3/path", "s3://bucket4/path"))
             .credentials();
     Assertions.assertThat(blobSuffixResult.size()).isEqualTo(3);
     Assertions.assertThat(blobSuffixResult).containsKey("adls.sas-token.some_account");
@@ -563,8 +562,8 @@ public class StorageCredentialCacheTest {
             callCtx,
             entityList.get(0),
             true,
-            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"));
     Assertions.assertThat(config.credentials())
         .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));
     Assertions.assertThat(config.extraProperties())

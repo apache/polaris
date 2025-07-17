@@ -22,9 +22,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,13 +39,20 @@ public class RealmEntityManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(RealmEntityManagerFactory.class);
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final PolarisConfigurationStore configurationStore;
+  private final StorageCredentialCache storageCredentialCache;
 
   // Key: realmIdentifier
   private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
 
   @Inject
-  public RealmEntityManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+  public RealmEntityManagerFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      StorageCredentialCache storageCredentialCache) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.configurationStore = configurationStore;
+    this.storageCredentialCache = storageCredentialCache;
   }
 
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
@@ -53,10 +64,11 @@ public class RealmEntityManagerFactory {
         realm,
         r -> {
           LOGGER.info("Initializing new PolarisEntityManager for realm {}", r);
+          RealmConfig realmConfig = new RealmConfigImpl(configurationStore, context);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              metaStoreManagerFactory.getOrCreateStorageCredentialCache(context),
-              metaStoreManagerFactory.getOrCreateEntityCache(context));
+              storageCredentialCache,
+              metaStoreManagerFactory.getOrCreateEntityCache(context, realmConfig));
         });
   }
 }

@@ -33,6 +33,8 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   public static final String TABLE_NAME = "ENTITIES";
 
+  public static final String ID_COLUMN = "id";
+
   public static final List<String> ALL_COLUMNS =
       List.of(
           "id",

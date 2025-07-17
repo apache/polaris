@@ -31,7 +31,7 @@ if [ -z "${SPARK_HOME}" ]; then
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
-ICEBERG_VERSION="1.9.0"
+ICEBERG_VERSION="1.9.1"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
@@ -44,12 +44,12 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
     if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
       fi
     fi
   else

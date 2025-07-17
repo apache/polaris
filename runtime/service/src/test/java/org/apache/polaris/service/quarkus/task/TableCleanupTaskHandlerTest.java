@@ -23,13 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
@@ -52,12 +49,9 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.TestFileIOFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -80,20 +74,7 @@ class TableCleanupTaskHandlerTest {
   private final RealmContext realmContext = () -> "realmName";
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
-    return new TaskFileIOSupplier(
-        new FileIOFactory() {
-          @Override
-          public FileIO loadFileIO(
-              @Nonnull CallContext callContext,
-              @Nonnull String ioImplClassName,
-              @Nonnull Map<String, String> properties,
-              @Nonnull TableIdentifier identifier,
-              @Nonnull Set<String> tableLocations,
-              @Nonnull Set<PolarisStorageActions> storageActions,
-              @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-            return fileIO;
-          }
-        });
+    return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
   }
 
   @BeforeEach
@@ -170,8 +151,7 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
-                    .returns(
-                        AsyncTaskType.BATCH_FILE_CLEANUP, taskEntity2 -> taskEntity2.getTaskType())
+                    .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier,
@@ -183,8 +163,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupHandlesAlreadyDeletedMetadata() throws IOException {
-    BasePersistence metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -237,8 +215,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupDuplicatesTasksIfFileStillExists() throws IOException {
-    BasePersistence metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -333,9 +309,7 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
-                    .returns(
-                        AsyncTaskType.MANIFEST_FILE_CLEANUP,
-                        taskEntity4 -> taskEntity4.getTaskType())
+                    .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
@@ -347,8 +321,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupMultipleSnapshots() throws IOException {
-    BasePersistence metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
@@ -492,8 +464,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupMultipleMetadata() throws IOException {
-    BasePersistence metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =

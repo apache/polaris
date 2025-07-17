@@ -32,8 +32,7 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
@@ -47,20 +46,13 @@ public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
-
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
-  private final RealmContext realmContext;
-  private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    this.realmContext = realmContext;
-    this.configurationStore = configurationStore;
+  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
     cache =
         Caffeine.newBuilder()
-            .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
+            .maximumSize(cacheConfig.maxEntries())
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
@@ -69,7 +61,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  this.maxCacheDurationMs()));
+                                  entry.getMaxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -80,19 +72,17 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private long maxCacheDurationMs() {
+  private long maxCacheDurationMs(RealmConfig realmConfig) {
     var cacheDurationSeconds =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
-              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
-              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
+              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key(),
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key()));
     } else {
       return cacheDurationSeconds * 1000L;
     }
@@ -122,27 +112,28 @@ public class StorageCredentialCache {
           .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
     StorageCredentialCacheKey key =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
+            callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
-            allowedWriteLocations,
-            callCtx);
+            allowedWriteLocations);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
-                  k.getCallContext(),
-                  k.getCatalogId(),
-                  k.getEntityId(),
+                  callCtx,
+                  k.catalogId(),
+                  polarisEntity.getId(),
                   polarisEntity.getType(),
-                  k.isAllowedListAction(),
-                  k.getAllowedReadLocations(),
-                  k.getAllowedWriteLocations());
+                  k.allowedListAction(),
+                  k.allowedReadLocations(),
+                  k.allowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
-            return new StorageCredentialCacheEntry(scopedCredentialsResult);
+            long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
+            return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
           }
           LOGGER
               .atDebug()

@@ -30,8 +30,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -60,9 +59,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @param polarisMetaStoreManager the meta store manager implementation
    */
   public InMemoryEntityCache(
-      @Nonnull RealmContext realmContext,
-      @Nonnull PolarisConfigurationStore configurationStore,
-      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
+      @Nonnull RealmConfig realmConfig, @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
@@ -79,9 +76,7 @@ public class InMemoryEntityCache implements EntityCache {
           }
         };
 
-    long weigherTarget =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
@@ -90,8 +85,7 @@ public class InMemoryEntityCache implements EntityCache {
             .removalListener(removalListener); // Set the removal listener
 
     boolean useSoftValues =
-        configurationStore.getConfiguration(
-            realmContext, BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
+        realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
     if (useSoftValues) {
       byIdBuilder.softValues();
     }

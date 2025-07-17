@@ -36,7 +36,7 @@ set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-SPARK_VERSION=3.5.5
+SPARK_VERSION=3.5.6
 SCALA_VERSION=2.12
 POLARIS_CLIENT_JAR=""
 POLARIS_VERSION=""
@@ -94,12 +94,12 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
     if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
       fi
     fi
   else

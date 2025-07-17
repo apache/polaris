@@ -55,19 +55,15 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -1792,17 +1788,11 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
-            new RealmEntityManagerFactory(null) {
-              @Override
-              public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
-                return entityManager;
-              }
-            },
+            realmEntityManagerFactory,
             managerFactory,
             userSecretsManagerFactory,
             Mockito.mock(),
-            new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {}),
+            new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory),
             polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(

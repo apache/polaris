@@ -67,7 +67,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   prometheus:
-    image: docker.io/prom/prometheus:v3.4.1
+    image: docker.io/prom/prometheus:v3.5.0
     ports:
       - "9093:9090"
     depends_on:
@@ -85,7 +85,7 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/all-in-one:1.70.0
+    image: docker.io/jaegertracing/all-in-one:1.71.0
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"

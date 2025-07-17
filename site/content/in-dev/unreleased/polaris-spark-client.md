@@ -44,12 +44,12 @@ git clone https://github.com/apache/polaris.git ~/polaris
 
 ## Start Spark against a deployed Polaris service
 Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5(version 3.5.3 or later is installed).
-Spark 3.5.5 is recommended, and you can follow the instructions below to get a Spark 3.5.5 distribution.
+Spark 3.5.6 is recommended, and you can follow the instructions below to get a Spark 3.5.6 distribution.
 ```shell
 cd ~
-wget https://archive.apache.org/dist/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz
+wget https://www.apache.org/dyn/closer.lua/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz?action=download
 mkdir spark-3.5
-tar xzvf spark-3.5.5-bin-hadoop3.tgz  -C spark-3.5 --strip-components=1
+tar xzvf spark-3.5.6-bin-hadoop3.tgz -C spark-3.5 --strip-components=1
 cd spark-3.5
 ```
 
@@ -59,7 +59,7 @@ a released Polaris Spark client.
 
 ```shell
 bin/spark-shell \
---packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.warehouse=<polaris-catalog-name> \
@@ -87,7 +87,7 @@ You can also start the connection by programmatically initialize a SparkSession,
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder
-  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1")
+  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1")
   .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
   .config("spark.sql.catalog.<spark-catalog-name>", "org.apache.polaris.spark.SparkCatalog")

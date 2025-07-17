@@ -30,12 +30,10 @@
 
   // Added for posterity how to let Renovate manage version-branches, assuming that release branches
   // have the `release/` prefix.
+  // BE CAREFUL WITH THIS OPTION and make sure that the changes work.
   baseBranches: [
     "main",
-    "/^release\\/1[.].*",
   ],
-  additionalBranchPrefix: "{{baseBranch}}/",
-  commitMessagePrefix: "{{baseBranch}}: ",
 
   pip_requirements: {
     // fileMatch default: (^|/)([\\w-]*)requirements\\.(txt|pip)$
@@ -78,13 +76,6 @@
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
-    },
-
-    // Turn off major & minor version updates on version-branches
-    {
-      matchBaseBranches: ["/^release/.*/"],
-      matchUpdateTypes: ["major", "minor"],
-      enabled: false
     },
   ],
 

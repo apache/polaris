@@ -101,6 +101,24 @@ public class CatalogApi extends RestApi {
     }
   }
 
+  public ListNamespacesResponse listNamespaces(
+      String catalog, Namespace parent, String pageToken, String pageSize) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (!parent.isEmpty()) {
+      // TODO change this for Iceberg 1.7.2:
+      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
+    }
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
+    try (Response response =
+        request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {
+      assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+      ListNamespacesResponse res = response.readEntity(ListNamespacesResponse.class);
+      return res;
+    }
+  }
+
   public List<Namespace> listAllNamespacesChildFirst(String catalog) {
     List<Namespace> result = new ArrayList<>();
     for (int idx = -1; idx < result.size(); idx++) {
@@ -142,6 +160,20 @@ public class CatalogApi extends RestApi {
     }
   }
 
+  public ListTablesResponse listTables(
+      String catalog, Namespace namespace, String pageToken, String pageSize) {
+    String ns = RESTUtil.encodeNamespace(namespace);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
+    try (Response res =
+        request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog), queryParams)
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListTablesResponse.class);
+    }
+  }
+
   public void dropTable(String catalog, TableIdentifier id) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
@@ -154,12 +186,27 @@ public class CatalogApi extends RestApi {
   }
 
   public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(catalog, id, snapshots, Map.of());
+  }
+
+  public LoadTableResponse loadTableWithAccessDelegation(
+      String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(
+        catalog, id, snapshots, Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse loadTable(
+      String catalog, TableIdentifier id, String snapshots, Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
                 Map.of("cat", catalog, "table", id.name()),
-                snapshots == null ? Map.of() : Map.of("snapshots", snapshots))
+                snapshots == null ? Map.of() : Map.of("snapshots", snapshots),
+                allHeaders)
             .get()) {
       if (res.getStatus() == Response.Status.OK.getStatusCode()) {
         return res.readEntity(LoadTableResponse.class);

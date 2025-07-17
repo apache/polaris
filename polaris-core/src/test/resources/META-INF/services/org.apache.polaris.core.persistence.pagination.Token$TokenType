@@ -17,45 +17,4 @@
 # under the License.
 #
 
-apiVersion: v1
-kind: Namespace
-metadata:
-  name:  polaris
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: polaris-deployment
-  namespace: polaris
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: polaris
-  template:
-    metadata:
-      labels:
-        app: polaris
-    spec:
-      containers:
-      - name: polaris
-        image: localhost:5001/apache/polaris:latest
-        ports:
-        - containerPort: 8181
-        - containerPort: 8182
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: polaris-service
-  namespace: polaris
-spec:
-  selector:
-    app: polaris
-  ports:
-  - name: service
-    port: 8181
-    targetPort: 8181
-  - name: metrics
-    port: 8182
-    targetPort: 8182
+org.apache.polaris.core.persistence.pagination.DummyTestToken$DummyTestTokenType

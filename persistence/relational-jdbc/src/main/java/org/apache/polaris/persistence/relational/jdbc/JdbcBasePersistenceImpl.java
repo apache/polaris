@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -53,7 +54,7 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -459,7 +460,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
-    Map<String, Object> params =
+    Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
             catalogId,
@@ -469,29 +470,41 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             entityType.getCode(),
             "realm_id",
             realmId);
+    Map<String, Object> whereGreater;
 
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
+    String orderByColumnName = null;
+    if (pageToken.paginationRequested()) {
+      orderByColumnName = ModelEntity.ID_COLUMN;
+      whereGreater =
+          pageToken
+              .valueAs(EntityIdToken.class)
+              .map(
+                  entityIdToken ->
+                      Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
+              .orElse(Map.of());
+    } else {
+      whereGreater = Map.of();
+    }
+
     try {
       PreparedQuery query =
           QueryGenerator.generateSelectQuery(
-              ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, params);
-      List<PolarisBaseEntity> results = new ArrayList<>();
+              ModelEntity.ALL_COLUMNS,
+              ModelEntity.TABLE_NAME,
+              whereEquals,
+              whereGreater,
+              orderByColumnName);
+      AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
           new ModelEntity(),
           stream -> {
             var data = stream.filter(entityFilter);
-            if (pageToken instanceof HasPageSize hasPageSize) {
-              data = data.limit(hasPageSize.getPageSize());
-            }
-            data.forEach(results::add);
+            results.set(Page.mapped(pageToken, data, transformer, EntityIdToken::fromEntity));
           });
-      List<T> resultsOrEmpty =
-          results == null
-              ? Collections.emptyList()
-              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
-      return Page.fromItems(resultsOrEmpty);
+      return results.get();
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);

@@ -40,6 +40,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4
+        with:
+          validate-wrappers: false
+
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
@@ -56,7 +64,7 @@ jobs:
               :polaris-server:quarkusAppPartsBuild --rerun \
               -Dquarkus.container-image.build=true
 
-      # NOTE: the regression test runs with spark 3.5.5 and scala 2.12 in Java 17. We also have integration
+      # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration
       # tests runs with the existing gradle.yml, which only runs on Java 21. Since spark Java compatibility
       # for 3.5 is 8, 11, and 17, we should run spark client with those compatible java versions.
       # TODO: add separate spark client CI and run with Java 8, 11 and 17.

@@ -99,16 +99,7 @@ using different configurations. Check the `./getting-started` directory for more
 
 #### Running in Kubernetes
 
-- `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
-  then deploy one pod and one service. The service is available on ports `8181` and `8182`.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure 
-  connections between a local machine and a pod within the cluster for both service and 
-  health/metrics endpoints:
-  - http://localhost:8182/q/metrics
-  - http://localhost:8182/q/health
-- `kubectl get pods -n polaris` - To check the status of the pods.
-- `kubectl get deployment -n polaris` - To check the status of the deployment.
-- `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
+- See [README in `helm/polaris`](helm/polaris/README.md) for more information.
 
 #### Configuring Polaris
 

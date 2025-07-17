@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
     OAUTH = "oauth"
     BEARER = "bearer"
     SIGV4 = "sigv4"
+    IMPLICIT = "implicit"
 
 
 class ServiceIdentityType(Enum):
@@ -241,7 +242,7 @@ class Hints:
                 "The type of external catalog in [ICEBERG, HADOOP]."
             )
             CATALOG_AUTHENTICATION_TYPE = (
-                "The type of authentication in [OAUTH, BEARER, SIGV4]"
+                "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
             )
             CATALOG_SERVICE_IDENTITY_TYPE = "The type of service identity in [AWS_IAM]"
 
