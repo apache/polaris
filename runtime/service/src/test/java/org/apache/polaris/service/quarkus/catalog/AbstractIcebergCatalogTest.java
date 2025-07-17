@@ -34,8 +34,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
@@ -113,7 +111,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -179,8 +177,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@TestProfile(IcebergCatalogTest.Profile.class)
-public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
+public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   static {
     org.assertj.core.api.Assumptions.setPreferredAssumptionException(
         PreferredAssumptionException.JUNIT5);
@@ -195,27 +192,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           .withRecordCount(1)
           .build();
 
-  public static class Profile implements QuarkusTestProfile {
-
+  public static class Profile extends Profiles.DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\"]",
-          "polaris.features.\"LIST_PAGINATION_ENABLED\"",
-          "true",
-          "polaris.event-listener.type",
-          "test",
-          "polaris.readiness.ignore-severe-issues",
-          "true",
-          "LIST_PAGINATION_ENABLED",
-          "true",
-          "polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"",
-          "true");
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
+          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
+          .build();
     }
   }
 
@@ -271,8 +255,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   }
 
   @Nullable
-  protected abstract InMemoryEntityCache createEntityCache(
+  protected abstract EntityCache createEntityCache(
       RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
+
+  protected void bootstrapRealm(String realmName) {}
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -281,6 +267,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    bootstrapRealm(realmName);
+
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -300,6 +288,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             metaStoreManager,
             storageCredentialCache,
             createEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+
+    // LocalPolarisMetaStoreManagerFactory.bootstrapServiceAndCreatePolarisPrincipalForRealm sets
+    // the CallContext.setCurrentContext() but never clears it, whereas the NoSQL one resets it.
+    CallContext.setCurrentContext(polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(

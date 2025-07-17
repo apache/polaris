@@ -30,9 +30,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -40,7 +37,6 @@ import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -68,7 +64,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -108,24 +103,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@QuarkusTest
-@TestProfile(PolicyCatalogTest.Profile.class)
-public class PolicyCatalogTest {
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
+public abstract class AbstractPolicyCatalogTest {
 
   private static final Namespace NS = Namespace.of("ns1");
   private static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
@@ -178,6 +156,8 @@ public class PolicyCatalogTest {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  protected void bootstrapRealm(String realmName) {}
+
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
@@ -185,6 +165,8 @@ public class PolicyCatalogTest {
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    bootstrapRealm(realmName);
+
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -202,7 +184,8 @@ public class PolicyCatalogTest {
         new PolarisEntityManager(
             metaStoreManager,
             storageCredentialCache,
-            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+            metaStoreManagerFactory.getOrCreateEntityCache(
+                realmContext, polarisContext.getRealmConfig()));
 
     callContext = polarisContext;
 
