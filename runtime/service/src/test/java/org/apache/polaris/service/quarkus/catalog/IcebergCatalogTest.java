@@ -19,8 +19,10 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doReturn;
@@ -450,6 +452,31 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   protected boolean supportsNotifications() {
     return true;
+  }
+
+  @Test
+  public void testPropertiesUpdateConcurrentException() {
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            polarisContext, entityManager, securityContext, CATALOG_NAME);
+    IcebergCatalog catalog =
+        new IcebergCatalog(
+            entityManager,
+            spyMetaStore,
+            polarisContext,
+            passthroughView,
+            securityContext,
+            Mockito.mock(TaskExecutor.class),
+            fileIOFactory,
+            polarisEventListener);
+    catalog.createNamespace(NS);
+    doReturn(new EntityResult(ENTITY_NOT_FOUND, ""))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+    assertThrows(
+        CommitFailedException.class, () -> catalog.setProperties(NS, ImmutableMap.of("a", "b")));
+    assertThrows(CommitFailedException.class, () -> catalog.removeProperties(NS, Set.of("a", "b")));
   }
 
   @Test
