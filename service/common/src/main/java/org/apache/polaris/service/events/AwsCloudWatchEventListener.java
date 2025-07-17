@@ -259,6 +259,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       json.put("realm", callContext.getRealmContext().getRealmIdentifier());
       json.put("event_type", event.getClass().getSimpleName());
       json.put("principal", securityContext.getUserPrincipal().getName());
+      // TODO: Add request ID when it is available
       queue.add(
           new EventWithTimestamp(
               objectMapper.writeValueAsString(json), getCurrentTimestamp(callContext)));
