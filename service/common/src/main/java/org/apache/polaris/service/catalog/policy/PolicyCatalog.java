@@ -24,6 +24,7 @@ import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.C
 
 import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -54,6 +56,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PolicyUtil;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -70,6 +73,7 @@ public class PolicyCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalog.class);
 
   private final CallContext callContext;
+  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private long catalogId = -1;
@@ -77,9 +81,12 @@ public class PolicyCatalog {
 
   public PolicyCatalog(
       PolarisMetaStoreManager metaStoreManager,
+      SecurityContext securityContext,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
+    this.authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
@@ -420,8 +427,11 @@ public class PolicyCatalog {
     }
 
     return Stream.concat(
-            nonInheritablePolicies.stream().map(policy -> constructApplicablePolicy(policy, false)),
+            nonInheritablePolicies.stream()
+                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
+                .map(policy -> constructApplicablePolicy(policy, false)),
             inheritablePolicies.values().stream()
+                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
                 .map(
                     policy ->
                         constructApplicablePolicy(
@@ -525,8 +535,7 @@ public class PolicyCatalog {
         .build();
   }
 
-  private static ApplicablePolicy constructApplicablePolicy(
-      PolicyEntity policyEntity, boolean inherited) {
+  private ApplicablePolicy constructApplicablePolicy(PolicyEntity policyEntity, boolean inherited) {
     Namespace parentNamespace = policyEntity.getParentNamespace();
 
     return ApplicablePolicy.builder()
@@ -534,7 +543,9 @@ public class PolicyCatalog {
         .setInheritable(policyEntity.getPolicyType().isInheritable())
         .setName(policyEntity.getName())
         .setDescription(policyEntity.getDescription())
-        .setContent(policyEntity.getContent())
+        .setContent(
+            PolicyUtil.replaceContextVariable(
+                policyEntity.getContent(), policyEntity.getPolicyType(), authenticatedPrincipal))
         .setVersion(policyEntity.getPolicyVersion())
         .setInherited(inherited)
         .setNamespace(Arrays.asList(parentNamespace.levels()))

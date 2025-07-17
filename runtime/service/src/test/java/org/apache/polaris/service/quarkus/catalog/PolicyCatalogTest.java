@@ -19,6 +19,7 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ACCESS_CONTROL;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
@@ -137,6 +138,24 @@ public class PolicyCatalogTest {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID"),
           required(4, "data", Types.StringType.get()));
+
+  private static final String EXAMPLE_ACCESS_CONTROL_POLICY_CONTENT =
+      "{\n"
+          + "  \"principalRole\": \"ANALYST\",\n"
+          + "  \"columnProjections\": [\"name\", \"location\"],\n"
+          + "  \"rowFilters\": [\n"
+          + "    {\n"
+          + "      \"type\": \"eq\",\n"
+          + "      \"term\": \"country\",\n"
+          + "      \"value\": \"USA\"\n"
+          + "    },\n"
+          + "    {\n"
+          + "      \"type\": \"eq\",\n"
+          + "      \"term\": \"$current_principal\",\n"
+          + "      \"value\": \"PK\"\n"
+          + "    }\n"
+          + "  ]\n"
+          + "}";
 
   private static final PolicyIdentifier POLICY1 = new PolicyIdentifier(NS, "p1");
   private static final PolicyIdentifier POLICY2 = new PolicyIdentifier(NS, "p2");
@@ -289,7 +308,8 @@ public class PolicyCatalogTest {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog =
+        new PolicyCatalog(metaStoreManager, securityContext, callContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,
@@ -634,6 +654,30 @@ public class PolicyCatalogTest {
     assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
   }
 
+  @Test
+  public void testAttachAccessControlPolicyToTableAndCheckApplicablePolicy() {
+    icebergCatalog.createNamespace(NS);
+    icebergCatalog.createTable(TABLE, SCHEMA);
+    policyCatalog.createPolicy(
+        POLICY1, METADATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+    var p2 =
+        policyCatalog.createPolicy(
+            POLICY2, ACCESS_CONTROL.getName(), "FGAC", EXAMPLE_ACCESS_CONTROL_POLICY_CONTENT);
+
+    // attach a policy to table
+    var target =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(NS.toString(), TABLE.name()));
+    policyCatalog.attachPolicy(POLICY2, target, null);
+
+    // attach a different type of policy to namespace
+    policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null);
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), ACCESS_CONTROL);
+    System.out.println(applicablePolicies);
+    // only p2 is with the type fetched
+    assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
+  }
+
   private static ApplicablePolicy policyToApplicablePolicy(
       Policy policy, boolean inherited, Namespace parent) {
     return new ApplicablePolicy(
@@ -641,9 +685,16 @@ public class PolicyCatalogTest {
         policy.getInheritable(),
         policy.getName(),
         policy.getDescription(),
-        policy.getContent(),
+        replaceContextVariable(policy.getContent(), policy.getPolicyType()),
         policy.getVersion(),
         inherited,
         Arrays.asList(parent.levels()));
+  }
+
+  private static String replaceContextVariable(String content, String policyType) {
+    if (policyType.equals(ACCESS_CONTROL.getName())) {
+      return "{\"principalRole\":\"ANALYST\",\"columnProjections\":[\"name\",\"location\"],\"rowFilters\":[\"{\\\"type\\\":\\\"eq\\\",\\\"term\\\":\\\"country\\\",\\\"value\\\":\\\"USA\\\"}\",\"false\"]}";
+    }
+    return content;
   }
 }
