@@ -22,8 +22,6 @@ package org.apache.polaris.service.events;
 /**
  * Event fired after a principal is deleted in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalName the name of the principal that was deleted
  */
-public record AfterPrincipalDeleteEvent(String eventId, String principalName)
-    implements PolarisEvent {}
+public record AfterPrincipalDeleteEvent(String principalName) implements PolarisEvent {}

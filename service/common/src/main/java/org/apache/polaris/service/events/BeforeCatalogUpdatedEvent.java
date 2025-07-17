@@ -22,6 +22,5 @@ package org.apache.polaris.service.events;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 
 /** Emitted when Polaris intends to update a catalog. */
-public record BeforeCatalogUpdatedEvent(
-    String eventId, String catalogName, UpdateCatalogRequest updateRequest)
+public record BeforeCatalogUpdatedEvent(String catalogName, UpdateCatalogRequest updateRequest)
     implements PolarisEvent {}

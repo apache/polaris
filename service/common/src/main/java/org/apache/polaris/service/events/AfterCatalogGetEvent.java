@@ -22,4 +22,4 @@ package org.apache.polaris.service.events;
 import org.apache.polaris.core.admin.model.Catalog;
 
 /** Emitted when Polaris intends to get a catalog. */
-public record AfterCatalogGetEvent(String eventId, Catalog catalog) implements PolarisEvent {}
+public record AfterCatalogGetEvent(Catalog catalog) implements PolarisEvent {}

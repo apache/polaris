@@ -24,14 +24,10 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 /**
  * Event fired before a catalog role is updated in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role to be updated
  * @param updateRequest the update request object
  */
 public record BeforeCatalogRoleUpdateEvent(
-    String eventId,
-    String catalogName,
-    String catalogRoleName,
-    UpdateCatalogRoleRequest updateRequest)
+    String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
     implements PolarisEvent {}

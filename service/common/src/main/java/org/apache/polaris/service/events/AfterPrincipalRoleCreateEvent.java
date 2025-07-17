@@ -24,8 +24,6 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 /**
  * Event fired after a principal role is created in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRole the new Principal Role entity created
  */
-public record AfterPrincipalRoleCreateEvent(String eventId, PrincipalRole principalRole)
-    implements PolarisEvent {}
+public record AfterPrincipalRoleCreateEvent(PrincipalRole principalRole) implements PolarisEvent {}

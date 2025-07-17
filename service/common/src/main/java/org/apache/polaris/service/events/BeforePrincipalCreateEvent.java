@@ -20,5 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Emitted before a principal is created in Polaris. */
-public record BeforePrincipalCreateEvent(String eventId, String principalName)
-    implements PolarisEvent {}
+public record BeforePrincipalCreateEvent(String principalName) implements PolarisEvent {}

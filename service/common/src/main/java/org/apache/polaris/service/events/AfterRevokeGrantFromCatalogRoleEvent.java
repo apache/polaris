@@ -25,7 +25,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 /**
  * Event fired after a grant is revoked from a catalog role in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role
  * @param privilege the privilege revoked
@@ -33,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
  * @param cascade whether to cascade the revocation
  */
 public record AfterRevokeGrantFromCatalogRoleEvent(
-    String eventId,
     String catalogName,
     String catalogRoleName,
     PolarisPrivilege privilege,

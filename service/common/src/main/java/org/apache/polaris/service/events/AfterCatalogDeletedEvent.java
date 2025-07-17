@@ -20,5 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Emitted when Polaris deletes a catalog. */
-public record AfterCatalogDeletedEvent(String eventId, String catalogName)
-    implements PolarisEvent {}
+public record AfterCatalogDeletedEvent(String catalogName) implements PolarisEvent {}

@@ -22,9 +22,8 @@ package org.apache.polaris.service.events;
 /**
  * Event fired before the list of catalog roles for a principal role is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRoleName the name of the principal role
  * @param catalogName the name of the catalog
  */
 public record BeforeListCatalogRolesForPrincipalRoleEvent(
-    String eventId, String principalRoleName, String catalogName) implements PolarisEvent {}
+    String principalRoleName, String catalogName) implements PolarisEvent {}

@@ -24,7 +24,6 @@ import org.apache.polaris.core.admin.model.Principal;
 /**
  * Event fired after a principal is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principal the principal that was retrieved
  */
-public record AfterPrincipalGetEvent(String eventId, Principal principal) implements PolarisEvent {}
+public record AfterPrincipalGetEvent(Principal principal) implements PolarisEvent {}

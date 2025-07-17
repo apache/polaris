@@ -24,9 +24,8 @@ import org.apache.polaris.core.admin.model.CatalogRole;
 /**
  * Event fired after a catalog role is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRole the catalog role that was retrieved
  */
-public record AfterCatalogRoleGetEvent(String eventId, String catalogName, CatalogRole catalogRole)
+public record AfterCatalogRoleGetEvent(String catalogName, CatalogRole catalogRole)
     implements PolarisEvent {}

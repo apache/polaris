@@ -22,8 +22,6 @@ package org.apache.polaris.service.events;
 /**
  * Event fired before credentials are rotated for a principal in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalName the name of the principal whose credentials will be rotated
  */
-public record BeforeCredentialsRotateEvent(String eventId, String principalName)
-    implements PolarisEvent {}
+public record BeforeCredentialsRotateEvent(String principalName) implements PolarisEvent {}

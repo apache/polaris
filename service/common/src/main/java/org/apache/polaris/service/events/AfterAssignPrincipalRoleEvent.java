@@ -24,9 +24,8 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 /**
  * Event fired after a principal role is assigned to a principal in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalName the name of the principal
  * @param principalRole the principal role assigned
  */
-public record AfterAssignPrincipalRoleEvent(
-    String eventId, String principalName, PrincipalRole principalRole) implements PolarisEvent {}
+public record AfterAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole)
+    implements PolarisEvent {}

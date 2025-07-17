@@ -24,8 +24,6 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 /**
  * Event fired after a principal role is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRole the principal role that was retrieved
  */
-public record AfterPrincipalRoleGetEvent(String eventId, PrincipalRole principalRole)
-    implements PolarisEvent {}
+public record AfterPrincipalRoleGetEvent(PrincipalRole principalRole) implements PolarisEvent {}

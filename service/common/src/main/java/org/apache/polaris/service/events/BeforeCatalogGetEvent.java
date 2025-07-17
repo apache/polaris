@@ -20,4 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Emitted when Polaris intends to get a catalog. */
-public record BeforeCatalogGetEvent(String eventId, String catalogName) implements PolarisEvent {}
+public record BeforeCatalogGetEvent(String catalogName) implements PolarisEvent {}

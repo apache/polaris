@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.events;
 
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.CallContext;
 
 /**
@@ -29,28 +30,36 @@ public abstract class PolarisEventListener {
   public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
 
   /** {@link BeforeTableCommitedEvent} */
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
+  public void onBeforeTableCommited(
+      BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableCommitedEvent} */
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
+  public void onAfterTableCommited(
+      AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewCommitedEvent} */
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
+  public void onBeforeViewCommited(
+      BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewCommitedEvent} */
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
+  public void onAfterViewCommited(
+      AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTableRefreshedEvent} */
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
+  public void onBeforeTableRefreshed(
+      BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterTableRefreshedEvent} */
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
+  public void onAfterTableRefreshed(
+      AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeViewRefreshedEvent} */
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
+  public void onBeforeViewRefreshed(
+      BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterViewRefreshedEvent} */
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
+  public void onAfterViewRefreshed(
+      AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeTaskAttemptedEvent} */
   public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
@@ -59,210 +68,286 @@ public abstract class PolarisEventListener {
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
 
   /** {@link BeforeCatalogCreatedEvent} */
-  public void onBeforeCatalogCreated(BeforeCatalogCreatedEvent event) {}
+  public void onBeforeCatalogCreated(
+      BeforeCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogCreatedEvent} */
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event, CallContext callContext) {}
+  public void onAfterCatalogCreated(
+      AfterCatalogCreatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onBeforeCatalogDeleted(BeforeCatalogDeletedEvent event) {}
+  public void onBeforeCatalogDeleted(
+      BeforeCatalogDeletedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onAfterCatalogDeleted(AfterCatalogDeletedEvent event, CallContext callContext) {}
+  public void onAfterCatalogDeleted(
+      AfterCatalogDeletedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onBeforeCatalogGet(BeforeCatalogGetEvent event) {}
+  public void onBeforeCatalogGet(
+      BeforeCatalogGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onAfterCatalogGet(AfterCatalogGetEvent event, CallContext callContext) {}
+  public void onAfterCatalogGet(
+      AfterCatalogGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onBeforeCatalogUpdated(BeforeCatalogUpdatedEvent event) {}
+  public void onBeforeCatalogUpdated(
+      BeforeCatalogUpdatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onAfterCatalogUpdated(AfterCatalogUpdatedEvent event, CallContext callContext) {}
+  public void onAfterCatalogUpdated(
+      AfterCatalogUpdatedEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onBeforeCatalogList(BeforeCatalogListEvent event) {}
+  public void onBeforeCatalogList(
+      BeforeCatalogListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
-  public void onAfterCatalogList(AfterCatalogListEvent event, CallContext callContext) {}
+  public void onAfterCatalogList(
+      AfterCatalogListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalCreateEvent} */
-  public void onBeforePrincipalCreate(BeforePrincipalCreateEvent event) {}
+  public void onBeforePrincipalCreate(
+      BeforePrincipalCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalCreateEvent} */
-  public void onAfterPrincipalCreate(AfterPrincipalCreateEvent event, CallContext callContext) {}
+  public void onAfterPrincipalCreate(
+      AfterPrincipalCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalDeleteEvent} */
-  public void onBeforePrincipalDelete(BeforePrincipalDeleteEvent event) {}
+  public void onBeforePrincipalDelete(
+      BeforePrincipalDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalDeleteEvent} */
-  public void onAfterPrincipalDelete(AfterPrincipalDeleteEvent event, CallContext callContext) {}
+  public void onAfterPrincipalDelete(
+      AfterPrincipalDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalGetEvent} */
-  public void onBeforePrincipalGet(BeforePrincipalGetEvent event) {}
+  public void onBeforePrincipalGet(
+      BeforePrincipalGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalGetEvent} */
-  public void onAfterPrincipalGet(AfterPrincipalGetEvent event, CallContext callContext) {}
+  public void onAfterPrincipalGet(
+      AfterPrincipalGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalUpdateEvent} */
-  public void onBeforePrincipalUpdate(BeforePrincipalUpdateEvent event) {}
+  public void onBeforePrincipalUpdate(
+      BeforePrincipalUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalUpdateEvent} */
-  public void onAfterPrincipalUpdate(AfterPrincipalUpdateEvent event, CallContext callContext) {}
+  public void onAfterPrincipalUpdate(
+      AfterPrincipalUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCredentialsRotateEvent} */
-  public void onBeforeCredentialsRotate(BeforeCredentialsRotateEvent event) {}
+  public void onBeforeCredentialsRotate(
+      BeforeCredentialsRotateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCredentialsRotateEvent} */
   public void onAfterCredentialsRotate(
-      AfterCredentialsRotateEvent event, CallContext callContext) {}
+      AfterCredentialsRotateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalsListEvent} */
-  public void onBeforePrincipalsList(BeforePrincipalsListEvent event) {}
+  public void onBeforePrincipalsList(
+      BeforePrincipalsListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalsListEvent} */
-  public void onAfterPrincipalsList(AfterPrincipalsListEvent event, CallContext callContext) {}
+  public void onAfterPrincipalsList(
+      AfterPrincipalsListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRoleCreateEvent} */
-  public void onBeforePrincipalRoleCreate(BeforePrincipalRoleCreateEvent event) {}
+  public void onBeforePrincipalRoleCreate(
+      BeforePrincipalRoleCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRoleCreateEvent} */
   public void onAfterPrincipalRoleCreate(
-      AfterPrincipalRoleCreateEvent event, CallContext callContext) {}
+      AfterPrincipalRoleCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRoleDeleteEvent} */
-  public void onBeforePrincipalRoleDelete(BeforePrincipalRoleDeleteEvent event) {}
+  public void onBeforePrincipalRoleDelete(
+      BeforePrincipalRoleDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRoleDeleteEvent} */
   public void onAfterPrincipalRoleDelete(
-      AfterPrincipalRoleDeleteEvent event, CallContext callContext) {}
+      AfterPrincipalRoleDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRoleGetEvent} */
-  public void onBeforePrincipalRoleGet(BeforePrincipalRoleGetEvent event) {}
+  public void onBeforePrincipalRoleGet(
+      BeforePrincipalRoleGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRoleGetEvent} */
-  public void onAfterPrincipalRoleGet(AfterPrincipalRoleGetEvent event, CallContext callContext) {}
+  public void onAfterPrincipalRoleGet(
+      AfterPrincipalRoleGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRoleUpdateEvent} */
-  public void onBeforePrincipalRoleUpdate(BeforePrincipalRoleUpdateEvent event) {}
+  public void onBeforePrincipalRoleUpdate(
+      BeforePrincipalRoleUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRoleUpdateEvent} */
   public void onAfterPrincipalRoleUpdate(
-      AfterPrincipalRoleUpdateEvent event, CallContext callContext) {}
+      AfterPrincipalRoleUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRolesListEvent} */
-  public void onBeforePrincipalRolesList(BeforePrincipalRolesListEvent event) {}
+  public void onBeforePrincipalRolesList(
+      BeforePrincipalRolesListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRolesListEvent} */
   public void onAfterPrincipalRolesList(
-      AfterPrincipalRolesListEvent event, CallContext callContext) {}
+      AfterPrincipalRolesListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleCreateEvent} */
-  public void onBeforeCatalogRoleCreate(BeforeCatalogRoleCreateEvent event) {}
+  public void onBeforeCatalogRoleCreate(
+      BeforeCatalogRoleCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleCreateEvent} */
   public void onAfterCatalogRoleCreate(
-      AfterCatalogRoleCreateEvent event, CallContext callContext) {}
+      AfterCatalogRoleCreateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleDeleteEvent} */
-  public void onBeforeCatalogRoleDelete(BeforeCatalogRoleDeleteEvent event) {}
+  public void onBeforeCatalogRoleDelete(
+      BeforeCatalogRoleDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleDeleteEvent} */
   public void onAfterCatalogRoleDelete(
-      AfterCatalogRoleDeleteEvent event, CallContext callContext) {}
+      AfterCatalogRoleDeleteEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleGetEvent} */
-  public void onBeforeCatalogRoleGet(BeforeCatalogRoleGetEvent event) {}
+  public void onBeforeCatalogRoleGet(
+      BeforeCatalogRoleGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleGetEvent} */
-  public void onAfterCatalogRoleGet(AfterCatalogRoleGetEvent event, CallContext callContext) {}
+  public void onAfterCatalogRoleGet(
+      AfterCatalogRoleGetEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleUpdateEvent} */
-  public void onBeforeCatalogRoleUpdate(BeforeCatalogRoleUpdateEvent event) {}
+  public void onBeforeCatalogRoleUpdate(
+      BeforeCatalogRoleUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleUpdateEvent} */
   public void onAfterCatalogRoleUpdate(
-      AfterCatalogRoleUpdateEvent event, CallContext callContext) {}
+      AfterCatalogRoleUpdateEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRolesListEvent} */
-  public void onBeforeCatalogRolesList(BeforeCatalogRolesListEvent event) {}
+  public void onBeforeCatalogRolesList(
+      BeforeCatalogRolesListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRolesListEvent} */
-  public void onAfterCatalogRolesList(AfterCatalogRolesListEvent event, CallContext callContext) {}
+  public void onAfterCatalogRolesList(
+      AfterCatalogRolesListEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeAssignPrincipalRoleEvent} */
-  public void onBeforeAssignPrincipalRole(BeforeAssignPrincipalRoleEvent event) {}
+  public void onBeforeAssignPrincipalRole(
+      BeforeAssignPrincipalRoleEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterAssignPrincipalRoleEvent} */
   public void onAfterAssignPrincipalRole(
-      AfterAssignPrincipalRoleEvent event, CallContext callContext) {}
+      AfterAssignPrincipalRoleEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforeRevokePrincipalRoleEvent} */
-  public void onBeforeRevokePrincipalRole(BeforeRevokePrincipalRoleEvent event) {}
+  public void onBeforeRevokePrincipalRole(
+      BeforeRevokePrincipalRoleEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link AfterRevokePrincipalRoleEvent} */
   public void onAfterRevokePrincipalRole(
-      AfterRevokePrincipalRoleEvent event, CallContext callContext) {}
+      AfterRevokePrincipalRoleEvent event, CallContext callCtx, SecurityContext securityContext) {}
 
   /** {@link BeforePrincipalRolesAssignedListEvent} */
-  public void onBeforePrincipalRolesAssignedList(BeforePrincipalRolesAssignedListEvent event) {}
+  public void onBeforePrincipalRolesAssignedList(
+      BeforePrincipalRolesAssignedListEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterPrincipalRolesAssignedListEvent} */
   public void onAfterPrincipalRolesAssignedList(
-      AfterPrincipalRolesAssignedListEvent event, CallContext callContext) {}
+      AfterPrincipalRolesAssignedListEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleAssignToPrincipalRoleEvent} */
   public void onBeforeCatalogRoleAssignToPrincipalRole(
-      BeforeCatalogRoleAssignToPrincipalRoleEvent event) {}
+      BeforeCatalogRoleAssignToPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleAssignToPrincipalRoleEvent} */
   public void onAfterCatalogRoleAssignToPrincipalRole(
-      AfterCatalogRoleAssignToPrincipalRoleEvent event, CallContext callContext) {}
+      AfterCatalogRoleAssignToPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeCatalogRoleRevokeFromPrincipalRoleEvent} */
   public void onBeforeCatalogRoleRevokeFromPrincipalRole(
-      BeforeCatalogRoleRevokeFromPrincipalRoleEvent event) {}
+      BeforeCatalogRoleRevokeFromPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterCatalogRoleRevokeFromPrincipalRoleEvent} */
   public void onAfterCatalogRoleRevokeFromPrincipalRole(
-      AfterCatalogRoleRevokeFromPrincipalRoleEvent event, CallContext callContext) {}
+      AfterCatalogRoleRevokeFromPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeListAssigneePrincipalsForPrincipalRoleEvent} */
   public void onBeforeListAssigneePrincipalsForPrincipalRole(
-      BeforeListAssigneePrincipalsForPrincipalRoleEvent event) {}
+      BeforeListAssigneePrincipalsForPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterListAssigneePrincipalsForPrincipalRoleEvent} */
   public void onAfterListAssigneePrincipalsForPrincipalRole(
-      AfterListAssigneePrincipalsForPrincipalRoleEvent event, CallContext callContext) {}
+      AfterListAssigneePrincipalsForPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeListCatalogRolesForPrincipalRoleEvent} */
   public void onBeforeListCatalogRolesForPrincipalRole(
-      BeforeListCatalogRolesForPrincipalRoleEvent event) {}
+      BeforeListCatalogRolesForPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterListCatalogRolesForPrincipalRoleEvent} */
   public void onAfterListCatalogRolesForPrincipalRole(
-      AfterListCatalogRolesForPrincipalRoleEvent event, CallContext callContext) {}
+      AfterListCatalogRolesForPrincipalRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeAddGrantToCatalogRoleEvent} */
-  public void onBeforeAddGrantToCatalogRole(BeforeAddGrantToCatalogRoleEvent event) {}
+  public void onBeforeAddGrantToCatalogRole(
+      BeforeAddGrantToCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterAddGrantToCatalogRoleEvent} */
   public void onAfterAddGrantToCatalogRole(
-      AfterAddGrantToCatalogRoleEvent event, CallContext callContext) {}
+      AfterAddGrantToCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeRevokeGrantFromCatalogRoleEvent} */
-  public void onBeforeRevokeGrantFromCatalogRole(BeforeRevokeGrantFromCatalogRoleEvent event) {}
+  public void onBeforeRevokeGrantFromCatalogRole(
+      BeforeRevokeGrantFromCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterRevokeGrantFromCatalogRoleEvent} */
   public void onAfterRevokeGrantFromCatalogRole(
-      AfterRevokeGrantFromCatalogRoleEvent event, CallContext callContext) {}
+      AfterRevokeGrantFromCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeListAssigneePrincipalRolesForCatalogRoleEvent} */
   public void onBeforeListAssigneePrincipalRolesForCatalogRole(
-      BeforeListAssigneePrincipalRolesForCatalogRoleEvent event) {}
+      BeforeListAssigneePrincipalRolesForCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterListAssigneePrincipalRolesForCatalogRoleEvent} */
   public void onAfterListAssigneePrincipalRolesForCatalogRole(
-      AfterListAssigneePrincipalRolesForCatalogRoleEvent event, CallContext callContext) {}
+      AfterListAssigneePrincipalRolesForCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link BeforeListGrantsForCatalogRoleEvent} */
-  public void onBeforeListGrantsForCatalogRole(BeforeListGrantsForCatalogRoleEvent event) {}
+  public void onBeforeListGrantsForCatalogRole(
+      BeforeListGrantsForCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 
   /** {@link AfterListGrantsForCatalogRoleEvent} */
   public void onAfterListGrantsForCatalogRole(
-      AfterListGrantsForCatalogRoleEvent event, CallContext callContext) {}
+      AfterListGrantsForCatalogRoleEvent event,
+      CallContext callCtx,
+      SecurityContext securityContext) {}
 }

@@ -24,11 +24,10 @@ import org.apache.polaris.core.admin.model.CatalogRole;
 /**
  * Event fired before a catalog role is assigned to a principal role in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRoleName the name of the principal role
  * @param catalogName the name of the catalog
  * @param catalogRole the catalog role to be assigned
  */
 public record BeforeCatalogRoleAssignToPrincipalRoleEvent(
-    String eventId, String principalRoleName, String catalogName, CatalogRole catalogRole)
+    String principalRoleName, String catalogName, CatalogRole catalogRole)
     implements PolarisEvent {}

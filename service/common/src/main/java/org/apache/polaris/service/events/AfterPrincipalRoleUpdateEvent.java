@@ -24,8 +24,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 /**
  * Event fired after a principal role is updated in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param updatedPrincipalRole the updated principal role object
  */
-public record AfterPrincipalRoleUpdateEvent(String eventId, PrincipalRole updatedPrincipalRole)
+public record AfterPrincipalRoleUpdateEvent(PrincipalRole updatedPrincipalRole)
     implements PolarisEvent {}

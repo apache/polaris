@@ -21,8 +21,10 @@ package org.apache.polaris.service.events;
 import com.google.common.collect.Streams;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.polaris.core.context.CallContext;
 
 /** Event listener that stores all emitted events forever. Not recommended for use in production. */
 @ApplicationScoped
@@ -41,42 +43,50 @@ public class TestPolarisEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {
+  public void onBeforeTableCommited(
+      BeforeTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {
+  public void onAfterTableCommited(
+      AfterTableCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {
+  public void onBeforeViewCommited(
+      BeforeViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {
+  public void onAfterViewCommited(
+      AfterViewCommitedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {
+  public void onBeforeTableRefreshed(
+      BeforeTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+  public void onAfterTableRefreshed(
+      AfterTableRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {
+  public void onBeforeViewRefreshed(
+      BeforeViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {
+  public void onAfterViewRefreshed(
+      AfterViewRefreshedEvent event, CallContext callCtx, SecurityContext securityContext) {
     history.add(event);
   }
 

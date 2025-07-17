@@ -22,8 +22,7 @@ package org.apache.polaris.service.events;
 /**
  * Event fired before the list of assignee principals for a principal role is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRoleName the name of the principal role
  */
-public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(
-    String eventId, String principalRoleName) implements PolarisEvent {}
+public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName)
+    implements PolarisEvent {}

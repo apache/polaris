@@ -22,9 +22,8 @@ package org.apache.polaris.service.events;
 /**
  * Event fired before a catalog role is deleted in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role to be deleted
  */
-public record BeforeCatalogRoleDeleteEvent(
-    String eventId, String catalogName, String catalogRoleName) implements PolarisEvent {}
+public record BeforeCatalogRoleDeleteEvent(String catalogName, String catalogRoleName)
+    implements PolarisEvent {}

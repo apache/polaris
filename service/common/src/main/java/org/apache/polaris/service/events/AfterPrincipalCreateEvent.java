@@ -22,5 +22,4 @@ package org.apache.polaris.service.events;
 import org.apache.polaris.core.admin.model.Principal;
 
 /** Emitted after a principal is created in Polaris. */
-public record AfterPrincipalCreateEvent(String eventId, Principal principal)
-    implements PolarisEvent {}
+public record AfterPrincipalCreateEvent(Principal principal) implements PolarisEvent {}

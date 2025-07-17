@@ -20,4 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Event fired after the list of principal roles is retrieved in Polaris. */
-public record AfterPrincipalRolesListEvent(String eventId) implements PolarisEvent {}
+public record AfterPrincipalRolesListEvent() implements PolarisEvent {}

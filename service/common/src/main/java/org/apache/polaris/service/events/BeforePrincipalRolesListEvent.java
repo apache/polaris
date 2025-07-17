@@ -19,4 +19,4 @@
 package org.apache.polaris.service.events;
 
 /** Event fired before the list of principal roles is retrieved in Polaris. */
-public record BeforePrincipalRolesListEvent(String eventId) implements PolarisEvent {}
+public record BeforePrincipalRolesListEvent() implements PolarisEvent {}

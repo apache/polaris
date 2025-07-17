@@ -24,11 +24,10 @@ import org.apache.polaris.core.admin.model.AddGrantRequest;
 /**
  * Event fired before a grant is added to a catalog role in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role
  * @param grantRequest the grant request
  */
 public record BeforeAddGrantToCatalogRoleEvent(
-    String eventId, String catalogName, String catalogRoleName, AddGrantRequest grantRequest)
+    String catalogName, String catalogRoleName, AddGrantRequest grantRequest)
     implements PolarisEvent {}

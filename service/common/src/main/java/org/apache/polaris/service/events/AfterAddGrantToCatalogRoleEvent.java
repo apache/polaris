@@ -19,21 +19,18 @@
 
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
 /**
  * Event fired after a grant is added to a catalog role in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role
  * @param privilege the privilege granted
  * @param grantResource the grant resource
  */
 public record AfterAddGrantToCatalogRoleEvent(
-    String eventId,
     String catalogName,
     String catalogRoleName,
     PolarisPrivilege privilege,

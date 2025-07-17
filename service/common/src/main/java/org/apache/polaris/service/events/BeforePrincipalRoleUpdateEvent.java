@@ -23,10 +23,8 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 /**
  * Event fired before a principal role is updated in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalRoleName the name of the principal role to be updated
  * @param updateRequest the update request object
  */
 public record BeforePrincipalRoleUpdateEvent(
-    String eventId, String principalRoleName, UpdatePrincipalRoleRequest updateRequest)
-    implements PolarisEvent {}
+    String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}

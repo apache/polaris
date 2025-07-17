@@ -20,4 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Event fired after the list of principals is retrieved in Polaris. */
-public record AfterPrincipalsListEvent(String eventId) implements PolarisEvent {}
+public record AfterPrincipalsListEvent() implements PolarisEvent {}

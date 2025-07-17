@@ -22,8 +22,6 @@ package org.apache.polaris.service.events;
 /**
  * Event fired before a principal is retrieved in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param principalName the name of the principal to be retrieved
  */
-public record BeforePrincipalGetEvent(String eventId, String principalName)
-    implements PolarisEvent {}
+public record BeforePrincipalGetEvent(String principalName) implements PolarisEvent {}

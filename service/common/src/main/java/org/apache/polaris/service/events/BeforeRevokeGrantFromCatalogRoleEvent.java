@@ -23,16 +23,11 @@ import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 /**
  * Event fired before a grant is revoked from a catalog role in Polaris.
  *
- * @param eventId the unique identifier for this event
  * @param catalogName the name of the catalog
  * @param catalogRoleName the name of the catalog role
  * @param grantRequest the revoke grant request
  * @param cascade whether the revoke is cascading
  */
 public record BeforeRevokeGrantFromCatalogRoleEvent(
-    String eventId,
-    String catalogName,
-    String catalogRoleName,
-    RevokeGrantRequest grantRequest,
-    Boolean cascade)
+    String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade)
     implements PolarisEvent {}
