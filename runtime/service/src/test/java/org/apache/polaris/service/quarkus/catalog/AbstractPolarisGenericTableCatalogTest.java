@@ -81,6 +81,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -316,8 +319,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .hasMessageContaining("already exists");
   }
 
-  @Test
-  public void testGenericTableRoundTrip() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "file://path/to/my/table"})
+  public void testGenericTableRoundTrip(String baseLocation) {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
 
@@ -327,7 +332,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String doc = "round-trip-doc";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), format, null, doc, properties);
+        TableIdentifier.of("ns", tableName), format, baseLocation, doc, properties);
 
     GenericTableEntity resultEntity =
         genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName));
@@ -335,6 +340,11 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getFormat()).isEqualTo(format);
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
+    if (baseLocation == null) {
+      Assertions.assertThat(resultEntity.getBaseLocation()).isNull();
+    } else {
+      Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
+    }
   }
 
   @Test

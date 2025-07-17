@@ -65,15 +65,19 @@ public class DeserializationTest {
 
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
-  public void testLoadGenericTableRESTResponse(String doc, Map<String, String> properties)
+  public void testLoadGenericTableRESTResponse(
+      String baseLocation, String doc, Map<String, String> properties)
       throws JsonProcessingException {
-    GenericTable table =
+    GenericTable.Builder tableBuilder =
         GenericTable.builder()
             .setFormat("delta")
             .setName("test-table")
             .setProperties(properties)
-            .setDoc(doc)
-            .build();
+            .setDoc(doc);
+    if (baseLocation != null) {
+      tableBuilder.setBaseLocation(baseLocation);
+    }
+    GenericTable table = tableBuilder.build();
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
     String json = mapper.writeValueAsString(response);
     LoadGenericTableRESTResponse deserializedResponse =
@@ -82,11 +86,17 @@ public class DeserializationTest {
     assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
     assertThat(deserializedResponse.getTable().getDoc()).isEqualTo(doc);
     assertThat(deserializedResponse.getTable().getProperties().size()).isEqualTo(properties.size());
+    if (baseLocation != null) {
+      assertThat(deserializedResponse.getTable().getBaseLocation()).isEqualTo(baseLocation);
+    } else {
+      assertThat(deserializedResponse.getTable().getBaseLocation()).isNull();
+    }
   }
 
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
-  public void testCreateGenericTableRESTRequest(String doc, Map<String, String> properties)
+  public void testCreateGenericTableRESTRequest(
+      String baseLocation, String doc, Map<String, String> properties)
       throws JsonProcessingException {
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(
@@ -94,6 +104,7 @@ public class DeserializationTest {
                 .setName("test-table")
                 .setFormat("delta")
                 .setDoc(doc)
+                .setBaseLocation(baseLocation)
                 .setProperties(properties)
                 .build());
     String json = mapper.writeValueAsString(request);
@@ -103,6 +114,11 @@ public class DeserializationTest {
     assertThat(deserializedRequest.getFormat()).isEqualTo("delta");
     assertThat(deserializedRequest.getDoc()).isEqualTo(doc);
     assertThat(deserializedRequest.getProperties().size()).isEqualTo(properties.size());
+    if (baseLocation != null) {
+      assertThat(deserializedRequest.getBaseLocation()).isEqualTo(baseLocation);
+    } else {
+      assertThat(deserializedRequest.getBaseLocation()).isNull();
+    }
   }
 
   @Test
@@ -150,10 +166,12 @@ public class DeserializationTest {
     var doc = "table for testing";
     var properties = Maps.newHashMap();
     properties.put("location", "s3://path/to/table/");
+    var baseLocation = "s3://path/to/table/";
     return Stream.of(
-        Arguments.of(doc, properties),
-        Arguments.of(null, Maps.newHashMap()),
-        Arguments.of(doc, Maps.newHashMap()),
-        Arguments.of(null, properties));
+        Arguments.of(null, doc, properties),
+        Arguments.of(baseLocation, doc, properties),
+        Arguments.of(null, null, Maps.newHashMap()),
+        Arguments.of(baseLocation, doc, Maps.newHashMap()),
+        Arguments.of(baseLocation, null, properties));
   }
 }

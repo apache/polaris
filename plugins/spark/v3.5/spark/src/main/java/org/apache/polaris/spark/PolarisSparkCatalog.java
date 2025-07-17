@@ -85,12 +85,15 @@ public class PolarisSparkCatalog implements TableCatalog {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
 
       String baseLocation;
+      // Extract the base table location from the spark properties.
+      // Spark pass the table base location either with the
+      // TableCatalog.PROP_LOCATION key, or with "path" key if created
+      // with the path option.
       if (properties.get(TableCatalog.PROP_LOCATION) != null) {
         baseLocation = properties.get(TableCatalog.PROP_LOCATION);
       } else {
         baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
       }
-      // String location = properties.get()
       GenericTable genericTable =
           this.polarisCatalog.createGenericTable(
               Spark3Util.identifierToTableIdentifier(identifier),

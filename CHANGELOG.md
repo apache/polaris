@@ -32,7 +32,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 ### Breaking changes
-1. The spark client bundle jar 
 
 - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed
   from `symmetric.pem` to `symmetric.key`.
