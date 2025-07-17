@@ -116,6 +116,8 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -235,6 +237,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
+  private ResolverFactory resolverFactory;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
@@ -280,7 +283,17 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             Clock.systemDefaultZone());
 
     EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
-    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    resolverFactory =
+        (callContext, securityContext, referenceCatalogName) ->
+            new Resolver(
+                callContext.getPolarisCallContext(),
+                metaStoreManager,
+                securityContext,
+                entityCache,
+                referenceCatalogName);
+    QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
+
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     // LocalPolarisMetaStoreManagerFactory.bootstrapServiceAndCreatePolarisPrincipalForRealm sets
     // the CallContext.setCurrentContext() but never clears it, whereas the NoSQL one resets it.
@@ -437,7 +450,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         storageCredentialCache,
-        entityManager,
+        resolverFactory,
         metaStoreManager,
         polarisContext,
         passthroughView,

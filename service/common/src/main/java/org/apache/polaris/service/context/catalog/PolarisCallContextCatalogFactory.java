@@ -30,12 +30,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
@@ -46,23 +45,23 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
 
-  private final RealmEntityManagerFactory entityManagerFactory;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
   private final StorageCredentialCache storageCredentialCache;
+  private final ResolverFactory resolverFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisCallContextCatalogFactory(
       StorageCredentialCache storageCredentialCache,
-      RealmEntityManagerFactory entityManagerFactory,
+      ResolverFactory resolverFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
-    this.entityManagerFactory = entityManagerFactory;
     this.storageCredentialCache = storageCredentialCache;
+    this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
@@ -83,13 +82,10 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     String catalogKey = realm + "/" + catalogName;
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
-
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
             resolvedManifest,
