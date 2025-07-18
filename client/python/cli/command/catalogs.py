@@ -27,7 +27,7 @@ from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subco
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
-    PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, \
+    PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, ImplicitAuthenticationParameters, \
     OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
     IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 
@@ -107,7 +107,11 @@ class CatalogsCommand(Command):
                         raise Exception(f"Authentication type 'SIGV4 requires"
                                 f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
                                 f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}")
-
+                if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
+                    if not self.hadoop_warehouse or not self.catalog_uri:
+                        raise Exception(f"Missing required argument for connection type 'HADOOP':"
+                                f" {Argument.to_flag_name(Arguments.HADOOP_WAREHOUSE)}"
+                                f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}") 
         if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
             if not self.catalog_service_identity_iam_arn:
                         raise Exception(f"Missing required argument for service identity type 'AWS_IAM':"
@@ -223,6 +227,10 @@ class CatalogsCommand(Command):
                 external_id=self.catalog_external_id,
                 signing_region=self.catalog_signing_region,
                 signing_name=self.catalog_signing_name,
+            )
+        elif self.catalog_authentication_type == AuthenticationType.IMPLICIT.value:
+            auth_params = ImplicitAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type is not None:
             raise Exception("Unknown authentication type:", self.catalog_authentication_type)
