@@ -18,11 +18,12 @@
  */
 package org.apache.polaris.ids.api;
 
+/** The primary interface for generating a contention-free ID. */
 public interface IdGenerator {
   /** Generate a new, unique ID. */
   long generateId();
 
-  /** Generate the system ID for a node, solely used by/for node management purposes. */
+  /** Generate the system ID for a node, solely used for node management. */
   long systemIdForNode(int nodeId);
 
   default String describeId(long id) {
@@ -33,12 +34,12 @@ public interface IdGenerator {
       new IdGenerator() {
         @Override
         public long generateId() {
-          throw new UnsupportedOperationException("NONE IdGenerator");
+          throw new UnsupportedOperationException("NONE IdGenerator cannot generate IDs.");
         }
 
         @Override
         public long systemIdForNode(int nodeId) {
-          throw new UnsupportedOperationException("NONE IdGenerator");
+          throw new UnsupportedOperationException("NONE IdGenerator cannot generate IDs.");
         }
       };
 }

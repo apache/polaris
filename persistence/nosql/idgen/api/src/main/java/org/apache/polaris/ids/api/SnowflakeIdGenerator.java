@@ -25,8 +25,7 @@ import java.util.UUID;
 
 public interface SnowflakeIdGenerator extends IdGenerator {
   /** Offset of the snowflake ID generator since the 1970-01-01T00:00:00Z epoch instant. */
-  Instant EPOCH_OFFSET =
-      Instant.EPOCH.atZone(ZoneId.of("GMT")).withYear(2025).withMonth(3).toInstant();
+  Instant EPOCH_OFFSET = Instant.parse("2025-03-01T00:00:00Z");
 
   /**
    * Offset of the snowflake ID generator in milliseconds since the 1970-01-01T00:00:00Z epoch

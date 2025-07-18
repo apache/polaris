@@ -50,8 +50,7 @@ public class SnowflakeIdGeneratorFactory implements IdGeneratorFactory<Snowflake
   }
 
   @Override
-  public SnowflakeIdGenerator buildSystemIdGenerator(
-      Map<String, String> params, LongSupplier clockMillis) {
+  public SnowflakeIdGenerator buildSystemIdGenerator(Map<String, String> params) {
     return buildIdGenerator(
         params,
         new IdGeneratorSource() {

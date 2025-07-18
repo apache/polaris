@@ -23,6 +23,7 @@ import java.util.ServiceLoader;
 import java.util.function.LongSupplier;
 import org.apache.polaris.ids.api.IdGenerator;
 
+/** Provides values for ID generators, usually provided by {@code NodeLease} implementations. */
 public interface IdGeneratorFactory<I extends IdGenerator> {
   String name();
 
@@ -30,7 +31,7 @@ public interface IdGeneratorFactory<I extends IdGenerator> {
 
   I buildIdGenerator(Map<String, String> params, IdGeneratorSource idGeneratorSource);
 
-  I buildSystemIdGenerator(Map<String, String> params, LongSupplier clockMillis);
+  I buildSystemIdGenerator(Map<String, String> params);
 
   static IdGeneratorFactory<?> lookupFactory(String name) {
     for (IdGeneratorFactory<?> factory : ServiceLoader.load(IdGeneratorFactory.class)) {
