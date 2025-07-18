@@ -160,7 +160,7 @@ class CatalogsCommand(Command):
                 )
 
     def _has_aws_storage_info(self):
-        return self.role_arn or self.external_id or self.user_arn or self.region
+        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.sts_endpoint or self.path_style_access
 
     def _has_azure_storage_info(self):
         return self.tenant_id or self.multi_tenant_app_name or self.consent_url

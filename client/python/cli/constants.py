@@ -229,7 +229,7 @@ class Hints:
             STS_ENDPOINT = (
                 "(Only for S3) The STS endpoint to use when connecting to STS"
             )
-            PATH_STYLE_ACCESS = "(Only for S3) whether to use path-style-access for S3"
+            PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
             MULTI_TENANT_APP_NAME = (
