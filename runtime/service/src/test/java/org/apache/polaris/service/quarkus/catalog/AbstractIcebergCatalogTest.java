@@ -400,20 +400,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Override
   protected IcebergCatalog initCatalog(
       String catalogName, Map<String, String> additionalProperties) {
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    TaskExecutor taskExecutor = Mockito.mock();
-    IcebergCatalog icebergCatalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog icebergCatalog = newIcebergCatalog(CATALOG_NAME);
     fileIO = new InMemoryFileIO();
     icebergCatalog.setCatalogFileIo(fileIO);
     ImmutableMap.Builder<String, String> propertiesBuilder =
@@ -442,6 +429,32 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   protected boolean supportsNotifications() {
     return true;
+  }
+
+  protected IcebergCatalog newIcebergCatalog(String catalogName) {
+    return newIcebergCatalog(catalogName, metaStoreManager);
+  }
+
+  protected IcebergCatalog newIcebergCatalog(
+      String catalogName, PolarisMetaStoreManager metaStoreManager) {
+    return newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory);
+  }
+
+  protected IcebergCatalog newIcebergCatalog(
+      String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            polarisContext, entityManager, securityContext, catalogName);
+    TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
+    return new IcebergCatalog(
+        entityManager,
+        metaStoreManager,
+        polarisContext,
+        passthroughView,
+        securityContext,
+        taskExecutor,
+        fileIOFactory,
+        polarisEventListener);
   }
 
   @Test
@@ -982,21 +995,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalog().name());
     FileIOFactory fileIOFactory =
         spy(new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory));
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactory);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1314,20 +1315,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .build()
                     .asCatalog()));
 
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalogWithoutStorage);
-    TaskExecutor taskExecutor = Mockito.mock();
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -1378,21 +1366,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .build()
                 .asCatalog()));
 
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalogName);
-    TaskExecutor taskExecutor = Mockito.mock();
-    InMemoryFileIO localFileIO = new InMemoryFileIO();
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1909,19 +1883,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     polarisContext, noPurgeStorageConfigModel, storageLocation)
                 .build()
                 .asCatalog()));
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, noPurgeCatalogName);
     IcebergCatalog noPurgeCatalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(),
-            fileIOFactory,
-            polarisEventListener);
+        newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -2012,22 +1975,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Test
   public void testFileIOWrapper() {
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-
     MeasuredFileIOFactory measured =
         new MeasuredFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(),
-            measured,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -2116,19 +2066,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
     // a concurrency failure at final commit.
     PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    final IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            spyMetaStore,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -2165,19 +2103,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
     // a concurrency failure at final commit.
     PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    final IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            spyMetaStore,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
