@@ -191,5 +191,9 @@ class PolarisCli:
         return lambda: ApiClient(config)
 
 
-if __name__ == "__main__":
+def main():
     PolarisCli.execute()
+
+
+if __name__ == "__main__":
+    main()

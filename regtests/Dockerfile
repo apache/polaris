@@ -37,17 +37,19 @@ ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src
 
 # Copy and run setup.sh separately so that test sources can change, but the setup script run is still cached
 WORKDIR /home/spark/polaris
-COPY ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
-COPY ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
-COPY ./client/python /home/spark/polaris/client/python
-COPY ./polaris /home/spark/polaris/polaris
-COPY ./regtests/requirements.txt /tmp/
+COPY --chown=spark ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
+COPY --chown=spark ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
+COPY --chown=spark ./client/python /home/spark/polaris/client/python
+COPY --chown=spark ./polaris /home/spark/polaris/polaris
+COPY --chown=spark ./regtests/requirements.txt /tmp/
 
 RUN python3 -m venv /home/spark/polaris/polaris-venv && \
     . /home/spark/polaris/polaris-venv/bin/activate && \
     pip install -r /tmp/requirements.txt && \
+    cd /home/spark/polaris/client/python && \
+    poetry install && \
     deactivate \
-    ./regtests/setup.sh
+    /home/spark/polaris/regtests/setup.sh
 
 COPY --chown=spark ./regtests /home/spark/polaris/regtests
 
