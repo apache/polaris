@@ -20,7 +20,6 @@ package org.apache.polaris.ids.spi;
 
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.function.LongSupplier;
 import org.apache.polaris.ids.api.IdGenerator;
 
 /** Provides values for ID generators, usually provided by {@code NodeLease} implementations. */

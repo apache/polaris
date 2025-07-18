@@ -20,7 +20,6 @@ package org.apache.polaris.ids.api;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.UUID;
 
 public interface SnowflakeIdGenerator extends IdGenerator {

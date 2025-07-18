@@ -22,7 +22,6 @@ import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.validateArgum
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.function.LongSupplier;
 import org.apache.polaris.ids.api.SnowflakeIdGenerator;
 import org.apache.polaris.ids.spi.IdGeneratorFactory;
 import org.apache.polaris.ids.spi.IdGeneratorSource;
