@@ -25,11 +25,11 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +76,7 @@ public class FileIOUtil {
    */
   public static AccessConfig refreshAccessConfig(
       CallContext callContext,
-      PolarisEntityManager entityManager,
+      StorageCredentialCache storageCredentialCache,
       PolarisCredentialVendor credentialVendor,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
@@ -105,15 +105,13 @@ public class FileIOUtil {
             ? tableLocations
             : Set.of();
     AccessConfig accessConfig =
-        entityManager
-            .getCredentialCache()
-            .getOrGenerateSubScopeCreds(
-                credentialVendor,
-                callContext.getPolarisCallContext(),
-                entity,
-                allowList,
-                tableLocations,
-                writeLocations);
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            credentialVendor,
+            callContext.getPolarisCallContext(),
+            entity,
+            allowList,
+            tableLocations,
+            writeLocations);
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
