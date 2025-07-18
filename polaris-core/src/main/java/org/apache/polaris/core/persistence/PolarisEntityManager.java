@@ -32,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolver;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * Wraps logic of handling name-caching and entity-caching against a concrete underlying entity
@@ -43,22 +42,16 @@ public class PolarisEntityManager {
   private final PolarisMetaStoreManager metaStoreManager;
   private final EntityCache entityCache;
 
-  private final StorageCredentialCache credentialCache;
-
   // Lazily instantiated only a single time per entity manager.
   private ResolvedPolarisEntity implicitResolvedRootContainerEntity = null;
 
   /**
    * @param metaStoreManager the metastore manager for the current realm
-   * @param credentialCache the storage credential cache for the current realm
    * @param entityCache the entity cache to use (it may be {@code null}).
    */
   public PolarisEntityManager(
-      @Nonnull PolarisMetaStoreManager metaStoreManager,
-      @Nonnull StorageCredentialCache credentialCache,
-      @Nullable EntityCache entityCache) {
+      @Nonnull PolarisMetaStoreManager metaStoreManager, @Nullable EntityCache entityCache) {
     this.metaStoreManager = metaStoreManager;
-    this.credentialCache = credentialCache;
     this.entityCache = entityCache;
   }
 
@@ -132,9 +125,5 @@ public class PolarisEntityManager {
           new ResolvedPolarisEntity(rootContainerEntity, null, List.of(serviceAdminGrant));
     }
     return implicitResolvedRootContainerEntity;
-  }
-
-  public StorageCredentialCache getCredentialCache() {
-    return credentialCache;
   }
 }
