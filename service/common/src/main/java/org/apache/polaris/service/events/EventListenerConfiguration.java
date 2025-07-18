@@ -16,33 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithName;
+package org.apache.polaris.service.events;
+
 import java.util.Optional;
-import org.apache.polaris.service.events.EventListenerConfiguration;
-import org.apache.polaris.service.events.PolarisEventListener;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface QuarkusPolarisEventListenerConfiguration extends EventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   */
-  String type();
-
-  @WithName("aws-cloudwatch.log-group")
-  @Override
+public interface EventListenerConfiguration {
   Optional<String> awsCloudwatchlogGroup();
 
-  @WithName("aws-cloudwatch.log-stream")
-  @Override
   Optional<String> awsCloudwatchlogStream();
 
-  @WithName("aws-cloudwatch.region")
-  @Override
   Optional<String> awsCloudwatchRegion();
 }
