@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired after credentials are rotated for a principal in Polaris.
+ *
+ * @param rotatedPrincipal the updated principal with new credentials
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record AfterCredentialsRotateEvent(PrincipalWithCredentials rotatedPrincipal)
+    implements PolarisEvent {}

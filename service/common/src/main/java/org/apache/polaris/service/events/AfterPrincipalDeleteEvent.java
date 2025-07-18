@@ -16,16 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
-
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired after a principal is deleted in Polaris.
+ *
+ * @param principalName the name of the principal that was deleted
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record AfterPrincipalDeleteEvent(String principalName) implements PolarisEvent {}

@@ -18,14 +18,13 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired before a principal is updated in Polaris.
+ *
+ * @param principalName the name of the principal to be updated
+ * @param updateRequest the update request object
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record BeforePrincipalUpdateEvent(String principalName, UpdatePrincipalRequest updateRequest)
+    implements PolarisEvent {}

@@ -18,14 +18,16 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired before a grant is revoked from a catalog role in Polaris.
+ *
+ * @param catalogName the name of the catalog
+ * @param catalogRoleName the name of the catalog role
+ * @param grantRequest the revoke grant request
+ * @param cascade whether the revoke is cascading
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record BeforeRevokeGrantFromCatalogRoleEvent(
+    String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade)
+    implements PolarisEvent {}

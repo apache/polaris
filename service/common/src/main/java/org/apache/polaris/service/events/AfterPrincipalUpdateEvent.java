@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.Principal;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired after a principal is updated in Polaris.
+ *
+ * @param updatedPrincipal the updated principal object
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record AfterPrincipalUpdateEvent(Principal updatedPrincipal) implements PolarisEvent {}
