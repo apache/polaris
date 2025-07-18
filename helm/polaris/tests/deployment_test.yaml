@@ -1091,6 +1091,58 @@ tests:
                       - key: symmetric.pem
                         path: symmetric.key
 
+  - it: should configure config volume with authentication including per-realm overrides
+    set:
+      image.configDir: /config/dir
+      authentication:
+        tokenBroker: { type: rsa-key-pair, secret: { name: polaris-token-broker-default } }
+        realmOverrides:
+          realm1: { tokenBroker: { type: symmetric-key, secret: { name: polaris-token-broker-realm1 } } }
+          "REALM 2": { tokenBroker: { type: rsa-key-pair, secret: { name: polaris-token-broker-realm2 } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /config/dir
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes[0].projected.sources
+          content:
+            configMap:
+              name: polaris-release
+              items:
+                - key: application.properties
+                  path: application.properties
+      - contains:
+          path: spec.template.spec.volumes[0].projected.sources
+          content:
+            secret:
+              name: polaris-token-broker-default
+              items:
+                - key: public.pem
+                  path: public.pem
+                - key: private.pem
+                  path: private.pem
+      - contains:
+          path: spec.template.spec.volumes[0].projected.sources
+          content:
+            secret:
+              name: polaris-token-broker-realm1
+              items:
+                - key: symmetric.key
+                  path: realm1/symmetric.key
+      - contains:
+          path: spec.template.spec.volumes[0].projected.sources
+          content:
+            secret:
+              name: polaris-token-broker-realm2
+              items:
+                - key: public.pem
+                  path: REALM+2/public.pem
+                - key: private.pem
+                  path: REALM+2/private.pem
+
   - it: should set relational-jdbc persistence environment variables
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
@@ -1159,3 +1211,16 @@ tests:
           content:
             name: extra-volume
             emptyDir: {}
+
+  - it: should set OIDC client secret
+    set:
+      oidc: { client: { secret: { name: polaris-oidc-secret, key: client-secret } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.oidc.credentials.secret
+            valueFrom:
+              secretKeyRef:
+                name: polaris-oidc-secret
+                key: client-secret
