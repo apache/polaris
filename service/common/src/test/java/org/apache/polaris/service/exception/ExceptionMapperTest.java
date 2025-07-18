@@ -25,11 +25,14 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -72,6 +75,13 @@ public class ExceptionMapperTest {
                     }))
         .as("The exception cause should be logged")
         .isTrue();
+  }
+
+  @Test
+  public void testNamespaceException() {
+    PolarisExceptionMapper mapper = new PolarisExceptionMapper();
+    Response response = mapper.toResponse(new CommitConflictException("test"));
+    Assertions.assertThat(response.getStatus()).isEqualTo(408);
   }
 
   static Stream<Arguments> testFullExceptionIsLogged() {
