@@ -35,6 +35,8 @@ import org.apache.iceberg.spark.actions.DeleteReachableFilesSparkAction;
 import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.HudiCatalogUtils;
+import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
@@ -42,6 +44,8 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchViewException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.catalyst.catalog.CatalogDatabase;
+import org.apache.spark.sql.catalyst.catalog.SessionCatalog;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.NamespaceChange;
 import org.apache.spark.sql.connector.catalog.Table;
@@ -54,10 +58,12 @@ import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
+import org.apache.spark.sql.hudi.catalog.HoodieInternalV2Table;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.internal.SessionState;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,6 +73,9 @@ import org.mockito.Mockito;
 import scala.Option;
 
 public class SparkCatalogTest {
+  private static MockedStatic<SparkSession> mockedStaticSparkSession;
+  private static SparkSession mockedSession;
+
   private static class InMemoryIcebergSparkCatalog extends org.apache.iceberg.spark.SparkCatalog {
     private PolarisInMemoryCatalog inMemoryCatalog = null;
 
@@ -104,6 +113,7 @@ public class SparkCatalogTest {
       this.polarisSparkCatalog.initialize(name, options);
 
       this.deltaHelper = new DeltaHelper(options);
+      this.hudiHelper = new HudiHelper(options);
     }
   }
 
@@ -122,25 +132,73 @@ public class SparkCatalogTest {
     catalogConfig.put("cache-enabled", "false");
     catalogConfig.put(
         DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
+    catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
-    try (MockedStatic<SparkSession> mockedStaticSparkSession =
-            Mockito.mockStatic(SparkSession.class);
-        MockedStatic<SparkUtil> mockedSparkUtil = Mockito.mockStatic(SparkUtil.class)) {
-      SparkSession mockedSession = Mockito.mock(SparkSession.class);
-      mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
+
+    // Setup persistent SparkSession mock
+    mockedStaticSparkSession = Mockito.mockStatic(SparkSession.class);
+    mockedSession = Mockito.mock(SparkSession.class);
+    org.apache.spark.sql.RuntimeConfig mockedConfig =
+        Mockito.mock(org.apache.spark.sql.RuntimeConfig.class);
+    SparkContext mockedContext = Mockito.mock(SparkContext.class);
+    SessionState mockedSessionState = Mockito.mock(SessionState.class);
+    SessionCatalog mockedSessionCatalog = Mockito.mock(SessionCatalog.class);
+
+    mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
+    Mockito.when(mockedSession.conf()).thenReturn(mockedConfig);
+    Mockito.when(mockedConfig.get("spark.sql.extensions", null))
+        .thenReturn(
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"
+                + "io.delta.sql.DeltaSparkSessionExtension"
+                + "org.apache.spark.sql.hudi.HoodieSparkSessionExtension");
+    Mockito.when(mockedConfig.get("spark.sql.warehouse.dir", "spark-warehouse"))
+        .thenReturn("/tmp/test-warehouse");
+    Mockito.when(mockedSession.sparkContext()).thenReturn(mockedContext);
+    Mockito.when(mockedContext.applicationId()).thenReturn("appId");
+    Mockito.when(mockedContext.sparkUser()).thenReturn("test-user");
+    Mockito.when(mockedContext.version()).thenReturn("3.5");
+
+    // Set up SessionState and SessionCatalog mocking for HudiCatalogUtils
+    Mockito.when(mockedSession.sessionState()).thenReturn(mockedSessionState);
+    Mockito.when(mockedSessionState.catalog()).thenReturn(mockedSessionCatalog);
+
+    // Mock SessionCatalog methods used by HudiCatalogUtils
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .createDatabase(Mockito.any(CatalogDatabase.class), Mockito.anyBoolean());
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .alterDatabase(Mockito.any(CatalogDatabase.class));
+    Mockito.doNothing()
+        .when(mockedSessionCatalog)
+        .dropDatabase(Mockito.anyString(), Mockito.anyBoolean(), Mockito.anyBoolean());
+
+    // Mock getDatabaseMetadata to return a simple CatalogDatabase for alter operations
+    CatalogDatabase mockCatalogDb = Mockito.mock(CatalogDatabase.class);
+    Mockito.when(mockCatalogDb.name()).thenReturn("test_db");
+    Mockito.when(mockCatalogDb.description()).thenReturn("");
+    Mockito.when(mockCatalogDb.locationUri()).thenReturn(java.net.URI.create(""));
+    Mockito.when(mockCatalogDb.properties())
+        .thenReturn(scala.collection.immutable.Map$.MODULE$.<String, String>empty());
+    Mockito.when(mockedSessionCatalog.getDatabaseMetadata(Mockito.anyString()))
+        .thenReturn(mockCatalogDb);
+
+    try (MockedStatic<SparkUtil> mockedSparkUtil = Mockito.mockStatic(SparkUtil.class)) {
       mockedSparkUtil
           .when(() -> SparkUtil.hadoopConfCatalogOverrides(mockedSession, catalogName))
           .thenReturn(conf);
-      SparkContext mockedContext = Mockito.mock(SparkContext.class);
-      Mockito.when(mockedSession.sparkContext()).thenReturn(mockedContext);
-      Mockito.when(mockedContext.applicationId()).thenReturn("appId");
-      Mockito.when(mockedContext.sparkUser()).thenReturn("test-user");
-      Mockito.when(mockedContext.version()).thenReturn("3.5");
 
       catalog.initialize(catalogName, new CaseInsensitiveStringMap(catalogConfig));
+      catalog.createNamespace(defaultNS, Maps.newHashMap());
     }
-    catalog.createNamespace(defaultNS, Maps.newHashMap());
+  }
+
+  @AfterEach
+  public void tearDown() {
+    if (mockedStaticSparkSession != null) {
+      mockedStaticSparkSession.close();
+    }
   }
 
   @Test
@@ -249,6 +307,62 @@ public class SparkCatalogTest {
     catalog.alterNamespace(namespace, NamespaceChange.setProperty("new_key", "new_value"));
     assertThat(catalog.loadNamespaceMetadata(namespace))
         .contains(Map.entry("new_key", "new_value"));
+  }
+
+  @Test
+  void testHudiNamespaceOperations() throws Exception {
+    String[] namespace = new String[] {"hudi_test_ns"};
+    Map<String, String> metadata = Maps.newHashMap();
+    metadata.put("test_key", "test_value");
+
+    try (MockedStatic<HudiCatalogUtils> mockedHudiUtils =
+            Mockito.mockStatic(HudiCatalogUtils.class);
+        MockedStatic<PolarisCatalogUtils> mockedPolarisUtils =
+            Mockito.mockStatic(PolarisCatalogUtils.class)) {
+
+      // Mock PolarisCatalogUtils.isHudiExtensionEnabled() to return true (default test has Hudi
+      // enabled)
+      mockedPolarisUtils.when(() -> PolarisCatalogUtils.isHudiExtensionEnabled()).thenReturn(true);
+
+      // Call the real methods by default
+      mockedHudiUtils
+          .when(() -> HudiCatalogUtils.createNamespace(namespace, metadata))
+          .thenCallRealMethod();
+      mockedHudiUtils
+          .when(() -> HudiCatalogUtils.alterNamespace(Mockito.eq(namespace), Mockito.any()))
+          .thenCallRealMethod();
+      mockedHudiUtils
+          .when(() -> HudiCatalogUtils.dropNamespace(namespace, false))
+          .thenCallRealMethod();
+
+      // This should call HudiCatalogUtils.createNamespace internally
+      catalog.createNamespace(namespace, metadata);
+
+      // Verify HudiCatalogUtils.createNamespace was called
+      mockedHudiUtils.verify(() -> HudiCatalogUtils.createNamespace(namespace, metadata));
+
+      // Verify namespace was created successfully
+      assertThat(catalog.loadNamespaceMetadata(namespace))
+          .contains(Map.entry("test_key", "test_value"));
+
+      // Test alter namespace with Hudi extension enabled
+      NamespaceChange change = NamespaceChange.setProperty("hudi_key", "hudi_value");
+      catalog.alterNamespace(namespace, change);
+
+      // Verify HudiCatalogUtils.alterNamespace was called
+      mockedHudiUtils.verify(() -> HudiCatalogUtils.alterNamespace(namespace, change));
+
+      assertThat(catalog.loadNamespaceMetadata(namespace))
+          .contains(Map.entry("hudi_key", "hudi_value"));
+
+      // Test drop namespace with Hudi extension enabled
+      boolean dropped = catalog.dropNamespace(namespace, false);
+
+      // Verify HudiCatalogUtils.dropNamespace was called
+      mockedHudiUtils.verify(() -> HudiCatalogUtils.dropNamespace(namespace, false));
+
+      assertThat(dropped).isTrue();
+    }
   }
 
   @Test
@@ -402,7 +516,7 @@ public class SparkCatalogTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"delta", "csv"})
+  @ValueSource(strings = {"delta", "hudi", "csv"})
   void testCreateAndLoadGenericTable(String format) throws Exception {
     Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
     createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, format);
@@ -418,7 +532,6 @@ public class SparkCatalogTest {
             () -> catalog.createTable(identifier, defaultSchema, new Transform[0], newProperties))
         .isInstanceOf(TableAlreadyExistsException.class);
 
-    // drop the iceberg table
     catalog.dropTable(identifier);
     assertThatThrownBy(() -> catalog.loadTable(identifier))
         .isInstanceOf(NoSuchTableException.class);
@@ -428,8 +541,9 @@ public class SparkCatalogTest {
   @Test
   void testMixedTables() throws Exception {
     // create two iceberg tables, and three non-iceberg tables
-    String[] tableNames = new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2"};
-    String[] tableFormats = new String[] {"iceberg", null, "delta", "csv", "delta"};
+    String[] tableNames =
+        new String[] {"iceberg1", "iceberg2", "delta1", "csv1", "delta2", "hudi1", "hudi2"};
+    String[] tableFormats = new String[] {"iceberg", null, "delta", "csv", "delta", "hudi", "hudi"};
     for (int i = 0; i < tableNames.length; i++) {
       Identifier identifier = Identifier.of(defaultNS, tableNames[i]);
       createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, tableFormats[i]);
@@ -445,8 +559,9 @@ public class SparkCatalogTest {
     // drop iceberg2 and delta1 table
     catalog.dropTable(Identifier.of(defaultNS, "iceberg2"));
     catalog.dropTable(Identifier.of(defaultNS, "delta2"));
+    catalog.dropTable(Identifier.of(defaultNS, "hudi2"));
 
-    String[] remainingTableNames = new String[] {"iceberg1", "delta1", "csv1"};
+    String[] remainingTableNames = new String[] {"iceberg1", "delta1", "csv1", "hudi1"};
     Identifier[] remainingTableIndents = catalog.listTables(defaultNS);
     assertThat(remainingTableIndents.length).isEqualTo(remainingTableNames.length);
     for (String name : remainingTableNames) {
@@ -465,12 +580,15 @@ public class SparkCatalogTest {
     String icebergTableName = "iceberg-table";
     String deltaTableName = "delta-table";
     String csvTableName = "csv-table";
+    String hudiTableName = "hudi-table";
     Identifier icebergIdent = Identifier.of(defaultNS, icebergTableName);
     Identifier deltaIdent = Identifier.of(defaultNS, deltaTableName);
     Identifier csvIdent = Identifier.of(defaultNS, csvTableName);
+    Identifier hudiIdent = Identifier.of(defaultNS, hudiTableName);
     createAndValidateGenericTableWithLoad(catalog, icebergIdent, defaultSchema, "iceberg");
     createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
     createAndValidateGenericTableWithLoad(catalog, csvIdent, defaultSchema, "csv");
+    createAndValidateGenericTableWithLoad(catalog, hudiIdent, defaultSchema, "hudi");
 
     // verify alter iceberg table
     Table newIcebergTable =
@@ -488,16 +606,17 @@ public class SparkCatalogTest {
 
     // verify alter delta table is a no-op, and alter csv table throws an exception
     SQLConf conf = new SQLConf();
-    try (MockedStatic<SparkSession> mockedStaticSparkSession =
-            Mockito.mockStatic(SparkSession.class);
-        MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
+    try (MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
         MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
             Mockito.mockStatic(DataSourceV2Utils.class)) {
-      SparkSession mockedSession = Mockito.mock(SparkSession.class);
-      mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
       SessionState mockedState = Mockito.mock(SessionState.class);
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
 
       TableProvider deltaProvider = Mockito.mock(TableProvider.class);
       mockedStaticDS
@@ -551,18 +670,21 @@ public class SparkCatalogTest {
   void testPurgeInvalidateTable() throws Exception {
     Identifier icebergIdent = Identifier.of(defaultNS, "iceberg-table");
     Identifier deltaIdent = Identifier.of(defaultNS, "delta-table");
+    Identifier hudiIdent = Identifier.of(defaultNS, "hudi-table");
     createAndValidateGenericTableWithLoad(catalog, icebergIdent, defaultSchema, "iceberg");
     createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
-
+    createAndValidateGenericTableWithLoad(catalog, hudiIdent, defaultSchema, "hudi");
     // test invalidate table is a no op today
     catalog.invalidateTable(icebergIdent);
     catalog.invalidateTable(deltaIdent);
+    catalog.invalidateTable(hudiIdent);
 
     Identifier[] tableIdents = catalog.listTables(defaultNS);
-    assertThat(tableIdents.length).isEqualTo(2);
+    assertThat(tableIdents.length).isEqualTo(3);
 
     // verify purge tables drops the table
     catalog.purgeTable(deltaIdent);
+    catalog.purgeTable(hudiIdent);
     assertThat(catalog.listTables(defaultNS).length).isEqualTo(1);
 
     // purge iceberg table triggers file deletion
@@ -588,19 +710,20 @@ public class SparkCatalogTest {
     properties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, format);
     properties.put(
         TableCatalog.PROP_LOCATION,
-        String.format("file:///tmp/delta/path/to/table/%s/", identifier.name()));
+        String.format("file:///tmp/%s/path/to/table/%s/", format, identifier.name()));
 
     SQLConf conf = new SQLConf();
-    try (MockedStatic<SparkSession> mockedStaticSparkSession =
-            Mockito.mockStatic(SparkSession.class);
-        MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
+    try (MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
         MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
             Mockito.mockStatic(DataSourceV2Utils.class)) {
-      SparkSession mockedSession = Mockito.mock(SparkSession.class);
-      mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
       SessionState mockedState = Mockito.mock(SessionState.class);
       Mockito.when(mockedSession.sessionState()).thenReturn(mockedState);
       Mockito.when(mockedState.conf()).thenReturn(conf);
+
+      // Mock SessionCatalog for Hudi support
+      org.apache.spark.sql.catalyst.catalog.SessionCatalog mockedSessionCatalog =
+          Mockito.mock(org.apache.spark.sql.catalyst.catalog.SessionCatalog.class);
+      Mockito.when(mockedState.catalog()).thenReturn(mockedSessionCatalog);
 
       TableProvider provider = Mockito.mock(TableProvider.class);
       mockedStaticDS
@@ -622,6 +745,8 @@ public class SparkCatalogTest {
         // iceberg SparkTable is returned for iceberg tables
         assertThat(createdTable).isInstanceOf(SparkTable.class);
         assertThat(loadedTable).isInstanceOf(SparkTable.class);
+      } else if (PolarisCatalogUtils.useHudi(format)) {
+        assertThat(loadedTable).isInstanceOf(HoodieInternalV2Table.class);
       } else {
         // Spark V1 table is returned for non-iceberg tables
         assertThat(createdTable).isInstanceOf(V1Table.class);

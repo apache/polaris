@@ -46,6 +46,8 @@ dependencies {
   // TODO: extract a polaris-rest module as a thin layer for
   //  client to depends on.
   implementation(project(":polaris-core")) { isTransitive = false }
+  compileOnly("org.apache.hudi:hudi-spark3.2plus-common:0.15.0")
+  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:0.15.0")
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
