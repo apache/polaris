@@ -61,7 +61,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   // Used in hot generateId()
   private volatile long lastId;
-  private final long epochOffset;
+  private final long idEpoch;
   private final long timestampMax;
   private final int timestampShift;
   private final int sequenceBits;
@@ -73,7 +73,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
         DEFAULT_TIMESTAMP_BITS,
         DEFAULT_SEQUENCE_BITS,
         DEFAULT_NODE_ID_BITS,
-        EPOCH_OFFSET_MILLIS,
+        ID_EPOCH_MILLIS,
         idGeneratorSource);
   }
 
@@ -81,15 +81,15 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
       int timestampBits,
       int sequenceBits,
       int nodeBits,
-      long epochOffset,
+      long idEpoch,
       IdGeneratorSource idGeneratorSource) {
-    validateArguments(timestampBits, sequenceBits, nodeBits, epochOffset, idGeneratorSource);
+    validateArguments(timestampBits, sequenceBits, nodeBits, idEpoch, idGeneratorSource);
     this.timestampShift = sequenceBits + nodeBits;
     this.timestampMax = 1L << timestampBits;
     this.nodeMask = (1L << nodeBits) - 1;
     this.sequenceBits = sequenceBits;
     this.sequenceMask = (1L << sequenceBits) - 1;
-    this.epochOffset = epochOffset;
+    this.idEpoch = idEpoch;
     this.idGeneratorSource = idGeneratorSource;
   }
 
@@ -97,7 +97,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
       int timestampBits,
       int sequenceBits,
       int nodeBits,
-      long epochOffset,
+      long idEpochMillis,
       IdGeneratorSource idGeneratorSource) {
     var nowMillis = idGeneratorSource != null ? idGeneratorSource.currentTimeMillis() : -1;
     var now = Instant.ofEpochMilli(nowMillis);
@@ -106,13 +106,13 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
         () -> checkArgument(idGeneratorSource != null, "IdGeneratorSource must not be null"),
         () ->
             checkArgument(
-                nowMillis >= epochOffset,
+                nowMillis >= idEpochMillis,
                 "Clock returns a timestamp %s less than the configured epoch %s",
                 now,
-                Instant.ofEpochMilli(epochOffset)),
+                Instant.ofEpochMilli(idEpochMillis)),
         () ->
             checkArgument(
-                nowMillis - epochOffset < timestampMax,
+                nowMillis - idEpochMillis < timestampMax,
                 "Clock already returns a timestamp %s greater of after %s",
                 now,
                 Instant.ofEpochMilli(timestampMax)),
@@ -193,7 +193,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
       if (needTimestamp || timestamp < lastTimestamp) {
         // MUST query the clock AFTER fetching 'lastId', otherwise a concurrent thread might update
         // 'lastId' with a newer clock value and the monotonic-clock-source check would fail.
-        timestamp = idGeneratorSource.currentTimeMillis() - epochOffset;
+        timestamp = idGeneratorSource.currentTimeMillis() - idEpoch;
         checkState(
             timestamp < timestampMax,
             "Cannot generate any more IDs as the lifetime of the generator has expired");
@@ -263,7 +263,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   @Override
   public long timestampUtcFromId(long id) {
-    return timestampFromId(id) + epochOffset;
+    return timestampFromId(id) + idEpoch;
   }
 
   @Override
@@ -289,7 +289,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
   public long timeUuidToId(@Nonnull UUID uuid) {
     checkArgument(
         uuid.variant() == 2 && uuid.version() == 1, "Must be a version 1 / variant 2 UUID");
-    var ts = uuid.timestamp() - epochOffset;
+    var ts = uuid.timestamp() - idEpoch;
     var seq = uuid.clockSequence();
     var node = uuid.node();
     checkArgument(
@@ -308,7 +308,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
     var ts = timestampFromId(id);
     var seq = sequenceFromId(id);
     var node = nodeFromId(id);
-    var tsUnixEpoch = ts + epochOffset;
+    var tsUnixEpoch = ts + idEpoch;
     var instant = Instant.ofEpochMilli(tsUnixEpoch);
     var zone = ZoneOffset.systemDefault();
     var local = LocalDateTime.ofInstant(instant, zone);
@@ -332,8 +332,8 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
         instant,
         local,
         zone,
-        epochOffset,
-        Instant.ofEpochMilli(epochOffset));
+        idEpoch,
+        Instant.ofEpochMilli(idEpoch));
   }
 
   @Override
@@ -354,7 +354,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
   @Override
   public String idToString(long id) {
     var ts = timestampFromId(id);
-    return Instant.ofEpochMilli(ts + epochOffset).toString()
+    return Instant.ofEpochMilli(ts + idEpoch).toString()
         + " ("
         + ts
         + "), sequence "
@@ -381,7 +381,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   @VisibleForTesting
   private long timeUuidMsb(long timestamp) {
-    return timeUuidMsbReal(timestamp + epochOffset);
+    return timeUuidMsbReal(timestamp + idEpoch);
   }
 
   @VisibleForTesting

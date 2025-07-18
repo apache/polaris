@@ -39,13 +39,13 @@ public class SnowflakeIdGeneratorFactory implements IdGeneratorFactory<Snowflake
     int sequenceBits =
         Integer.parseInt(
             params.getOrDefault("sequence-bits", "" + SnowflakeIdGenerator.DEFAULT_SEQUENCE_BITS));
-    var offsetMillis = SnowflakeIdGenerator.EPOCH_OFFSET_MILLIS;
-    var offset = params.get("offset");
-    if (offset != null) {
-      offsetMillis = Instant.parse(offset).toEpochMilli();
+    var idEpochMillis = SnowflakeIdGenerator.ID_EPOCH_MILLIS;
+    var idEpochMillisFromParams = params.get("offset");
+    if (idEpochMillisFromParams != null) {
+      idEpochMillis = Instant.parse(idEpochMillisFromParams).toEpochMilli();
     }
 
-    validateArguments(timestampBits, sequenceBits, nodeIdBits, offsetMillis, idGeneratorSource);
+    validateArguments(timestampBits, sequenceBits, nodeIdBits, idEpochMillis, idGeneratorSource);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class SnowflakeIdGeneratorFactory implements IdGeneratorFactory<Snowflake
 
           @Override
           public long currentTimeMillis() {
-            return SnowflakeIdGenerator.EPOCH_OFFSET_MILLIS;
+            return SnowflakeIdGenerator.ID_EPOCH_MILLIS;
           }
         });
   }
@@ -78,14 +78,15 @@ public class SnowflakeIdGeneratorFactory implements IdGeneratorFactory<Snowflake
     int sequenceBits =
         Integer.parseInt(
             params.getOrDefault("sequence-bits", "" + SnowflakeIdGenerator.DEFAULT_SEQUENCE_BITS));
-    var offsetMillis = SnowflakeIdGenerator.EPOCH_OFFSET_MILLIS;
+    // ATCFIX - This name is incorrect.
+    var idEpochMillis = SnowflakeIdGenerator.ID_EPOCH_MILLIS;
     var offset = params.get("offset");
     if (offset != null) {
-      offsetMillis = Instant.parse(offset).toEpochMilli();
+      idEpochMillis = Instant.parse(offset).toEpochMilli();
     }
 
     return buildIdGenerator(
-        timestampBits, sequenceBits, nodeIdBits, offsetMillis, idGeneratorSource);
+        timestampBits, sequenceBits, nodeIdBits, idEpochMillis, idGeneratorSource);
   }
 
   public SnowflakeIdGenerator buildIdGenerator(

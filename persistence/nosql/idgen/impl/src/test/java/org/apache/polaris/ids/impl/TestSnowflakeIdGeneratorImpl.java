@@ -25,7 +25,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.apache.polaris.ids.api.SnowflakeIdGenerator.DEFAULT_NODE_ID_BITS;
 import static org.apache.polaris.ids.api.SnowflakeIdGenerator.DEFAULT_SEQUENCE_BITS;
 import static org.apache.polaris.ids.api.SnowflakeIdGenerator.DEFAULT_TIMESTAMP_BITS;
-import static org.apache.polaris.ids.api.SnowflakeIdGenerator.EPOCH_OFFSET_MILLIS;
+import static org.apache.polaris.ids.api.SnowflakeIdGenerator.ID_EPOCH_MILLIS;
 import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.timeUuidLsb;
 import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.timeUuidMsbReal;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,7 +63,7 @@ public class TestSnowflakeIdGeneratorImpl {
       new IdGeneratorSource() {
         @Override
         public long currentTimeMillis() {
-          return EPOCH_OFFSET_MILLIS;
+          return ID_EPOCH_MILLIS;
         }
 
         @Override
@@ -105,7 +105,7 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void invalidArgs() {
-    var validClock = (LongSupplier) () -> EPOCH_OFFSET_MILLIS;
+    var validClock = (LongSupplier) () -> ID_EPOCH_MILLIS;
 
     soft.assertThatIllegalArgumentException()
         .isThrownBy(
@@ -136,7 +136,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         31,
                         DEFAULT_SEQUENCE_BITS,
                         DEFAULT_NODE_ID_BITS,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
@@ -147,7 +147,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         4,
                         DEFAULT_NODE_ID_BITS,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 4 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
@@ -159,7 +159,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         DEFAULT_SEQUENCE_BITS,
                         4,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
 
@@ -171,7 +171,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         64,
                         DEFAULT_SEQUENCE_BITS,
                         DEFAULT_NODE_ID_BITS,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 12 or timestampBits 64 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
@@ -183,7 +183,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         64,
                         DEFAULT_NODE_ID_BITS,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 10 or sequenceBits 64 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
@@ -195,7 +195,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         DEFAULT_SEQUENCE_BITS,
                         64,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 64 or sequenceBits 12 or timestampBits 41 is too low or too high, Sum of timestampBits + nodeBits + sequenceBits must be == 63");
@@ -208,7 +208,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         5,
                         DEFAULT_NODE_ID_BITS,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage("Sum of timestampBits + nodeBits + sequenceBits must be == 63");
     soft.assertThatIllegalArgumentException()
@@ -219,7 +219,7 @@ public class TestSnowflakeIdGeneratorImpl {
                         DEFAULT_TIMESTAMP_BITS,
                         4,
                         18,
-                        EPOCH_OFFSET_MILLIS,
+                        ID_EPOCH_MILLIS,
                         ID_GENERATOR_SOURCE_CONSTANT))
         .withMessage(
             "value of nodeBits 18 or sequenceBits 4 or timestampBits 41 is too low or too high");
@@ -227,7 +227,7 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void clockBackwards() {
-    var clock = new AtomicLong(EPOCH_OFFSET_MILLIS + 100);
+    var clock = new AtomicLong(ID_EPOCH_MILLIS + 100);
 
     var nodeId = 42;
 
@@ -264,7 +264,7 @@ public class TestSnowflakeIdGeneratorImpl {
   @Test
   @Timeout(value = 5, unit = MINUTES)
   public void concurrency() throws Exception {
-    var clock = new AtomicLong(EPOCH_OFFSET_MILLIS + 100);
+    var clock = new AtomicLong(ID_EPOCH_MILLIS + 100);
 
     var nodeId = 42;
 
@@ -416,7 +416,7 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void maxIdsPerMillisecondAtEpochOffset() {
-    var clock = (LongSupplier) () -> EPOCH_OFFSET_MILLIS;
+    var clock = (LongSupplier) () -> ID_EPOCH_MILLIS;
 
     var nodeId = 42;
 
@@ -460,7 +460,7 @@ public class TestSnowflakeIdGeneratorImpl {
           .isEqualTo(
               format(
                   "%s (%d), sequence %d, node %d",
-                  Instant.ofEpochMilli(EPOCH_OFFSET_MILLIS), 0, i + 1, nodeId));
+                  Instant.ofEpochMilli(ID_EPOCH_MILLIS), 0, i + 1, nodeId));
       expect++;
       if (i % 10 == 0) {
         soft.assertAll();
@@ -470,9 +470,9 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void maxIdsPerMillisecondAtNowWithMutableClock() {
-    var clockSource = new AtomicLong(EPOCH_OFFSET_MILLIS + TimeUnit.DAYS.toMillis(365));
+    var clockSource = new AtomicLong(ID_EPOCH_MILLIS + TimeUnit.DAYS.toMillis(365));
     var clock = (LongSupplier) clockSource::get;
-    var initialTimestamp = clock.getAsLong() - EPOCH_OFFSET_MILLIS;
+    var initialTimestamp = clock.getAsLong() - ID_EPOCH_MILLIS;
 
     var nodeId = 42;
 
@@ -498,7 +498,7 @@ public class TestSnowflakeIdGeneratorImpl {
         soft.assertThat(impl.nodeFromId(id)).isEqualTo(nodeId).isEqualTo(uuid.node());
         soft.assertThat(impl.timestampFromId(id))
             .isEqualTo(initialTimestamp + millis)
-            .isEqualTo(uuid.timestamp() - EPOCH_OFFSET_MILLIS);
+            .isEqualTo(uuid.timestamp() - ID_EPOCH_MILLIS);
         soft.assertThat(uuid).extracting(UUID::variant, UUID::version).containsExactly(2, 1);
         soft.assertThat(impl.timeUuidToId(uuid)).isEqualTo(id);
         soft.assertThat(impl.timestampUtcFromId(id)).isEqualTo(uuid.timestamp());
@@ -507,7 +507,7 @@ public class TestSnowflakeIdGeneratorImpl {
             .isEqualTo(
                 format(
                     "%s (%d), sequence %d, node %d",
-                    Instant.ofEpochMilli(EPOCH_OFFSET_MILLIS + initialTimestamp + millis),
+                    Instant.ofEpochMilli(ID_EPOCH_MILLIS + initialTimestamp + millis),
                     initialTimestamp + millis,
                     j,
                     nodeId));
@@ -522,7 +522,7 @@ public class TestSnowflakeIdGeneratorImpl {
 
   @Test
   public void miscUuid() {
-    var clockSource = new AtomicLong(EPOCH_OFFSET_MILLIS + TimeUnit.DAYS.toMillis(365));
+    var clockSource = new AtomicLong(ID_EPOCH_MILLIS + TimeUnit.DAYS.toMillis(365));
     var clock = (LongSupplier) clockSource::get;
 
     var nodeId = 42;
@@ -569,7 +569,7 @@ public class TestSnowflakeIdGeneratorImpl {
   public void maxIdsPerMillisecondAtNowWithRealClock() {
     var nodeId = 42;
 
-    var initialTimestamp = clock.currentTimeMillis() - EPOCH_OFFSET_MILLIS;
+    var initialTimestamp = clock.currentTimeMillis() - ID_EPOCH_MILLIS;
     var impl =
         new SnowflakeIdGeneratorFactory()
             .buildIdGenerator(Map.of(), idGeneratorSource(nodeId, clock::currentTimeMillis));
@@ -587,7 +587,7 @@ public class TestSnowflakeIdGeneratorImpl {
               () -> {
                 assertThat(uuid.node()).isEqualTo(nodeId);
                 assertThat(uuid.timestamp())
-                    .isGreaterThan(EPOCH_OFFSET_MILLIS)
+                    .isGreaterThan(ID_EPOCH_MILLIS)
                     .isEqualTo(impl.timestampUtcFromId(id));
                 assertThat(uuid.clockSequence()).isGreaterThanOrEqualTo(0).isLessThan(4096);
                 assertThat(uuid.variant()).isEqualTo(2);
@@ -604,7 +604,7 @@ public class TestSnowflakeIdGeneratorImpl {
           .isEqualTo(
               format(
                   "%s (%d), sequence %d, node %d",
-                  Instant.ofEpochMilli(impl.timestampFromId(id) + EPOCH_OFFSET_MILLIS),
+                  Instant.ofEpochMilli(impl.timestampFromId(id) + ID_EPOCH_MILLIS),
                   impl.timestampFromId(id),
                   impl.sequenceFromId(id),
                   nodeId));

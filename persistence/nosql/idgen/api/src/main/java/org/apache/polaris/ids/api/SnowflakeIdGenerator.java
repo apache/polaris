@@ -24,13 +24,13 @@ import java.util.UUID;
 
 public interface SnowflakeIdGenerator extends IdGenerator {
   /** Offset of the snowflake ID generator since the 1970-01-01T00:00:00Z epoch instant. */
-  Instant EPOCH_OFFSET = Instant.parse("2025-03-01T00:00:00Z");
+  Instant ID_EPOCH = Instant.parse("2025-03-01T00:00:00Z");
 
   /**
    * Offset of the snowflake ID generator in milliseconds since the 1970-01-01T00:00:00Z epoch
    * instant.
    */
-  long EPOCH_OFFSET_MILLIS = EPOCH_OFFSET.toEpochMilli();
+  long ID_EPOCH_MILLIS = ID_EPOCH.toEpochMilli();
 
   int DEFAULT_NODE_ID_BITS = 10;
   int DEFAULT_TIMESTAMP_BITS = 41;
