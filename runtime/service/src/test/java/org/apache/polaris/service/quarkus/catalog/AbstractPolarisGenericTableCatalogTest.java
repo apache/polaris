@@ -340,11 +340,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getFormat()).isEqualTo(format);
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
-    if (baseLocation == null) {
-      Assertions.assertThat(resultEntity.getBaseLocation()).isNull();
-    } else {
-      Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
-    }
+    Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
   }
 
   @Test

@@ -38,6 +38,8 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A spark TableCatalog Implementation interacts with Polaris specific APIs only. The APIs it
@@ -45,6 +47,7 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
  * expected to be for non-iceberg tables.
  */
 public class PolarisSparkCatalog implements TableCatalog {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSparkCatalog.class);
 
   private PolarisCatalog polarisCatalog = null;
   private String catalogName = null;
@@ -91,6 +94,9 @@ public class PolarisSparkCatalog implements TableCatalog {
       // with the path option.
       if (properties.get(TableCatalog.PROP_LOCATION) != null) {
         baseLocation = properties.get(TableCatalog.PROP_LOCATION);
+        if (properties.get(PolarisCatalogUtils.TABLE_PATH_KEY) != null) {
+          LOGGER.debug("Both location and path are propagated in the table properties, location {}, path {}", baseLocation, properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
+        }
       } else {
         baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
       }

@@ -86,11 +86,7 @@ public class DeserializationTest {
     assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
     assertThat(deserializedResponse.getTable().getDoc()).isEqualTo(doc);
     assertThat(deserializedResponse.getTable().getProperties().size()).isEqualTo(properties.size());
-    if (baseLocation != null) {
-      assertThat(deserializedResponse.getTable().getBaseLocation()).isEqualTo(baseLocation);
-    } else {
-      assertThat(deserializedResponse.getTable().getBaseLocation()).isNull();
-    }
+    assertThat(deserializedResponse.getTable().getBaseLocation()).isEqualTo(baseLocation);
   }
 
   @ParameterizedTest
@@ -114,11 +110,7 @@ public class DeserializationTest {
     assertThat(deserializedRequest.getFormat()).isEqualTo("delta");
     assertThat(deserializedRequest.getDoc()).isEqualTo(doc);
     assertThat(deserializedRequest.getProperties().size()).isEqualTo(properties.size());
-    if (baseLocation != null) {
-      assertThat(deserializedRequest.getBaseLocation()).isEqualTo(baseLocation);
-    } else {
-      assertThat(deserializedRequest.getBaseLocation()).isNull();
-    }
+    assertThat(deserializedRequest.getBaseLocation()).isEqualTo(baseLocation);
   }
 
   @Test
