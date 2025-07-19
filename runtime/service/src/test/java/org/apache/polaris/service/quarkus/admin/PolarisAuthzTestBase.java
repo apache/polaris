@@ -325,7 +325,8 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS1B_1, SCHEMA).create();
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
-    genericTableCatalog.createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
+    genericTableCatalog.createGenericTable(
+        TABLE_NS1_1_GENERIC, "format", "file:///tmp/test_table", "doc", Map.of());
 
     policyCatalog.createPolicy(
         POLICY_NS1_1,

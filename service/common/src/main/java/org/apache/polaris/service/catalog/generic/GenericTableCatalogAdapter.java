@@ -101,6 +101,7 @@ public class GenericTableCatalogAdapter
         handler.createGenericTable(
             TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
             createGenericTableRequest.getFormat(),
+            createGenericTableRequest.getBaseLocation(),
             createGenericTableRequest.getDoc(),
             reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()));
 
