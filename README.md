@@ -81,6 +81,25 @@ insert into db1.table1 values (1, 'a');
 select * from db1.table1;
 ```
 - `env POLARIS_HOST=localhost ./regtests/run.sh` - To run regression tests locally, see more options [here](./regtests/README.md).
+
+## Makefile Convenience Commands
+
+To streamline the developer experience, especially for common setup and build tasks, a root-level Makefile is available. This Makefile acts as a convenient wrapper around various Gradle commands and other tooling, simplifying interactions. While Gradle remains the primary build system, the Makefile provides concise shortcuts for frequent operations like:
+  - Building Polaris components: e.g., `make build-server, make build-admin`
+  - Managing development clusters: e.g., `make minikube-start-cluster, make minikube-cleanup`
+  - Automating Helm tasks: e.g., `make helm-doc-generate, make helm-unittest`
+  - Handling dependencies: e.g., `make install-dependencies-brew`
+
+To see available commands:
+```bash
+make help
+```
+
+For example, to build the Polaris server and its container image, you can simply run:
+```bash
+make build-server
+```
+
 ### More build and run options
 
 #### Running in Docker
