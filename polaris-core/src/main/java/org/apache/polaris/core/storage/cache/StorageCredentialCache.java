@@ -169,4 +169,9 @@ public class StorageCredentialCache {
   public long getEstimatedSize() {
     return this.cache.estimatedSize();
   }
+
+  @VisibleForTesting
+  public void invalidateAll() {
+    this.cache.invalidateAll();
+  }
 }

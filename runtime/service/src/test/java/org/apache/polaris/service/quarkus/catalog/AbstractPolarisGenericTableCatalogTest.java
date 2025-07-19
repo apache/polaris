@@ -56,6 +56,7 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -63,14 +64,12 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -102,7 +101,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
@@ -138,6 +137,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
@@ -155,14 +156,11 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-    StorageCredentialCache storageCredentialCache =
-        new StorageCredentialCache(storageCredentialCacheConfig);
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            storageCredentialCache,
-            metaStoreManagerFactory.getOrCreateEntityCache(
-                realmContext, polarisContext.getRealmConfig()));
+
+    EntityCache entityCache =
+        metaStoreManagerFactory.getOrCreateEntityCache(
+            realmContext, polarisContext.getRealmConfig());
+    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -226,11 +224,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(
-            metaStoreManagerFactory, configurationStore, storageCredentialCache);
-    this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -254,6 +248,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
+            storageCredentialCache,
             entityManager,
             metaStoreManager,
             polarisContext,

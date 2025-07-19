@@ -30,7 +30,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -41,10 +41,10 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Inject
   public WasbTranslatingFileIOFactory(
-      RealmEntityManagerFactory realmEntityManagerFactory,
+      StorageCredentialCache storageCredentialCache,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     defaultFileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
   }
 
   @Override
