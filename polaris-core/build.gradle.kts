@@ -52,7 +52,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   constraints {
-    implementation("org.xerial.snappy:snappy-java:1.1.10.7") {
+    implementation("org.xerial.snappy:snappy-java:1.1.10.8") {
       because("Vulnerability detected in 1.1.8.2")
     }
     implementation("org.codehaus.jettison:jettison:1.5.4") {
