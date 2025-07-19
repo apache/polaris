@@ -95,7 +95,10 @@ public class PolarisSparkCatalog implements TableCatalog {
       if (properties.get(TableCatalog.PROP_LOCATION) != null) {
         baseLocation = properties.get(TableCatalog.PROP_LOCATION);
         if (properties.get(PolarisCatalogUtils.TABLE_PATH_KEY) != null) {
-          LOGGER.debug("Both location and path are propagated in the table properties, location {}, path {}", baseLocation, properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
+          LOGGER.debug(
+              "Both location and path are propagated in the table properties, location {}, path {}",
+              baseLocation,
+              properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
         }
       } else {
         baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
