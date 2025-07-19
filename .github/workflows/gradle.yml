@@ -53,6 +53,9 @@ jobs:
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run unit tests
+        env:
+          # publishToMavenLocal causes a GH API requests, use the token for those requests
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
