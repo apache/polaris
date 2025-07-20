@@ -256,7 +256,7 @@ minikube-cleanup: check-dependencies ## Cleanup the Minikube cluster
 ##@ Pre-commit
 
 .PHONY: pre-commit
-pre-commit: spotless-apply helm-doc-generate ## Run tasks for pre-commit
+pre-commit: spotless-apply helm-doc-generate client-lint ## Run tasks for pre-commit
 
 ##@ Dependencies
 
