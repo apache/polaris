@@ -19,9 +19,12 @@
 
 package org.apache.polaris.service.events;
 
+import static java.lang.Thread.sleep;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -30,14 +33,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.PolarisCatalog;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.AfterEach;
@@ -60,7 +59,6 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRe
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse;
-import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.OutputLogEvent;
 
 class AwsCloudWatchEventListenerTest {
@@ -96,7 +94,6 @@ class AwsCloudWatchEventListenerTest {
     when(config.awsCloudwatchlogGroup()).thenReturn(Optional.of(LOG_GROUP));
     when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
     when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
-
 
     // Create CloudWatch client pointing to LocalStack
     cloudWatchLogsClient =
@@ -177,21 +174,37 @@ class AwsCloudWatchEventListenerTest {
   }
 
   @Test
-  void shouldSendEventToCloudWatchSingleEventSubmissions() {
+  void shouldSendEventToCloudWatch() {
     listener.start();
 
-    // Create a test catalog entity
-    String catalog1Name = "test-catalog1";
-    String catalog2Name = "test-catalog2";
+    // Create test table identifiers
+    TableIdentifier t1 = TableIdentifier.of("test_ns", "test_table1");
+    TableIdentifier t2 = TableIdentifier.of("test_ns", "test_table2");
 
     // Create and send the event
-    AfterCatalogCreatedEvent event = new AfterCatalogCreatedEvent(getTestCatalog(catalog1Name));
-    listener.onAfterCatalogCreated(event);
+    AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(t1);
+    listener.onAfterTableRefreshed(event);
 
-    // Wait a bit for the background thread to process
-    List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
-    List<InputLogEvent> transformedEvents = new ArrayList<>();
-    listener.drainQueue(drainedEvents, transformedEvents);
+    // Verify future and status
+    List<Future<?>> allActiveFutures = listener.getFutures().keySet().stream().toList();
+    assertThat(allActiveFutures).hasSize(1);
+    Future<?> firstFuture = allActiveFutures.get(0);
+
+    // refactor method
+    try {
+      long start = System.currentTimeMillis();
+      while (!firstFuture.isDone()) {
+        if (System.currentTimeMillis() - start > 30 * 1000) {
+          fail("Future interrupted or did not finish");
+        }
+        sleep(1000); // wait one second before checking again
+      }
+    } catch (InterruptedException e) {
+      fail("Future interrupted or did not finish");
+    }
+
+    assertThat(firstFuture.isDone()).isTrue();
+    assertThat(firstFuture.state()).isEqualTo(Future.State.SUCCESS);
 
     // Verify the event was sent to CloudWatch
     GetLogEventsResponse logEvents =
@@ -207,21 +220,36 @@ class AwsCloudWatchEventListenerTest {
         .satisfies(
             logEvent -> {
               String message = logEvent.message();
-              assertThat(message).contains(catalog1Name);
               assertThat(message).contains(REALM);
-              assertThat(message).contains(AfterCatalogCreatedEvent.class.getSimpleName());
+              assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
               assertThat(message).contains(TEST_USER);
+              assertThat(message).contains(t1.toString());
             });
 
-    assertThat(transformedEvents).isEmpty();
-    assertThat(drainedEvents).isEmpty();
-
     // Redo above procedure to ensure that non-cold-start events can also be submitted
-    event = new AfterCatalogCreatedEvent(getTestCatalog(catalog2Name));
-    listener.onAfterCatalogCreated(event);
+    event = new AfterTableRefreshedEvent(t2);
+    listener.onAfterTableRefreshed(event);
 
-    // Wait a bit for the background thread to process
-    listener.drainQueue(drainedEvents, transformedEvents);
+    allActiveFutures = listener.getFutures().keySet().stream().toList();
+    assertThat(allActiveFutures).hasSize(2);
+    Future<?> secondFuture =
+        allActiveFutures.stream().filter((f) -> !f.equals(firstFuture)).findFirst().get();
+
+    try {
+      long start = System.currentTimeMillis();
+      while (!secondFuture.isDone()) {
+        if (System.currentTimeMillis() - start > 30 * 1000) {
+          fail("Future interrupted or did not finish");
+        }
+        sleep(1000); // wait one second before checking again
+      }
+    } catch (InterruptedException e) {
+      fail("Future interrupted or did not finish");
+    }
+
+    assertThat(secondFuture.isDone()).isTrue();
+    assertThat(secondFuture.state()).isEqualTo(Future.State.SUCCESS);
+    assertThat(listener.getFutures().get(firstFuture)).isEqualTo(null); // first future got purged
 
     // Verify the event was sent to CloudWatch
     logEvents =
@@ -235,56 +263,9 @@ class AwsCloudWatchEventListenerTest {
     List<OutputLogEvent> sortedEvents = new ArrayList<>(logEvents.events());
     sortedEvents.sort(Comparator.comparingLong(OutputLogEvent::timestamp));
     String secondMsg = sortedEvents.get(1).message();
-    assertThat(secondMsg).contains(catalog2Name);
     assertThat(secondMsg).contains(REALM);
-    assertThat(secondMsg).contains(AfterCatalogCreatedEvent.class.getSimpleName());
+    assertThat(secondMsg).contains(AfterTableRefreshedEvent.class.getSimpleName());
     assertThat(secondMsg).contains(TEST_USER);
-
-    assertThat(transformedEvents).isEmpty();
-    assertThat(drainedEvents).isEmpty();
-  }
-
-  @Test
-  void shouldSendEventToCloudWatchBatchEventSubmissions() {
-    listener.start();
-    String catalog1Name = "test-catalog1";
-    String catalog2Name = "test-catalog2";
-
-    AfterCatalogCreatedEvent event1 = new AfterCatalogCreatedEvent(getTestCatalog(catalog1Name));
-    AfterCatalogCreatedEvent event2 = new AfterCatalogCreatedEvent(getTestCatalog(catalog2Name));
-
-    listener.onAfterCatalogCreated(event1);
-    listener.onAfterCatalogCreated(event2);
-    List<AwsCloudWatchEventListener.EventWithTimestamp> drainedEvents = new ArrayList<>();
-    List<InputLogEvent> transformedEvents = new ArrayList<>();
-    listener.drainQueue(drainedEvents, transformedEvents);
-
-    // Verify the events were sent to CloudWatch
-    GetLogEventsResponse logEvents =
-        cloudWatchLogsClient.getLogEvents(
-            GetLogEventsRequest.builder()
-                .logGroupName(LOG_GROUP)
-                .logStreamName(LOG_STREAM)
-                .build());
-
-    assertThat(logEvents.events()).hasSize(2);
-    List<OutputLogEvent> sortedEvents = new ArrayList<>(logEvents.events());
-    sortedEvents.sort(Comparator.comparingLong(OutputLogEvent::timestamp));
-    assertThat(sortedEvents.get(0).message()).contains(catalog1Name);
-    assertThat(sortedEvents.get(1).message()).contains(catalog2Name);
-
-    assertThat(transformedEvents).isEmpty();
-    assertThat(drainedEvents).isEmpty();
-  }
-
-  private Catalog getTestCatalog(String catalogName) {
-    return PolarisCatalog.builder()
-        .setName(catalogName)
-        .setType(Catalog.TypeEnum.INTERNAL)
-        .setStorageConfigInfo(
-            FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-                .setAllowedLocations(List.of("file://"))
-                .build())
-        .build();
+    assertThat(secondMsg).contains(t2.toString());
   }
 }

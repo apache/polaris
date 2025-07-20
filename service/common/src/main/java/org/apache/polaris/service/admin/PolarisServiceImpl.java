@@ -79,7 +79,6 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
@@ -154,7 +153,6 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    polarisEventListener.onAfterCatalogCreated(new AfterCatalogCreatedEvent(newCatalog));
     return Response.status(Response.Status.CREATED).build();
   }
 

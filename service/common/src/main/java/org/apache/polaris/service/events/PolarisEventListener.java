@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
-
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
@@ -57,7 +55,4 @@ public abstract class PolarisEventListener {
 
   /** {@link AfterTaskAttemptedEvent} */
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
-
-  /** {@link AfterCatalogCreatedEvent} */
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {}
 }
