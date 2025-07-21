@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.admin.model.Catalog;
+package org.apache.polaris.service.events.aws.cloudwatch;
 
-/**
- * Emitted after Polaris creates a catalog (internal or external). This is not emitted if there's an
- * exception while created.
- *
- * @param catalog The catalog that was created
- */
-public record AfterCatalogCreatedEvent(Catalog catalog) implements PolarisEvent {}
+import java.util.Optional;
+
+/** Configuration interface for AWS CloudWatch event listener settings. */
+public interface AwsCloudWatchConfiguration {
+  Optional<String> awsCloudwatchlogGroup();
+
+  Optional<String> awsCloudwatchlogStream();
+
+  Optional<String> awsCloudwatchRegion();
+}

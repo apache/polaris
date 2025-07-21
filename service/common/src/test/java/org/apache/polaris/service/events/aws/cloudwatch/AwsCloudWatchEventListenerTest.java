@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.aws.cloudwatch;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,6 +42,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -83,7 +84,7 @@ class AwsCloudWatchEventListenerTest {
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
 
-  @Mock private EventListenerConfiguration config;
+  @Mock private AwsCloudWatchConfiguration config;
 
   private ExecutorService executorService;
   private AutoCloseable mockitoContext;

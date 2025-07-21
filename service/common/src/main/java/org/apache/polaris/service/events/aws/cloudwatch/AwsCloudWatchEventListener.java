@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.aws.cloudwatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +36,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
@@ -79,7 +82,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
 
   @Inject
   public AwsCloudWatchEventListener(
-      EventListenerConfiguration config, ExecutorService executorService) {
+      AwsCloudWatchConfiguration config, ExecutorService executorService) {
     this.executorService = executorService;
 
     this.logStream =
