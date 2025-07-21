@@ -106,13 +106,12 @@ public class StorageUtil {
             && !potentialParent.equals(potentialChild)) {
           StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
           StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
-          if (potentialParentLocation.isChildOf(potentialChildLocation)) {
-            result.remove(potentialParent);
+          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
+            result.remove(potentialChild);
           }
         }
       }
     }
-
     return result;
   }
 }
