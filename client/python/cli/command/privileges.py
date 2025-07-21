@@ -104,7 +104,7 @@ class PrivilegesCommand(Command):
             for grant in api.list_grants_for_catalog_role(
                 self.catalog_name, self.catalog_role_name
             ).grants:
-                print(grant.to_json())
+                self.logger.info(grant.to_json())
         else:
             grant = None
             if self.privileges_subcommand == Subcommands.CATALOG:

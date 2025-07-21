@@ -74,21 +74,21 @@ class PrincipalRolesCommand(Command):
         elif self.principal_roles_subcommand == Subcommands.DELETE:
             api.delete_principal_role(self.principal_role_name)
         elif self.principal_roles_subcommand == Subcommands.GET:
-            print(api.get_principal_role(self.principal_role_name).to_json())
+            self.logger.info(api.get_principal_role(self.principal_role_name).to_json())
         elif self.principal_roles_subcommand == Subcommands.LIST:
             if self.catalog_role_name:
                 for principal_role in api.list_principal_roles(
                     self.catalog_role_name
                 ).roles:
-                    print(principal_role.to_json())
+                    self.logger.info(principal_role.to_json())
             elif self.principal_name:
                 for principal_role in api.list_principal_roles_assigned(
                     self.principal_name
                 ).roles:
-                    print(principal_role.to_json())
+                    self.logger.info(principal_role.to_json())
             else:
                 for principal_role in api.list_principal_roles().roles:
-                    print(principal_role.to_json())
+                    self.logger.info(principal_role.to_json())
         elif self.principal_roles_subcommand == Subcommands.UPDATE:
             principal_role = api.get_principal_role(self.principal_role_name)
             new_properties = principal_role.properties or {}

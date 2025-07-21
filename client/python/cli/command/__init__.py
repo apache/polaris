@@ -17,6 +17,7 @@
 # under the License.
 #
 import argparse
+import logging
 from abc import ABC
 
 from cli.constants import Commands, Arguments
@@ -30,6 +31,10 @@ class Command(ABC):
     `execute`. The static method `Command.from_options` can be used to parse a argparse Namespace into the appropriate
     Command implementation if one exists.
     """
+
+    @property
+    def logger(self):
+        return logging.getLogger(self.__class__.__name__)
 
     @staticmethod
     def from_options(options: argparse.Namespace) -> "Command":

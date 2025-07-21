@@ -106,22 +106,22 @@ class PrincipalsCommand(Command):
                     properties=self.properties,
                 )
             )
-            print(self.build_credential_json(api.create_principal(request)))
+            self.logger.info(self.build_credential_json(api.create_principal(request)))
         elif self.principals_subcommand == Subcommands.DELETE:
             api.delete_principal(self.principal_name)
         elif self.principals_subcommand == Subcommands.GET:
-            print(api.get_principal(self.principal_name).to_json())
+            self.logger.info(api.get_principal(self.principal_name).to_json())
         elif self.principals_subcommand == Subcommands.LIST:
             if self.principal_role:
                 for principal in api.list_assignee_principals_for_principal_role(
                     self.principal_role
                 ).principals:
-                    print(principal.to_json())
+                    self.logger.info(principal.to_json())
             else:
                 for principal in api.list_principals().principals:
-                    print(principal.to_json())
+                    self.logger.info(principal.to_json())
         elif self.principals_subcommand == Subcommands.ROTATE_CREDENTIALS:
-            print(
+            self.logger.info(
                 self.build_credential_json(api.rotate_credentials(self.principal_name))
             )
         elif self.principals_subcommand == Subcommands.UPDATE:
@@ -170,6 +170,6 @@ class PrincipalsCommand(Command):
                         )
                         role_data["catalog_roles"].append(catalog_data)
                 result["principal_roles"].append(role_data)
-            print(json.dumps(result))
+            self.logger.info(json.dumps(result))
         else:
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")

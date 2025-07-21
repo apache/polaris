@@ -299,10 +299,10 @@ class CatalogsCommand(Command):
         elif self.catalogs_subcommand == Subcommands.DELETE:
             api.delete_catalog(self.catalog_name)
         elif self.catalogs_subcommand == Subcommands.GET:
-            print(api.get_catalog(self.catalog_name).to_json())
+            self.logger.info(api.get_catalog(self.catalog_name).to_json())
         elif self.catalogs_subcommand == Subcommands.LIST:
             for catalog in api.list_catalogs().catalogs:
-                print(catalog.to_json())
+                self.logger.info(catalog.to_json())
         elif self.catalogs_subcommand == Subcommands.UPDATE:
             catalog = api.get_catalog(self.catalog_name)
 

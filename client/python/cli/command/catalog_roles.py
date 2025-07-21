@@ -76,7 +76,7 @@ class CatalogRolesCommand(Command):
         elif self.catalog_roles_subcommand == Subcommands.DELETE:
             api.delete_catalog_role(self.catalog_name, self.catalog_role_name)
         elif self.catalog_roles_subcommand == Subcommands.GET:
-            print(
+            self.logger.info(
                 api.get_catalog_role(
                     self.catalog_name, self.catalog_role_name
                 ).to_json()
@@ -86,10 +86,10 @@ class CatalogRolesCommand(Command):
                 for catalog_role in api.list_catalog_roles_for_principal_role(
                     self.principal_role_name, self.catalog_name
                 ).roles:
-                    print(catalog_role.to_json())
+                    self.logger.info(catalog_role.to_json())
             else:
                 for catalog_role in api.list_catalog_roles(self.catalog_name).roles:
-                    print(catalog_role.to_json())
+                    self.logger.info(catalog_role.to_json())
         elif self.catalog_roles_subcommand == Subcommands.UPDATE:
             catalog_role = api.get_catalog_role(
                 self.catalog_name, self.catalog_role_name
