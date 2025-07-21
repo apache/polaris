@@ -20,6 +20,7 @@ package org.apache.polaris.service.quarkus.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import java.util.Optional;
 import org.apache.polaris.service.events.EventListenerConfiguration;
@@ -35,14 +36,17 @@ public interface QuarkusPolarisEventListenerConfiguration extends EventListenerC
   String type();
 
   @WithName("aws-cloudwatch.log-group")
+  @WithDefault("polaris-cloudwatch-default-group")
   @Override
   Optional<String> awsCloudwatchlogGroup();
 
   @WithName("aws-cloudwatch.log-stream")
+  @WithDefault("polaris-cloudwatch-default-stream")
   @Override
   Optional<String> awsCloudwatchlogStream();
 
   @WithName("aws-cloudwatch.region")
+  @WithDefault("us-east-1")
   @Override
   Optional<String> awsCloudwatchRegion();
 }

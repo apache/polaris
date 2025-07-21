@@ -61,9 +61,6 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ConcurrentHashMap<Future<?>, EventWithRetry> futures = new ConcurrentHashMap<>();
-  private static final String DEFAULT_LOG_STREAM_NAME = "polaris-cloudwatch-default-stream";
-  private static final String DEFAULT_LOG_GROUP_NAME = "polaris-cloudwatch-default-group";
-  private static final String DEFAULT_REGION = "us-east-1";
 
   record EventWithRetry(InputLogEvent inputLogEvent, int retryCount) {}
 
@@ -85,9 +82,23 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       EventListenerConfiguration config, ExecutorService executorService) {
     this.executorService = executorService;
 
-    this.logStream = config.awsCloudwatchlogStream().orElse(DEFAULT_LOG_STREAM_NAME);
-    this.logGroup = config.awsCloudwatchlogGroup().orElse(DEFAULT_LOG_GROUP_NAME);
-    this.region = Region.of(config.awsCloudwatchRegion().orElse(DEFAULT_REGION));
+    this.logStream =
+        config
+            .awsCloudwatchlogStream()
+            .orElseThrow(
+                () -> new IllegalArgumentException("AWS CloudWatch log stream must be configured"));
+    this.logGroup =
+        config
+            .awsCloudwatchlogGroup()
+            .orElseThrow(
+                () -> new IllegalArgumentException("AWS CloudWatch log group must be configured"));
+    this.region =
+        Region.of(
+            config
+                .awsCloudwatchRegion()
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("AWS CloudWatch region must be configured")));
   }
 
   @PostConstruct

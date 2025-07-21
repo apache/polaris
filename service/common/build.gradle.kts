@@ -97,6 +97,7 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.localstack)
   testImplementation("org.testcontainers:testcontainers")
+  testImplementation(project(":polaris-container-spec-helper"))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   testImplementation(libs.logback.classic)
