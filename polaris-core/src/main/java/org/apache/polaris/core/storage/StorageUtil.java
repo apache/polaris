@@ -97,6 +97,7 @@ public class StorageUtil {
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
   private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
     HashSet<String> result = new HashSet<>(locationStrings);
+    result.remove(null);
 
     for (String potentialParent : locationStrings) {
       for (String potentialChild : locationStrings) {

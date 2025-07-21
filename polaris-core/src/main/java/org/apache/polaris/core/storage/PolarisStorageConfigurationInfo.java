@@ -34,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -178,29 +179,16 @@ public abstract class PolarisStorageConfigurationInfo {
                     entityPathReversed.get(0).getName());
 
                 // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
-                List<String> locs =
-                    userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
+                Set<String> locations =
+                    StorageUtil.getLocationsAllowedToBeAccessed(null, entityPathReversed.get(0).getPropertiesAsMap());
                 return new StorageConfigurationOverride(
                     configInfo,
                     ImmutableList.<String>builder()
                         .addAll(configInfo.getAllowedLocations())
-                        .addAll(locs)
+                        .addAll(locations)
                         .build());
               }
             });
-  }
-
-  private static List<String> userSpecifiedWriteLocations(Map<String, String> properties) {
-    // TODO call getLocationsAllowedToBeAccessed
-    return Optional.ofNullable(properties)
-        .map(
-            p ->
-                Stream.of(
-                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList()))
-        .orElse(List.of());
   }
 
   private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(

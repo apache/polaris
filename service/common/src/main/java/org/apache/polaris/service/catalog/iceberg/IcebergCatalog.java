@@ -1462,7 +1462,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               metadata
                   .properties()
                   .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
-        // TODO call getLocationsAllowedToBeAccessed
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations =
