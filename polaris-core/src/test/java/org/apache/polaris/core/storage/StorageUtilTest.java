@@ -98,8 +98,7 @@ public class StorageUtilTest {
     Assertions.assertThat(
             StorageUtil.getLocationsAllowedToBeAccessed(
                 "/foo/bar/",
-                Map.of(
-                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/foo/")))
+                Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/foo/")))
         .contains("/foo/");
   }
 }
