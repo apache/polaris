@@ -55,6 +55,9 @@ jobs:
         run: ./gradlew regeneratePythonClient
 
       - name: Project build without testing
+        env:
+          # publishToMavenLocal causes a GH API requests, use the token for those requests
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew assemble publishToMavenLocal
 
       - name: Image build
