@@ -36,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.slf4j.Logger;
