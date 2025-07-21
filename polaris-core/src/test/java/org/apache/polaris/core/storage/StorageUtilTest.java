@@ -18,13 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
+import java.util.Map;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Map;
 
 public class StorageUtilTest {
 
@@ -74,28 +73,27 @@ public class StorageUtilTest {
   public void getLocationsAllowedToBeAccessed() {
     Assertions.assertThat(StorageUtil.getLocationsAllowedToBeAccessed(null, Map.of())).isEmpty();
     Assertions.assertThat(StorageUtil.getLocationsAllowedToBeAccessed("", Map.of())).isNotEmpty();
-    Assertions
-        .assertThat(StorageUtil.getLocationsAllowedToBeAccessed("/foo/", Map.of()))
+    Assertions.assertThat(StorageUtil.getLocationsAllowedToBeAccessed("/foo/", Map.of()))
         .contains("/foo/");
-    Assertions
-        .assertThat(StorageUtil.getLocationsAllowedToBeAccessed(
-            "/foo/",
-            Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/")))
+    Assertions.assertThat(
+            StorageUtil.getLocationsAllowedToBeAccessed(
+                "/foo/",
+                Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/")))
         .contains("/foo/");
-    Assertions
-        .assertThat(StorageUtil.getLocationsAllowedToBeAccessed(
-            "/foo/",
-            Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/bar/")))
+    Assertions.assertThat(
+            StorageUtil.getLocationsAllowedToBeAccessed(
+                "/foo/",
+                Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/bar/")))
         .contains("/foo/", "/bar/");
-    Assertions
-        .assertThat(StorageUtil.getLocationsAllowedToBeAccessed(
-            "/foo/",
-            Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/bar/")))
+    Assertions.assertThat(
+            StorageUtil.getLocationsAllowedToBeAccessed(
+                "/foo/",
+                Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/bar/")))
         .contains("/foo/");
-    Assertions
-        .assertThat(StorageUtil.getLocationsAllowedToBeAccessed(
-            "/foo/bar/",
-            Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/")))
+    Assertions.assertThat(
+            StorageUtil.getLocationsAllowedToBeAccessed(
+                "/foo/bar/",
+                Map.of(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/foo/")))
         .contains("/foo/");
   }
 }

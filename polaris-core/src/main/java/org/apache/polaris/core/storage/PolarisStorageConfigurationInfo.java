@@ -31,12 +31,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -44,7 +40,6 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -180,7 +175,8 @@ public abstract class PolarisStorageConfigurationInfo {
 
                 // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
                 Set<String> locations =
-                    StorageUtil.getLocationsAllowedToBeAccessed(null, entityPathReversed.get(0).getPropertiesAsMap());
+                    StorageUtil.getLocationsAllowedToBeAccessed(
+                        null, entityPathReversed.get(0).getPropertiesAsMap());
                 return new StorageConfigurationOverride(
                     configInfo,
                     ImmutableList.<String>builder()
