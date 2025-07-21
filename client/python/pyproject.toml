@@ -41,9 +41,18 @@ dependencies = [
 homepage = "https://polaris.apache.org/"
 repository = "https://github.com/apache/polaris/"
 
+[project.scripts]
+polaris = "cli.polaris_cli:main"
+
 [tool.poetry]
 requires-poetry = "==2.1.3"
-packages = [{ include = "polaris" }]
+packages = [
+    { include = "polaris" },
+    { include = "cli" }
+]
+include = [
+  "polaris/**"
+]
 
 [tool.poetry.group.test.dependencies]
 pytest = ">= 7.2.1"
