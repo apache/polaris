@@ -26,5 +26,4 @@ import org.apache.polaris.core.admin.model.Principal;
  *
  * @param rotatedPrincipal the updated principal with new credentials
  */
-public record AfterCredentialsRotateEvent(Principal rotatedPrincipal)
-    implements PolarisEvent {}
+public record AfterCredentialsRotateEvent(Principal rotatedPrincipal) implements PolarisEvent {}
