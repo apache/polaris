@@ -125,6 +125,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -167,6 +168,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       };
 
   private final PolarisEntityManager entityManager;
+  private final StorageCredentialCache storageCredentialCache;
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -188,14 +190,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private PolarisMetaStoreManager metaStoreManager;
 
   /**
-   * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
-   *     perform mutations on entities.
    * @param callContext the current CallContext
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
   public IcebergCatalog(
+      StorageCredentialCache storageCredentialCache,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
@@ -205,6 +206,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.entityManager = entityManager;
+    this.storageCredentialCache = storageCredentialCache;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
@@ -864,7 +866,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     return FileIOUtil.refreshAccessConfig(
         callContext,
-        entityManager,
+        storageCredentialCache,
         getCredentialVendor(),
         tableIdentifier,
         getLocationsAllowedToBeAccessed(tableMetadata),
