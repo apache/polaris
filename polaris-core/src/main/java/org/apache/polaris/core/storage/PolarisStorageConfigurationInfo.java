@@ -191,6 +191,7 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   private static List<String> userSpecifiedWriteLocations(Map<String, String> properties) {
+    // TODO call getLocationsAllowedToBeAccessed
     return Optional.ofNullable(properties)
         .map(
             p ->

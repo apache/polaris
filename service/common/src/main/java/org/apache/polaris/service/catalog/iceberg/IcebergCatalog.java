@@ -395,6 +395,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               .properties()
               .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
     }
+    // TODO deduplicate locations
     return locations;
   }
 
@@ -1487,6 +1488,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               metadata
                   .properties()
                   .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
+        // TODO call getLocationsAllowedToBeAccessed
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations = new HashSet<>();
@@ -2608,16 +2610,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     return fileIOFactory.loadFileIO(
         callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
-  }
-
-  private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {
-    if (properties != null
-        && (properties.containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)
-            || properties.containsKey(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))) {
-      throw new ForbiddenException(
-          "Delegate access to table with user-specified write location is temporarily not supported.");
-    }
   }
 
   private int getMaxMetadataRefreshRetries() {
