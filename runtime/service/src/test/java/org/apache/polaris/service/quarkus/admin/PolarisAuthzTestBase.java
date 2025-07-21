@@ -75,6 +75,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -191,6 +192,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected PolarisConfigurationStore configurationStore;
+  @Inject protected StorageCredentialCache storageCredentialCache;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -220,6 +222,8 @@ public abstract class PolarisAuthzTestBase {
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     RealmContext realmContext = testInfo::getDisplayName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -463,6 +467,7 @@ public abstract class PolarisAuthzTestBase {
             callContext, entityManager, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
+            storageCredentialCache,
             entityManager,
             metaStoreManager,
             callContext,
@@ -492,16 +497,16 @@ public abstract class PolarisAuthzTestBase {
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
+        StorageCredentialCache storageCredentialCache,
         RealmEntityManagerFactory entityManagerFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
-        UserSecretsManagerFactory userSecretsManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
+          storageCredentialCache,
           entityManagerFactory,
           metaStoreManagerFactory,
-          userSecretsManagerFactory,
           taskExecutor,
           fileIOFactory,
           polarisEventListener);

@@ -64,6 +64,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -76,14 +77,12 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -129,7 +128,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
@@ -161,6 +160,8 @@ public abstract class AbstractPolicyCatalogTest {
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
@@ -178,14 +179,11 @@ public abstract class AbstractPolicyCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-    StorageCredentialCache storageCredentialCache =
-        new StorageCredentialCache(storageCredentialCacheConfig);
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            storageCredentialCache,
-            metaStoreManagerFactory.getOrCreateEntityCache(
-                realmContext, polarisContext.getRealmConfig()));
+
+    EntityCache entityCache =
+        metaStoreManagerFactory.getOrCreateEntityCache(
+            realmContext, polarisContext.getRealmConfig());
+    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
 
     callContext = polarisContext;
 
@@ -249,11 +247,7 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(
-            metaStoreManagerFactory, configurationStore, storageCredentialCache);
-    this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -275,6 +269,7 @@ public abstract class AbstractPolicyCatalogTest {
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
+            storageCredentialCache,
             entityManager,
             metaStoreManager,
             callContext,
