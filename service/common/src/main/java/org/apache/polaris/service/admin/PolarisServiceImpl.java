@@ -409,7 +409,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalWithCredentials rotatedPrincipal = adminService.rotateCredentials(principalName);
     polarisEventListener.onAfterCredentialsRotate(
-        new AfterCredentialsRotateEvent(rotatedPrincipal));
+        new AfterCredentialsRotateEvent(rotatedPrincipal.getPrincipal()));
     return Response.ok(rotatedPrincipal).build();
   }
 
