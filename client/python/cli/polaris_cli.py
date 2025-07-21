@@ -20,6 +20,7 @@
 import json
 import os
 import sys
+import logging
 from json import JSONDecodeError
 
 from typing import Dict
@@ -74,26 +75,25 @@ class PolarisCli:
                     command = Command.from_options(options)
                     command.execute(admin_api)
                 except Exception as e:
-                    PolarisCli._try_print_exception(e)
+                    PolarisCli._log_exception(e)
                     sys.exit(1)
 
     @staticmethod
-    def _try_print_exception(e):
+    def _log_exception(e):
+        logger = logging.getLogger(PolarisCli.__name__)
         try:
             error = json.loads(e.body)["error"]
-            sys.stderr.write(
-                f"Exception when communicating with the Polaris server."
-                f" {error['type']}: {error['message']}{os.linesep}"
+            logger.error(
+                f"Exception when communicating with the Polaris server. "
+                f"{error['type']}: {error['message']}"
             )
         except JSONDecodeError as _:
-            sys.stderr.write(
-                f"Exception when communicating with the Polaris server."
-                f" {e.status}: {e.reason}{os.linesep}"
+            logger.error(
+                f"Exception when communicating with the Polaris server. "
+                f"{e.status}: {e.reason}"
             )
         except Exception as _:
-            sys.stderr.write(
-                f"Exception when communicating with the Polaris server. {e}{os.linesep}"
-            )
+            logger.error(f"Exception when communicating with the Polaris server. {e}")
 
     @staticmethod
     def _load_profiles() -> Dict[str, Dict[str, str]]:
@@ -192,4 +192,7 @@ class PolarisCli:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s: %(name)s: %(message)s"
+    )
     PolarisCli.execute()

@@ -90,13 +90,13 @@ class NamespacesCommand(Command):
             else:
                 result = catalog_api.list_namespaces(prefix=self.catalog)
             for namespace in result.namespaces:
-                print(json.dumps({"namespace": ".".join(namespace)}))
+                self.logger.info(json.dumps({"namespace": ".".join(namespace)}))
         elif self.namespaces_subcommand == Subcommands.DELETE:
             catalog_api.drop_namespace(
                 prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
             )
         elif self.namespaces_subcommand == Subcommands.GET:
-            print(
+            self.logger.info(
                 catalog_api.load_namespace_metadata(
                     prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
                 ).to_json()

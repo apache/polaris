@@ -79,8 +79,8 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} already exists.")
-            sys.exit(1)
+            self.logger.info(f"Profile {name} already exists.")
+            raise Exception(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, str]]:
         profiles = self._load_profiles()
@@ -121,8 +121,8 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} does not exist.")
-            sys.exit(1)
+            self.logger.info(f"Profile {name} does not exist.")
+            raise Exception(f"Profile {name} does not exist.")
 
     def validate(self):
         pass
@@ -130,23 +130,23 @@ class ProfilesCommand(Command):
     def execute(self, api: Optional[PolarisDefaultApi] = None) -> None:
         if self.profiles_subcommand == Subcommands.CREATE:
             self._create_profile(self.profile_name)
-            print(f"Polaris profile {self.profile_name} created successfully.")
+            self.logger.info(f"Polaris profile {self.profile_name} created successfully.")
         elif self.profiles_subcommand == Subcommands.DELETE:
             self._delete_profile(self.profile_name)
-            print(f"Polaris profile {self.profile_name} deleted successfully.")
+            self.logger.info(f"Polaris profile {self.profile_name} deleted successfully.")
         elif self.profiles_subcommand == Subcommands.UPDATE:
             self._update_profile(self.profile_name)
-            print(f"Polaris profile {self.profile_name} updated successfully.")
+            self.logger.info(f"Polaris profile {self.profile_name} updated successfully.")
         elif self.profiles_subcommand == Subcommands.GET:
             profile = self._get_profile(self.profile_name)
             if profile:
-                print(f"Polaris profile {self.profile_name}: {profile}")
+                self.logger.info(f"Polaris profile {self.profile_name}: {profile}")
             else:
-                print(f"Polaris profile {self.profile_name} not found.")
+                self.logger.info(f"Polaris profile {self.profile_name} not found.")
         elif self.profiles_subcommand == Subcommands.LIST:
             profiles = self._list_profiles()
-            print("Polaris profiles:")
+            self.logger.info("Polaris profiles:")
             for profile in profiles:
-                print(f" - {profile}")
+                self.logger.info(f" - {profile}")
         else:
             raise Exception(f"{self.profiles_subcommand} is not supported in the CLI")
