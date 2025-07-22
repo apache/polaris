@@ -79,7 +79,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 /**
  * These tests complement {@link QuarkusPolarisRestCatalogMinIOIT} to validate client-side access to
- * MinIO storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses.
+ * MinIO storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses
+ * with some S3-specific options.
  */
 @QuarkusIntegrationTest
 @TestProfile(QuarkusRestCatalogMinIOSpecialIT.Profile.class)
