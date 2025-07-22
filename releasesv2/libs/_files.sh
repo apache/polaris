@@ -28,13 +28,14 @@ source "$libs_dir/_constants.sh"
 source "$libs_dir/_log.sh"
 
 function update_version {
+  local version="$1"
   # This function is only there for dry-run support.  Because of the
   # redirection, we cannot use exec_process with the exact command that will be
   # executed.
   if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-    exec_process echo ${polaris_version} >$VERSION_FILE
+    exec_process echo ${version} >$VERSION_FILE
   else
-    exec_process "echo ${polaris_version} > $VERSION_FILE"
+    exec_process "echo ${version} > $VERSION_FILE"
   fi
 }
 

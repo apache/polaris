@@ -145,6 +145,6 @@ echo
 print_success "🎉 Release tag ${release_tag} created successfully!"
 echo
 print_info "Next steps:"
-print_info "1. (Optional) Use the script 04-verify-release.sh to build the release and run the regression tests."
+print_info "1. (Optional) Use the script 04-build-and-test.sh to build the release and run the regression tests."
 print_info "2. Build and stage the distributions"
 print_info "3. Start the vote thread"

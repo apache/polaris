@@ -150,8 +150,8 @@ print_info "Committing changes..."
 exec_process svn commit -m "Stage Apache Polaris ${version} RC${rc_number}"
 
 # Publish Maven artifacts
+print_info "Publishing Maven artifacts to Apache staging repository..."
 exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
-
 
 echo
 print_success "🎉 Distributions built and staged successfully!"
@@ -159,8 +159,8 @@ echo
 print_info "Staged artifacts:"
 print_info "- Source and binary distributions: ${version_dir}"
 print_info "- Helm charts: ${helm_chart_version_dir}"
+print_info "- Maven artifacts: Published to Apache staging repository"
 echo
 print_info "Next steps:"
-print_info "1. Build and stage Maven artifacts using: ./gradlew publishToApache -Prelease -PuseGpgAgent"
-print_info "2. Close the staging repository in Nexus"
-print_info "3. Start the vote thread"
+print_info "1. Close the staging repository in Nexus"
+print_info "2. Start the vote thread"

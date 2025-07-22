@@ -27,8 +27,8 @@ KEYSERVER=${KEYSERVER:-"hkps://keyserver.ubuntu.com"}
 # Git/SVN repository constants
 APACHE_REMOTE_NAME=${APACHE_REMOTE_NAME:-"apache"}
 APACHE_REMOTE_URL=${APACHE_REMOTE_URL:-"https://github.com/apache/polaris.git"}
-APACHE_DIST_URL=${APACH_DIST_URL:-"https://dist.apache.org/repos/dist"}
-APACHE_DIST_PATH=${APACH_DIST_URL:-"/dev/incubator/polaris"}
+APACHE_DIST_URL=${APACHE_DIST_URL:-"https://dist.apache.org/repos/dist"}
+APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/incubator/polaris"}
 
 # Execution mode constants
 DRY_RUN=${DRY_RUN:-1}
