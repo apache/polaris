@@ -78,10 +78,10 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @QuarkusIntegrationTest
-@TestProfile(QuarkusRestCatalogMinIoIT.Profile.class)
+@TestProfile(QuarkusRestCatalogMinIoSpecialIT.Profile.class)
 @ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class QuarkusRestCatalogMinIoIT {
+public class QuarkusRestCatalogMinIoSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
   private static final String MINIO_ACCESS_KEY = "test-ak-123";
