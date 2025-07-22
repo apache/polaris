@@ -19,20 +19,18 @@
 
 package org.apache.polaris.service.events.jsonEventListener;
 
+import java.util.HashMap;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 
-import java.util.HashMap;
-
 public abstract class JsonEventListener extends PolarisEventListener {
-    protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
+  protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
 
-    @Override
-    public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
-        HashMap<String, Object> properties = new HashMap<>();
-        properties.put("event_type", event.getClass().getSimpleName());
-        properties.put("table_identifier", event.tableIdentifier().toString());
-        transformAndSendEvent(properties);
-    }
-
+  @Override
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+    HashMap<String, Object> properties = new HashMap<>();
+    properties.put("event_type", event.getClass().getSimpleName());
+    properties.put("table_identifier", event.tableIdentifier().toString());
+    transformAndSendEvent(properties);
+  }
 }

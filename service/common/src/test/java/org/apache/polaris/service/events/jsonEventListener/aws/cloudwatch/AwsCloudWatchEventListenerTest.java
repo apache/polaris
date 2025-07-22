@@ -372,11 +372,12 @@ class AwsCloudWatchEventListenerTest {
 
       // Verify sync event
       assertThat(logEvents.events())
-          .anySatisfy(logEvent -> {
-            String message = logEvent.message();
-            assertThat(message).contains("test_table_sync");
-            assertThat(message).contains("AfterTableRefreshedEvent");
-          });
+          .anySatisfy(
+              logEvent -> {
+                String message = logEvent.message();
+                assertThat(message).contains("test_table_sync");
+                assertThat(message).contains("AfterTableRefreshedEvent");
+              });
     } else {
       // Verify that putLogEvents was called with the expected content
       verify(client, times(1))
