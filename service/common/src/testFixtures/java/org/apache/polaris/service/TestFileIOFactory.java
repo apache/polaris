@@ -16,35 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.io;
 
-import io.smallrye.common.annotation.Identifier;
+package org.apache.polaris.service;
+
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 
-/** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
-@ApplicationScoped
-@Identifier("wasb")
-public class WasbTranslatingFileIOFactory implements FileIOFactory {
+/** A FileIOFactory that always returns the same FileIO instance. */
+public class TestFileIOFactory implements FileIOFactory {
 
-  private final FileIOFactory defaultFileIOFactory;
+  private final FileIO fileIO;
 
-  @Inject
-  public WasbTranslatingFileIOFactory(
-      StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    defaultFileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+  public TestFileIOFactory(@Nonnull FileIO fileIO) {
+    this.fileIO = fileIO;
   }
 
   @Override
@@ -56,14 +47,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-    return new WasbTranslatingFileIO(
-        defaultFileIOFactory.loadFileIO(
-            callContext,
-            ioImplClassName,
-            properties,
-            identifier,
-            tableLocations,
-            storageActions,
-            resolvedEntityPath));
+    return fileIO;
   }
 }

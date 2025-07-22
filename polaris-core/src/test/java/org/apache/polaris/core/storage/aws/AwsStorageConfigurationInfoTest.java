@@ -29,8 +29,13 @@ import org.junit.jupiter.api.Test;
 public class AwsStorageConfigurationInfoTest {
 
   private static AwsStorageConfigurationInfo config(String endpoint, String stsEndpoint) {
+    return config(endpoint, stsEndpoint, false);
+  }
+
+  private static AwsStorageConfigurationInfo config(
+      String endpoint, String stsEndpoint, Boolean pathStyle) {
     return new AwsStorageConfigurationInfo(
-        S3, List.of(), "role", null, null, endpoint, stsEndpoint);
+        S3, List.of(), "role", null, null, endpoint, stsEndpoint, pathStyle);
   }
 
   @Test
@@ -55,5 +60,12 @@ public class AwsStorageConfigurationInfoTest {
             AwsStorageConfigurationInfo::getEndpointUri,
             AwsStorageConfigurationInfo::getStsEndpointUri)
         .containsExactly(URI.create("http://s3.example.com"), URI.create("http://sts.example.com"));
+  }
+
+  @Test
+  public void testPathStyleAccess() {
+    assertThat(config(null, null, null).getPathStyleAccess()).isNull();
+    assertThat(config(null, null, false).getPathStyleAccess()).isFalse();
+    assertThat(config(null, null, true).getPathStyleAccess()).isTrue();
   }
 }

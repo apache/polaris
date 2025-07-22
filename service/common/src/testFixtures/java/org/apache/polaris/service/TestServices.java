@@ -78,6 +78,7 @@ public record TestServices(
     IcebergCatalogAdapter catalogAdapter,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
+    StorageCredentialCache storageCredentialCache,
     RealmEntityManagerFactory entityManagerFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
@@ -91,7 +92,7 @@ public record TestServices(
 
   @FunctionalInterface
   public interface FileIOFactorySupplier
-      extends BiFunction<RealmEntityManagerFactory, MetaStoreManagerFactory, FileIOFactory> {}
+      extends BiFunction<StorageCredentialCache, MetaStoreManagerFactory, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -158,8 +159,7 @@ public record TestServices(
       StorageCredentialCache storageCredentialCache =
           new StorageCredentialCache(storageCredentialCacheConfig);
       RealmEntityManagerFactory realmEntityManagerFactory =
-          new RealmEntityManagerFactory(
-              metaStoreManagerFactory, configurationStore, storageCredentialCache);
+          new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
@@ -180,16 +180,16 @@ public record TestServices(
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
       FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(realmEntityManagerFactory, metaStoreManagerFactory);
+          fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventListener polarisEventListener = new TestPolarisEventListener();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
+              storageCredentialCache,
               realmEntityManagerFactory,
               metaStoreManagerFactory,
-              userSecretsManagerFactory,
               taskExecutor,
               fileIOFactory,
               polarisEventListener);
@@ -269,6 +269,7 @@ public record TestServices(
           catalogService,
           configurationStore,
           polarisDiagnostics,
+          storageCredentialCache,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
           realmContext,

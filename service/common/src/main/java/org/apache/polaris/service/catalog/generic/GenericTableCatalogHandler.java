@@ -69,16 +69,22 @@ public class GenericTableCatalogHandler extends CatalogHandler {
   }
 
   public LoadGenericTableResponse createGenericTable(
-      TableIdentifier identifier, String format, String doc, Map<String, String> properties) {
+      TableIdentifier identifier,
+      String format,
+      String baseLocation,
+      String doc,
+      Map<String, String> properties) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     GenericTableEntity createdEntity =
-        this.genericTableCatalog.createGenericTable(identifier, format, doc, properties);
+        this.genericTableCatalog.createGenericTable(
+            identifier, format, baseLocation, doc, properties);
     GenericTable createdTable =
         GenericTable.builder()
             .setName(createdEntity.getName())
             .setFormat(createdEntity.getFormat())
+            .setBaseLocation(createdEntity.getBaseLocation())
             .setDoc(createdEntity.getDoc())
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
@@ -102,6 +108,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
         GenericTable.builder()
             .setName(loadedEntity.getName())
             .setFormat(loadedEntity.getFormat())
+            .setBaseLocation(loadedEntity.getBaseLocation())
             .setDoc(loadedEntity.getDoc())
             .setProperties(loadedEntity.getPropertiesAsMap())
             .build();

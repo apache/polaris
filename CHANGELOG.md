@@ -33,6 +33,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 
+- Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed
+  from `symmetric.pem` to `symmetric.key`.
+
 ### New Features
 
 - Added Catalog configuration for S3 and STS endpoints. This also allows using non-AWS S3 implementations.
@@ -45,6 +48,8 @@ the authentication parameters are picked from the environment or configuration f
 at locations that better optimize for object storage.
 
 ### Changes
+
+- Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
 
 ### Deprecations
 

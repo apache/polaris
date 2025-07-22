@@ -22,9 +22,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -58,17 +55,15 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterViewCommitedEvent;
 import org.apache.polaris.service.events.AfterViewRefreshedEvent;
@@ -89,32 +84,20 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
-@QuarkusTest
-@TestProfile(IcebergCatalogViewTest.Profile.class)
-public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
-  public static class Profile implements QuarkusTestProfile {
-
+  public static class Profile extends Profiles.DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_WILDCARD_LOCATION\"",
-          "true",
-          "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
-          "true",
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\"]",
-          "polaris.event-listener.type",
-          "test",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
+          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
+          .build();
     }
   }
 
@@ -131,7 +114,7 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
 
@@ -159,12 +142,17 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     field.set(this, tempDir);
   }
 
+  protected void bootstrapRealm(String realmName) {}
+
   @BeforeEach
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    bootstrapRealm(realmName);
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
@@ -178,13 +166,10 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             configurationStore,
             Clock.systemDefaultZone());
 
-    StorageCredentialCache storageCredentialCache =
-        new StorageCredentialCache(storageCredentialCacheConfig);
-    PolarisEntityManager entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            storageCredentialCache,
-            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+    EntityCache entityCache =
+        metaStoreManagerFactory.getOrCreateEntityCache(
+            polarisContext.getRealmContext(), polarisContext.getRealmConfig());
+    PolarisEntityManager entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
 
     CallContext.setCurrentContext(polarisContext);
 
@@ -238,15 +223,13 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, CATALOG_NAME);
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(
-            metaStoreManagerFactory, configurationStore, storageCredentialCache);
     FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
         new IcebergCatalog(
+            storageCredentialCache,
             entityManager,
             metaStoreManager,
             polarisContext,

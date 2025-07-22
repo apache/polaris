@@ -32,7 +32,11 @@ public interface GenericTableCatalog {
 
   /** Create a generic table with the specified identifier */
   GenericTableEntity createGenericTable(
-      TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties);
+      TableIdentifier tableIdentifier,
+      String format,
+      String baseLocation,
+      String doc,
+      Map<String, String> properties);
 
   /** Retrieve a generic table entity with a given identifier */
   GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier);

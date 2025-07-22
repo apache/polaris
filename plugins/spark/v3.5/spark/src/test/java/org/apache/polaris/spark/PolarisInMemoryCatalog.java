@@ -65,7 +65,11 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
 
   @Override
   public GenericTable createGenericTable(
-      TableIdentifier identifier, String format, String doc, Map<String, String> props) {
+      TableIdentifier identifier,
+      String format,
+      String baseLocation,
+      String doc,
+      Map<String, String> props) {
     if (!namespaceExists(identifier.namespace())) {
       throw new NoSuchNamespaceException(
           "Cannot create generic table %s. Namespace does not exist: %s",
@@ -78,6 +82,7 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
             GenericTable.builder()
                 .setName(identifier.name())
                 .setFormat(format)
+                .setBaseLocation(baseLocation)
                 .setProperties(props)
                 .build());
 

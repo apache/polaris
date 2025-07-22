@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.spark;
+package org.apache.polaris.service.quarkus.catalog;
 
-import java.util.List;
-import java.util.Map;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.spark.rest.GenericTable;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 
-public interface PolarisCatalog {
-  List<TableIdentifier> listGenericTables(Namespace ns);
+@QuarkusTest
+@TestProfile(AbstractIcebergCatalogTest.Profile.class)
+public class IcebergCatalogRelationalNoEntityCacheTest extends AbstractIcebergCatalogTest {
 
-  GenericTable loadGenericTable(TableIdentifier identifier);
-
-  boolean dropGenericTable(TableIdentifier identifier);
-
-  GenericTable createGenericTable(
-      TableIdentifier identifier,
-      String format,
-      String baseLocation,
-      String doc,
-      Map<String, String> props);
+  @Nullable
+  @Override
+  protected InMemoryEntityCache createEntityCache(
+      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
+    return null;
+  }
 }

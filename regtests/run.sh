@@ -20,7 +20,7 @@
 # Run without args to run all tests, or single arg for single test.
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-export SPARK_VERSION=spark-3.5.5
+export SPARK_VERSION=spark-3.5.6
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
 if [ -z "${SPARK_HOME}" ]; then
