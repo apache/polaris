@@ -197,7 +197,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   protected void initializeClientFileIO(FileIO fileIO) {
     fileIO.initialize(Map.of());
   }
-  ;
 
   /**
    * Determine whether the test should be skipped based on the environment or configuration.
