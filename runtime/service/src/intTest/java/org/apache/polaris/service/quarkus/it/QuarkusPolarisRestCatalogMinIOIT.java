@@ -38,10 +38,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
-@TestProfile(QuarkusPolarisRestCatalogMinIoIT.Profile.class)
+@TestProfile(QuarkusPolarisRestCatalogMinIOIT.Profile.class)
 @ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class QuarkusPolarisRestCatalogMinIoIT extends PolarisRestCatalogIntegrationBase {
+public class QuarkusPolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
   private static final String MINIO_ACCESS_KEY = "test-ak-123-polaris";
