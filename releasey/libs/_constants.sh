@@ -33,6 +33,10 @@ APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/incubator/polaris"}
 # Execution mode constants
 DRY_RUN=${DRY_RUN:-1}
 
+# Docker constants
+DOCKER_REGISTRY=${DOCKER_REGISTRY:-"docker.io"}
+DOCKER_HUB_URL=${DOCKER_HUB_URL:-"https://hub.docker.com"}
+
 # Other project constants
 GRADLE_PROPERTIES_FILE=${GRADLE_PROPERTIES_FILE:-"${HOME}/.gradle/gradle.properties"}
 VERSION_FILE="$libs_dir/../../version.txt"

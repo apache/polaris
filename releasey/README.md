@@ -54,6 +54,16 @@ Builds and stages release artifacts:
 - Stages artifacts to Apache dist dev repository
 - Publishes Maven artifacts to Apache staging repository
 
+### 6. Build and Stage Docker Images
+```bash
+./06-build-and-stage-docker-images.sh
+```
+Builds and publishes multi-platform Docker images:
+- Must be run from a release tag
+- Builds polaris-server and polaris-admin Docker images
+- Publishes images to DockerHub with RC tag
+- Supports multi-platform builds (linux/amd64, linux/arm64)
+
 ## Test Scripts
 
 These scripts are used to test the release automation without making actual changes:
@@ -65,6 +75,7 @@ These scripts are used to test the release automation without making actual chan
 ./test/test-03-create-release-tag.sh
 ./test/test-04-build-and-test.sh
 ./test/test-05-build-and-stage-distributions.sh apache-polaris-1.1.0-incubating-rc1
+./test/test-06-build-and-stage-docker-images.sh apache-polaris-1.1.0-incubating-rc1
 ```
 
 All test scripts run in dry-run mode and verify the exact commands that would be executed.
@@ -89,3 +100,4 @@ Before using these scripts, ensure:
 2. **Apache Credentials**: Set `apacheUsername` and `apachePassword` in gradle.properties or environment variables
 3. **Git Remote**: Apache remote configured as "apache" pointing to https://github.com/apache/polaris.git
 4. **Permissions**: Write access to dist.apache.org (not verified by scripts)
+5. **Docker Setup** (for step 6): Docker with buildx support and DockerHub credentials configured

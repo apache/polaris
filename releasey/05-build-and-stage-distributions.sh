@@ -163,4 +163,5 @@ print_info "- Maven artifacts: Published to Apache staging repository"
 echo
 print_info "Next steps:"
 print_info "1. Close the staging repository in Nexus"
-print_info "2. Start the vote thread"
+print_info "2. Build and stage Docker images: ./06-build-and-stage-docker-images.sh"
+print_info "3. Start the vote thread"

@@ -25,6 +25,7 @@
 # 1. GPG setup verification
 # 2. Maven/Gradle credentials verification
 # 3. Git remote setup verification
+# 4. Docker setup verification (for Docker image releases)
 #
 # Returns non-zero exit code if any setup verification fails.
 #
@@ -41,6 +42,7 @@ source "${libs_dir}/_files.sh"
 source "${libs_dir}/_gpg.sh"
 source "${libs_dir}/_nexus.sh"
 source "${libs_dir}/_github.sh"
+source "${libs_dir}/_docker.sh"
 
 function usage() {
   cat << EOF
@@ -50,6 +52,7 @@ $(basename "$0") [--help | -h]
   1. GPG setup verification
   2. Maven/Gradle credentials verification
   3. Git remote setup verification
+  4. Docker setup verification (for Docker image releases)
 
   Options:
     -h --help
@@ -96,6 +99,12 @@ echo
 
 if ! ensure_github_setup_is_done; then
   print_error "Git remote setup verification failed"
+  setup_failed=1
+fi
+echo
+
+if ! ensure_docker_setup_is_done; then
+  print_error "Docker setup verification failed"
   setup_failed=1
 fi
 echo
