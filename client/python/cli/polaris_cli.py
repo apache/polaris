@@ -21,6 +21,8 @@ import json
 import os
 import sys
 from json import JSONDecodeError
+import urllib3
+import functools
 
 from typing import Dict
 
@@ -65,6 +67,8 @@ class PolarisCli:
             command = Command.from_options(options)
             command.execute()
         else:
+            if options.debug:
+                PolarisCli._enable_api_request_logging()
             client_builder = PolarisCli._get_client_builder(options)
             with client_builder() as api_client:
                 try:
@@ -76,6 +80,26 @@ class PolarisCli:
                 except Exception as e:
                     PolarisCli._try_print_exception(e)
                     sys.exit(1)
+
+    @staticmethod
+    def _enable_api_request_logging():
+        # Store the original urlopen method
+        if not hasattr(urllib3.PoolManager, "original_urlopen"):
+            urllib3.PoolManager.original_urlopen = urllib3.PoolManager.urlopen
+
+        # Define the wrapper function
+        @functools.wraps(urllib3.PoolManager.original_urlopen)
+        def urlopen_wrapper(self, method, url, **kwargs):
+            print(f"Request: {method} {url}")
+            if "headers" in kwargs:
+                print(f"Headers: {kwargs['headers']}")
+            if "body" in kwargs:
+                print(f"Body: {kwargs['body']}")
+            print()
+            # Call the original urlopen method
+            return urllib3.PoolManager.original_urlopen(self, method, url, **kwargs)
+
+        urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
     def _try_print_exception(e):
