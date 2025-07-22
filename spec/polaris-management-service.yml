@@ -1010,6 +1010,7 @@ components:
             - GCS
             - AZURE
             - FILE
+            - OSS
           description: The cloud provider type this storage is built on. FILE is supported for testing purposes only
         allowedLocations:
           type: array
@@ -1025,6 +1026,8 @@ components:
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
+          #新增oss
+          OSS: "#/components/schemas/OssStorageConfigInfo"
 
     AwsStorageConfigInfo:
       type: object
@@ -1100,6 +1103,37 @@ components:
       description: file storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
+
+    #新增oss
+    OssStorageConfigInfo:
+      type: object
+      description: OSS storage configuration info
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+        - type: object
+          properties:
+            roleArn:
+              type: string
+              description: the OSS RAM role ARN that grants privileges on the OSS buckets
+              pattern: "^acs:ram::[0-9]+:role/.+$"
+              example: "acs:ram::123456789012:role/my-oss-role"
+            externalId:
+              type: string
+              description: an optional external id used to establish a trust relationship with OSS in the trust policy
+            region:
+              type: string
+              description: the OSS region where data is stored
+              example: "cn-hangzhou"
+            endpoint:
+              type: string
+              description: endpoint for OSS requests (optional)
+              example: "https://oss-cn-hangzhou.aliyuncs.com"
+            stsEndpoint:
+              type: string
+              description: endpoint for STS requests (optional). If not set, defaults to 'endpoint'.
+              example: "https://sts.cn-hangzhou.aliyuncs.com"
+          required:
+            - roleArn
 
     ServiceIdentityInfo:
       type: object

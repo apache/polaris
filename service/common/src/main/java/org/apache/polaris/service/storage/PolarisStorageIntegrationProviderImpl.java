@@ -41,6 +41,8 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.oss.OssCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.oss.OssStsClientProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 @ApplicationScoped
@@ -49,6 +51,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  private final OssStsClientProvider ossStsClientProvider;
 
   @Inject
   public PolarisStorageIntegrationProviderImpl(
@@ -56,16 +59,26 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this(
         stsClientProvider,
         Optional.ofNullable(storageConfiguration.stsCredentials()),
-        storageConfiguration.gcpCredentialsSupplier());
+        storageConfiguration.gcpCredentialsSupplier(),
+        new OssStsClientProvider());
   }
 
   public PolarisStorageIntegrationProviderImpl(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider) {
+    this(stsClientProvider, stsCredentials, gcpCredsProvider, new OssStsClientProvider());
+  }
+
+  public PolarisStorageIntegrationProviderImpl(
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> stsCredentials,
+      Supplier<GoogleCredentials> gcpCredsProvider,
+      OssStsClientProvider ossStsClientProvider) {
     this.stsClientProvider = stsClientProvider;
     this.stsCredentials = stsCredentials;
     this.gcpCredsProvider = gcpCredsProvider;
+    this.ossStsClientProvider = ossStsClientProvider;
   }
 
   @Override
@@ -94,6 +107,10 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case AZURE:
         storageIntegration =
             (PolarisStorageIntegration<T>) new AzureCredentialsStorageIntegration();
+        break;
+      case OSS:
+        storageIntegration =
+            (PolarisStorageIntegration<T>) new OssCredentialsStorageIntegration(ossStsClientProvider);
         break;
       case FILE:
         storageIntegration =

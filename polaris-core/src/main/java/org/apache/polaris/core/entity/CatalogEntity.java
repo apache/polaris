@@ -39,6 +39,7 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.OssStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -50,6 +51,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.oss.OssStorageConfigurationInfo;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -128,50 +130,59 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .build();
   }
 
-  private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
-    if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
-      PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
-      if (configInfo instanceof AwsStorageConfigurationInfo) {
-        AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) configInfo;
-        return AwsStorageConfigInfo.builder()
-            .setRoleArn(awsConfig.getRoleARN())
-            .setExternalId(awsConfig.getExternalId())
-            .setUserArn(awsConfig.getUserARN())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(awsConfig.getAllowedLocations())
-            .setRegion(awsConfig.getRegion())
-            .setEndpoint(awsConfig.getEndpoint())
-            .setStsEndpoint(awsConfig.getStsEndpoint())
-            .setPathStyleAccess(awsConfig.getPathStyleAccess())
-            .build();
-      }
-      if (configInfo instanceof AzureStorageConfigurationInfo) {
-        AzureStorageConfigurationInfo azureConfig = (AzureStorageConfigurationInfo) configInfo;
-        return AzureStorageConfigInfo.builder()
-            .setTenantId(azureConfig.getTenantId())
-            .setMultiTenantAppName(azureConfig.getMultiTenantAppName())
-            .setConsentUrl(azureConfig.getConsentUrl())
-            .setStorageType(AZURE)
-            .setAllowedLocations(azureConfig.getAllowedLocations())
-            .build();
-      }
-      if (configInfo instanceof GcpStorageConfigurationInfo) {
-        GcpStorageConfigurationInfo gcpConfigModel = (GcpStorageConfigurationInfo) configInfo;
-        return GcpStorageConfigInfo.builder()
-            .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-            .setAllowedLocations(gcpConfigModel.getAllowedLocations())
-            .build();
-      }
-      if (configInfo instanceof FileStorageConfigurationInfo) {
-        FileStorageConfigurationInfo fileConfigModel = (FileStorageConfigurationInfo) configInfo;
-        return new FileStorageConfigInfo(
-            StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
-      }
-      return null;
+    private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
+        if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
+            PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
+            if (configInfo instanceof AwsStorageConfigurationInfo) {
+                AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) configInfo;
+                return AwsStorageConfigInfo.builder()
+                        .setRoleArn(awsConfig.getRoleARN())
+                        .setExternalId(awsConfig.getExternalId())
+                        .setUserArn(awsConfig.getUserARN())
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                        .setAllowedLocations(awsConfig.getAllowedLocations())
+                        .setRegion(awsConfig.getRegion())
+                        .build();
+            }
+            if (configInfo instanceof AzureStorageConfigurationInfo) {
+                AzureStorageConfigurationInfo azureConfig = (AzureStorageConfigurationInfo) configInfo;
+                return AzureStorageConfigInfo.builder()
+                        .setTenantId(azureConfig.getTenantId())
+                        .setMultiTenantAppName(azureConfig.getMultiTenantAppName())
+                        .setConsentUrl(azureConfig.getConsentUrl())
+                        .setStorageType(AZURE)
+                        .setAllowedLocations(azureConfig.getAllowedLocations())
+                        .build();
+            }
+            if (configInfo instanceof GcpStorageConfigurationInfo) {
+                GcpStorageConfigurationInfo gcpConfigModel = (GcpStorageConfigurationInfo) configInfo;
+                return GcpStorageConfigInfo.builder()
+                        .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                        .setAllowedLocations(gcpConfigModel.getAllowedLocations())
+                        .build();
+            }
+            if (configInfo instanceof FileStorageConfigurationInfo) {
+                FileStorageConfigurationInfo fileConfigModel = (FileStorageConfigurationInfo) configInfo;
+                return new FileStorageConfigInfo(
+                        StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
+            }
+            if (configInfo instanceof OssStorageConfigurationInfo) {
+                OssStorageConfigurationInfo ossConfigModel = (OssStorageConfigurationInfo) configInfo;
+                return OssStorageConfigInfo.builder()
+                        .setEndpoint(String.valueOf(ossConfigModel.getEndpointUri()))
+                        .setStsEndpoint(String.valueOf(ossConfigModel.getStsEndpointUri()))
+                        .setRegion(ossConfigModel.getRegion())
+                        .setExternalId(ossConfigModel.getExternalId())
+                        .setStorageType(StorageConfigInfo.StorageTypeEnum.OSS)
+                        .setAllowedLocations(ossConfigModel.getAllowedLocations())
+                        .setRoleArn(ossConfigModel.getRoleArn())
+                        .build();
+            }
+            return null;
+        }
+        return null;
     }
-    return null;
-  }
 
   private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(
@@ -298,6 +309,20 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             gcpConfig.setGcpServiceAccount(
                 ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
             config = gcpConfig;
+            break;
+          case OSS:
+            OssStorageConfigInfo ossConfigModel = (OssStorageConfigInfo) storageConfigModel;
+            OssStorageConfigurationInfo ossConfig =
+                    new OssStorageConfigurationInfo(
+                            PolarisStorageConfigurationInfo.StorageType.OSS,
+                            new ArrayList<>(allowedLocations),
+                            ossConfigModel.getRoleArn(),
+                            ossConfigModel.getExternalId(),
+                            ossConfigModel.getRegion(),
+                            ossConfigModel.getEndpoint(),
+                            ossConfigModel.getStsEndpoint());
+            OssStorageConfigurationInfo.validateArn(ossConfigModel.getRoleArn());
+            config = ossConfig;
             break;
           case FILE:
             config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));

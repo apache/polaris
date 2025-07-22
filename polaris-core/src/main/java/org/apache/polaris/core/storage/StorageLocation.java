@@ -24,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.aws.S3Location;
 import org.apache.polaris.core.storage.azure.AzureLocation;
+import org.apache.polaris.core.storage.oss.OssLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,8 @@ public class StorageLocation {
       return new AzureLocation(location);
     } else if (S3Location.isS3Location(location)) {
       return new S3Location(location);
+    } else if(OssLocation.isOssLocation(location)) {
+      return new OssLocation(location);
     } else {
       return new StorageLocation(location);
     }
