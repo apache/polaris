@@ -46,7 +46,7 @@ public class PolarisEntityManager {
 
   /**
    * @param metaStoreManager the metastore manager for the current realm
-   * @param resolverFactory the resolver factor to use
+   * @param resolverFactory the resolver factory to use
    */
   public PolarisEntityManager(
       @Nonnull PolarisMetaStoreManager metaStoreManager, @Nonnull ResolverFactory resolverFactory) {
