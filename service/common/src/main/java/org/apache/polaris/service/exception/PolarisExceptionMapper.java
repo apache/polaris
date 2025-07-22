@@ -48,7 +48,7 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   private Response.Status getStatus(PolarisException exception) {
     return switch (exception) {
       case AlreadyExistsException alreadyExistsException -> Response.Status.CONFLICT;
-      case CommitConflictException commitConflictException -> Response.Status.REQUEST_TIMEOUT;
+      case CommitConflictException commitConflictException -> Response.Status.CONFLICT;
       case InvalidPolicyException invalidPolicyException -> Response.Status.BAD_REQUEST;
       case PolicyAttachException policyAttachException -> Response.Status.BAD_REQUEST;
       case NoSuchPolicyException noSuchPolicyException -> Response.Status.NOT_FOUND;

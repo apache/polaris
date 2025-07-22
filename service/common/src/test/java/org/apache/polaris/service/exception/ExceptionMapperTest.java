@@ -81,7 +81,7 @@ public class ExceptionMapperTest {
   public void testNamespaceException() {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response = mapper.toResponse(new CommitConflictException("test"));
-    Assertions.assertThat(response.getStatus()).isEqualTo(408);
+    Assertions.assertThat(response.getStatus()).isEqualTo(409);
   }
 
   static Stream<Arguments> testFullExceptionIsLogged() {
