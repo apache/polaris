@@ -89,12 +89,12 @@ expected_content="git checkout HEAD
 git branch release/42.41.40
 git push apache release/42.41.40
 git checkout release/42.41.40
-echo 42.41.40 > /Users/plaporte/env/home/dremio/projects/polaris/releasesv2/libs/../../version.txt
-git add /Users/plaporte/env/home/dremio/projects/polaris/releasesv2/libs/../../version.txt
+echo 42.41.40 > /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../version.txt
+git add /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../version.txt
 git commit -m [chore] Bump version to 42.41.40 for release
 git push apache release/42.41.40
 ./gradlew patchChangelog
-git add /Users/plaporte/env/home/dremio/projects/polaris/releasesv2/libs/../../CHANGELOG.md
+git add /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../CHANGELOG.md
 git commit -m [chore] Update changelog for release
 git push apache release/42.41.40"
 
