@@ -16,33 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.events.aws.cloudwatch;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import io.smallrye.config.WithName;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
+
 import java.util.Optional;
-import org.apache.polaris.service.events.aws.cloudwatch.AwsCloudWatchConfiguration;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener.aws-cloudwatch")
-@ApplicationScoped
-public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfiguration {
-
-  @WithName("log-group")
-  @WithDefault("polaris-cloudwatch-default-group")
-  @Override
+/** Configuration interface for AWS CloudWatch event listener settings. */
+public interface AwsCloudWatchConfiguration {
   Optional<String> awsCloudwatchlogGroup();
 
-  @WithName("log-stream")
-  @WithDefault("polaris-cloudwatch-default-stream")
-  @Override
   Optional<String> awsCloudwatchlogStream();
 
-  @WithName("region")
-  @WithDefault("us-east-1")
-  @Override
   Optional<String> awsCloudwatchRegion();
+
+  String synchronousMode();
 }

@@ -17,15 +17,22 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.aws.cloudwatch;
+package org.apache.polaris.service.events.jsonEventListener;
 
-import java.util.Optional;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
 
-/** Configuration interface for AWS CloudWatch event listener settings. */
-public interface AwsCloudWatchConfiguration {
-  Optional<String> awsCloudwatchlogGroup();
+import java.util.HashMap;
 
-  Optional<String> awsCloudwatchlogStream();
+public abstract class JsonEventListener extends PolarisEventListener {
+    protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
 
-  Optional<String> awsCloudwatchRegion();
+    @Override
+    public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("event_type", event.getClass().getSimpleName());
+        properties.put("table_identifier", event.tableIdentifier().toString());
+        transformAndSendEvent(properties);
+    }
+
 }

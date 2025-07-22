@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.aws.cloudwatch;
+package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +38,7 @@ import java.util.concurrent.Future;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.jsonEventListener.JsonEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
@@ -59,7 +60,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.UnrecognizedClientEx
 
 @ApplicationScoped
 @Identifier("aws-cloudwatch")
-public class AwsCloudWatchEventListener extends PolarisEventListener {
+public class AwsCloudWatchEventListener extends JsonEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ConcurrentHashMap<Future<?>, EventWithRetry> futures = new ConcurrentHashMap<>();
@@ -74,6 +75,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   private final String logGroup;
   private final String logStream;
   private final Region region;
+  private final boolean synchronousMode;
 
   @Inject CallContext callContext;
 
@@ -101,6 +103,7 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
                 .orElseThrow(
                     () ->
                         new IllegalArgumentException("AWS CloudWatch region must be configured")));
+    this.synchronousMode = Boolean.parseBoolean(config.synchronousMode());
   }
 
   @PostConstruct
@@ -235,7 +238,8 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
     }
   }
 
-  private void transformAndSendEvent(HashMap<String, Object> properties) {
+  @Override
+  protected void transformAndSendEvent(HashMap<String, Object> properties) {
     properties.put("realm", callContext.getRealmContext().getRealmIdentifier());
     properties.put("principal", securityContext.getUserPrincipal().getName());
     // TODO: Add request ID when it is available
@@ -247,8 +251,12 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
       return;
     }
     InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp(callContext));
-    Future<?> future = executorService.submit(() -> sendAndHandleCloudWatchCall(inputLogEvent));
-    futures.put(future, new EventWithRetry(inputLogEvent, 0));
+    if (!synchronousMode) {
+      Future<?> future = executorService.submit(() -> sendAndHandleCloudWatchCall(inputLogEvent));
+      futures.put(future, new EventWithRetry(inputLogEvent, 0));
+    } else {
+      sendAndHandleCloudWatchCall(inputLogEvent);
+    }
   }
 
   private long getCurrentTimestamp(CallContext callContext) {
@@ -262,14 +270,5 @@ public class AwsCloudWatchEventListener extends PolarisEventListener {
   @VisibleForTesting
   ConcurrentHashMap<Future<?>, EventWithRetry> getFutures() {
     return futures;
-  }
-
-  // Event overrides below
-  @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
-    HashMap<String, Object> properties = new HashMap<>();
-    properties.put("event_type", event.getClass().getSimpleName());
-    properties.put("table_identifier", event.tableIdentifier().toString());
-    transformAndSendEvent(properties);
   }
 }

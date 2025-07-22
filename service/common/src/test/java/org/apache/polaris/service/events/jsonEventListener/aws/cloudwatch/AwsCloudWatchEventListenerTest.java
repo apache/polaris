@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.aws.cloudwatch;
+package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -108,6 +108,7 @@ class AwsCloudWatchEventListenerTest {
     when(config.awsCloudwatchlogGroup()).thenReturn(Optional.of(LOG_GROUP));
     when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
     when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
+    when(config.synchronousMode()).thenReturn("false"); // Default to async mode
   }
 
   @AfterEach
@@ -337,6 +338,69 @@ class AwsCloudWatchEventListenerTest {
 
     // Clean up
     listener.shutdown();
+    if (client != null && mode == TestMode.LOCALSTACK) {
+      client.close();
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("testModeProvider")
+  void handleSynchronousModeCorrectly(TestMode mode) {
+    CloudWatchLogsClient client = createCloudWatchClient(mode);
+
+    // Test synchronous mode
+    when(config.synchronousMode()).thenReturn("true");
+    AwsCloudWatchEventListener syncListener = createListener(client);
+    syncListener.start();
+
+    // Create and send a test event synchronously
+    TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
+    AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
+    syncListener.onAfterTableRefreshed(syncEvent);
+    assertThat(syncListener.getFutures()).isEmpty(); // No futures should be created in sync mode
+
+    if (mode == TestMode.LOCALSTACK) {
+      // Verify both events were sent to CloudWatch
+      GetLogEventsResponse logEvents =
+          client.getLogEvents(
+              GetLogEventsRequest.builder()
+                  .logGroupName(LOG_GROUP)
+                  .logStreamName(LOG_STREAM)
+                  .build());
+
+      assertThat(logEvents.events()).hasSize(1);
+
+      // Verify sync event
+      assertThat(logEvents.events())
+          .anySatisfy(logEvent -> {
+            String message = logEvent.message();
+            assertThat(message).contains("test_table_sync");
+            assertThat(message).contains("AfterTableRefreshedEvent");
+          });
+    } else {
+      // Verify that putLogEvents was called with the expected content
+      verify(client, times(1))
+          .putLogEvents(
+              argThat(
+                  (PutLogEventsRequest request) -> {
+                    // Verify basic request structure
+                    assertThat(request.logGroupName()).isEqualTo(LOG_GROUP);
+                    assertThat(request.logStreamName()).isEqualTo(LOG_STREAM);
+                    assertThat(request.logEvents()).hasSize(1);
+
+                    // Verify the log event content
+                    String logMessage = request.logEvents().getFirst().message();
+                    assertThat(logMessage).contains(REALM);
+                    assertThat(logMessage).contains(TEST_USER);
+                    assertThat(logMessage).contains("AfterTableRefreshedEvent");
+                    assertThat(logMessage).contains("test_table_sync");
+
+                    return true;
+                  }));
+    }
+
+    // Clean up
+    syncListener.shutdown();
     if (client != null && mode == TestMode.LOCALSTACK) {
       client.close();
     }
