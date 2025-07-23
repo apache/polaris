@@ -20,7 +20,6 @@ package org.apache.polaris.core.entity;
 
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
 /**
  * Represents an asynchronous task entity in the persistence layer. A task executor is responsible
@@ -41,16 +40,16 @@ public class TaskEntity extends PolarisEntity {
 
   public <T> T readData(Class<T> klass) {
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    return PolarisObjectMapperUtil.deserialize(
-        polarisCallContext, getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
+    return polarisCallContext
+        .getObjectMapper()
+        .deserialize(getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
   }
 
   public AsyncTaskType getTaskType() {
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    return PolarisObjectMapperUtil.deserialize(
-        polarisCallContext,
-        getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE),
-        AsyncTaskType.class);
+    return polarisCallContext
+        .getObjectMapper()
+        .deserialize(getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE), AsyncTaskType.class);
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TaskEntity, TaskEntity.Builder> {
@@ -69,8 +68,7 @@ public class TaskEntity extends PolarisEntity {
       PolarisCallContext polarisCallContext =
           CallContext.getCurrentContext().getPolarisCallContext();
       properties.put(
-          PolarisTaskConstants.TASK_TYPE,
-          PolarisObjectMapperUtil.serialize(polarisCallContext, taskType));
+          PolarisTaskConstants.TASK_TYPE, polarisCallContext.getObjectMapper().serialize(taskType));
       return this;
     }
 
@@ -78,8 +76,7 @@ public class TaskEntity extends PolarisEntity {
       PolarisCallContext polarisCallContext =
           CallContext.getCurrentContext().getPolarisCallContext();
       properties.put(
-          PolarisTaskConstants.TASK_DATA,
-          PolarisObjectMapperUtil.serialize(polarisCallContext, data));
+          PolarisTaskConstants.TASK_DATA, polarisCallContext.getObjectMapper().serialize(data));
       return this;
     }
 

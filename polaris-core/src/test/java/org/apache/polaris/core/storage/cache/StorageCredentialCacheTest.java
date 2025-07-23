@@ -38,7 +38,6 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -250,7 +249,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .internalProperties(callCtx.getObjectMapper().serializeProperties(internalMap))
               .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
@@ -290,7 +289,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .internalProperties(callCtx.getObjectMapper().serializeProperties(internalMap))
               .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
