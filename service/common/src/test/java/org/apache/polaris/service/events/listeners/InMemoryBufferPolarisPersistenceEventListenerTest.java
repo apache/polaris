@@ -25,6 +25,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.container.ContainerRequestContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -35,7 +36,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import jakarta.ws.rs.container.ContainerRequestContext;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -163,7 +163,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
   @Test
   public void testRequestIdFunctionalityWithContainerRequestContext() {
     // Test when containerRequestContext has requestId property
-    ContainerRequestContext mockContainerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    ContainerRequestContext mockContainerRequestContext =
+        Mockito.mock(ContainerRequestContext.class);
     String expectedRequestId = "custom-request-id-123";
 
     when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(true);
@@ -172,7 +173,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     // Use reflection to set the containerRequestContext field
     try {
       java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField(
+              "containerRequestContext");
       field.setAccessible(true);
       field.set(eventListener, mockContainerRequestContext);
     } catch (Exception e) {
@@ -190,7 +192,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     // Test when containerRequestContext is null
     try {
       java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField(
+              "containerRequestContext");
       field.setAccessible(true);
       field.set(eventListener, null);
     } catch (Exception e) {
@@ -217,12 +220,14 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
   @Test
   public void testRequestIdFunctionalityWithContainerRequestContextButNoProperty() {
     // Test when containerRequestContext exists but doesn't have requestId property
-    ContainerRequestContext mockContainerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    ContainerRequestContext mockContainerRequestContext =
+        Mockito.mock(ContainerRequestContext.class);
     when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(false);
 
     try {
       java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField(
+              "containerRequestContext");
       field.setAccessible(true);
       field.set(eventListener, mockContainerRequestContext);
     } catch (Exception e) {

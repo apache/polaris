@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -159,9 +160,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
             new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
-            Clock.systemDefaultZone());
 
     EntityCache entityCache =
         metaStoreManagerFactory.getOrCreateEntityCache(

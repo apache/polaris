@@ -277,8 +277,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone(),
-            null);
+            Clock.systemDefaultZone());
 
     EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
     entityManager = new PolarisEntityManager(metaStoreManager, entityCache);

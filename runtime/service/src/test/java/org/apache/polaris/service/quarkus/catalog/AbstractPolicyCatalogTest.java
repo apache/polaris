@@ -65,6 +65,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -182,15 +183,12 @@ public abstract class AbstractPolicyCatalogTest {
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
-            new StorageCredentialCache(),
             new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
-            Clock.systemDefaultZone());
 
     EntityCache entityCache =
         metaStoreManagerFactory.getOrCreateEntityCache(
             realmContext, polarisContext.getRealmConfig());
     entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
->>>>>>> origin/main:runtime/service/src/test/java/org/apache/polaris/service/quarkus/catalog/AbstractPolicyCatalogTest.java
 
     callContext = polarisContext;
 

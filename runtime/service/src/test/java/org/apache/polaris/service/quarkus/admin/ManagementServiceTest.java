@@ -85,8 +85,7 @@ public class ManagementServiceTest {
                 .get(),
             fakeServices.polarisDiagnostics(),
             fakeServices.configurationStore(),
-            Mockito.mock(Clock.class),
-            null);
+            Mockito.mock(Clock.class));
     CallContext.setCurrentContext(polarisCallContext);
     services =
         TestServices.builder()

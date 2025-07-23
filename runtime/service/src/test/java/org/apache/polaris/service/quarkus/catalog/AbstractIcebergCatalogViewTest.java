@@ -164,8 +164,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone(),
-            null);
+            Clock.systemDefaultZone());
 
     EntityCache entityCache =
         metaStoreManagerFactory.getOrCreateEntityCache(

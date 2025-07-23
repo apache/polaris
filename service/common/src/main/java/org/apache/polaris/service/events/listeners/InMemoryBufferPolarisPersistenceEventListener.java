@@ -24,6 +24,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.core.Context;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -35,9 +37,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.Context;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -62,8 +61,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
-  @Context
-  ContainerRequestContext containerRequestContext;
+  @Context ContainerRequestContext containerRequestContext;
 
   private record EventAndContext(PolarisEvent polarisEvent, PolarisCallContext callContext) {}
 
