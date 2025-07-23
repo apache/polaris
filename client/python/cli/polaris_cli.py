@@ -67,8 +67,6 @@ class PolarisCli:
             command = Command.from_options(options)
             command.execute()
         else:
-            if options.debug:
-                PolarisCli._enable_api_request_logging()
             client_builder = PolarisCli._get_client_builder(options)
             with client_builder() as api_client:
                 try:
@@ -76,6 +74,8 @@ class PolarisCli:
 
                     admin_api = PolarisDefaultApi(api_client)
                     command = Command.from_options(options)
+                    if options.debug:
+                        PolarisCli._enable_api_request_logging()
                     command.execute(admin_api)
                 except Exception as e:
                     PolarisCli._try_print_exception(e)
@@ -90,12 +90,12 @@ class PolarisCli:
         # Define the wrapper function
         @functools.wraps(urllib3.PoolManager.original_urlopen)
         def urlopen_wrapper(self, method, url, **kwargs):
-            print(f"Request: {method} {url}")
+            sys.stderr.write(f"Request: {method} {url}\n")
             if "headers" in kwargs:
-                print(f"Headers: {kwargs['headers']}")
+                sys.stderr.write(f"Headers: {kwargs['headers']}\n")
             if "body" in kwargs:
-                print(f"Body: {kwargs['body']}")
-            print()
+                sys.stderr.write(f"Body: {kwargs['body']}\n")
+            sys.stderr.write("\n")
             # Call the original urlopen method
             return urllib3.PoolManager.original_urlopen(self, method, url, **kwargs)
 
