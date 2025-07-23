@@ -56,7 +56,7 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -104,6 +104,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
+  @Inject ResolverFactory resolverFactory;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -157,10 +158,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             configurationStore,
             Clock.systemDefaultZone());
 
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(
-            realmContext, polarisContext.getRealmConfig());
-    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -249,7 +247,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,

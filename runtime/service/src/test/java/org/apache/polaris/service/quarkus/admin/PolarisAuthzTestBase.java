@@ -72,6 +72,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -193,6 +194,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
+  @Inject protected ResolverFactory resolverFactory;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -468,7 +470,7 @@ public abstract class PolarisAuthzTestBase {
     this.baseCatalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             callContext,
             passthroughView,
@@ -498,14 +500,14 @@ public abstract class PolarisAuthzTestBase {
     @Inject
     public TestPolarisCallContextCatalogFactory(
         StorageCredentialCache storageCredentialCache,
-        RealmEntityManagerFactory entityManagerFactory,
+        ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
           storageCredentialCache,
-          entityManagerFactory,
+          resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,
           fileIOFactory,

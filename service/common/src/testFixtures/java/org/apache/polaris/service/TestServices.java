@@ -44,7 +44,10 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -79,6 +82,7 @@ public record TestServices(
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
     StorageCredentialCache storageCredentialCache,
+    ResolverFactory resolverFactory,
     RealmEntityManagerFactory entityManagerFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
@@ -155,11 +159,11 @@ public record TestServices(
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               storageIntegrationProvider, polarisDiagnostics);
+
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
           new StorageCredentialCache(storageCredentialCacheConfig);
-      RealmEntityManagerFactory realmEntityManagerFactory =
-          new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
+
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
@@ -172,10 +176,26 @@ public record TestServices(
               polarisDiagnostics,
               configurationStore,
               Clock.systemUTC());
-      PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+
+      EntityCache entityCache =
+          metaStoreManagerFactory.getOrCreateEntityCache(
+              realmContext, callContext.getRealmConfig());
+      ResolverFactory resolverFactory =
+          (_callContext, securityContext, referenceCatalogName) ->
+              new Resolver(
+                  _callContext.getPolarisCallContext(),
+                  metaStoreManager,
+                  securityContext,
+                  entityCache,
+                  referenceCatalogName);
+
+      RealmEntityManagerFactory realmEntityManagerFactory =
+          new RealmEntityManagerFactory(metaStoreManagerFactory, resolverFactory);
+      PolarisEntityManager entityManager =
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
@@ -188,7 +208,7 @@ public record TestServices(
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               storageCredentialCache,
-              realmEntityManagerFactory,
+              resolverFactory,
               metaStoreManagerFactory,
               taskExecutor,
               fileIOFactory,
@@ -205,6 +225,7 @@ public record TestServices(
               callContext,
               callContextFactory,
               entityManager,
+              resolverFactory,
               metaStoreManager,
               userSecretsManager,
               authorizer,
@@ -269,6 +290,7 @@ public record TestServices(
           configurationStore,
           polarisDiagnostics,
           storageCredentialCache,
+          resolverFactory,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
           realmContext,

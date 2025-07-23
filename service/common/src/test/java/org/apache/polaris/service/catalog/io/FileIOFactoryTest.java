@@ -234,7 +234,7 @@ public class FileIOFactoryTest {
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.storageCredentialCache(),
-            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services.resolverFactory(),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
             callContext,
             passthroughView,

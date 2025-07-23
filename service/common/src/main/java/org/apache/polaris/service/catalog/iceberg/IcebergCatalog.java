@@ -104,7 +104,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -116,6 +115,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.AccessConfig;
@@ -167,8 +167,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
       };
 
-  private final PolarisEntityManager entityManager;
   private final StorageCredentialCache storageCredentialCache;
+  private final ResolverFactory resolverFactory;
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -197,7 +197,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   public IcebergCatalog(
       StorageCredentialCache storageCredentialCache,
-      PolarisEntityManager entityManager,
+      ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
@@ -205,8 +205,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
-    this.entityManager = entityManager;
     this.storageCredentialCache = storageCredentialCache;
+    this.resolverFactory = resolverFactory;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
@@ -1208,7 +1208,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, securityContext, parentPath.getFirst().getName());
+            callContext, resolverFactory, securityContext, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(

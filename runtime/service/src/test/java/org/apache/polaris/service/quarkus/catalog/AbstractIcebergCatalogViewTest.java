@@ -55,7 +55,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -117,6 +117,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject ResolverFactory resolverFactory;
 
   private IcebergCatalog catalog;
 
@@ -166,10 +167,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             configurationStore,
             Clock.systemDefaultZone());
 
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(
-            polarisContext.getRealmContext(), polarisContext.getRealmConfig());
-    PolarisEntityManager entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    PolarisEntityManager entityManager =
+        new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     CallContext.setCurrentContext(polarisContext);
 
@@ -230,7 +229,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     this.catalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,
