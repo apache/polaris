@@ -50,6 +50,14 @@ function get_remote_url() {
   git remote get-url "${remote_name}" 2>/dev/null || return 1
 }
 
+function ensure_no_uncommitted_change() {
+  if [[ -n $(git status --porcelain) ]]; then
+    print_error "There are uncommitted changes in the repository."
+    print_error "A release can only be performed from a clean state."
+    return 1
+  fi
+}
+
 function add_apache_remote() {
   # Add the apache remote to the current repository, return non-zero if it fails
   print_info "Adding remote '${APACHE_REMOTE_NAME}' with URL '${APACHE_REMOTE_URL}'..."

@@ -103,6 +103,12 @@ if ! ensure_github_setup_is_done; then
 fi
 echo
 
+if ! ensure_no_uncommitted_change; then
+  print_error "Git repository verification failed"
+  setup_failed=1
+fi
+echo
+
 if ! ensure_docker_setup_is_done; then
   print_error "Docker setup verification failed"
   setup_failed=1
