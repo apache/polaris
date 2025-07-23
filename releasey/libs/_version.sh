@@ -27,23 +27,6 @@ libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$libs_dir/_constants.sh"
 source "$libs_dir/_log.sh"
 
-function validate_and_extract_release_version {
-  # This function validates the format of a release version and extracts its components (major.minor.patch).
-  # It returns 0 if the version is valid and sets the global variables major, minor, and patch.
-  # Otherwise, it returns 1.
-  local version="$1"
-
-  if [[ ! ${version} =~ ${VERSION_REGEX_RELEASE} ]]; then
-    return 1
-  fi
-
-  major="${BASH_REMATCH[1]}"
-  minor="${BASH_REMATCH[2]}"
-  patch="${BASH_REMATCH[3]}"
-
-  return 0
-}
-
 function validate_and_extract_rc_version {
   # This function validates the format of a release candidate version and extracts its components (major.minor.patch and rc number).
   # It returns 0 if the version is valid and sets the global variables major, minor, patch, and rc_number.

@@ -41,9 +41,13 @@ $(basename "$0") --version VERSION [--commit GIT_COMMIT] [--recreate] [--help | 
 
   Creates a release branch and sets the target release version.
 
+  Behavior:
+  - RC1: Creates the release branch and sets up the version
+  - RC2+: Exits successfully if release branch exists, errors if it doesn't
+
   Options:
     --version VERSION
-        The release version in format x.y.z-incubating
+        The release version in format x.y.z-incubating-rcN where N is the RC number
     --commit GIT_COMMIT
         The Git commit SHA to create the release branch from. Defaults to current HEAD.
     --recreate
@@ -52,9 +56,10 @@ $(basename "$0") --version VERSION [--commit GIT_COMMIT] [--recreate] [--help | 
         Print usage information.
 
   Examples:
-    $(basename "$0") --version 1.0.0-incubating --commit HEAD
-    $(basename "$0") --version 0.1.0-incubating --commit abc123def456
-    $(basename "$0") --version 1.0.0-incubating --commit HEAD --recreate
+    $(basename "$0") --version 1.0.0-incubating-rc1 --commit HEAD
+    $(basename "$0") --version 0.1.0-incubating-rc1 --commit abc123def456
+    $(basename "$0") --version 1.0.0-incubating-rc1 --commit HEAD --recreate
+    $(basename "$0") --version 1.0.0-incubating-rc2  # Will exit successfully if branch exists
 
 EOF
 }
@@ -115,24 +120,36 @@ if ! git rev-parse --verify "${commit}" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Validate version format: x.y.z-incubating
+# Validate version format: x.y.z-incubating-rcN
 # TODO: Remove incubating when we are a TLP
-if ! validate_and_extract_release_version "${version}"; then
-  print_error "Invalid version format. Expected: x.y.z-incubating, got: ${version}"
+if ! validate_and_extract_rc_version "${version}"; then
+  print_error "Invalid version format. Expected: x.y.z-incubating-rcN where N>0, got: ${version}"
   usage >&2
   exit 1
 fi
 
 # Define polaris_version from extracted components
 polaris_version="${major}.${minor}.${patch}"
+release_branch="release/${polaris_version}"
+
+# Handle RC > 1 scenarios
+if [[ ${rc_number} -gt 1 ]]; then
+  # Check if release branch already exists
+  if git show-ref --verify --quiet "refs/heads/${release_branch}"; then
+    print_info "RC${rc_number} detected and release branch ${release_branch} already exists."
+    print_info "This script only creates release branches for RC1. Nothing to do."
+    exit 0
+  else
+    print_error "RC${rc_number} detected but release branch ${release_branch} does not exist."
+    exit 1
+  fi
+fi
 
 print_info "Starting release branch creation..."
 print_info "Version: ${version}"
 print_info "Polaris version: ${polaris_version}"
 print_info "From commit: ${commit}"
 echo
-
-release_branch="release/${polaris_version}"
 
 # Check if release branch already exists
 if git show-ref --verify --quiet "refs/heads/${release_branch}"; then

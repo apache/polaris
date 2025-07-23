@@ -77,7 +77,7 @@ trap 'rm -f "$temp_file"' EXIT
 print_info "Running script..."
 DRY_RUN=1 \
   "${releases_dir}/02-create-release-branch.sh" \
-  --version 42.41.40-incubating \
+  --version 42.41.40-incubating-rc1 \
   3>"$temp_file"
 
 print_info "Verifying output content..."
