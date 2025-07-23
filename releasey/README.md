@@ -25,11 +25,11 @@ Creates a release branch and sets the target release version:
 - Updates `CHANGELOG.md` using Gradle task
 - Pushes changes to Apache remote
 
-### 3. Create Release Tag
+### 3. Create Release Candidate Tag
 ```bash
 ./03-create-release-candidate-tag.sh --version 1.0.0-incubating-rc1
 ```
-Creates a release tag for a release candidate:
+Creates a release candidate tag for a release candidate:
 - Creates and pushes `apache-polaris-x.y.z-incubating-rcN` tag
 - Validates RC sequence (RC2+ requires previous RC to exist)
 - Checks out the created tag
@@ -49,7 +49,7 @@ Builds Polaris and runs regression tests:
 ./05-build-and-stage-distributions.sh
 ```
 Builds and stages release artifacts:
-- Must be run from a release tag
+- Must be run from a release candidate tag
 - Builds source and binary distributions
 - Stages artifacts to Apache dist dev repository
 - Publishes Maven artifacts to Apache staging repository
@@ -59,7 +59,7 @@ Builds and stages release artifacts:
 ./06-build-and-stage-docker-images.sh
 ```
 Builds and publishes multi-platform Docker images:
-- Must be run from a release tag
+- Must be run from a release candidate tag
 - Builds polaris-server and polaris-admin Docker images
 - Publishes images to DockerHub with RC tag
 - Supports multi-platform builds (linux/amd64, linux/arm64)

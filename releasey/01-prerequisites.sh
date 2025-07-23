@@ -117,7 +117,7 @@ if [[ ${setup_failed} -eq 0 ]]; then
   echo
   print_info "Next steps:"
   print_info "* Use the script 02-create-release-branch.sh to create a release branch."
-  print_info "* Use the script 03-create-release-candidate-tag.sh to create a release tag."
+  print_info "* Use the script 03-create-release-candidate-tag.sh to create a release candidate tag."
 else
   print_error "❌ One or more setup checks failed. Please fix the issues above before proceeding with releases."
   exit 1

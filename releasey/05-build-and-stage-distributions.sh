@@ -41,7 +41,7 @@ $(basename "$0") [--help | -h]
 
   Builds source and binary distributions and stages them to the Apache dist dev repository.
   The version is automatically determined from the current git tag.  I.e. this script must
-  be run from a release tag.
+  be run from a release candidate tag.
 
   Options:
     -h --help
@@ -73,7 +73,7 @@ done
 print_info "Determining version from current git tag..."
 
 if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-  print_error "Current HEAD is not on a release tag. Please checkout a release tag first."
+  print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
   print_error "Use: git checkout apache-polaris-x.y.z-incubating-rcN"
   exit 1
 fi

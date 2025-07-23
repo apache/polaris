@@ -19,9 +19,9 @@
 #
 
 #
-# Create Release Tag Script
+# Create Release Candidate Tag Script
 #
-# Automates the "Create release tag" section of the release guide.
+# Automates the "Create release candidate tag" section of the release guide.
 #
 
 set -euo pipefail
@@ -38,7 +38,7 @@ function usage() {
   cat << EOF
 $(basename "$0") --version VERSION [--help | -h]
 
-  Creates a release tag for a release candidate.
+  Creates a release candidate tag for a release candidate.
 
   Options:
     --version VERSION
@@ -104,7 +104,7 @@ rc_number="${BASH_REMATCH[4]}"
 polaris_version="${major}.${minor}.${patch}"
 base_version="${polaris_version}-incubating"
 
-print_info "Starting release tag creation..."
+print_info "Starting release candidate tag creation..."
 print_info "Version: ${version}"
 print_info "Polaris version: ${polaris_version}"
 print_info "RC number: ${rc_number}"
@@ -123,26 +123,26 @@ if [[ ${rc_number} -gt 1 ]]; then
   print_info "Previous RC tag ${previous_tag} found"
 fi
 
-# Create the release tag
+# Create the release candidate tag
 release_tag="apache-polaris-${version}"
 
 # Check if tag already exists
 if git tag -l "${release_tag}" | grep -q "^${release_tag}$"; then
-  print_error "Release tag ${release_tag} already exists"
+  print_error "Release Candidate tag ${release_tag} already exists"
   exit 1
 fi
 
-print_info "Creating release tag: ${release_tag}"
+print_info "Creating release candidate tag: ${release_tag}"
 exec_process git tag "${release_tag}"
 
-print_info "Pushing release tag to ${APACHE_REMOTE_NAME}"
+print_info "Pushing release candidate tag to ${APACHE_REMOTE_NAME}"
 exec_process git push "${APACHE_REMOTE_NAME}" "${release_tag}"
 
-print_info "Checking out release tag"
+print_info "Checking out release candidate tag"
 exec_process git checkout "${release_tag}"
 
 echo
-print_success "🎉 Release tag ${release_tag} created successfully!"
+print_success "🎉 Release Candidate tag ${release_tag} created successfully!"
 echo
 print_info "Next steps:"
 print_info "1. (Optional) Use the script 04-build-and-test.sh to build the release and run the regression tests."

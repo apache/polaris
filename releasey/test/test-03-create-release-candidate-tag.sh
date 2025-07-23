@@ -21,7 +21,7 @@
 #
 # Test Script for 03-create-release-candidate-tag.sh
 #
-# Tests the dry-run functionality of the create release tag script
+# Tests the dry-run functionality of the create release candidate tag script
 # by verifying the exact commands that would be executed.
 #
 

@@ -41,12 +41,12 @@ $(basename "$0") [--help | -h]
 
   Builds and publishes multi-platform Docker images to DockerHub for release candidates.
   The version is automatically determined from the current git tag. I.e. this script must
-  be run from a release tag.
+  be run from a release candidate tag.
 
   Prerequisites:
     - Docker with buildx support must be installed and configured
     - DockerHub credentials must be configured (docker login)
-    - Must be run from a release tag (apache-polaris-x.y.z-incubating-rcN)
+    - Must be run from a release candidate tag (apache-polaris-x.y.z-incubating-rcN)
 
   Options:
     -h --help
@@ -78,7 +78,7 @@ done
 print_info "Determining version from current git tag..."
 
 if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-  print_error "Current HEAD is not on a release tag. Please checkout a release tag first."
+  print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
   print_error "Use: git checkout apache-polaris-x.y.z-incubating-rcN"
   exit 1
 fi
