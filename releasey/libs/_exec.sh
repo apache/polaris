@@ -28,6 +28,7 @@ source "$libs_dir/_constants.sh"
 source "$libs_dir/_log.sh"
 
 function exec_process {
+  # See print_command for information on why fd 3 is used.
   if [[ ${DRY_RUN:-1} -ne 1 ]]; then
     print_command "Executing '${*}'"
     "$@"
