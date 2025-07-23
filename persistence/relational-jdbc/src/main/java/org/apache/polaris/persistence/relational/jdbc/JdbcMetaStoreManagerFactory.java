@@ -194,8 +194,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
       DatasourceOperations datasourceOperations = getDatasourceOperations();
       initializeForRealm(datasourceOperations, realmContext, null);
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
+      checkPolarisServiceBootstrappedForRealm(realmContext);
     }
     return metaStoreManagerMap.get(realmContext.getRealmIdentifier());
   }
@@ -206,12 +205,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       DatasourceOperations datasourceOperations = getDatasourceOperations();
       initializeForRealm(datasourceOperations, realmContext, null);
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-    } else {
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
+    checkPolarisServiceBootstrappedForRealm(realmContext);
     return sessionSupplierMap.get(realmContext.getRealmIdentifier());
   }
 
@@ -285,8 +280,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
    * and force user to run Bootstrap command and initialize MetaStore and create all the required
    * entities
    */
-  private void checkPolarisServiceBootstrappedForRealm(
-      RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
+  private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             realmContext,
