@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -46,6 +47,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
@@ -65,7 +68,6 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
-import org.assertj.core.util.TriFunction;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 
@@ -76,6 +78,7 @@ public record TestServices(
     IcebergCatalogAdapter catalogAdapter,
     PolarisConfigurationStore configurationStore,
     PolarisDiagnostics polarisDiagnostics,
+    StorageCredentialCache storageCredentialCache,
     RealmEntityManagerFactory entityManagerFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
@@ -89,11 +92,7 @@ public record TestServices(
 
   @FunctionalInterface
   public interface FileIOFactorySupplier
-      extends TriFunction<
-          RealmEntityManagerFactory,
-          MetaStoreManagerFactory,
-          PolarisConfigurationStore,
-          FileIOFactory> {}
+      extends BiFunction<StorageCredentialCache, MetaStoreManagerFactory, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -155,9 +154,12 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics, configurationStore);
+              storageIntegrationProvider, polarisDiagnostics);
+      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
+      StorageCredentialCache storageCredentialCache =
+          new StorageCredentialCache(storageCredentialCacheConfig);
       RealmEntityManagerFactory realmEntityManagerFactory =
-          new RealmEntityManagerFactory(metaStoreManagerFactory) {};
+          new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
@@ -178,17 +180,16 @@ public record TestServices(
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
       FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(
-              realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+          fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventListener polarisEventListener = new TestPolarisEventListener();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
+              storageCredentialCache,
               realmEntityManagerFactory,
               metaStoreManagerFactory,
-              userSecretsManagerFactory,
               taskExecutor,
               fileIOFactory,
               polarisEventListener);
@@ -196,7 +197,7 @@ public record TestServices(
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getRealmContext(), configurationStore);
+          new CatalogHandlerUtils(callContext.getRealmConfig());
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
@@ -267,6 +268,7 @@ public record TestServices(
           catalogService,
           configurationStore,
           polarisDiagnostics,
+          storageCredentialCache,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
           realmContext,

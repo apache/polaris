@@ -49,11 +49,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    */
   public static void enforceFeatureEnabledOrThrow(
       CallContext callContext, FeatureConfiguration<Boolean> featureConfig) {
-    boolean enabled =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(callContext.getRealmContext(), featureConfig);
+    boolean enabled = callContext.getRealmConfig().getConfig(featureConfig);
     if (!enabled) {
       throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key());
     }
@@ -226,6 +222,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("LIST_PAGINATION_ENABLED")
+          .catalogConfig("polaris.config.list-pagination-enabled")
           .description("If set to true, pagination for APIs like listTables is enabled.")
           .defaultValue(false)
           .buildFeatureConfiguration();

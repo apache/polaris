@@ -75,7 +75,11 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
 
   @Override
   public GenericTableEntity createGenericTable(
-      TableIdentifier tableIdentifier, String format, String doc, Map<String, String> properties) {
+      TableIdentifier tableIdentifier,
+      String format,
+      String baseLocation,
+      String doc,
+      Map<String, String> properties) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
     if (resolvedParent == null) {
@@ -105,6 +109,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
                       .getId())
               .setProperties(properties)
               .setDoc(doc)
+              .setBaseLocation(baseLocation)
               .setCreateTimestamp(System.currentTimeMillis())
               .build();
     } else {

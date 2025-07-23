@@ -31,17 +31,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -55,18 +53,15 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final RealmEntityManagerFactory realmEntityManagerFactory;
+  private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final PolarisConfigurationStore configurationStore;
 
   @Inject
   public DefaultFileIOFactory(
-      RealmEntityManagerFactory realmEntityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore) {
-    this.realmEntityManagerFactory = realmEntityManagerFactory;
+      StorageCredentialCache storageCredentialCache,
+      MetaStoreManagerFactory metaStoreManagerFactory) {
+    this.storageCredentialCache = storageCredentialCache;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.configurationStore = configurationStore;
   }
 
   @Override
@@ -79,8 +74,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     RealmContext realmContext = callContext.getRealmContext();
-    PolarisEntityManager entityManager =
-        realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisCredentialVendor credentialVendor =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
@@ -93,9 +86,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
             storageInfo ->
                 FileIOUtil.refreshAccessConfig(
                     callContext,
-                    entityManager,
+                    storageCredentialCache,
                     credentialVendor,
-                    configurationStore,
                     identifier,
                     tableLocations,
                     storageActions,

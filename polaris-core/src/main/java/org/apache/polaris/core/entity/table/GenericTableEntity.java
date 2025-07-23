@@ -25,6 +25,7 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
@@ -58,6 +59,12 @@ public class GenericTableEntity extends TableLikeEntity {
     return getInternalPropertiesAsMap().get(GenericTableEntity.DOC_KEY);
   }
 
+  @Override
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getInternalPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
   public static class Builder
       extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
     public Builder(TableIdentifier tableIdentifier, String format) {
@@ -76,6 +83,11 @@ public class GenericTableEntity extends TableLikeEntity {
 
     public GenericTableEntity.Builder setDoc(String doc) {
       internalProperties.put(GenericTableEntity.DOC_KEY, doc);
+      return this;
+    }
+
+    public GenericTableEntity.Builder setBaseLocation(String location) {
+      internalProperties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
     }
 

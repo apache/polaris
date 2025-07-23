@@ -16,37 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
+package org.apache.polaris.service.quarkus.storage;
 
-/**
- * A {@link PageToken} implementation that has a page size, but no start offset. This can be used to
- * represent a `limit`. When updated, it returns {@link DonePageToken}. As such it should never be
- * user-facing and doesn't truly paginate.
- */
-public class LimitPageToken extends PageToken implements HasPageSize {
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+import jakarta.validation.constraints.Min;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 
-  public static final String PREFIX = "limit";
-
-  private final int pageSize;
-
-  public LimitPageToken(int pageSize) {
-    this.pageSize = pageSize;
-  }
-
+@ConfigMapping(prefix = "polaris.storage-credential-cache")
+public interface QuarkusStorageCredentialCacheConfig extends StorageCredentialCacheConfig {
+  @WithName("max-entries")
+  @WithDefault("10000")
+  @Min(0)
   @Override
-  public int getPageSize() {
-    return pageSize;
-  }
-
-  @Override
-  public String toTokenString() {
-    return String.format("%s/%d", PREFIX, pageSize);
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    return new DonePageToken();
-  }
+  long maxEntries();
 }

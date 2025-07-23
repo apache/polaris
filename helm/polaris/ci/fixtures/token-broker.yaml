@@ -61,3 +61,4 @@ stringData:
     wIGRMc6MkZboyVwbi+iUbTkmxGFaTVdZWlXQPFCdm+SNT4jZ1b8dZuIBYvwnpWuO/RDurfgAvmtX
     s/jMUwIDAQAB
     -----END PUBLIC KEY-----
+  symmetric.key: "secret"

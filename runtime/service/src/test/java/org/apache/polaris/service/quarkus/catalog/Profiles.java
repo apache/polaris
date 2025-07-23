@@ -16,21 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.quarkus.catalog;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.annotation.Nullable;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-@QuarkusTest
-@TestProfile(IcebergCatalogTest.Profile.class)
-public class PolarisCatalogWithEntityCacheTest extends IcebergCatalogTest {
+public final class Profiles {
+  private Profiles() {}
 
-  @Nullable
-  @Override
-  protected InMemoryEntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(() -> getRealmName(), configurationStore, metaStoreManager);
+  public static class DefaultProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\"]",
+          "polaris.event-listener.type",
+          "test",
+          "polaris.readiness.ignore-severe-issues",
+          "true");
+    }
   }
 }

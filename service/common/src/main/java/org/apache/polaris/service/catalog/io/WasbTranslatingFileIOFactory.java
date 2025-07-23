@@ -26,12 +26,11 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -42,12 +41,10 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Inject
   public WasbTranslatingFileIOFactory(
-      RealmEntityManagerFactory realmEntityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore) {
+      StorageCredentialCache storageCredentialCache,
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     defaultFileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
   }
 
   @Override

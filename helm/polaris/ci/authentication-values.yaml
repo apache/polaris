@@ -1,0 +1,71 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+image:
+  pullPolicy: Never
+
+realmContext:
+  realms:
+    - realm0
+    - realm1
+    - realm2
+    - REALM 3
+
+authentication:
+  type: internal
+  authenticator:
+    type: default
+  activeRolesProvider:
+    type: default
+  tokenService:
+    type: default
+  tokenBroker:
+    type: rsa-key-pair
+    secret:
+      name: polaris-token-broker
+      rsaKeyPair:
+        publicKey: public.pem
+        privateKey: private.pem
+
+  realmOverrides:
+
+    realm1:
+      type: mixed
+      tokenBroker:
+        type: rsa-key-pair
+        secret:
+          name: polaris-token-broker
+
+    realm2:
+      type: external
+
+    "REALM 3":
+      type: internal
+      tokenBroker:
+        type: symmetric-key
+        secret:
+          name: polaris-token-broker
+
+oidc:
+  authServeUrl: https://auth.example.com/realms/polaris
+  client:
+    id: polaris
+    secret:
+      name: polaris-oidc
+      key: client-secret

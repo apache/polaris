@@ -31,7 +31,7 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -54,7 +54,6 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +69,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
@@ -78,7 +76,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
-  @Inject PolarisConfigurationStore configurationStore;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -184,7 +181,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      storageCredentialCacheMap.remove(realm);
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
     }
@@ -220,24 +216,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public synchronized StorageCredentialCache getOrCreateStorageCredentialCache(
-      RealmContext realmContext) {
-    if (!storageCredentialCacheMap.containsKey(realmContext.getRealmIdentifier())) {
-      storageCredentialCacheMap.put(
-          realmContext.getRealmIdentifier(),
-          new StorageCredentialCache(realmContext, configurationStore));
-    }
-
-    return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
+  public synchronized EntityCache getOrCreateEntityCache(
+      RealmContext realmContext, RealmConfig realmConfig) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
           realmContext.getRealmIdentifier(),
-          new InMemoryEntityCache(realmContext, configurationStore, metaStoreManager));
+          new InMemoryEntityCache(realmConfig, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());

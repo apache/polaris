@@ -140,6 +140,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setRegion(awsConfig.getRegion())
+            .setEndpoint(awsConfig.getEndpoint())
+            .setStsEndpoint(awsConfig.getStsEndpoint())
+            .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -275,7 +278,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     awsConfigModel.getExternalId(),
                     awsConfigModel.getRegion(),
                     awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint());
+                    awsConfigModel.getStsEndpoint(),
+                    awsConfigModel.getPathStyleAccess());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
@@ -313,11 +317,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         CallContext callContext, Collection<String> allowedLocations) {
       int maxAllowedLocations =
           callContext
-              .getPolarisCallContext()
-              .getConfigurationStore()
-              .getConfiguration(
-                  callContext.getRealmContext(),
-                  BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+              .getRealmConfig()
+              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(
