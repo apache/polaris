@@ -111,7 +111,7 @@ public class PolarisIntegrationTestFixture {
             .join();
 
     BasePersistence metaStoreSession =
-        helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+        helper.metaStoreManagerFactory.getOrCreateSession(realmContext);
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             realmContext,

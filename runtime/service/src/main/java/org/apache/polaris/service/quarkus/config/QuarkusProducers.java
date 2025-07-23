@@ -155,8 +155,7 @@ public class QuarkusProducers {
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory,
       Clock clock) {
-    BasePersistence metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
     return new PolarisCallContext(
         realmContext, metaStoreSession, diagServices, configurationStore, clock);
   }
@@ -384,7 +383,7 @@ public class QuarkusProducers {
   @RequestScoped
   public BasePersistence polarisMetaStoreSession(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+    return metaStoreManagerFactory.getOrCreateSession(realmContext);
   }
 
   @Produces

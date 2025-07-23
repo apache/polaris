@@ -58,7 +58,7 @@ public class CatalogEntityTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     this.callContext = polarisCallContext;
     CallContext.setCurrentContext(polarisCallContext);

@@ -139,7 +139,7 @@ public class FileIOFactoryTest {
     callContext =
         new PolarisCallContext(
             realmContext,
-            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.metaStoreManagerFactory().getOrCreateSession(realmContext),
             testServices.polarisDiagnostics(),
             testServices.configurationStore(),
             Clock.systemUTC());

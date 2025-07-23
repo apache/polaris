@@ -68,7 +68,7 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
@@ -98,7 +98,7 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
@@ -127,7 +127,7 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO =
@@ -173,7 +173,7 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
