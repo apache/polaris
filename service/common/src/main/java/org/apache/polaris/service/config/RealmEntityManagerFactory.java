@@ -63,7 +63,6 @@ public class RealmEntityManagerFactory {
           RealmConfig realmConfig = new RealmConfigImpl(configurationStore, context);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              metaStoreManagerFactory.getOrCreateStorageCredentialCache(context, realmConfig),
               metaStoreManagerFactory.getOrCreateEntityCache(context, realmConfig));
         });
   }

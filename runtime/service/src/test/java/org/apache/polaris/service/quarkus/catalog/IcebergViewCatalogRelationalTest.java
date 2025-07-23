@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
+package org.apache.polaris.service.quarkus.catalog;
 
-/**
- * A light interface for {@link PageToken} implementations to express that they have a page size
- * that should be respected
- */
-public interface HasPageSize {
-  int getPageSize();
-}
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+
+@QuarkusTest
+@TestProfile(AbstractIcebergCatalogViewTest.Profile.class)
+public class IcebergViewCatalogRelationalTest extends AbstractIcebergCatalogViewTest {}

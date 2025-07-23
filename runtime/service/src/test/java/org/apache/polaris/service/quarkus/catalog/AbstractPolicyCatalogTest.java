@@ -30,9 +30,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -40,7 +37,6 @@ import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -68,7 +64,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -87,7 +83,6 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -107,24 +102,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@QuarkusTest
-@TestProfile(PolicyCatalogTest.Profile.class)
-public class PolicyCatalogTest {
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
+public abstract class AbstractPolicyCatalogTest {
 
   private static final Namespace NS = Namespace.of("ns1");
   private static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
@@ -150,6 +128,7 @@ public class PolicyCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
@@ -176,13 +155,19 @@ public class PolicyCatalogTest {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  protected void bootstrapRealm(String realmName) {}
+
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    bootstrapRealm(realmName);
+
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -193,13 +178,19 @@ public class PolicyCatalogTest {
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             configurationStore,
-            Clock.systemDefaultZone(),
-            null);
+            Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
             metaStoreManager,
             new StorageCredentialCache(),
             new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+            Clock.systemDefaultZone());
+
+    EntityCache entityCache =
+        metaStoreManagerFactory.getOrCreateEntityCache(
+            realmContext, polarisContext.getRealmConfig());
+    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+>>>>>>> origin/main:runtime/service/src/test/java/org/apache/polaris/service/quarkus/catalog/AbstractPolicyCatalogTest.java
 
     callContext = polarisContext;
 
@@ -263,10 +254,7 @@ public class PolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory, configurationStore);
-    this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -288,6 +276,7 @@ public class PolicyCatalogTest {
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
+            storageCredentialCache,
             entityManager,
             metaStoreManager,
             callContext,

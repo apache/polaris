@@ -46,15 +46,13 @@ public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
-
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache() {
+  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
     cache =
         Caffeine.newBuilder()
-            .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
+            .maximumSize(cacheConfig.maxEntries())
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
@@ -114,7 +112,7 @@ public class StorageCredentialCache {
           .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
     StorageCredentialCacheKey key =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
             callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
@@ -127,12 +125,12 @@ public class StorageCredentialCache {
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   callCtx,
-                  k.getCatalogId(),
-                  k.getEntityId(),
+                  k.catalogId(),
+                  polarisEntity.getId(),
                   polarisEntity.getType(),
-                  k.isAllowedListAction(),
-                  k.getAllowedReadLocations(),
-                  k.getAllowedWriteLocations());
+                  k.allowedListAction(),
+                  k.allowedReadLocations(),
+                  k.allowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
             return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
@@ -170,5 +168,10 @@ public class StorageCredentialCache {
   @VisibleForTesting
   public long getEstimatedSize() {
     return this.cache.estimatedSize();
+  }
+
+  @VisibleForTesting
+  public void invalidateAll() {
+    this.cache.invalidateAll();
   }
 }

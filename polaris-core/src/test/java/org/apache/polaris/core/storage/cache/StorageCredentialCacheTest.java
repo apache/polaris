@@ -54,10 +54,8 @@ import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
 
-  // polaris call context
   private final PolarisCallContext callCtx;
-
-  // the meta store manager
+  private final StorageCredentialCacheConfig storageCredentialCacheConfig;
   private final PolarisMetaStoreManager metaStoreManager;
 
   private StorageCredentialCache storageCredentialCache;
@@ -71,12 +69,13 @@ public class StorageCredentialCacheTest {
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    storageCredentialCacheConfig = () -> 10_000;
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = newStorageCredentialCache();
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache();
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Test
@@ -177,7 +176,7 @@ public class StorageCredentialCacheTest {
             1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
     StorageCredentialCacheKey cacheKey =
-        new StorageCredentialCacheKey(
+        StorageCredentialCacheKey.of(
             callCtx.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             true,

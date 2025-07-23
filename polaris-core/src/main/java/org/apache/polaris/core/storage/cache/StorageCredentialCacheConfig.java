@@ -16,25 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
+package org.apache.polaris.core.storage.cache;
 
-/**
- * A {@link PageToken} string that represents the lack of a page token. Returns `null` in
- * `toTokenString`, which the client will interpret as there being no more data available.
- */
-public class DonePageToken extends PageToken {
+public interface StorageCredentialCacheConfig {
 
-  public DonePageToken() {}
-
-  @Override
-  public String toTokenString() {
-    return null;
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    throw new IllegalStateException("DonePageToken.updated is invalid");
-  }
+  long maxEntries();
 }

@@ -140,6 +140,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setRegion(awsConfig.getRegion())
+            .setEndpoint(awsConfig.getEndpoint())
+            .setStsEndpoint(awsConfig.getStsEndpoint())
+            .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -275,7 +278,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     awsConfigModel.getExternalId(),
                     awsConfigModel.getRegion(),
                     awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint());
+                    awsConfigModel.getStsEndpoint(),
+                    awsConfigModel.getPathStyleAccess());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;

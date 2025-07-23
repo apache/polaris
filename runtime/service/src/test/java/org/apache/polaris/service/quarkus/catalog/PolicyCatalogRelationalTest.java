@@ -16,27 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
+package org.apache.polaris.service.quarkus.catalog;
 
-import java.util.List;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 
-/**
- * A {@link PageToken} implementation for readers who want to read everything. The behavior when
- * using this token should be the same as when reading without a token.
- */
-public class ReadEverythingPageToken extends PageToken {
-
-  public static String PREFIX = "read-everything";
-
-  public ReadEverythingPageToken() {}
-
-  @Override
-  public String toTokenString() {
-    return PREFIX;
-  }
-
-  @Override
-  protected PageToken updated(List<?> newData) {
-    return new DonePageToken();
-  }
-}
+@QuarkusTest
+@TestProfile(Profiles.DefaultProfile.class)
+public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}
