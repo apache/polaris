@@ -96,7 +96,7 @@ function update_version {
 function ensure_cwd_is_project_root() {
   # This function verifies that the script is executed from the project root
   # directory and that the gradle wrapper script is present.
-  if [[ ! -f "gradlew" ]] || [[ ! -d ".git" ]]; then
+  if [[ ! -f "gradlew" ]]; then
     print_error "This script must be executed from the project root directory."
     print_error "Current directory: $(pwd)"
     return 1
