@@ -40,11 +40,11 @@ swagger = "1.6.16"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.78" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.4" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.36" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
-commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
+commons-codec1 = { module = "commons-codec:commons-codec", version = "1.19.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
@@ -62,7 +62,7 @@ immutables-builder = { module = "org.immutables:builder", version.ref = "immutab
 immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.1" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.2" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
 jakarta-enterprise-cdi-api = { module = "jakarta.enterprise:jakarta.enterprise.cdi-api", version = "4.1.0" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
@@ -71,7 +71,7 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-junit-bom = { module = "org.junit:junit-bom", version = "5.13.3" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.2" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }

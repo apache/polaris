@@ -61,11 +61,29 @@ internal fun <T : Any> unsafeCast(o: Any?): T {
   return o as T
 }
 
-internal fun <T : Any> parseJson(url: String): T {
+internal fun <T : Any> parseJson(urlStr: String): T {
+  val url = URI(urlStr).toURL()
+
+  val headers = mutableMapOf<String, String>()
+  if (url.host == "api.github.com" && url.protocol == "https") {
+    val githubToken = System.getenv("GITHUB_TOKEN")
+    if (githubToken != null) {
+      // leverage the GH token to benefit from higher rate limits
+      headers["Authorization"] = "Bearer $githubToken"
+      // recommended for GH API requests
+      headers["X-GitHub-Api-Version"] = "2022-11-28"
+      headers["Accept"] = "application/vnd.github+json"
+    }
+  }
+
+  // See org.codehaus.groovy.runtime.ResourceGroovyMethods.newReader(URL, Map)
+  val params = mapOf("requestProperties" to headers)
+
+  val slurper = JsonSlurper()
   var attempt = 0
   while (true) {
     try {
-      return unsafeCast(JsonSlurper().parse(URI(url).toURL())) as T
+      return unsafeCast(slurper.parse(params, url)) as T
     } catch (e: JsonException) {
       if (e.cause is FileNotFoundException) {
         throw e

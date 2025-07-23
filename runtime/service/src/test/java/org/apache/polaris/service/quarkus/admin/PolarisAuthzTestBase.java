@@ -72,10 +72,11 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -192,6 +193,8 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected PolarisConfigurationStore configurationStore;
+  @Inject protected StorageCredentialCache storageCredentialCache;
+  @Inject protected ResolverFactory resolverFactory;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -200,7 +203,6 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
   protected UserSecretsManager userSecretsManager;
-  protected TransactionalPersistence metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
@@ -222,6 +224,8 @@ public abstract class PolarisAuthzTestBase {
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     RealmContext realmContext = testInfo::getDisplayName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -327,7 +331,8 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS1B_1, SCHEMA).create();
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
 
-    genericTableCatalog.createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
+    genericTableCatalog.createGenericTable(
+        TABLE_NS1_1_GENERIC, "format", "file:///tmp/test_table", "doc", Map.of());
 
     policyCatalog.createPolicy(
         POLICY_NS1_1,
@@ -464,7 +469,8 @@ public abstract class PolarisAuthzTestBase {
             callContext, entityManager, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
-            entityManager,
+            storageCredentialCache,
+            resolverFactory,
             metaStoreManager,
             callContext,
             passthroughView,
@@ -493,16 +499,16 @@ public abstract class PolarisAuthzTestBase {
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
-        RealmEntityManagerFactory entityManagerFactory,
+        StorageCredentialCache storageCredentialCache,
+        ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
-        UserSecretsManagerFactory userSecretsManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
-          entityManagerFactory,
+          storageCredentialCache,
+          resolverFactory,
           metaStoreManagerFactory,
-          userSecretsManagerFactory,
           taskExecutor,
           fileIOFactory,
           polarisEventListener);

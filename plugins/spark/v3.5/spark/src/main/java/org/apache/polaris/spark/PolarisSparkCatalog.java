@@ -38,6 +38,8 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A spark TableCatalog Implementation interacts with Polaris specific APIs only. The APIs it
@@ -45,6 +47,7 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
  * expected to be for non-iceberg tables.
  */
 public class PolarisSparkCatalog implements TableCatalog {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSparkCatalog.class);
 
   private PolarisCatalog polarisCatalog = null;
   private String catalogName = null;
@@ -83,9 +86,30 @@ public class PolarisSparkCatalog implements TableCatalog {
       throws TableAlreadyExistsException, NoSuchNamespaceException {
     try {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+
+      String baseLocation;
+      // Extract the base table location from the spark properties.
+      // Spark pass the table base location either with the
+      // TableCatalog.PROP_LOCATION key, or with "path" key if created
+      // with the path option.
+      if (properties.get(TableCatalog.PROP_LOCATION) != null) {
+        baseLocation = properties.get(TableCatalog.PROP_LOCATION);
+        if (properties.get(PolarisCatalogUtils.TABLE_PATH_KEY) != null) {
+          LOGGER.debug(
+              "Both location and path are propagated in the table properties, location {}, path {}",
+              baseLocation,
+              properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
+        }
+      } else {
+        baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
+      }
       GenericTable genericTable =
           this.polarisCatalog.createGenericTable(
-              Spark3Util.identifierToTableIdentifier(identifier), format, null, properties);
+              Spark3Util.identifierToTableIdentifier(identifier),
+              format,
+              baseLocation,
+              null,
+              properties);
       return PolarisCatalogUtils.loadSparkTable(genericTable);
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(identifier);

@@ -31,7 +31,6 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
-import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
@@ -61,8 +60,6 @@ public class PolarisS3InteroperabilityTest {
           "true",
           "SUPPORTED_CATALOG_STORAGE_TYPES",
           List.of("FILE", "S3"));
-  private static final FileIO fileIO = new InMemoryFileIO();
-
   private final TestServices services;
 
   private static String makeNamespaceLocation(String catalogName, String namespace, String scheme) {
@@ -76,7 +73,7 @@ public class PolarisS3InteroperabilityTest {
 
   public PolarisS3InteroperabilityTest() {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (entityManagerFactory, metaStoreManagerFactory) ->
+        (storageCredentialCache, metaStoreManagerFactory) ->
             (FileIOFactory)
                 (callContext,
                     ioImplClassName,
