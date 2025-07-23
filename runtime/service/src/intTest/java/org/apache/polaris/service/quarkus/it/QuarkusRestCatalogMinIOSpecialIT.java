@@ -77,11 +77,16 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+/**
+ * These tests complement {@link QuarkusPolarisRestCatalogMinIOIT} to validate client-side access to
+ * MinIO storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses
+ * with some S3-specific options.
+ */
 @QuarkusIntegrationTest
-@TestProfile(QuarkusRestCatalogMinIoIT.Profile.class)
+@TestProfile(QuarkusRestCatalogMinIOSpecialIT.Profile.class)
 @ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class QuarkusRestCatalogMinIoIT {
+public class QuarkusRestCatalogMinIOSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
   private static final String MINIO_ACCESS_KEY = "test-ak-123";

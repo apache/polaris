@@ -56,6 +56,7 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -63,14 +64,12 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -81,6 +80,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -99,9 +101,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
+  @Inject ResolverFactory resolverFactory;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -135,6 +138,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
@@ -152,14 +157,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-    StorageCredentialCache storageCredentialCache =
-        new StorageCredentialCache(storageCredentialCacheConfig);
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            storageCredentialCache,
-            metaStoreManagerFactory.getOrCreateEntityCache(
-                realmContext, polarisContext.getRealmConfig()));
+
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -223,11 +222,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         new PolarisPassthroughResolutionView(
             polarisContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(
-            metaStoreManagerFactory, configurationStore, storageCredentialCache);
-    this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -251,7 +246,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
-            entityManager,
+            storageCredentialCache,
+            resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,
@@ -277,7 +273,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "test-format", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "test-format", null, "doc", Map.of()))
         .doesNotThrowAnyException();
   }
 
@@ -286,12 +282,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format1", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format1", null, "doc", Map.of());
 
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -308,7 +304,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -316,8 +312,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .hasMessageContaining("already exists");
   }
 
-  @Test
-  public void testGenericTableRoundTrip() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "file://path/to/my/table"})
+  public void testGenericTableRoundTrip(String baseLocation) {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
 
@@ -327,7 +325,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String doc = "round-trip-doc";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), format, doc, properties);
+        TableIdentifier.of("ns", tableName), format, baseLocation, doc, properties);
 
     GenericTableEntity resultEntity =
         genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName));
@@ -335,6 +333,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getFormat()).isEqualTo(format);
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
+    Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
   }
 
   @Test
@@ -381,7 +380,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String tableName = "t1";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
+        TableIdentifier.of("ns", tableName), "format", null, "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadTable(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -394,7 +393,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     String tableName = "t1";
 
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
+        TableIdentifier.of("ns", tableName), "format", null, "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadView(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -406,7 +405,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     for (int i = 0; i < 10; i++) {
       genericTableCatalog.createGenericTable(
-          TableIdentifier.of("ns", "t" + i), "format", "doc", Map.of());
+          TableIdentifier.of("ns", "t" + i), "format", null, "doc", Map.of());
     }
 
     List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
@@ -468,7 +467,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     for (int i = 0; i < 10; i++) {
       genericTableCatalog.createGenericTable(
-          TableIdentifier.of("ns", "g" + i), "format", "doc", Map.of());
+          TableIdentifier.of("ns", "g" + i), "format", null, "doc", Map.of());
     }
 
     Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
@@ -514,7 +513,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format", null, "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
@@ -526,7 +525,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
     genericTableCatalog.createGenericTable(
-        TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
+        TableIdentifier.of("ns", "t1"), "format", null, "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))

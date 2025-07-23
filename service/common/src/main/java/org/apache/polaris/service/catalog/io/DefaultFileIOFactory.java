@@ -35,12 +35,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -54,14 +53,14 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final RealmEntityManagerFactory realmEntityManagerFactory;
+  private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Inject
   public DefaultFileIOFactory(
-      RealmEntityManagerFactory realmEntityManagerFactory,
+      StorageCredentialCache storageCredentialCache,
       MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.realmEntityManagerFactory = realmEntityManagerFactory;
+    this.storageCredentialCache = storageCredentialCache;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 
@@ -75,8 +74,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     RealmContext realmContext = callContext.getRealmContext();
-    PolarisEntityManager entityManager =
-        realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisCredentialVendor credentialVendor =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
@@ -89,7 +86,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
             storageInfo ->
                 FileIOUtil.refreshAccessConfig(
                     callContext,
-                    entityManager,
+                    storageCredentialCache,
                     credentialVendor,
                     identifier,
                     tableLocations,

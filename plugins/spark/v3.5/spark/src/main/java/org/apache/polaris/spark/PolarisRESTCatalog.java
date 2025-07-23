@@ -200,13 +200,18 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
   @Override
   public GenericTable createGenericTable(
-      TableIdentifier identifier, String format, String doc, Map<String, String> props) {
+      TableIdentifier identifier,
+      String format,
+      String baseLocation,
+      String doc,
+      Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(
             CreateGenericTableRequest.builder()
                 .setName(identifier.name())
                 .setFormat(format)
+                .setBaseLocation(baseLocation)
                 .setDoc(doc)
                 .setProperties(props)
                 .build());

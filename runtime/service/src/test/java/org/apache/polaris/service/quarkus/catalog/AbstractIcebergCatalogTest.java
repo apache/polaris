@@ -116,6 +116,8 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -125,7 +127,6 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
@@ -134,7 +135,6 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
@@ -225,7 +225,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject StorageCredentialCacheConfig storageCredentialCacheConfig;
+  @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisDiagnostics diagServices;
@@ -237,8 +237,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
-  private StorageCredentialCache storageCredentialCache;
-  private RealmEntityManagerFactory realmEntityManagerFactory;
+  private ResolverFactory resolverFactory;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
@@ -263,6 +262,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    storageCredentialCache.invalidateAll();
+
     realmName =
         "realm_%s_%s"
             .formatted(
@@ -281,13 +282,18 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             configurationStore,
             Clock.systemDefaultZone());
 
-    storageCredentialCache = new StorageCredentialCache(storageCredentialCacheConfig);
+    EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
+    resolverFactory =
+        (callContext, securityContext, referenceCatalogName) ->
+            new Resolver(
+                callContext.getPolarisCallContext(),
+                metaStoreManager,
+                securityContext,
+                entityCache,
+                referenceCatalogName);
+    QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            storageCredentialCache,
-            createEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     // LocalPolarisMetaStoreManagerFactory.bootstrapServiceAndCreatePolarisPrincipalForRealm sets
     // the CallContext.setCurrentContext() but never clears it, whereas the NoSQL one resets it.
@@ -352,11 +358,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .build()
                     .asCatalog()));
 
-    realmEntityManagerFactory =
-        new RealmEntityManagerFactory(
-            metaStoreManagerFactory, configurationStore, storageCredentialCache);
-    this.fileIOFactory =
-        new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -400,20 +402,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Override
   protected IcebergCatalog initCatalog(
       String catalogName, Map<String, String> additionalProperties) {
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    TaskExecutor taskExecutor = Mockito.mock();
-    IcebergCatalog icebergCatalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog icebergCatalog = newIcebergCatalog(CATALOG_NAME);
     fileIO = new InMemoryFileIO();
     icebergCatalog.setCatalogFileIo(fileIO);
     ImmutableMap.Builder<String, String> propertiesBuilder =
@@ -442,6 +431,33 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   protected boolean supportsNotifications() {
     return true;
+  }
+
+  protected IcebergCatalog newIcebergCatalog(String catalogName) {
+    return newIcebergCatalog(catalogName, metaStoreManager);
+  }
+
+  protected IcebergCatalog newIcebergCatalog(
+      String catalogName, PolarisMetaStoreManager metaStoreManager) {
+    return newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory);
+  }
+
+  protected IcebergCatalog newIcebergCatalog(
+      String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            polarisContext, entityManager, securityContext, catalogName);
+    TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
+    return new IcebergCatalog(
+        storageCredentialCache,
+        resolverFactory,
+        metaStoreManager,
+        polarisContext,
+        passthroughView,
+        securityContext,
+        taskExecutor,
+        fileIOFactory,
+        polarisEventListener);
   }
 
   @Test
@@ -982,21 +998,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalog().name());
     FileIOFactory fileIOFactory =
-        spy(new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory));
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+        spy(new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory));
+    IcebergCatalog catalog = newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactory);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1314,20 +1318,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .build()
                     .asCatalog()));
 
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalogWithoutStorage);
-    TaskExecutor taskExecutor = Mockito.mock();
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -1378,21 +1369,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .build()
                 .asCatalog()));
 
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalogName);
-    TaskExecutor taskExecutor = Mockito.mock();
-    InMemoryFileIO localFileIO = new InMemoryFileIO();
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory,
-            polarisEventListener);
+    IcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1875,7 +1852,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
     FileIO fileIO =
         new TaskFileIOSupplier(
-                new DefaultFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory))
+                new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
             .apply(taskEntity, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -1909,19 +1886,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     polarisContext, noPurgeStorageConfigModel, storageLocation)
                 .build()
                 .asCatalog()));
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, noPurgeCatalogName);
     IcebergCatalog noPurgeCatalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(),
-            fileIOFactory,
-            polarisEventListener);
+        newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -2012,22 +1978,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Test
   public void testFileIOWrapper() {
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-
     MeasuredFileIOFactory measured =
-        new MeasuredFileIOFactory(realmEntityManagerFactory, metaStoreManagerFactory);
-    IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(),
-            measured,
-            polarisEventListener);
+        new MeasuredFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -2116,19 +2069,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
     // a concurrency failure at final commit.
     PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    final IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            spyMetaStore,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -2165,19 +2106,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
     // a concurrency failure at final commit.
     PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
-    final IcebergCatalog catalog =
-        new IcebergCatalog(
-            entityManager,
-            spyMetaStore,
-            polarisContext,
-            passthroughView,
-            securityContext,
-            Mockito.mock(TaskExecutor.class),
-            fileIOFactory,
-            polarisEventListener);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

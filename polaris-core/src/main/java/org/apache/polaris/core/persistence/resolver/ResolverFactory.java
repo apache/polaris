@@ -16,25 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.spark;
 
-import java.util.List;
-import java.util.Map;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.spark.rest.GenericTable;
+package org.apache.polaris.core.persistence.resolver;
 
-public interface PolarisCatalog {
-  List<TableIdentifier> listGenericTables(Namespace ns);
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.context.CallContext;
 
-  GenericTable loadGenericTable(TableIdentifier identifier);
-
-  boolean dropGenericTable(TableIdentifier identifier);
-
-  GenericTable createGenericTable(
-      TableIdentifier identifier,
-      String format,
-      String baseLocation,
-      String doc,
-      Map<String, String> props);
+public interface ResolverFactory {
+  Resolver createResolver(
+      @Nonnull CallContext callContext,
+      @Nonnull SecurityContext securityContext,
+      @Nullable String referenceCatalogName);
 }
