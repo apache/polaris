@@ -149,8 +149,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
       initializeForRealm(realmContext, null);
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
+      checkPolarisServiceBootstrappedForRealm(realmContext);
     }
     return metaStoreManagerMap.get(realmContext.getRealmIdentifier());
   }
@@ -160,12 +159,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       initializeForRealm(realmContext, null);
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-    } else {
-      checkPolarisServiceBootstrappedForRealm(
-          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
+    checkPolarisServiceBootstrappedForRealm(realmContext);
     return sessionSupplierMap.get(realmContext.getRealmIdentifier());
   }
 
@@ -238,8 +233,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * and force user to run Bootstrap command and initialize MetaStore and create all the required
    * entities
    */
-  private void checkPolarisServiceBootstrappedForRealm(
-      RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
+  private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             realmContext,
