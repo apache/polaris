@@ -27,7 +27,7 @@ Creates a release branch and sets the target release version:
 
 ### 3. Create Release Tag
 ```bash
-./03-create-release-tag.sh --version 1.0.0-incubating-rc1
+./03-create-release-candidate-tag.sh --version 1.0.0-incubating-rc1
 ```
 Creates a release tag for a release candidate:
 - Creates and pushes `apache-polaris-x.y.z-incubating-rcN` tag
@@ -72,7 +72,7 @@ These scripts are used to test the release automation without making actual chan
 ```bash
 # Test individual scripts
 ./test/test-02-create-release-branch.sh
-./test/test-03-create-release-tag.sh
+./test/test-03-create-release-candidate-tag.sh
 ./test/test-04-build-and-test.sh
 ./test/test-05-build-and-stage-distributions.sh apache-polaris-1.1.0-incubating-rc1
 ./test/test-06-build-and-stage-docker-images.sh apache-polaris-1.1.0-incubating-rc1

@@ -19,7 +19,7 @@
 #
 
 #
-# Test Script for 03-create-release-tag.sh
+# Test Script for 03-create-release-candidate-tag.sh
 #
 # Tests the dry-run functionality of the create release tag script
 # by verifying the exact commands that would be executed.
@@ -39,7 +39,7 @@ function usage() {
   cat <<EOF
 $(basename "$0") [--help | -h]
 
-  Tests the 03-create-release-tag.sh script by running it in dry-run mode
+  Tests the 03-create-release-candidate-tag.sh script by running it in dry-run mode
   and verifying the commands that would be executed.
 
   Options:
@@ -68,7 +68,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-print_info "Starting test for 03-create-release-tag.sh..."
+print_info "Starting test for 03-create-release-candidate-tag.sh..."
 
 print_info "Create temporary file to capture the commands that would be executed..."
 temp_file=$(mktemp)
@@ -76,7 +76,7 @@ trap 'rm -f "$temp_file"' EXIT
 
 print_info "Running script..."
 DRY_RUN=1 \
-  "${releases_dir}/03-create-release-tag.sh" \
+  "${releases_dir}/03-create-release-candidate-tag.sh" \
   --version 42.41.40-incubating-rc1 \
   3>"$temp_file"
 
