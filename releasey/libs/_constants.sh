@@ -37,6 +37,12 @@ DRY_RUN=${DRY_RUN:-1}
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-"docker.io"}
 DOCKER_HUB_URL=${DOCKER_HUB_URL:-"https://hub.docker.com"}
 
+# Version validation regex patterns
+VERSION_REGEX="([0-9]+)\.([0-9]+)\.([0-9]+)"
+VERSION_REGEX_RELEASE="^$VERSION_REGEX-incubating$"
+VERSION_REGEX_RC="^$VERSION_REGEX-incubating-rc([1-9][0-9]*)$"
+VERSION_REGEX_GIT_TAG="^apache-polaris-$VERSION_REGEX-incubating-rc([0-9]+)$"
+
 # Other project constants
 GRADLE_PROPERTIES_FILE=${GRADLE_PROPERTIES_FILE:-"${HOME}/.gradle/gradle.properties"}
 VERSION_FILE="$libs_dir/../../version.txt"

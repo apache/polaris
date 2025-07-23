@@ -34,7 +34,7 @@ libs_dir="${releases_dir}/libs"
 source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
 source "${libs_dir}/_exec.sh"
-source "${libs_dir}/_files.sh"
+source "${libs_dir}/_version.sh"
 
 function usage() {
   cat << EOF

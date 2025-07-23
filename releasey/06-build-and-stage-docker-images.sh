@@ -33,7 +33,7 @@ libs_dir="${releases_dir}/libs"
 source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
 source "${libs_dir}/_exec.sh"
-source "${libs_dir}/_files.sh"
+source "${libs_dir}/_version.sh"
 
 function usage() {
   cat << EOF
@@ -84,19 +84,13 @@ if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
 fi
 print_info "Found git tag: ${git_tag}"
 
-# Extract version components from git tag in one regex match
-git_tag_regex="^apache-polaris-([0-9]+)\.([0-9]+)\.([0-9]+)-incubating-rc([0-9]+)$"
-if [[ ! ${git_tag} =~ ${git_tag_regex} ]]; then
+# Validate git tag format and extract version components
+if ! validate_and_extract_git_tag_version "${git_tag}"; then
   print_error "Invalid git tag format: ${git_tag}"
   print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
   exit 1
 fi
 
-# Extract version components from regex match
-major="${BASH_REMATCH[1]}"
-minor="${BASH_REMATCH[2]}"
-patch="${BASH_REMATCH[3]}"
-rc_number="${BASH_REMATCH[4]}"
 version="${major}.${minor}.${patch}-incubating"
 docker_tag="${version}-rc${rc_number}"
 

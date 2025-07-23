@@ -32,7 +32,7 @@ libs_dir="${releases_dir}/libs"
 source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
 source "${libs_dir}/_exec.sh"
-source "${libs_dir}/_files.sh"
+source "${libs_dir}/_version.sh"
 
 function usage() {
   cat << EOF
@@ -89,20 +89,14 @@ fi
 
 # Validate version format: x.y.z-incubating-rcN
 # TODO: Remove incubating when we are a TLP
-version_regex="^([0-9]+)\.([0-9]+)\.([0-9]+)-incubating-rc([1-9][0-9]*)$"
-if [[ ! ${version} =~ ${version_regex} ]]; then
+if ! validate_and_extract_rc_version "${version}"; then
   print_error "Invalid version format. Expected: x.y.z-incubating-rcN where N>0, got: ${version}"
   usage >&2
   exit 1
 fi
 
-# Extract version components
-major="${BASH_REMATCH[1]}"
-minor="${BASH_REMATCH[2]}"
-patch="${BASH_REMATCH[3]}"
-rc_number="${BASH_REMATCH[4]}"
+# Define polaris_version from extracted components
 polaris_version="${major}.${minor}.${patch}"
-base_version="${polaris_version}-incubating"
 
 print_info "Starting release candidate tag creation..."
 print_info "Version: ${version}"

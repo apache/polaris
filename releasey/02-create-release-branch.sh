@@ -33,7 +33,7 @@ libs_dir="${releases_dir}/libs"
 source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
 source "${libs_dir}/_exec.sh"
-source "${libs_dir}/_files.sh"
+source "${libs_dir}/_version.sh"
 
 function usage() {
   cat << EOF
@@ -117,15 +117,14 @@ fi
 
 # Validate version format: x.y.z-incubating
 # TODO: Remove incubating when we are a TLP
-version_regex="^([0-9]+)\.([0-9]+)\.([0-9]+)-incubating$"
-if [[ ! ${version} =~ ${version_regex} ]]; then
+if ! validate_and_extract_release_version "${version}"; then
   print_error "Invalid version format. Expected: x.y.z-incubating, got: ${version}"
   usage >&2
   exit 1
 fi
 
-# Extract version components
-polaris_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+# Define polaris_version from extracted components
+polaris_version="${major}.${minor}.${patch}"
 
 print_info "Starting release branch creation..."
 print_info "Version: ${version}"

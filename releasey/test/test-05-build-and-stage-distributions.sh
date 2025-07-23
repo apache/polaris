@@ -33,7 +33,7 @@ libs_dir="${releases_dir}/libs"
 
 source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
-source "${libs_dir}/_files.sh"
+source "${libs_dir}/_version.sh"
 
 function usage() {
   cat <<EOF
@@ -87,19 +87,13 @@ if [[ -z "$tag" ]]; then
   exit 1
 fi
 
-# Validate tag format
-tag_regex="^apache-polaris-([0-9]+)\.([0-9]+)\.([0-9]+)-incubating-rc([0-9]+)$"
-if [[ ! ${tag} =~ ${tag_regex} ]]; then
+# Validate tag format and extract version components
+if ! validate_and_extract_git_tag_version "${tag}"; then
   print_error "Invalid tag format: ${tag}"
   print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
   exit 1
 fi
 
-# Extract version components from tag
-major="${BASH_REMATCH[1]}"
-minor="${BASH_REMATCH[2]}"
-patch="${BASH_REMATCH[3]}"
-rc_number="${BASH_REMATCH[4]}"
 version="${major}.${minor}.${patch}-incubating"
 
 print_info "Starting test for 05-build-and-stage-distributions.sh..."
