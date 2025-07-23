@@ -103,7 +103,7 @@ public class DatasourceOperationsTest {
     // `executeBatch` is being called
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     String sql =
-        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_parameters, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
+        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_properties, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
     List<List<Object>> queryParams = new ArrayList<>();
     for (int i = 0; i < 1000; i++) {
       ModelEvent modelEvent =
@@ -116,7 +116,7 @@ public class DatasourceOperationsTest {
               .eventType("event_type1")
               .timestampMs(1234)
               .principalName("principal_" + i)
-              .additionalParameters("")
+              .additionalProperties("")
               .build();
       queryParams.add(
           modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());

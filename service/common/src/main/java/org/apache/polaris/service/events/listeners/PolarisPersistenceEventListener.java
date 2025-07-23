@@ -88,7 +88,7 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
         new org.apache.polaris.core.entity.PolarisEvent(
             event.catalogName(),
             event.eventId(),
-            getRequestId(callCtx),
+            getRequestId(),
             event.getClass().getSimpleName(),
             getTimestamp(callCtx),
             getUsername(securityContext),
@@ -100,7 +100,7 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
             event.metadata().uuid(),
             "metadata",
             TableMetadataParser.toJson(event.metadata()));
-    polarisEvent.setAdditionalParameters(additionalParameters);
+    polarisEvent.setAdditionalProperties(additionalParameters);
 
     addToBuffer(polarisEvent, callCtx);
   }
@@ -112,7 +112,7 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
         new PolarisEvent(
             event.catalogName(),
             event.eventId(),
-            getRequestId(callCtx),
+            getRequestId(),
             event.getClass().getSimpleName(),
             getTimestamp(callCtx),
             getUsername(securityContext),
@@ -125,9 +125,7 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
     return callCtx.getPolarisCallContext().getClock().millis();
   }
 
-  private String getRequestId(CallContext callCtx) {
-    return callCtx.getPolarisCallContext().getRequestId();
-  }
+  abstract String getRequestId();
 
   private String getUsername(SecurityContext securityContext) {
     return securityContext.getUserPrincipal() == null

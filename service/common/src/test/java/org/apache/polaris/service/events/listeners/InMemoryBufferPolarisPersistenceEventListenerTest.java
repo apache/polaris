@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events.listeners;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,13 +35,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.events.EventListenerConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -67,8 +68,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     when(metaStoreManagerFactory.getOrCreateMetaStoreManager(Mockito.any()))
         .thenReturn(polarisMetaStoreManager);
 
-    EventListenerConfiguration eventListenerConfiguration =
-        Mockito.mock(EventListenerConfiguration.class);
+    InMemoryBufferPersistenceListenerConfiguration eventListenerConfiguration =
+        Mockito.mock(InMemoryBufferPersistenceListenerConfiguration.class);
     when(eventListenerConfiguration.maxBufferSize())
         .thenReturn(Optional.of(CONFIG_MAX_BUFFER_SIZE));
     when(eventListenerConfiguration.bufferTime())
@@ -159,6 +160,86 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
         .writeEvents(eq(callContext.getPolarisCallContext()), eq(events));
   }
 
+  @Test
+  public void testRequestIdFunctionalityWithContainerRequestContext() {
+    // Test when containerRequestContext has requestId property
+    ContainerRequestContext mockContainerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    String expectedRequestId = "custom-request-id-123";
+
+    when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(true);
+    when(mockContainerRequestContext.getProperty("requestId")).thenReturn(expectedRequestId);
+
+    // Use reflection to set the containerRequestContext field
+    try {
+      java.lang.reflect.Field field =
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+      field.setAccessible(true);
+      field.set(eventListener, mockContainerRequestContext);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set containerRequestContext field", e);
+    }
+
+    String actualRequestId = eventListener.getRequestId();
+    assertThat(actualRequestId)
+        .as("Expected requestId '" + expectedRequestId + "' but got '" + actualRequestId + "'")
+        .isEqualTo(expectedRequestId);
+  }
+
+  @Test
+  public void testRequestIdFunctionalityWithoutContainerRequestContext() {
+    // Test when containerRequestContext is null
+    try {
+      java.lang.reflect.Field field =
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+      field.setAccessible(true);
+      field.set(eventListener, null);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set containerRequestContext field", e);
+    }
+
+    String requestId1 = eventListener.getRequestId();
+    String requestId2 = eventListener.getRequestId();
+
+    // Both should be valid UUIDs
+    assertThat(isValidUUID(requestId1))
+        .as("Generated requestId should be a valid UUID: " + requestId1)
+        .isTrue();
+    assertThat(isValidUUID(requestId2))
+        .as("Generated requestId should be a valid UUID: " + requestId2)
+        .isTrue();
+
+    // Each call should generate a different UUID
+    assertThat(requestId1)
+        .as("Each call to getRequestId() should generate a different UUID")
+        .isNotEqualTo(requestId2);
+  }
+
+  @Test
+  public void testRequestIdFunctionalityWithContainerRequestContextButNoProperty() {
+    // Test when containerRequestContext exists but doesn't have requestId property
+    ContainerRequestContext mockContainerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(false);
+
+    try {
+      java.lang.reflect.Field field =
+          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("containerRequestContext");
+      field.setAccessible(true);
+      field.set(eventListener, mockContainerRequestContext);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set containerRequestContext field", e);
+    }
+
+    String requestId = eventListener.getRequestId();
+
+    // Should generate a UUID since property is not available
+    assertThat(isValidUUID(requestId))
+        .as("Generated requestId should be a valid UUID: " + requestId)
+        .isTrue();
+
+    // Verify that getProperty was never called since hasProperty returned false
+    verify(mockContainerRequestContext, times(0)).getProperty("requestId");
+  }
+
   private List<PolarisEvent> addEventsWithoutTriggeringFlush(String realmId) {
     List<PolarisEvent> realmEvents = new ArrayList<>();
     for (int i = 0; i < CONFIG_MAX_BUFFER_SIZE - 1; i++) {
@@ -196,8 +277,17 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
 
     Map<String, String> additionalParams = new HashMap<>();
     additionalParams.put("testKey", "testValue");
-    event.setAdditionalParameters(additionalParams);
+    event.setAdditionalProperties(additionalParams);
 
     return event;
+  }
+
+  private boolean isValidUUID(String uuid) {
+    try {
+      UUID.fromString(uuid);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -29,7 +29,7 @@ import java.util.Optional;
  *
  * <p>maxBufferSize() specifies the maximum number of cached entries.
  */
-public interface EventListenerConfiguration {
+public interface InMemoryBufferPersistenceListenerConfiguration {
   /**
    * @return the buffer time in milliseconds
    */

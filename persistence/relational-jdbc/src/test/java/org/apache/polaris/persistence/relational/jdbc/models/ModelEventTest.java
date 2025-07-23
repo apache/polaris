@@ -43,7 +43,7 @@ public class ModelEventTest {
   private static final String PRINCIPAL_NAME = "principal_name";
   private static final String RESOURCE_TYPE = "resource_type";
   private static final String RESOURCE_IDENTIFIER = "resource_identifier";
-  private static final String ADDITIONAL_PARAMETERS = "additional_parameters";
+  private static final String ADDITIONAL_PROPERTIES = "additional_properties";
 
   // Test data values
   private static final String TEST_CATALOG_ID = "test-catalog";
@@ -77,7 +77,7 @@ public class ModelEventTest {
     when(mockResultSet.getString(ACTOR)).thenReturn(TEST_USER);
     when(mockResultSet.getString(RESOURCE_TYPE)).thenReturn(TEST_RESOURCE_TYPE_STRING);
     when(mockResultSet.getString(RESOURCE_IDENTIFIER)).thenReturn(TEST_RESOURCE_IDENTIFIER);
-    when(mockResultSet.getString(ADDITIONAL_PARAMETERS)).thenReturn(EMPTY_JSON);
+    when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
 
     // Create a concrete implementation of ModelEvent for testing
     ModelEvent modelEvent =
@@ -90,7 +90,7 @@ public class ModelEventTest {
             .principalName(DUMMY)
             .resourceType(DUMMY_RESOURCE_TYPE)
             .resourceIdentifier(DUMMY)
-            .additionalParameters(EMPTY_JSON)
+            .additionalProperties(EMPTY_JSON)
             .build();
 
     // Act
@@ -105,7 +105,7 @@ public class ModelEventTest {
     assertEquals(TEST_USER, result.getPrincipalName());
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
-    assertEquals(EMPTY_JSON, result.getAdditionalParameters());
+    assertEquals(EMPTY_JSON, result.getAdditionalProperties());
   }
 
   @Test
@@ -121,7 +121,7 @@ public class ModelEventTest {
             .principalName(TEST_USER)
             .resourceType(TEST_RESOURCE_TYPE)
             .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-            .additionalParameters(TEST_JSON)
+            .additionalProperties(TEST_JSON)
             .build();
 
     // Act
@@ -136,7 +136,7 @@ public class ModelEventTest {
     assertEquals(TEST_USER, resultMap.get(PRINCIPAL_NAME));
     assertEquals(TEST_RESOURCE_TYPE_STRING, resultMap.get(RESOURCE_TYPE));
     assertEquals(TEST_RESOURCE_IDENTIFIER, resultMap.get(RESOURCE_IDENTIFIER));
-    assertEquals(TEST_JSON, resultMap.get(ADDITIONAL_PARAMETERS));
+    assertEquals(TEST_JSON, resultMap.get(ADDITIONAL_PROPERTIES));
   }
 
   @Test
@@ -152,7 +152,7 @@ public class ModelEventTest {
             .principalName(TEST_USER)
             .resourceType(TEST_RESOURCE_TYPE)
             .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-            .additionalParameters(TEST_JSON)
+            .additionalProperties(TEST_JSON)
             .build();
 
     // Act
@@ -168,8 +168,8 @@ public class ModelEventTest {
     assertEquals(TEST_RESOURCE_TYPE_STRING, resultMap.get(RESOURCE_TYPE));
     assertEquals(TEST_RESOURCE_IDENTIFIER, resultMap.get(RESOURCE_IDENTIFIER));
 
-    // For PostgreSQL, the additional parameters should be a PGobject of type "jsonb"
-    PGobject pgObject = (PGobject) resultMap.get(ADDITIONAL_PARAMETERS);
+    // For PostgreSQL, the additional properties should be a PGobject of type "jsonb"
+    PGobject pgObject = (PGobject) resultMap.get(ADDITIONAL_PROPERTIES);
     assertEquals("jsonb", pgObject.getType());
     assertEquals(TEST_JSON, pgObject.getValue());
   }
@@ -196,7 +196,7 @@ public class ModelEventTest {
             TEST_USER,
             TEST_RESOURCE_TYPE,
             TEST_RESOURCE_IDENTIFIER);
-    polarisEvent.setAdditionalParameters(TEST_JSON);
+    polarisEvent.setAdditionalProperties(TEST_JSON);
 
     // Act
     ModelEvent result = ModelEvent.fromEvent(polarisEvent);
@@ -210,7 +210,7 @@ public class ModelEventTest {
     assertEquals(TEST_USER, result.getPrincipalName());
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
-    assertEquals(TEST_JSON, result.getAdditionalParameters());
+    assertEquals(TEST_JSON, result.getAdditionalProperties());
   }
 
   @Test
@@ -235,7 +235,7 @@ public class ModelEventTest {
             .principalName(TEST_USER)
             .resourceType(TEST_RESOURCE_TYPE)
             .resourceIdentifier(TEST_RESOURCE_IDENTIFIER)
-            .additionalParameters(TEST_JSON)
+            .additionalProperties(TEST_JSON)
             .build();
 
     // Act
@@ -250,6 +250,6 @@ public class ModelEventTest {
     assertEquals(TEST_USER, result.getPrincipalName());
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
-    assertEquals(TEST_JSON, result.getAdditionalParameters());
+    assertEquals(TEST_JSON, result.getAdditionalProperties());
   }
 }

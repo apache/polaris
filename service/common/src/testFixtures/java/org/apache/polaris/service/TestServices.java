@@ -165,8 +165,7 @@ public record TestServices(
               metaStoreSession,
               polarisDiagnostics,
               configurationStore,
-              Clock.systemUTC(),
-              null);
+              Clock.systemUTC());
       PolarisEntityManager entityManager =
           realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =

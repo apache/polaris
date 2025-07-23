@@ -46,34 +46,22 @@ public class PolarisCallContext implements CallContext {
 
   private final Clock clock;
 
-  // A request ID to identify this REST request
-  private final String requestId;
-
   private final RealmContext realmContext;
 
   private final RealmConfig realmConfig;
-
-  private static final String REQUEST_ID_KEY = "requestId";
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices,
       @Nonnull PolarisConfigurationStore configurationStore,
-      @Nonnull Clock clock,
-      ContainerRequestContext containerRequestContext) {
+      @Nonnull Clock clock) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
     this.clock = clock;
     this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
-
-    String requestId = null;
-    if (containerRequestContext != null) {
-      requestId = (String) containerRequestContext.getProperty(REQUEST_ID_KEY);
-    }
-    this.requestId = requestId != null ? requestId : UUID.randomUUID().toString();
   }
 
   public PolarisCallContext(
@@ -85,8 +73,7 @@ public class PolarisCallContext implements CallContext {
         metaStore,
         diagServices,
         new PolarisConfigurationStore() {},
-        Clock.system(ZoneId.systemDefault()),
-        null);
+        Clock.system(ZoneId.systemDefault()));
   }
 
   public BasePersistence getMetaStore() {
@@ -99,10 +86,6 @@ public class PolarisCallContext implements CallContext {
 
   public Clock getClock() {
     return clock;
-  }
-
-  public String getRequestId() {
-    return requestId;
   }
 
   @Override
@@ -130,6 +113,6 @@ public class PolarisCallContext implements CallContext {
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
-        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock, null);
+        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock);
   }
 }

@@ -42,7 +42,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
           "principal_name",
           "resource_type",
           "resource_identifier",
-          "additional_parameters");
+          "additional_properties");
 
   // catalog id
   String getCatalogId();
@@ -69,7 +69,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   String getResourceIdentifier();
 
   // Additional parameters that were not earlier recorded
-  String getAdditionalParameters();
+  String getAdditionalProperties();
 
   @Override
   default PolarisEvent fromResultSet(ResultSet rs) throws SQLException {
@@ -83,7 +83,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
             .principalName(rs.getString("actor"))
             .resourceType(PolarisEvent.ResourceType.valueOf(rs.getString("resource_type")))
             .resourceIdentifier(rs.getString("resource_identifier"))
-            .additionalParameters(rs.getString("additional_parameters"))
+            .additionalProperties(rs.getString("additional_properties"))
             .build();
     return toEvent(modelEvent);
   }
@@ -100,9 +100,9 @@ public interface ModelEvent extends Converter<PolarisEvent> {
     map.put("resource_type", getResourceType().toString());
     map.put("resource_identifier", getResourceIdentifier());
     if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("additional_parameters", toJsonbPGobject(getAdditionalParameters()));
+      map.put("additional_properties", toJsonbPGobject(getAdditionalProperties()));
     } else {
-      map.put("additional_parameters", getAdditionalParameters());
+      map.put("additional_properties", getAdditionalProperties());
     }
     return map;
   }
@@ -119,7 +119,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
         .principalName(event.getPrincipalName())
         .resourceType(event.getResourceType())
         .resourceIdentifier(event.getResourceIdentifier())
-        .additionalParameters(event.getAdditionalParameters())
+        .additionalProperties(event.getAdditionalProperties())
         .build();
   }
 
@@ -136,7 +136,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
             model.getPrincipalName(),
             model.getResourceType(),
             model.getResourceIdentifier());
-    polarisEvent.setAdditionalParameters(model.getAdditionalParameters());
+    polarisEvent.setAdditionalProperties(model.getAdditionalProperties());
     return polarisEvent;
   }
 }

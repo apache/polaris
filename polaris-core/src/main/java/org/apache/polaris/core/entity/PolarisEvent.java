@@ -55,7 +55,7 @@ public class PolarisEvent {
   private String resourceIdentifier;
 
   // Additional parameters that were not earlier recorded
-  private String additionalParameters;
+  private String additionalProperties;
 
   public String getCatalogId() {
     return catalogId;
@@ -89,8 +89,8 @@ public class PolarisEvent {
     return resourceIdentifier;
   }
 
-  public String getAdditionalParameters() {
-    return additionalParameters != null ? additionalParameters : EMPTY_MAP_STRING;
+  public String getAdditionalProperties() {
+    return additionalProperties != null ? additionalProperties : EMPTY_MAP_STRING;
   }
 
   public PolarisEvent(
@@ -113,17 +113,17 @@ public class PolarisEvent {
   }
 
   @JsonIgnore
-  public void setAdditionalParameters(Map<String, String> properties) {
+  public void setAdditionalProperties(Map<String, String> properties) {
     try {
-      this.additionalParameters = properties == null ? null : MAPPER.writeValueAsString(properties);
+      this.additionalProperties = properties == null ? null : MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
       throw new IllegalStateException(
           String.format("Failed to serialize json. properties %s", properties), ex);
     }
   }
 
-  public void setAdditionalParameters(String additionalParameters) {
-    this.additionalParameters = additionalParameters;
+  public void setAdditionalProperties(String additionalProperties) {
+    this.additionalProperties = additionalProperties;
   }
 
   public enum ResourceType {

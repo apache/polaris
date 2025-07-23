@@ -28,17 +28,20 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.core.Context;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.events.EventListenerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +51,7 @@ import org.slf4j.LoggerFactory;
 public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersistenceEventListener {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(InMemoryBufferPolarisPersistenceEventListener.class);
+  private static final String REQUEST_ID_KEY = "requestId";
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Clock clock;
 
@@ -58,13 +62,16 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
+  @Context
+  ContainerRequestContext containerRequestContext;
+
   private record EventAndContext(PolarisEvent polarisEvent, PolarisCallContext callContext) {}
 
   @Inject
   public InMemoryBufferPolarisPersistenceEventListener(
       MetaStoreManagerFactory metaStoreManagerFactory,
       Clock clock,
-      EventListenerConfiguration eventListenerConfiguration) {
+      InMemoryBufferPersistenceListenerConfiguration eventListenerConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.clock = clock;
     this.timeToFlush =
@@ -100,6 +107,14 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   void shutdown() {
     futures.keySet().forEach(future -> future.cancel(false));
     executor.shutdownNow();
+  }
+
+  @Override
+  String getRequestId() {
+    if (containerRequestContext != null && containerRequestContext.hasProperty(REQUEST_ID_KEY)) {
+      return (String) containerRequestContext.getProperty(REQUEST_ID_KEY);
+    }
+    return UUID.randomUUID().toString();
   }
 
   @Override
