@@ -27,17 +27,17 @@ if [[ -t 2 ]] &&
    [[ "${NO_COLOR:-}" != "1" ]] &&
    [[ "${TERM:-}" != "dumb" ]] &&
    command -v tput >/dev/null; then
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  YELLOW='\033[1;33m'
-  BLUE='\033[0;34m'
-  RESET='\033[0m' # No Color
+  RED=${RED:-$(tput setaf 1)}
+  GREEN=${GREEN:-$(tput setaf 2)}
+  YELLOW=${YELLOW:-$(tput bold; tput setaf 3)}
+  BLUE=${BLUE:-$(tput setaf 4)}
+  RESET=${RESET:-$(tput sgr0)}
 else
-  RED=''
-  GREEN=''
-  YELLOW=''
-  BLUE=''
-  RESET=''
+  RED=${RED:-''}
+  GREEN=${GREEN:-''}
+  YELLOW=${YELLOW:-''}
+  BLUE=${BLUE:-''}
+  RESET=${RESET:-''}
 fi
 
 function print_error() {
