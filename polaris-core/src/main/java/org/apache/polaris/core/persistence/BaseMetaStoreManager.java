@@ -52,8 +52,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             "catalogId={}, entityId={}",
             reloadedEntity.getCatalogId(),
             reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(
-        callCtx.getDiagServices(), storageConfigInfoStr);
+    return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
   }
 
   /**
