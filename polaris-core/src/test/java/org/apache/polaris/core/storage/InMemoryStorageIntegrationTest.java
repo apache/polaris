@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Clock;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -212,7 +211,7 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+    public AccessConfig getSubscopedCreds(
         @Nonnull CallContext callContext,
         @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,

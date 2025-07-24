@@ -43,11 +43,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
@@ -136,9 +135,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private Storage setupStorageClient(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
-    Map<StorageAccessProperty, String> credsMap =
-        subscopedCredsForOperations(allowedReadLoc, allowedWriteLoc, allowListAction);
-    return createStorageClient(credsMap);
+    return createStorageClient(
+        subscopedCredsForOperations(allowedReadLoc, allowedWriteLoc, allowListAction));
   }
 
   BlobInfo createStorageBlob(String bucket, String prefix, String fileName) {
@@ -146,19 +144,20 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return BlobInfo.newBuilder(blobId).build();
   }
 
-  private Storage createStorageClient(Map<StorageAccessProperty, String> credsMap) {
+  private Storage createStorageClient(AccessConfig accessConfig) {
     AccessToken accessToken =
         new AccessToken(
-            credsMap.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
+            accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
             new Date(
-                Long.parseLong(credsMap.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
+                Long.parseLong(
+                    accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
     return StorageOptions.newBuilder()
         .setCredentials(GoogleCredentials.create(accessToken))
         .build()
         .getService();
   }
 
-  private Map<StorageAccessProperty, String> subscopedCredsForOperations(
+  private AccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
     List<String> allowedLoc = new ArrayList<>();
@@ -169,14 +168,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new GcpCredentialsStorageIntegration(
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
-    EnumMap<StorageAccessProperty, String> credsMap =
-        gcpCredsIntegration.getSubscopedCreds(
-            newCallContext(),
-            gcpConfig,
-            allowListAction,
-            new HashSet<>(allowedReadLoc),
-            new HashSet<>(allowedWriteLoc));
-    return credsMap;
+    return gcpCredsIntegration.getSubscopedCreds(
+        newCallContext(),
+        gcpConfig,
+        allowListAction,
+        new HashSet<>(allowedReadLoc),
+        new HashSet<>(allowedWriteLoc));
   }
 
   @Test
