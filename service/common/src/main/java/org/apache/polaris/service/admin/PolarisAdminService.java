@@ -1672,42 +1672,6 @@ public class PolarisAdminService {
         .isSuccess();
   }
 
-  /**
-   * Checks if a namespace is fully resolved.
-   *
-   * @param resolvedPathWrapper the resolved path wrapper from resolution
-   * @param catalogName the name of the catalog
-   * @param namespace the namespace we're trying to resolve
-   * @return true if the namespace is considered fully resolved for the given catalog type
-   */
-  private boolean isNamespaceFullyResolved(
-      @Nullable PolarisResolvedPathWrapper resolvedPathWrapper,
-      @Nonnull String catalogName,
-      @Nonnull Namespace namespace) {
-    if (resolvedPathWrapper == null) {
-      return false;
-    }
-
-    List<PolarisEntity> fullPath = resolvedPathWrapper.getRawFullPath();
-    int expectedPathLength = 1 + namespace.levels().length;
-    if (fullPath.size() < expectedPathLength) {
-      return false;
-    }
-
-    if (!fullPath.get(0).getName().equals(catalogName)) {
-      return false;
-    }
-
-    for (int i = 0; i < namespace.levels().length; i++) {
-      if (!fullPath.get(i + 1).getName().equals(namespace.levels()[i])
-          || fullPath.get(i + 1).getType() != PolarisEntityType.NAMESPACE) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   /** Adds a namespace-level grant on {@code namespace} to {@code catalogRoleName}. */
   public boolean grantPrivilegeOnNamespaceToRole(
       String catalogName, String catalogRoleName, Namespace namespace, PolarisPrivilege privilege) {
@@ -1720,7 +1684,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
-    if (!isNamespaceFullyResolved(resolvedPathWrapper, catalogName, namespace)) {
+    if (resolvedPathWrapper == null
+        || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
       throw new NotFoundException("Namespace %s not found", namespace);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
@@ -1748,7 +1713,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
-    if (!isNamespaceFullyResolved(resolvedPathWrapper, catalogName, namespace)) {
+    if (resolvedPathWrapper == null
+        || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
       throw new NotFoundException("Namespace %s not found", namespace);
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();

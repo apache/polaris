@@ -26,7 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
-import java.lang.reflect.Method;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -67,7 +66,6 @@ public class PolarisAdminServiceTest {
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
 
   private PolarisAdminService adminService;
-  private Method isNamespaceFullyResolvedMethod;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -85,139 +83,6 @@ public class PolarisAdminServiceTest {
             securityContext,
             authorizer,
             reservedProperties);
-
-    isNamespaceFullyResolvedMethod =
-        PolarisAdminService.class.getDeclaredMethod(
-            "isNamespaceFullyResolved",
-            PolarisResolvedPathWrapper.class,
-            String.class,
-            Namespace.class);
-    isNamespaceFullyResolvedMethod.setAccessible(true);
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_NullWrapper() throws Exception {
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, null, "test-catalog", Namespace.of("ns1"));
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_InsufficientPathLength() throws Exception {
-    String catalogName = "test-catalog";
-    Namespace namespace = Namespace.of("ns1", "ns2");
-
-    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    List<PolarisEntity> shortPath = List.of(catalogEntity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(shortPath);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_WrongCatalogName() throws Exception {
-    String catalogName = "test-catalog";
-    String wrongCatalogName = "wrong-catalog";
-    Namespace namespace = Namespace.of("ns1");
-
-    PolarisEntity wrongCatalogEntity = createEntity(wrongCatalogName, PolarisEntityType.CATALOG);
-    PolarisEntity namespaceEntity = createEntity("ns1", PolarisEntityType.NAMESPACE);
-    List<PolarisEntity> path = List.of(wrongCatalogEntity, namespaceEntity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(path);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_WrongNamespaceNames() throws Exception {
-    String catalogName = "test-catalog";
-    Namespace namespace = Namespace.of("ns1", "ns2");
-
-    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisEntity namespace1Entity = createEntity("ns1", PolarisEntityType.NAMESPACE);
-    PolarisEntity namespace2WrongEntity = createEntity("wrong-ns2", PolarisEntityType.NAMESPACE);
-    List<PolarisEntity> path = List.of(catalogEntity, namespace1Entity, namespace2WrongEntity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(path);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_CorrectPath() throws Exception {
-    String catalogName = "test-catalog";
-    Namespace namespace = Namespace.of("ns1", "ns2");
-
-    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisEntity namespace1Entity = createEntity("ns1", PolarisEntityType.NAMESPACE);
-    PolarisEntity namespace2Entity = createEntity("ns2", PolarisEntityType.NAMESPACE);
-    List<PolarisEntity> path = List.of(catalogEntity, namespace1Entity, namespace2Entity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(path);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isTrue();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_WrongEntityType() throws Exception {
-    String catalogName = "test-catalog";
-    Namespace namespace = Namespace.of("ns1");
-
-    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisEntity wrongTypeEntity = createEntity("ns1", PolarisEntityType.TABLE_LIKE);
-    List<PolarisEntity> path = List.of(catalogEntity, wrongTypeEntity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(path);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void testIsNamespaceFullyResolved_EmptyNamespace() throws Exception {
-    String catalogName = "test-catalog";
-    Namespace namespace = Namespace.empty();
-
-    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    List<PolarisEntity> path = List.of(catalogEntity);
-
-    when(resolvedPathWrapper.getRawFullPath()).thenReturn(path);
-
-    boolean result =
-        (boolean)
-            isNamespaceFullyResolvedMethod.invoke(
-                adminService, resolvedPathWrapper, catalogName, namespace);
-
-    assertThat(result).isTrue();
   }
 
   @Test
@@ -287,6 +152,8 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
     when(resolvedPathWrapper.getRawFullPath())
         .thenReturn(List.of(createEntity("wrong-catalog", PolarisEntityType.CATALOG)));
+    when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
+        .thenReturn(false);
 
     assertThatThrownBy(
             () ->
@@ -363,6 +230,8 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
     when(resolvedPathWrapper.getRawFullPath())
         .thenReturn(List.of(createEntity("wrong-catalog", PolarisEntityType.CATALOG)));
+    when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
+        .thenReturn(false);
 
     assertThatThrownBy(
             () ->
@@ -402,6 +271,8 @@ public class PolarisAdminServiceTest {
     when(resolvedPathWrapper.getRawFullPath()).thenReturn(fullPath);
     when(resolvedPathWrapper.getRawParentPath()).thenReturn(List.of(catalogEntity));
     when(resolvedPathWrapper.getRawLeafEntity()).thenReturn(namespaceEntity);
+    when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
+        .thenReturn(true);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity = createEntity(catalogRoleName, PolarisEntityType.CATALOG_ROLE);
