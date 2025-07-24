@@ -209,7 +209,10 @@ public class ManagementServiceTest {
           @Override
           public Principal getUserPrincipal() {
             return new AuthenticatedPolarisPrincipal(
-                new PrincipalEntity.Builder().setName("root").build(), Set.of("service_admin"));
+                new PrincipalEntity.Builder()
+                    .setName(PolarisEntityConstants.getRootPrincipalName())
+                    .build(),
+                Set.of(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
           }
 
           @Override

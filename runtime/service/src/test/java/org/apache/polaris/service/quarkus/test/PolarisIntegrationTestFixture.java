@@ -38,14 +38,11 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -122,14 +119,7 @@ public class PolarisIntegrationTestFixture {
     try {
       PolarisMetaStoreManager metaStoreManager =
           helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-      EntityResult principal =
-          metaStoreManager.readEntityByName(
-              polarisContext,
-              null,
-              PolarisEntityType.PRINCIPAL,
-              PolarisEntitySubType.NULL_SUBTYPE,
-              PolarisEntityConstants.getRootPrincipalName());
-
+      PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
       Map<String, String> propertiesMap = readInternalProperties(principal);
       return metaStoreManager
           .loadPrincipalSecrets(polarisContext, propertiesMap.get("client_id"))
@@ -233,10 +223,10 @@ public class PolarisIntegrationTestFixture {
     }
   }
 
-  private Map<String, String> readInternalProperties(EntityResult principal) {
+  private Map<String, String> readInternalProperties(PrincipalEntity principal) {
     try {
       return helper.objectMapper.readValue(
-          principal.getEntity().getInternalProperties(), new TypeReference<>() {});
+          principal.getInternalProperties(), new TypeReference<>() {});
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
