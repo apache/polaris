@@ -24,6 +24,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
@@ -45,23 +46,19 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisExceptionMapper.class);
 
   private Response.Status getStatus(PolarisException exception) {
-    if (exception instanceof AlreadyExistsException) {
-      return Response.Status.CONFLICT;
-    } else if (exception instanceof InvalidPolicyException) {
-      return Response.Status.BAD_REQUEST;
-    } else if (exception instanceof PolicyAttachException) {
-      return Response.Status.BAD_REQUEST;
-    } else if (exception instanceof NoSuchPolicyException) {
-      return Response.Status.NOT_FOUND;
-    } else if (exception instanceof PolicyVersionMismatchException) {
-      return Response.Status.CONFLICT;
-    } else if (exception instanceof PolicyMappingAlreadyExistsException) {
-      return Response.Status.CONFLICT;
-    } else if (exception instanceof PolicyInUseException) {
-      return Response.Status.BAD_REQUEST;
-    } else {
-      return Response.Status.INTERNAL_SERVER_ERROR;
-    }
+    return switch (exception) {
+      case AlreadyExistsException alreadyExistsException -> Response.Status.CONFLICT;
+      case CommitConflictException commitConflictException -> Response.Status.CONFLICT;
+      case InvalidPolicyException invalidPolicyException -> Response.Status.BAD_REQUEST;
+      case PolicyAttachException policyAttachException -> Response.Status.BAD_REQUEST;
+      case NoSuchPolicyException noSuchPolicyException -> Response.Status.NOT_FOUND;
+      case PolicyVersionMismatchException policyVersionMismatchException ->
+          Response.Status.CONFLICT;
+      case PolicyMappingAlreadyExistsException policyMappingAlreadyExistsException ->
+          Response.Status.CONFLICT;
+      case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST;
+      default -> Response.Status.INTERNAL_SERVER_ERROR;
+    };
   }
 
   @Override
