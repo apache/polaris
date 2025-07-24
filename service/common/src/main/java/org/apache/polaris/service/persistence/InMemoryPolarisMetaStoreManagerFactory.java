@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -84,13 +83,12 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  public synchronized Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
-      RealmContext realmContext) {
+  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
       bootstrapRealmsFromEnvironment(List.of(realmId));
     }
-    return super.getOrCreateSessionSupplier(realmContext);
+    return super.getOrCreateSession(realmContext);
   }
 
   private void bootstrapRealmsFromEnvironment(List<String> realms) {

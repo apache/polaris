@@ -69,7 +69,7 @@ public class BatchFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -182,7 +182,7 @@ public class BatchFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
@@ -227,7 +227,7 @@ public class BatchFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();

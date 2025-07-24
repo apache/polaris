@@ -79,10 +79,7 @@ public class ManagementServiceTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             fakeServices.realmContext(),
-            fakeServices
-                .metaStoreManagerFactory()
-                .getOrCreateSessionSupplier(fakeServices.realmContext())
-                .get(),
+            fakeServices.metaStoreManagerFactory().getOrCreateSession(fakeServices.realmContext()),
             fakeServices.polarisDiagnostics(),
             fakeServices.configurationStore(),
             Mockito.mock(Clock.class));
@@ -197,7 +194,7 @@ public class ManagementServiceTest {
     RealmContext realmContext = services.realmContext();
     return new PolarisCallContext(
         realmContext,
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+        metaStoreManagerFactory.getOrCreateSession(realmContext),
         services.polarisDiagnostics());
   }
 
