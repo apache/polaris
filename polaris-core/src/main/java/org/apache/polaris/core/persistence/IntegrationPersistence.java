@@ -66,30 +66,30 @@ public interface IntegrationPersistence {
    * Rotate the secrets of a principal entity, i.e. make the specified main secrets the secondary
    * and generate a new main secret
    *
-   * @param callCtx       call context
-   * @param clientId      principal client id
-   * @param principalId   principal id
-   * @param reset         true if the principal secrets should be disabled and replaced with a one-time
-   *                      password
+   * @param callCtx call context
+   * @param clientId principal client id
+   * @param principalId principal id
+   * @param reset true if the principal secrets should be disabled and replaced with a one-time
+   *     password
    * @param oldSecretHash the principal secret's old main secret hash
    */
   @Nullable
   PolarisPrincipalSecrets rotatePrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull String clientId,
-          long principalId,
-          boolean reset,
-          @Nonnull String oldSecretHash);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash);
 
   @Nullable
   PolarisPrincipalSecrets resetPrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull String clientId,
-          long principalId,
-          boolean reset,
-          @Nonnull String oldSecretHash,
-          String customClientId,
-          String customClientSecret);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret);
 
   /**
    * When dropping a principal, we also need to drop the secrets of that principal
