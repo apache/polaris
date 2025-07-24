@@ -61,7 +61,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @param properties a map of key/value pairs
    * @return a String, the JSON representation of the map
    */
-  public String serializeProperties(PolarisCallContext callCtx, Map<String, String> properties) {
+  public String serializeProperties(Map<String, String> properties) {
     try {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.writeValueAsString(properties);
@@ -76,7 +76,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @param properties a JSON string representing the set of properties
    * @return a Map of string
    */
-  public Map<String, String> deserializeProperties(PolarisCallContext callCtx, String properties) {
+  public Map<String, String> deserializeProperties(String properties) {
     try {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.readValue(properties, new TypeReference<>() {});
