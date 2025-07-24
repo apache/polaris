@@ -37,7 +37,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -120,12 +119,10 @@ public abstract class PolarisStorageConfigurationInfo {
   /**
    * Deserialize a json string into a PolarisStorageConfiguration object
    *
-   * @param diagnostics the diagnostics instance
    * @param jsonStr a json string
    * @return the PolarisStorageConfiguration object
    */
-  public static PolarisStorageConfigurationInfo deserialize(
-      @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
+  public static PolarisStorageConfigurationInfo deserialize(final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     } catch (JsonProcessingException e) {
@@ -139,7 +136,6 @@ public abstract class PolarisStorageConfigurationInfo {
         .map(
             storageInfo ->
                 deserialize(
-                    callContext.getDiagServices(),
                     storageInfo
                         .getInternalPropertiesAsMap()
                         .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))

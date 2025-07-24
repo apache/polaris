@@ -978,8 +978,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               callCtx,
               catalog.getCatalogId(),
               catalog.getId(),
-              PolarisStorageConfigurationInfo.deserialize(
-                  callCtx.getDiagServices(), storageConfigInfoStr));
+              PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
     } else {
       integration = null;
     }

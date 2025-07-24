@@ -195,8 +195,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configStr != null) {
-      return PolarisStorageConfigurationInfo.deserialize(
-          new PolarisDefaultDiagServiceImpl(), configStr);
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
     }
     return null;
   }
