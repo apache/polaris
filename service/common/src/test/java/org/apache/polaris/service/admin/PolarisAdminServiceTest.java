@@ -137,7 +137,7 @@ public class PolarisAdminServiceTest {
       throws Exception {
     String catalogName = "test-catalog";
     String catalogRoleName = "test-role";
-    Namespace namespace = Namespace.of("incomplete-ns");
+    Namespace namespace = Namespace.of("complete-ns", "incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
     when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
@@ -151,7 +151,10 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
     when(resolvedPathWrapper.getRawFullPath())
-        .thenReturn(List.of(createEntity("wrong-catalog", PolarisEntityType.CATALOG)));
+        .thenReturn(
+            List.of(
+                createEntity("test-catalog", PolarisEntityType.CATALOG),
+                createEntity("complete-ns", PolarisEntityType.NAMESPACE)));
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 

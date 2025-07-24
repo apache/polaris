@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
@@ -103,9 +104,14 @@ public class PolarisResolvedPathWrapper {
       return false;
     }
 
-    for (int i = 0; i < namespace.levels().length; i++) {
-      if (!fullPath.get(i + 1).getName().equals(namespace.levels()[i])
-          || fullPath.get(i + 1).getType() != PolarisEntityType.NAMESPACE) {
+    String[] namespaceLevels = namespace.levels();
+    int levelsLength = namespaceLevels.length;
+    Iterator<PolarisEntity> fullPathIterator = fullPath.iterator();
+    fullPathIterator.next();
+    for (int i = 0; i < levelsLength; i++) {
+      PolarisEntity entity = fullPathIterator.next();
+      if (!entity.getName().equals(namespaceLevels[i])
+          || entity.getType() != PolarisEntityType.NAMESPACE) {
         return false;
       }
     }

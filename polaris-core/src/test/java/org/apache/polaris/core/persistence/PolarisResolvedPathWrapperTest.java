@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,9 +33,7 @@ public class PolarisResolvedPathWrapperTest {
   void testIsFullyResolvedNamespace_NullResolvedPath() {
     PolarisResolvedPathWrapper wrapper = new PolarisResolvedPathWrapper(null);
 
-    boolean result = wrapper.isFullyResolvedNamespace("test-catalog", Namespace.of("ns1"));
-
-    assertThat(result).isFalse();
+    assertFalse(wrapper.isFullyResolvedNamespace("test-catalog", Namespace.of("ns1")));
   }
 
   @Test
@@ -105,12 +102,16 @@ public class PolarisResolvedPathWrapperTest {
   @Test
   void testIsFullyResolvedNamespace_WrongEntityType() {
     String catalogName = "test-catalog";
-    Namespace namespace = Namespace.of("ns1");
+    Namespace namespace = Namespace.of("ns1", "ns2");
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisEntity wrongTypeEntity = createEntity("ns1", PolarisEntityType.TABLE_LIKE);
+    PolarisEntity correctEntityType = createEntity("ns1", PolarisEntityType.NAMESPACE);
+    PolarisEntity wrongEntityType = createEntity("ns2", PolarisEntityType.TABLE_LIKE);
     List<ResolvedPolarisEntity> path =
-        List.of(createResolvedEntity(catalogEntity), createResolvedEntity(wrongTypeEntity));
+        List.of(
+            createResolvedEntity(catalogEntity),
+            createResolvedEntity(correctEntityType),
+            createResolvedEntity(wrongEntityType));
     PolarisResolvedPathWrapper wrapper = new PolarisResolvedPathWrapper(path);
 
     assertFalse(wrapper.isFullyResolvedNamespace(catalogName, namespace));
