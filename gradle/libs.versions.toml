@@ -98,7 +98,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
-jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }
+jandex = { id = "org.kordamp.gradle.jandex", version = "2.2.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
