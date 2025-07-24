@@ -77,9 +77,6 @@ echo
 print_info "Building Polaris..."
 exec_process ./gradlew clean build
 
-# Ensure all integration and regression tests have been run
-print_info "Verifying that all tests have passed for current commit..."
-
 current_commit=$(git rev-parse HEAD)
 print_info "Current commit: ${current_commit}"
 
@@ -92,5 +89,3 @@ fi
 
 echo
 print_success "🎉 Build and test verification completed successfully!"
-echo
-print_info "All integration and regression tests have passed. The release is ready for distribution."

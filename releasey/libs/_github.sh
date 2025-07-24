@@ -85,29 +85,26 @@ function check_github_checks_passed() {
   # Returns 0 if all checks are "success" or "skipped", 1 otherwise
   local commit_sha="$1"
 
-  if ! check_github_token; then
-    print_error "GITHUB_TOKEN environment variable is not set"
-    return 1
-  fi
-
   print_info "Checking that all Github checks have passed for commit ${commit_sha}..."
 
-  num_github_invalid_checks=$(
-    curl -s \
-      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-      -H "Accept: application/vnd.github+json" \
-      -H "X-GitHub-Api-Version: 2022-11-28" \
-      "https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits/${commit_sha}/check-runs" |
-      jq -r '[.check_runs[].conclusion | select(. != "success" and . != "skipped")] | length'
-  )
+  local num_invalid_checks
+  local num_invalid_checks_retrieval_command="curl -s -H \"Authorization: Bearer ${GITHUB_TOKEN}\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits/${commit_sha}/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
+  if [ ${DRY_RUN} -eq 1 ]; then
+    print_info "DRY_RUN is enabled, skipping GitHub check verification"
+    print_command "${num_invalid_checks_retrieval_command}"
+    return 0
+    num_invalid_checks=0
+  else
+    num_invalid_checks=$(num_invalid_checks_retrieval_command)
+  fi
 
   if [[ $? -ne 0 ]]; then
     print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
     return 1
   fi
 
-  if [[ ${num_github_invalid_checks} -ne 0 ]]; then
-    print_error "Found ${num_github_invalid_checks} failed or in-progress GitHub checks for commit ${commit_sha}"
+  if [[ ${num_invalid_checks} -ne 0 ]]; then
+    print_error "Found ${num_invalid_checks} failed or in-progress GitHub checks for commit ${commit_sha}"
     return 1
   fi
 

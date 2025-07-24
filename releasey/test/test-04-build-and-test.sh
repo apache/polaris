@@ -75,7 +75,8 @@ temp_file=$(mktemp)
 trap 'rm -f "$temp_file"' EXIT
 
 print_info "Running script..."
-DRY_RUN=1 \
+# Set a dummy GitHub token for testing to avoid API calls
+DRY_RUN=1 GITHUB_TOKEN="dummy_token" \
   "${releases_dir}/04-build-and-test.sh" \
   3>"$temp_file"
 
@@ -83,14 +84,8 @@ print_info "Verifying output content..."
 # Read the actual content
 actual_content=$(cat "$temp_file")
 
-# Define expected content
 expected_content="./gradlew clean build
-rm -rf ./regtests/output
-mkdir -p ./regtests/output
-chmod -R 777 ./regtests/output
-./gradlew regeneratePythonClient
-./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true
-env AWS_TEST_ENABLED=false GCS_TEST_ENABLED=false AZURE_TEST_ENABLED=false AWS_CROSS_REGION_TEST_ENABLED=false docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest"
+curl -s -H \"Authorization: Bearer dummy_token\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/apache/polaris/commits/$(git rev-parse HEAD)/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
 
 # Compare content
 if [[ "$actual_content" == "$expected_content" ]]; then
