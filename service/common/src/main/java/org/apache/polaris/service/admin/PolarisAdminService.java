@@ -1031,7 +1031,7 @@ public class PolarisAdminService {
   }
 
   private @Nonnull PrincipalWithCredentials rotateOrResetCredentialsHelper(
-          String principalName, boolean shouldReset, String customClientId, String customClientSecret) {
+      String principalName, boolean shouldReset, String customClientId, String customClientSecret) {
     PrincipalEntity currentPrincipalEntity =
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
@@ -1055,7 +1055,9 @@ public class PolarisAdminService {
                 currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
                 shouldReset,
-                currentSecrets.getMainSecretHash(), customClientId, customClientSecret)
+                currentSecrets.getMainSecretHash(),
+                customClientId,
+                customClientSecret)
             .getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
@@ -1083,7 +1085,8 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(principalName, false, null, null);
   }
 
-  public @Nonnull PrincipalWithCredentials resetCredentials(String principalName, ResetPrincipalRequest resetPrincipalRequest) {
+  public @Nonnull PrincipalWithCredentials resetCredentials(
+      String principalName, ResetPrincipalRequest resetPrincipalRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RESET_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
     var customClientId = resetPrincipalRequest.getClientId();

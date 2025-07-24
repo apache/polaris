@@ -434,7 +434,9 @@ public abstract class PolarisAuthzTestBase {
         credentials.getClientId(),
         lookupEntity.getEntity().getId(),
         false,
-        credentials.getClientSecret(), null, null ); // This should actually be the secret's hash
+        credentials.getClientSecret(),
+        null,
+        null); // This should actually be the secret's hash
 
     return new PrincipalEntity(
         PolarisEntity.of(

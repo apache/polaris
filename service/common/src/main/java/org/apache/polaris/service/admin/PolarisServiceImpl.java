@@ -259,12 +259,15 @@ public class PolarisServiceImpl
         .build();
   }
 
-      @Override
-      public Response resetCredentials(
-              String principalName, ResetPrincipalRequest resetPrincipalRequest, RealmContext realmContext, SecurityContext securityContext) {
-        PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-        return Response.ok(adminService.resetCredentials(principalName, resetPrincipalRequest)).build();
-      }
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    return Response.ok(adminService.resetCredentials(principalName, resetPrincipalRequest)).build();
+  }
 
   /** From PolarisPrincipalsApiService */
   @Override
