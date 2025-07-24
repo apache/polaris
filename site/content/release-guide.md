@@ -210,6 +210,15 @@ Next, you have to close the staging repository:
 4. At the top, select "Close" and follow the instructions
 5. In the comment field, use "Apache Polaris x.y.z RCi"
 
+### Build and staging Docker images
+
+You can now publish Docker images on DockerHub:
+
+```
+./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
+./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
+```
+
 ### Start the vote thread
 
 The last step for a release candidate is to create a VOTE thread on the dev mailing list.
@@ -239,8 +248,10 @@ The release tarball, signature, and checksums are here:
 
 Helm charts are available on:
 * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
-NB: the docker images (polaris-server and polaris-admin) will be
-published on DockerHub once release vote passes.
+
+Docker images:
+* https://hub.docker.com/r/apache/polaris/tags (x.y.z-rci)
+* https://hub.docker.com/r/apache/polaris-admin-tool/tags (x.y.z-rci)
 
 You can find the KEYS file here:
 * https://downloads.apache.org/incubator/polaris/KEYS
