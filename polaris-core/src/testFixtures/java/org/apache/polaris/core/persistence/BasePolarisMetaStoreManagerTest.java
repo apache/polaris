@@ -301,9 +301,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
             entry ->
                 Assertions.assertThat(entry)
                     .extracting(
-                        e ->
-                            PolarisObjectMapperUtil.deserializeProperties(
-                                callCtx, e.getProperties()))
+                        e -> PolarisObjectMapperUtil.deserializeProperties(e.getProperties()))
                     .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
                     .containsEntry("lastAttemptExecutorId", executorId)
                     .containsEntry("attemptCount", "1"));

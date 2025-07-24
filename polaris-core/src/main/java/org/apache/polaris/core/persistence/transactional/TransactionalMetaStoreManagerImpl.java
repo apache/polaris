@@ -897,7 +897,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     Map<String, String> internalProps =
         PolarisObjectMapperUtil.deserializeProperties(
-            callCtx,
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
     boolean doReset =
@@ -915,14 +914,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       internalProps.put(
           PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     }
@@ -1430,7 +1429,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, refreshEntityToDrop));
+      properties.put("data", PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
       PolarisBaseEntity.Builder taskEntityBuilder =
           new PolarisBaseEntity.Builder()
               .id(ms.generateNewIdInCurrentTxn(callCtx))
@@ -1439,10 +1438,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               .typeCode(PolarisEntityType.TASK.getCode())
               .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
               .createTimestamp(callCtx.getClock().millis())
-              .properties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+              .properties(PolarisObjectMapperUtil.serializeProperties(properties));
       if (cleanupProperties != null) {
         taskEntityBuilder.internalProperties(
-            PolarisObjectMapperUtil.serializeProperties(callCtx, cleanupProperties));
+            PolarisObjectMapperUtil.serializeProperties(cleanupProperties));
       }
       PolarisBaseEntity taskEntity = taskEntityBuilder.build();
       createEntityIfNotExists(callCtx, ms, null, taskEntity);
@@ -1976,7 +1975,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                 task -> {
                   PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
                   Map<String, String> properties =
-                      PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
+                      PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
                   properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
                   properties.put(
                       PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
@@ -1987,8 +1986,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                           Integer.parseInt(
                                   properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                               + 1));
-                  updatedTask.properties(
-                      PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+                  updatedTask.properties(PolarisObjectMapperUtil.serializeProperties(properties));
                   EntityResult result =
                       updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
                   if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
