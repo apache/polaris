@@ -31,6 +31,7 @@ public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
   @Inject QuarkusMetricsConfiguration metricsConfiguration;
 
   @Override
+  @Nullable
   public String resolve(@Nonnull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
     if (metricsConfiguration.realmIdTag().enableInApiMetrics()
@@ -38,7 +39,6 @@ public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
         && expression.equals("realmIdentifier")) {
       return realmContext.getRealmIdentifier();
     }
-    // FIXME cannot return null here, see https://github.com/quarkusio/quarkus/issues/47891
-    return "";
+    return null;
   }
 }
