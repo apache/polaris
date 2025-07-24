@@ -30,7 +30,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
@@ -114,8 +113,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public static ConnectionConfigInfoDpo deserialize(
-      @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
+  public static ConnectionConfigInfoDpo deserialize(final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
     } catch (JsonProcessingException ex) {

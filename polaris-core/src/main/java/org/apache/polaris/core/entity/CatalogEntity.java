@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -216,7 +215,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
     if (configStr != null) {
-      return ConnectionConfigInfoDpo.deserialize(new PolarisDefaultDiagServiceImpl(), configStr);
+      return ConnectionConfigInfoDpo.deserialize(configStr);
     }
     return null;
   }
