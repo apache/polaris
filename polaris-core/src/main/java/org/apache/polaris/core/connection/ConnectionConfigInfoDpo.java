@@ -26,7 +26,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -115,15 +114,13 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public static @Nullable ConnectionConfigInfoDpo deserialize(
+  public static ConnectionConfigInfoDpo deserialize(
       @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
-    } catch (JsonProcessingException exception) {
-      diagnostics.fail(
-          "fail_to_deserialize_connection_configuration", exception, "jsonStr={}", jsonStr);
+    } catch (JsonProcessingException ex) {
+      throw new RuntimeException("deserialize failed", ex);
     }
-    return null;
   }
 
   /** Validates the remote URI. */

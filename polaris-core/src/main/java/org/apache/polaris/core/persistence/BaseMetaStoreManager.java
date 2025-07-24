@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
@@ -64,16 +63,12 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @return a String, the JSON representation of the map
    */
   public String serializeProperties(PolarisCallContext callCtx, Map<String, String> properties) {
-
-    String jsonString = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
-      jsonString = MAPPER.writeValueAsString(properties);
+      return MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
+      throw new RuntimeException("serializeProperties failed", ex);
     }
-
-    return jsonString;
   }
 
   /**
@@ -83,18 +78,12 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @return a Map of string
    */
   public Map<String, String> deserializeProperties(PolarisCallContext callCtx, String properties) {
-
-    Map<String, String> retProperties = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
-      retProperties = MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonMappingException ex) {
-      callCtx.getDiagServices().fail("got_json_mapping_exception", "ex={}", ex);
+      return MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
+      throw new RuntimeException("deserializeProperties failed", ex);
     }
-
-    return retProperties;
   }
 
   /**
