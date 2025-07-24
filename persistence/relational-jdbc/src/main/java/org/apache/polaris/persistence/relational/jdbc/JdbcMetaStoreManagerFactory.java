@@ -33,7 +33,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -232,9 +231,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(realmContext, metaStore, diagServices);
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisContext);
-    }
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
@@ -270,9 +266,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(realmContext, metaStore, diagServices);
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisContext);
-    }
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {

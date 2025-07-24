@@ -35,7 +35,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -104,9 +103,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -153,9 +149,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -190,9 +183,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     TaskEntity task3 = createTask("task3", 103L);
