@@ -39,8 +39,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
       @Nonnull PolarisCallContext callCtx, PolarisBaseEntity reloadedEntity) {
     Map<String, String> propMap =
-        PolarisObjectMapperUtil.deserializeProperties(
-            callCtx, reloadedEntity.getInternalProperties());
+        PolarisObjectMapperUtil.deserializeProperties(reloadedEntity.getInternalProperties());
     String storageConfigInfoStr =
         propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
 

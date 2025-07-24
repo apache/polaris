@@ -29,7 +29,6 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTSerializers;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.slf4j.Logger;
@@ -59,8 +58,7 @@ public final class PolarisObjectMapperUtil {
    * @param properties a map of key/value pairs
    * @return a String, the JSON representation of the map
    */
-  public static String serializeProperties(
-      PolarisCallContext callCtx, Map<String, String> properties) {
+  public static String serializeProperties(Map<String, String> properties) {
     try {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.writeValueAsString(properties);
@@ -69,7 +67,7 @@ public final class PolarisObjectMapperUtil {
     }
   }
 
-  public static String serialize(PolarisCallContext callCtx, Object object) {
+  public static String serialize(Object object) {
     try {
       return MAPPER.writeValueAsString(object);
     } catch (JsonProcessingException e) {
@@ -77,7 +75,7 @@ public final class PolarisObjectMapperUtil {
     }
   }
 
-  public static <T> T deserialize(PolarisCallContext callCtx, String text, Class<T> klass) {
+  public static <T> T deserialize(String text, Class<T> klass) {
     try {
       return MAPPER.readValue(text, klass);
     } catch (JsonProcessingException e) {
@@ -91,8 +89,7 @@ public final class PolarisObjectMapperUtil {
    * @param properties a JSON string representing the set of properties
    * @return a Map of string
    */
-  public static Map<String, String> deserializeProperties(
-      PolarisCallContext callCtx, String properties) {
+  public static Map<String, String> deserializeProperties(String properties) {
     try {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.readValue(properties, new TypeReference<>() {});
