@@ -49,6 +49,9 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -104,6 +107,24 @@ public class QuarkusProducers {
   public StorageCredentialCache storageCredentialCache(
       StorageCredentialCacheConfig storageCredentialCacheConfig) {
     return new StorageCredentialCache(storageCredentialCacheConfig);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public ResolverFactory resolverFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisMetaStoreManager polarisMetaStoreManager) {
+    return (callContext, securityContext, referenceCatalogName) -> {
+      EntityCache entityCache =
+          metaStoreManagerFactory.getOrCreateEntityCache(
+              callContext.getRealmContext(), callContext.getRealmConfig());
+      return new Resolver(
+          callContext.getPolarisCallContext(),
+          polarisMetaStoreManager,
+          securityContext,
+          entityCache,
+          referenceCatalogName);
+    };
   }
 
   @Produces

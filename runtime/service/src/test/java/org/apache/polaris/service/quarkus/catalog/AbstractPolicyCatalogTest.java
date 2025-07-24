@@ -64,8 +64,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
-import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -132,6 +131,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
+  @Inject ResolverFactory resolverFactory;
 
   private PolicyCatalog policyCatalog;
   private IcebergCatalog icebergCatalog;
@@ -180,15 +180,7 @@ public abstract class AbstractPolicyCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager,
-            new InMemoryEntityCache(polarisContext.getRealmConfig(), metaStoreManager));
-
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(
-            realmContext, polarisContext.getRealmConfig());
-    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     callContext = polarisContext;
 
@@ -275,7 +267,7 @@ public abstract class AbstractPolicyCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             callContext,
             passthroughView,
