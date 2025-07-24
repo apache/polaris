@@ -24,7 +24,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
@@ -37,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** A mapper to serialize/deserialize polaris objects. */
-public class PolarisObjectMapperUtil {
+public final class PolarisObjectMapperUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);
 
   /** mapper, allows to serialize/deserialize properties to/from JSON */
@@ -50,6 +49,10 @@ public class PolarisObjectMapperUtil {
     return mapper;
   }
 
+  private PolarisObjectMapperUtil() {
+    // utility class
+  }
+
   /**
    * Given the internal property as a map of key/value pairs, serialize it to a String
    *
@@ -58,34 +61,28 @@ public class PolarisObjectMapperUtil {
    */
   public static String serializeProperties(
       PolarisCallContext callCtx, Map<String, String> properties) {
-
-    String jsonString = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
-      jsonString = MAPPER.writeValueAsString(properties);
+      return MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", ex.getMessage());
+      throw new RuntimeException("serializeProperties failed", ex);
     }
-
-    return jsonString;
   }
 
   public static String serialize(PolarisCallContext callCtx, Object object) {
     try {
       return MAPPER.writeValueAsString(object);
     } catch (JsonProcessingException e) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", e.getMessage());
+      throw new RuntimeException("serialize failed", e);
     }
-    return "";
   }
 
   public static <T> T deserialize(PolarisCallContext callCtx, String text, Class<T> klass) {
     try {
       return MAPPER.readValue(text, klass);
     } catch (JsonProcessingException e) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", e.getMessage());
+      throw new RuntimeException("deserialize failed", e);
     }
-    return null;
   }
 
   /**
@@ -96,22 +93,12 @@ public class PolarisObjectMapperUtil {
    */
   public static Map<String, String> deserializeProperties(
       PolarisCallContext callCtx, String properties) {
-
-    Map<String, String> retProperties = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
-      retProperties = MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonMappingException ex) {
-      callCtx
-          .getDiagServices()
-          .fail("got_json_mapping_exception", "properties={}, ex={}", properties, ex);
+      return MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonProcessingException ex) {
-      callCtx
-          .getDiagServices()
-          .fail("got_json_processing_exception", "properties={}, ex={}", properties, ex);
+      throw new RuntimeException("deserializeProperties failed", ex);
     }
-
-    return retProperties;
   }
 
   public static class TaskExecutionState {
@@ -186,9 +173,5 @@ public class PolarisObjectMapperUtil {
           .log("Unable to parse task properties");
       return null;
     }
-  }
-
-  long now() {
-    return 0;
   }
 }
