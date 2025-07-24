@@ -21,9 +21,9 @@
 #
 # Build and Test Script
 #
-# Builds Polaris completely and runs regression tests to verify the release.
-# Cloud-specific tests are disabled by default and require proper credentials
-# to be configured in the environment.
+# Builds Polaris completely and ensures that all integration and regression tests
+# have been run prior to releasing by verifying the status of all GitHub Actions
+# workflows for the current commit.
 #
 
 set -euo pipefail
@@ -35,12 +35,14 @@ source "${libs_dir}/_log.sh"
 source "${libs_dir}/_constants.sh"
 source "${libs_dir}/_exec.sh"
 source "${libs_dir}/_version.sh"
+source "${libs_dir}/_github.sh"
 
 function usage() {
   cat << EOF
 $(basename "$0") [--help | -h]
 
-  Builds Polaris completely and runs regression tests to verify the release.
+  Builds Polaris completely and ensures that all integration and regression tests
+  have been run prior to releasing by verifying GitHub CI status.
 
   Options:
     -h --help
@@ -75,44 +77,20 @@ echo
 print_info "Building Polaris..."
 exec_process ./gradlew clean build
 
-print_info "Preparing regression test environment..."
+# Ensure all integration and regression tests have been run
+print_info "Verifying that all tests have passed for current commit..."
 
-# Clean the regtests output directory
-print_info "Cleaning regression test output directory..."
-exec_process rm -rf ./regtests/output
-exec_process mkdir -p ./regtests/output
-exec_process chmod -R 777 ./regtests/output
+current_commit=$(git rev-parse HEAD)
+print_info "Current commit: ${current_commit}"
 
-# Generate Python client
-print_info "Regenerating Python client..."
-exec_process ./gradlew regeneratePythonClient
-
-# Build container image
-print_info "Building Polaris container image..."
-exec_process ./gradlew \
-  :polaris-server:assemble \
-  :polaris-server:quarkusAppPartsBuild --rerun \
-  -Dquarkus.container-image.build=true
-
-print_info "Running regression tests..."
-print_warning "Cloud-specific tests are disabled"
-
-# TODO: Enable cloud-specific tests when credentials are properly configured in GitHub Actions
-# The following environment variables would need to be set to enable cloud tests:
-# - AWS_TEST_ENABLED=true (plus AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET, AWS_ROLE_ARN, AWS_TEST_BASE)
-# - GCS_TEST_ENABLED=true (plus GCS_TEST_BASE, GOOGLE_APPLICATION_CREDENTIALS)
-# - AZURE_TEST_ENABLED=true (plus AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_DFS_TEST_BASE, AZURE_BLOB_TEST_BASE)
-
-# Run regression tests with cloud tests explicitly disabled
-exec_process env \
-  AWS_TEST_ENABLED=false \
-  GCS_TEST_ENABLED=false \
-  AZURE_TEST_ENABLED=false \
-  AWS_CROSS_REGION_TEST_ENABLED=false \
-  docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+if ! check_github_checks_passed "${current_commit}"; then
+  print_error "Integration and regression tests have not all passed for commit ${current_commit}"
+  print_error "Please ensure all CI workflows are successful before proceeding with the release"
+  print_info "You can check the status at: https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commit/${current_commit}"
+  exit 1
+fi
 
 echo
-print_success "🎉 Build and regression tests completed successfully!"
+print_success "🎉 Build and test verification completed successfully!"
 echo
-print_info "All local regression tests passed. The release is ready for distribution."
-print_info "Note: Cloud-specific tests were skipped. Enable them with proper credentials for full validation."
+print_info "All integration and regression tests have passed. The release is ready for distribution."

@@ -30,6 +30,10 @@ APACHE_REMOTE_URL=${APACHE_REMOTE_URL:-"https://github.com/apache/polaris.git"}
 APACHE_DIST_URL=${APACHE_DIST_URL:-"https://dist.apache.org/repos/dist"}
 APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/incubator/polaris"}
 
+# GitHub API constants
+GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER:-"apache"}
+GITHUB_REPO_NAME=${GITHUB_REPO_NAME:-"polaris"}
+
 # Execution mode constants
 DRY_RUN=${DRY_RUN:-1}
 

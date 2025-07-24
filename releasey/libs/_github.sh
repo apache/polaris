@@ -70,6 +70,66 @@ function add_apache_remote() {
   fi
 }
 
+function check_github_token() {
+  # Check if GitHub token is available, return 0 if available, 1 if not
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function check_github_checks_passed() {
+  # Check that all GitHub checks have passed for a specific commit SHA.
+  # More specifically, we check that all check runs have a conclusion of "success" or "skipped".
+  # Returns 0 if all checks are "success" or "skipped", 1 otherwise
+  local commit_sha="$1"
+
+  if ! check_github_token; then
+    print_error "GITHUB_TOKEN environment variable is not set"
+    return 1
+  fi
+
+  print_info "Checking that all Github checks have passed for commit ${commit_sha}..."
+
+  num_github_invalid_checks=$(
+    curl -s \
+      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits/${commit_sha}/check-runs" |
+      jq -r '[.check_runs[].conclusion | select(. != "success" and . != "skipped")] | length'
+  )
+
+  if [[ $? -ne 0 ]]; then
+    print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
+    return 1
+  fi
+
+  if [[ ${num_github_invalid_checks} -ne 0 ]]; then
+    print_error "Found ${num_github_invalid_checks} failed or in-progress GitHub checks for commit ${commit_sha}"
+    return 1
+  fi
+
+  print_info "All GitHub checks passed for commit ${commit_sha}"
+  return 0
+}
+
+function ensure_github_token_is_configured() {
+  # Ensure that GitHub token is configured, return non-zero if not
+  print_info "Checking GitHub token configuration..."
+
+  if check_github_token; then
+    print_success "GitHub token is configured"
+    return 0
+  else
+    print_error "GITHUB_TOKEN environment variable is not set"
+    print_error "A GitHub token is required to check CI status for releases"
+    print_error "Please set GITHUB_TOKEN environment variable with a valid GitHub personal access token"
+    return 1
+  fi
+}
+
 function ensure_github_setup_is_done() {
   print_info "Checking Git remote configuration for '${APACHE_REMOTE_NAME}'..."
 

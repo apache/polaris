@@ -33,6 +33,7 @@ Verifies that your environment is ready for releases:
 - GPG setup and key configuration
 - Maven/Gradle credentials
 - Git remote setup for Apache repository
+- GitHub token for test status verification
 
 ### 2. Create Release Branch
 ```bash
@@ -53,15 +54,14 @@ Creates a release candidate tag for a release candidate:
 - Validates RC sequence (RC2+ requires previous RC to exist)
 - Checks out the created tag
 
-### 4. Build and Test (Optional)
+### 4. Build and Verify Tests
 ```bash
 ./04-build-and-test.sh
 ```
-Builds Polaris and runs regression tests:
+Builds Polaris and ensures all integration and regression tests have been run:
 - Performs clean build with Gradle
-- Regenerates Python client
-- Builds container image
-- Runs regression tests (cloud tests disabled by default)
+- Verifies that all GitHub checks have passed for current commit
+- Ensures all CI workflows are successful before release
 
 ### 5. Build and Stage Distributions
 ```bash
@@ -118,5 +118,14 @@ Before using these scripts, ensure:
 1. **GPG Setup**: Configure signing key in `~/.gradle/gradle.properties`
 2. **Apache Credentials**: Set `apacheUsername` and `apachePassword` in gradle.properties or environment variables
 3. **Git Remote**: Apache remote configured as "apache" pointing to https://github.com/apache/polaris.git
-4. **Permissions**: Write access to dist.apache.org (not verified by scripts)
-5. **Docker Setup** (for step 6): Docker with buildx support and DockerHub credentials configured
+4. **GitHub Token**: Set `GITHUB_TOKEN` environment variable with a personal access token for CI status verification
+5. **Permissions**: Write access to dist.apache.org (not verified by scripts)
+6. **Docker Setup** (for step 6): Docker with buildx support and DockerHub credentials configured
+
+### GitHub Token Setup
+
+The release scripts require a GitHub personal access token to verify that all tests have been run. Create a token with the following permissions:
+- `repo:status` - to read commit status
+- `public_repo` - to access public repository information
+
+Set the token as the `GITHUB_TOKEN` environment variable.

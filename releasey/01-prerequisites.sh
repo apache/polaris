@@ -52,7 +52,8 @@ $(basename "$0") [--help | -h]
   1. GPG setup verification
   2. Maven/Gradle credentials verification
   3. Git remote setup verification
-  4. Docker setup verification (for Docker image releases)
+  4. GitHub token verification (for CI status verification)
+  5. Docker setup verification (for Docker image releases)
 
   Options:
     -h --help
@@ -99,6 +100,12 @@ echo
 
 if ! ensure_github_setup_is_done; then
   print_error "Git remote setup verification failed"
+  setup_failed=1
+fi
+echo
+
+if ! ensure_github_token_is_configured; then
+  print_error "GitHub token verification failed"
   setup_failed=1
 fi
 echo
