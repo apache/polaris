@@ -21,8 +21,10 @@
 #
 # Test Script for 04-build-and-test.sh
 #
-# Tests the dry-run functionality of the build and test script
-# by verifying the exact commands that would be executed.
+# Tests the dry-run functionality of the build and test script by verifying the
+# exact commands that would be executed.  It does not do much given that the
+# script only run a single gradle command and interacts with Github to validate
+# the state of the commit.
 #
 
 set -euo pipefail
