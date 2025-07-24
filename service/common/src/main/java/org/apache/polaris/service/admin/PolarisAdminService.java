@@ -45,30 +45,7 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.admin.model.AuthenticationParameters;
-import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogGrant;
-import org.apache.polaris.core.admin.model.CatalogPrivilege;
-import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
-import org.apache.polaris.core.admin.model.CreateCatalogRequest;
-import org.apache.polaris.core.admin.model.ExternalCatalog;
-import org.apache.polaris.core.admin.model.GrantResource;
-import org.apache.polaris.core.admin.model.NamespaceGrant;
-import org.apache.polaris.core.admin.model.NamespacePrivilege;
-import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
-import org.apache.polaris.core.admin.model.PolicyGrant;
-import org.apache.polaris.core.admin.model.PolicyPrivilege;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
-import org.apache.polaris.core.admin.model.TableGrant;
-import org.apache.polaris.core.admin.model.TablePrivilege;
-import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
-import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
-import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
-import org.apache.polaris.core.admin.model.ViewGrant;
-import org.apache.polaris.core.admin.model.ViewPrivilege;
+import org.apache.polaris.core.admin.model.*;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -1054,7 +1031,7 @@ public class PolarisAdminService {
   }
 
   private @Nonnull PrincipalWithCredentials rotateOrResetCredentialsHelper(
-      String principalName, boolean shouldReset) {
+          String principalName, boolean shouldReset, String customClientId, String customClientSecret) {
     PrincipalEntity currentPrincipalEntity =
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
@@ -1078,7 +1055,7 @@ public class PolarisAdminService {
                 currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
                 shouldReset,
-                currentSecrets.getMainSecretHash())
+                currentSecrets.getMainSecretHash(), customClientId, customClientSecret)
             .getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
@@ -1103,14 +1080,16 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ROTATE_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
 
-    return rotateOrResetCredentialsHelper(principalName, false);
+    return rotateOrResetCredentialsHelper(principalName, false, null, null);
   }
 
-  public @Nonnull PrincipalWithCredentials resetCredentials(String principalName) {
+  public @Nonnull PrincipalWithCredentials resetCredentials(String principalName, ResetPrincipalRequest resetPrincipalRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RESET_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
+    var customClientId = resetPrincipalRequest.getClientId();
+    var customClientSecret = resetPrincipalRequest.getClientSecret();
 
-    return rotateOrResetCredentialsHelper(principalName, true);
+    return rotateOrResetCredentialsHelper(principalName, true, customClientId, customClientSecret);
   }
 
   public List<PolarisEntity> listPrincipals() {

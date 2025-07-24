@@ -846,11 +846,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
-      long principalId,
-      boolean reset,
-      @Nonnull String oldSecretHash) {
+          @Nonnull PolarisCallContext callCtx,
+          @Nonnull String clientId,
+          long principalId,
+          boolean reset,
+          @Nonnull String oldSecretHash, String customClientId, String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -874,11 +874,27 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
-    PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms)
-            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    PolarisPrincipalSecrets secrets;
+    if(customClientId !=null && customClientSecret !=null)
+    {
+      secrets =
+              ((IntegrationPersistence) ms)
+                      .resetPrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash, customClientId, customClientSecret);
+    } else {
+      secrets =
+              ((IntegrationPersistence) ms)
+                      .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
+    }
 
-    if (reset
+    if(reset && !internalProps.containsKey(
+            PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE) && customClientId!=null && customClientSecret!=null){
+      internalProps.put(
+              PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
+      principal.setInternalProperties(
+              PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+      principal.setEntityVersion(1);
+      ms.writeEntity(callCtx, principal, true, originalPrincipal);
+    } else if(reset
         && !internalProps.containsKey(
             PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.put(

@@ -28,36 +28,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.admin.model.AddGrantRequest;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogGrant;
-import org.apache.polaris.core.admin.model.CatalogRole;
-import org.apache.polaris.core.admin.model.CatalogRoles;
-import org.apache.polaris.core.admin.model.Catalogs;
-import org.apache.polaris.core.admin.model.CreateCatalogRequest;
-import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
-import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
-import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
-import org.apache.polaris.core.admin.model.ExternalCatalog;
-import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
-import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
-import org.apache.polaris.core.admin.model.GrantResource;
-import org.apache.polaris.core.admin.model.GrantResources;
-import org.apache.polaris.core.admin.model.NamespaceGrant;
-import org.apache.polaris.core.admin.model.PolicyGrant;
-import org.apache.polaris.core.admin.model.Principal;
-import org.apache.polaris.core.admin.model.PrincipalRole;
-import org.apache.polaris.core.admin.model.PrincipalRoles;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.admin.model.Principals;
-import org.apache.polaris.core.admin.model.RevokeGrantRequest;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.admin.model.TableGrant;
-import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
-import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
-import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
-import org.apache.polaris.core.admin.model.ViewGrant;
+import org.apache.polaris.core.admin.model.*;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -287,6 +258,13 @@ public class PolarisServiceImpl
     return Response.ok(adminService.updatePrincipal(principalName, updateRequest).asPrincipal())
         .build();
   }
+
+      @Override
+      public Response resetCredentials(
+              String principalName, ResetPrincipalRequest resetPrincipalRequest, RealmContext realmContext, SecurityContext securityContext) {
+        PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+        return Response.ok(adminService.resetCredentials(principalName, resetPrincipalRequest)).build();
+      }
 
   /** From PolarisPrincipalsApiService */
   @Override

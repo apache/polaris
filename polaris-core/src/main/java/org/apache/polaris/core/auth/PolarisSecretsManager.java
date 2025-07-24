@@ -38,20 +38,22 @@ public interface PolarisSecretsManager {
   /**
    * Rotate secrets
    *
-   * @param callCtx call context
-   * @param clientId principal client id
-   * @param principalId id of the principal
-   * @param reset true if the principal's secrets should be disabled and replaced with a one-time
-   *     password. if the principal's secret is already a one-time password, this flag is
-   *     automatically true
-   * @param oldSecretHash main secret hash for the principal
+   * @param callCtx            call context
+   * @param clientId           principal client id
+   * @param principalId        id of the principal
+   * @param reset              true if the principal's secrets should be disabled and replaced with a one-time
+   *                           password. if the principal's secret is already a one-time password, this flag is
+   *                           automatically true
+   * @param oldSecretHash      main secret hash for the principal
+   * @param customClientId
+   * @param customClientSecret
    * @return the secrets associated to that principal amd the id of the principal
    */
   @Nonnull
   PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
-      long principalId,
-      boolean reset,
-      @Nonnull String oldSecretHash);
+          @Nonnull PolarisCallContext callCtx,
+          @Nonnull String clientId,
+          long principalId,
+          boolean reset,
+          @Nonnull String oldSecretHash, String customClientId, String customClientSecret);
 }
