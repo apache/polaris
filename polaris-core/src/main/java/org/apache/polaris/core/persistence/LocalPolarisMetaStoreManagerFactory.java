@@ -114,8 +114,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       if (!metaStoreManagerMap.containsKey(realm)) {
         initializeForRealm(realmContext, rootCredentialsSet);
         PrincipalSecretsResult secretsResult =
-            bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realm));
+            bootstrapServiceAndCreatePolarisPrincipalForRealm(realmContext);
         results.put(realm, secretsResult);
       }
     }
@@ -178,18 +177,17 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   /**
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
-   * metastore and creates a root service principal. After that we rotate the root principal
-   * credentials and print them to stdout
+   * metastore and creates a root service principal.
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
-      RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
+      RealmContext realmContext) {
     // While bootstrapping we need to act as a fake privileged context since the real
     // CallContext may not have been resolved yet.
-    var polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerMap.get(realmContext.getRealmIdentifier());
+    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    PolarisCallContext polarisContext =
+        new PolarisCallContext(realmContext, metaStore, diagServices);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }
@@ -235,11 +233,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
+    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(),
-            diagServices);
+        new PolarisCallContext(realmContext, metaStore, diagServices);
     if (CallContext.getCurrentContext() == null) {
       CallContext.setCurrentContext(polarisContext);
     }
