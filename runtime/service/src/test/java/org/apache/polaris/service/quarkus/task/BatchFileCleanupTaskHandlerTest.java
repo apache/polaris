@@ -44,7 +44,6 @@ import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -184,7 +183,6 @@ public class BatchFileCleanupTaskHandlerTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     BatchFileCleanupTaskHandler handler =
@@ -229,7 +227,6 @@ public class BatchFileCleanupTaskHandlerTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -281,7 +278,6 @@ public class BatchFileCleanupTaskHandlerTest {
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(
             () -> {
-              CallContext.setCurrentContext(polarisCallContext);
               var newTask = addTaskLocation(task);
               assertThatPredicate(handler::canHandleTask).accepts(newTask);
               handler.handleTask(

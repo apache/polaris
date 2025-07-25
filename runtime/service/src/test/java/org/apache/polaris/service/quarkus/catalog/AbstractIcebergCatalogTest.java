@@ -294,10 +294,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
-    // LocalPolarisMetaStoreManagerFactory.bootstrapServiceAndCreatePolarisPrincipalForRealm sets
-    // the CallContext.setCurrentContext() but never clears it, whereas the NoSQL one resets it.
-    CallContext.setCurrentContext(polarisContext);
-
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(

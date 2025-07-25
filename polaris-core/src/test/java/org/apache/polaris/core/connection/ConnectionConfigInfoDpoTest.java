@@ -22,14 +22,11 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class ConnectionConfigInfoDpoTest {
-  private static final PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   static {
@@ -59,8 +56,7 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
             + "  }"
             + "}";
-    ConnectionConfigInfoDpo connectionConfigInfoDpo =
-        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
     Assertions.assertNotNull(connectionConfigInfoDpo);
     JsonNode tree1 = objectMapper.readTree(json);
     JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
@@ -107,8 +103,7 @@ public class ConnectionConfigInfoDpoTest {
             + "    }"
             + "  }"
             + "}";
-    ConnectionConfigInfoDpo connectionConfigInfoDpo =
-        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
     Assertions.assertNotNull(connectionConfigInfoDpo);
     JsonNode tree1 = objectMapper.readTree(json);
     JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
@@ -145,8 +140,7 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"authenticationTypeCode\": 3"
             + "  }"
             + "}";
-    ConnectionConfigInfoDpo connectionConfigInfoDpo =
-        ConnectionConfigInfoDpo.deserialize(polarisDiagnostics, json);
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
     Assertions.assertNotNull(connectionConfigInfoDpo);
     JsonNode tree1 = objectMapper.readTree(json);
     JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());

@@ -133,7 +133,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .log(
                 "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
         for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
+          taskExecutor.addTaskHandlerContext(createdTask.getId(), polarisCallContext);
         }
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());

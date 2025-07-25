@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.entity;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
 /**
@@ -40,17 +38,13 @@ public class TaskEntity extends PolarisEntity {
   }
 
   public <T> T readData(Class<T> klass) {
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
     return PolarisObjectMapperUtil.deserialize(
-        polarisCallContext, getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
+        getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
   }
 
   public AsyncTaskType getTaskType() {
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
     return PolarisObjectMapperUtil.deserialize(
-        polarisCallContext,
-        getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE),
-        AsyncTaskType.class);
+        getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE), AsyncTaskType.class);
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TaskEntity, TaskEntity.Builder> {
@@ -66,20 +60,12 @@ public class TaskEntity extends PolarisEntity {
     }
 
     public Builder withTaskType(AsyncTaskType taskType) {
-      PolarisCallContext polarisCallContext =
-          CallContext.getCurrentContext().getPolarisCallContext();
-      properties.put(
-          PolarisTaskConstants.TASK_TYPE,
-          PolarisObjectMapperUtil.serialize(polarisCallContext, taskType));
+      properties.put(PolarisTaskConstants.TASK_TYPE, PolarisObjectMapperUtil.serialize(taskType));
       return this;
     }
 
     public Builder withData(Object data) {
-      PolarisCallContext polarisCallContext =
-          CallContext.getCurrentContext().getPolarisCallContext();
-      properties.put(
-          PolarisTaskConstants.TASK_DATA,
-          PolarisObjectMapperUtil.serialize(polarisCallContext, data));
+      properties.put(PolarisTaskConstants.TASK_DATA, PolarisObjectMapperUtil.serialize(data));
       return this;
     }
 
