@@ -67,7 +67,6 @@ azure.auth-type=DEFAULT
 EOF
 
 ./gradlew clean :polaris-server:assemble :polaris-admin:assemble \
-       -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
