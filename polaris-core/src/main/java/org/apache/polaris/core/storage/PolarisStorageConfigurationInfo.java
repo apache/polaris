@@ -47,6 +47,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.oss.OssStorageConfigurationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,10 +62,11 @@ import org.slf4j.LoggerFactory;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
+        @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
+        @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
+        @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
+        @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
+        @JsonSubTypes.Type(value = OssStorageConfigurationInfo.class),
 })
 public abstract class PolarisStorageConfigurationInfo {
 
@@ -233,6 +235,7 @@ public abstract class PolarisStorageConfigurationInfo {
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
+    OSS("oss://")
     ;
 
     private final List<String> prefixes;

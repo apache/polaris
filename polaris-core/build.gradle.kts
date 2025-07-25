@@ -101,8 +101,14 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
+  implementation("org.apache.iceberg:iceberg-aliyun")
+  implementation("com.aliyun.oss:aliyun-sdk-oss:3.17.4")
+  implementation("com.aliyun:aliyun-java-sdk-sts:3.1.2")
+  implementation("com.aliyun:aliyun-java-sdk-core:4.6.4")
+
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
 
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")

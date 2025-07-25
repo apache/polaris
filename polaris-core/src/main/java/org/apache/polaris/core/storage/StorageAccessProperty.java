@@ -52,6 +52,15 @@ public enum StorageAccessProperty {
       String.class,
       "the azure storage account host",
       "the azure account name + endpoint that will append to the ADLS_SAS_TOKEN_PREFIX"),
+
+
+  // OSS credentials
+  OSS_ACCESS_KEY_ID(String.class, "client.access-key-id", "the OSS access key id"),
+  OSS_ACCESS_KEY_SECRET(String.class, "client.access-key-secret", "the OSS access key secret"),
+  OSS_SECURITY_TOKEN(String.class, "client.security-token", "the OSS security token"),
+  OSS_ENDPOINT(String.class, "oss.endpoint", "the OSS endpoint URL", false),
+  OSS_REGION(String.class, "oss.region", "the OSS region", false),
+
   EXPIRATION_TIME(
       Long.class, "expiration-time", "the expiration time for the access token, in milliseconds");
 

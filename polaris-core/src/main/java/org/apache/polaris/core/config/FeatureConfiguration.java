@@ -158,7 +158,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                  StorageConfigInfo.StorageTypeEnum.GCS.name()))
+                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
+                  StorageConfigInfo.StorageTypeEnum.OSS.name()))
           .buildFeatureConfiguration();
 
   @SuppressWarnings("deprecation")
