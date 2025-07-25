@@ -46,6 +46,7 @@ import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Polaris Management API.
@@ -287,7 +288,7 @@ public class ManagementApi extends RestApi {
 
   public void dropCatalog(String catalogName) {
     listCatalogRoles(catalogName).stream()
-        .filter(cr -> !cr.getName().equals("catalog_admin"))
+        .filter(cr -> !cr.getName().equals(PolarisEntityConstants.getNameOfCatalogAdminRole()))
         .forEach(role -> deleteCatalogRole(catalogName, role));
 
     deleteCatalog(catalogName);
