@@ -63,3 +63,29 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }} 
+      - name: Publish Server Docker nightly image
+        run: |
+          ./gradlew \
+            :polaris-server:assemble \
+            :polaris-server:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=true \
+            -DDquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.name=polaris \
+            -Dquarkus.container-image.tag=nightly \
+            -Dquarkus.container-image.additional-tags="" \
+            -Dquarkus.container-image.username=${{ secrets.DOCKERHUB_USER }} \
+            -Dquarkus.container-image.password=${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish Admin Tool Docker nightly image
+        run: |
+          ./gradlew \
+            :polaris-admin:assemble \
+            :polaris-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=true \
+            -DDquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.name=polaris-admin-tool \
+            -Dquarkus.container-image.tag=nightly \
+            -Dquarkus.container-image.additional-tags="" \
+            -Dquarkus.container-image.username=${{ secrets.DOCKERHUB_USER }} \
+            -Dquarkus.container-image.password=${{ secrets.DOCKERHUB_TOKEN }}
