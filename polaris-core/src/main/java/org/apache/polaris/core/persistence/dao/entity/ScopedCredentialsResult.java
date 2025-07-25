@@ -18,19 +18,15 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.EnumMap;
-import java.util.Map;
-import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.AccessConfig;
 
 /** Result of a getSubscopedCredsForEntity() call */
 public class ScopedCredentialsResult extends BaseResult {
 
   // null if not success. Else, set of name/value pairs for the credentials
-  private final EnumMap<StorageAccessProperty, String> credentials;
+  private final AccessConfig accessConfig;
 
   /**
    * Constructor for an error
@@ -41,32 +37,20 @@ public class ScopedCredentialsResult extends BaseResult {
   public ScopedCredentialsResult(
       @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
-    this.credentials = null;
+    this.accessConfig = null;
   }
 
   /**
    * Constructor for success
    *
-   * @param credentials credentials
+   * @param accessConfig credentials
    */
-  public ScopedCredentialsResult(@Nonnull EnumMap<StorageAccessProperty, String> credentials) {
+  public ScopedCredentialsResult(AccessConfig accessConfig) {
     super(ReturnStatus.SUCCESS);
-    this.credentials = credentials;
+    this.accessConfig = accessConfig;
   }
 
-  @JsonCreator
-  private ScopedCredentialsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("credentials") Map<String, String> credentials) {
-    super(returnStatus, extraInformation);
-    this.credentials = new EnumMap<>(StorageAccessProperty.class);
-    if (credentials != null) {
-      credentials.forEach((k, v) -> this.credentials.put(StorageAccessProperty.valueOf(k), v));
-    }
-  }
-
-  public EnumMap<StorageAccessProperty, String> getCredentials() {
-    return credentials;
+  public AccessConfig getAccessConfig() {
+    return accessConfig;
   }
 }

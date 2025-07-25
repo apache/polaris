@@ -31,7 +31,9 @@ public enum StorageAccessProperty {
   AWS_SESSION_TOKEN_EXPIRES_AT_MS(
       String.class,
       "s3.session-token-expires-at-ms",
-      "the time the aws session token expires, in milliseconds"),
+      "the time the aws session token expires, in milliseconds",
+      true,
+      true),
   AWS_ENDPOINT(String.class, "s3.endpoint", "the S3 endpoint to use for requests", false),
   AWS_PATH_STYLE_ACCESS(
       Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
@@ -42,23 +44,26 @@ public enum StorageAccessProperty {
   GCS_ACCESS_TOKEN_EXPIRES_AT(
       String.class,
       "gcs.oauth2.token-expires-at",
-      "the time the gcs access token expires, in milliseconds"),
+      "the time the gcs access token expires, in milliseconds",
+      true,
+      true),
 
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
   // it expects for SAS
   AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token"),
   AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
-  AZURE_ACCOUNT_HOST(
-      String.class,
-      "the azure storage account host",
-      "the azure account name + endpoint that will append to the ADLS_SAS_TOKEN_PREFIX"),
   EXPIRATION_TIME(
-      Long.class, "expiration-time", "the expiration time for the access token, in milliseconds");
+      Long.class,
+      "expiration-time",
+      "the expiration time for the access token, in milliseconds",
+      true,
+      true);
 
   private final Class valueType;
   private final String propertyName;
   private final String description;
   private final boolean isCredential;
+  private final boolean isExpirationTimestamp;
 
   /*
   s3.access-key-id`: id for for credentials that provide access to the data in S3
@@ -71,10 +76,20 @@ public enum StorageAccessProperty {
 
   StorageAccessProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {
+    this(valueType, propertyName, description, isCredential, false);
+  }
+
+  StorageAccessProperty(
+      Class valueType,
+      String propertyName,
+      String description,
+      boolean isCredential,
+      boolean isExpirationTimestamp) {
     this.valueType = valueType;
     this.propertyName = propertyName;
     this.description = description;
     this.isCredential = isCredential;
+    this.isExpirationTimestamp = isExpirationTimestamp;
   }
 
   public String getPropertyName() {
@@ -83,5 +98,9 @@ public enum StorageAccessProperty {
 
   public boolean isCredential() {
     return isCredential;
+  }
+
+  public boolean isExpirationTimestamp() {
+    return isExpirationTimestamp;
   }
 }

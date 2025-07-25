@@ -43,7 +43,6 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1833,7 +1832,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    EnumMap<StorageAccessProperty, String> credentials =
+    Map<String, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
                 polarisContext,
@@ -1843,13 +1842,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
-            .getCredentials();
+            .getAccessConfig()
+            .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), TEST_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))

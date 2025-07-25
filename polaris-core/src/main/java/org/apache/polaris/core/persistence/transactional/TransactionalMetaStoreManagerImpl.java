@@ -22,7 +22,6 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -76,9 +75,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2062,14 +2061,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
-      EnumMap<StorageAccessProperty, String> creds =
+      AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
               callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations);
-      return new ScopedCredentialsResult(creds);
+      return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
