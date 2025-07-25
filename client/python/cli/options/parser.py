@@ -57,6 +57,7 @@ class Parser(object):
         ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
         Argument(Arguments.PROXY, str, hint="proxy URL"),
+        Argument(Arguments.DEBUG, bool, hint="Enable debug mode"),
     ]
 
     @staticmethod
@@ -64,15 +65,16 @@ class Parser(object):
         parser = TreeHelpParser(description="Polaris CLI")
 
         for arg in Parser._ROOT_ARGUMENTS:
+            kwargs = {"help": arg.hint}
             if arg.default is not None:
-                parser.add_argument(
-                    arg.get_flag_name(),
-                    type=arg.type,
-                    help=arg.hint,
-                    default=arg.default,
-                )
+                kwargs["default"] = arg.default
+
+            if arg.type is bool:
+                kwargs["action"] = "store_true"
             else:
-                parser.add_argument(arg.get_flag_name(), type=arg.type, help=arg.hint)
+                kwargs["type"] = arg.type
+
+            parser.add_argument(arg.get_flag_name(), **kwargs)
 
         # Add everything from the option tree to the parser:
         def add_arguments(parser, args: List[Argument]):
