@@ -65,7 +65,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
-      throw new RuntimeException("serializeProperties failed", ex);
+      throw new RuntimeException("serializeProperties failed: " + ex.getMessage(), ex);
     }
   }
 
@@ -80,7 +80,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonProcessingException ex) {
-      throw new RuntimeException("deserializeProperties failed", ex);
+      throw new RuntimeException("deserializeProperties failed: " + ex.getMessage(), ex);
     }
   }
 

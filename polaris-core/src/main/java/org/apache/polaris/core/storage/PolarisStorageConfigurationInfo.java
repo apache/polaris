@@ -112,7 +112,7 @@ public abstract class PolarisStorageConfigurationInfo {
     try {
       return DEFAULT_MAPPER.writeValueAsString(this);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("serialize failed", e);
+      throw new RuntimeException("serialize failed: " + e.getMessage(), e);
     }
   }
 
@@ -126,7 +126,7 @@ public abstract class PolarisStorageConfigurationInfo {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("deserialize failed", e);
+      throw new RuntimeException("deserialize failed: " + e.getMessage(), e);
     }
   }
 
