@@ -117,7 +117,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
     } catch (JsonProcessingException ex) {
-      throw new RuntimeException("deserialize failed", ex);
+      throw new RuntimeException("deserialize failed: " + ex.getMessage(), ex);
     }
   }
 

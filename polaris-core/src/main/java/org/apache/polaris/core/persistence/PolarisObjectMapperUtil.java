@@ -63,7 +63,7 @@ public final class PolarisObjectMapperUtil {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
-      throw new RuntimeException("serializeProperties failed", ex);
+      throw new RuntimeException("serializeProperties failed: " + ex.getMessage(), ex);
     }
   }
 
@@ -71,7 +71,7 @@ public final class PolarisObjectMapperUtil {
     try {
       return MAPPER.writeValueAsString(object);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("serialize failed", e);
+      throw new RuntimeException("serialize failed: " + e.getMessage(), e);
     }
   }
 
@@ -79,7 +79,7 @@ public final class PolarisObjectMapperUtil {
     try {
       return MAPPER.readValue(text, klass);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("deserialize failed", e);
+      throw new RuntimeException("deserialize failed: " + e.getMessage(), e);
     }
   }
 
@@ -94,7 +94,7 @@ public final class PolarisObjectMapperUtil {
       // Deserialize the JSON string to a Map<String, String>
       return MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonProcessingException ex) {
-      throw new RuntimeException("deserializeProperties failed", ex);
+      throw new RuntimeException("deserializeProperties failed: " + ex.getMessage(), ex);
     }
   }
 
