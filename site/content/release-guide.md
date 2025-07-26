@@ -113,16 +113,26 @@ git push apache release/x.y.z
 Go in the branch, and set the target release version:
 
 ```
-git checkoout release/x.y.z
+git checkout release/x.y.z
 echo "x.y.z" > version.txt
-git commit -a
-git push
+```
+
+and update the version in the Helm Chart in:
+
+* `helm/polaris/Chart.yaml`
+* `helm/polaris/README.md`
+* `helm/polaris/values.yaml`
+
+and commit/push the version bump:
+
+```
+git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml
 ```
 
 Update `CHANGELOG.md`:
 ```
 ./gradlew patchChangelog
-git commit -a
+git commit CHANGELOG.md
 git push
 ```
 
@@ -188,10 +198,47 @@ cd polaris-dist-dev
 mkdir x.y.z
 cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
 cp /path/to/polaris/github/clone/repo/runtime/distribution/build/distributions/* x.y.z
-cp -r /path/to/polaris/github/clone/repo/helm/polaris helm-chart/x.y.z 
 svn add x.y.z
+```
+
+### Stage Helm Chart package
+
+You can now create a Helm package with the following command in the Polaris source folder:
+
+```
+cd helm
+helm package --sign --key '<YOUR KEY ID HERE>' --keyring ~/.gnupg/secring.kbx polaris
+```
+
+Create the signature and checksum for the Helm package tgz and prov files:
+
+```
+shasum -a 512 polaris-x.y.z.tgz > polaris-x.y.z.tgz.sha512
+gpg --armor --output polaris-x.y.z.tgz.asc --detach-sig polaris-x.y.z.tgz
+shasum -a 512 polaris-x.y.z.tgz.prov > polaris-x.y.z.tgz.prov
+gpg --armor --output polaris-x.y.z.tgz.prov.asc --detach-sig polaris-x.y.z.tgz.prov
+```
+
+Copy and Add the Helm package files to dist folder:
+
+```
+cd polaris-dist-dev
+mkdir helm-chart/x.y.z
+cp helm/*.tgz*  helm-chart/x.y.z
 svn add helm-chart/x.y.z
-svn commit -m"Stage Apache Polaris x.y.z RCx"
+```
+
+You can now update the Helm index:
+
+```
+cd helm-chart
+helm repo index .
+```
+
+Dist repository is now "complete" and we can push/commit:
+
+```
+svn commit -m "Stage Apache Polaris x.y.z RCx"
 ```
 
 ### Build and stage Maven artifacts
@@ -199,7 +246,7 @@ svn commit -m"Stage Apache Polaris x.y.z RCx"
 You can now build and publish the Maven artifacts on a Nexus staging repository:
 
 ```
-./gradlew publishToApache -Prelease -PuseGpgAgent
+./gradlew publishToApache -Prelease -PuseGpgAgent -Dorg.gradle.parallel=false
 ```
 
 Next, you have to close the staging repository:
