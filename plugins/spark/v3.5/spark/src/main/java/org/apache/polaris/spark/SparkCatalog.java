@@ -164,14 +164,14 @@ public class SparkCatalog
         // delta log creation.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.createTable(ident, schema, transforms, properties);
-      }
-      if (PolarisCatalogUtils.useHudi(provider)) {
+      } else if (PolarisCatalogUtils.useHudi(provider)) {
         // For creating the hudi table, we load HoodieCatalog
         // to create the .hoodie folder in cloud storage
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.createTable(ident, schema, transforms, properties);
+      } else {
+        return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
       }
-      return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
     }
   }
 

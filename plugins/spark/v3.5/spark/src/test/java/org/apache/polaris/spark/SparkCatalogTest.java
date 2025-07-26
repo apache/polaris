@@ -647,15 +647,19 @@ public class SparkCatalogTest {
 
         V1Table table = Mockito.mock(V1Table.class);
 
+        // Mock the routing utility methods
+        mockedStaticUtils
+            .when(() -> PolarisCatalogUtils.useHudi(Mockito.eq(format)))
+            .thenCallRealMethod();
+
         if ("hudi".equalsIgnoreCase(format)) {
-          // For Hudi tables, mock the new loadV1SparkHudiTable method
+          // For Hudi tables, mock the loadV1SparkHudiTable method to return the mock table
           mockedStaticUtils
-              .when(() -> PolarisCatalogUtils.loadV1SparkHudiTable(Mockito.any(), Mockito.any()))
+              .when(
+                  () ->
+                      PolarisCatalogUtils.loadV1SparkHudiTable(
+                          Mockito.any(), Mockito.any(), Mockito.any()))
               .thenReturn(table);
-          // Call the real loadSparkTable method which will delegate to loadV1SparkHudiTable
-          mockedStaticUtils
-              .when(() -> PolarisCatalogUtils.loadSparkTable(Mockito.any(), Mockito.any()))
-              .thenCallRealMethod();
         } else {
           TableProvider provider = Mockito.mock(TableProvider.class);
           mockedStaticDS
@@ -668,7 +672,7 @@ public class SparkCatalogTest {
                           Mockito.eq(provider), Mockito.any(), Mockito.any()))
               .thenReturn(table);
           mockedStaticUtils
-              .when(() -> PolarisCatalogUtils.loadSparkTable(Mockito.any(), Mockito.any()))
+              .when(() -> PolarisCatalogUtils.loadV2SparkTable(Mockito.any()))
               .thenCallRealMethod();
         }
 
