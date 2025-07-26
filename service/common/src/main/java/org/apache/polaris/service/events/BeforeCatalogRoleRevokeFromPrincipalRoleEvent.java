@@ -18,14 +18,12 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
-
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired before a catalog role is revoked from a principal role in Polaris.
+ *
+ * @param principalRoleName the name of the principal role
+ * @param catalogName the name of the catalog
+ * @param catalogRoleName the name of the catalog role to be revoked
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
+    String principalRoleName, String catalogName, String catalogRoleName) implements PolarisEvent {}

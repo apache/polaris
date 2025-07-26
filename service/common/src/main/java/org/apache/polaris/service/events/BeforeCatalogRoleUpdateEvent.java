@@ -16,16 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired before a catalog role is updated in Polaris.
+ *
+ * @param catalogName the name of the catalog
+ * @param catalogRoleName the name of the catalog role to be updated
+ * @param updateRequest the update request object
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record BeforeCatalogRoleUpdateEvent(
+    String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
+    implements PolarisEvent {}

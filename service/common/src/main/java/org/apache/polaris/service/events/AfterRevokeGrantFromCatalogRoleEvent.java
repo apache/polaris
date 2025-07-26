@@ -16,16 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.GrantResource;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired after a grant is revoked from a catalog role in Polaris.
+ *
+ * @param catalogName the name of the catalog
+ * @param catalogRoleName the name of the catalog role
+ * @param privilege the privilege revoked
+ * @param grantResource the revoke grant resource
+ * @param cascade whether to cascade the revocation
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record AfterRevokeGrantFromCatalogRoleEvent(
+    String catalogName,
+    String catalogRoleName,
+    PolarisPrivilege privilege,
+    GrantResource grantResource,
+    Boolean cascade)
+    implements PolarisEvent {}
