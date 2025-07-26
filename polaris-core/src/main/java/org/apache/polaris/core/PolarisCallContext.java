@@ -27,6 +27,7 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.PolarisObjectMapper;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
@@ -47,6 +48,7 @@ public class PolarisCallContext implements CallContext {
   private final RealmContext realmContext;
 
   private final RealmConfig realmConfig;
+  private final PolarisObjectMapper objectMapper;
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
@@ -60,6 +62,7 @@ public class PolarisCallContext implements CallContext {
     this.configurationStore = configurationStore;
     this.clock = clock;
     this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
+    this.objectMapper = new PolarisObjectMapper(diagServices);
   }
 
   public PolarisCallContext(
@@ -84,6 +87,10 @@ public class PolarisCallContext implements CallContext {
 
   public Clock getClock() {
     return clock;
+  }
+
+  public PolarisObjectMapper getObjectMapper() {
+    return objectMapper;
   }
 
   @Override
