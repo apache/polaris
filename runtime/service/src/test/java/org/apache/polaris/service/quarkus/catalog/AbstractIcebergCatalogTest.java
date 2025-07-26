@@ -139,8 +139,8 @@ import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTableCommitedEvent;
 import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.quarkus.config.QuarkusReservedProperties;
@@ -2241,7 +2241,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
     var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
-    Assertions.assertThat(beforeTableEvent.identifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeTableEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
 

@@ -16,12 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.service.events.listeners;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+import java.time.Duration;
+import java.util.Optional;
+
+/**
+ * Configuration for event listeners.
+ *
+ * <p>bufferTime() specifies the buffer time in milliseconds.
+ *
+ * <p>maxBufferSize() specifies the maximum number of cached entries.
+ */
+public interface InMemoryBufferPersistenceListenerConfiguration {
+  /**
+   * @return the buffer time in milliseconds
+   */
+  Optional<Duration> bufferTime();
+
+  /**
+   * @return the maximum number of cached entries
+   */
+  Optional<Integer> maxBufferSize();
+}

@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
 
-import org.apache.iceberg.catalog.TableIdentifier;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 
-/**
- * Emitted after Polaris refreshes its known version of a table's metadata by fetching the latest.
- *
- * @param eventId The event unique identifier
- * @param tableIdentifier The identifier of the table that was refreshed.
- */
-public record AfterTableRefreshedEvent(String eventId, TableIdentifier tableIdentifier)
-    implements PolarisEvent {}
+/** Event listener that does nothing. */
+@ApplicationScoped
+@Identifier("no-op")
+public class NoOpPolarisEventListener extends PolarisEventListener {}
