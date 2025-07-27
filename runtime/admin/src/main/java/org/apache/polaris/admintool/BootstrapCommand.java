@@ -83,7 +83,7 @@ public class BootstrapCommand extends BaseCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          description = "The version of the schema to load in [1, 2, LATEST].")
+          description = "The version of the schema to load in [1, 2, 3, LATEST].")
       Integer schemaVersion;
 
       @CommandLine.Option(

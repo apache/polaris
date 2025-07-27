@@ -71,7 +71,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -157,7 +157,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
-
     entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
     PrincipalEntity rootEntity =

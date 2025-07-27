@@ -16,15 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import org.apache.iceberg.catalog.TableIdentifier;
+package org.apache.polaris.core.entity;
 
-/**
- * Emitted after Polaris refreshes its known version of a table's metadata by fetching the latest.
- *
- * @param eventId The event unique identifier
- * @param tableIdentifier The identifier of the table that was refreshed.
- */
-public record AfterTableRefreshedEvent(String eventId, TableIdentifier tableIdentifier)
-    implements PolarisEvent {}
+import jakarta.annotation.Nonnull;
+import java.util.List;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.persistence.BasePersistence;
+
+public interface PolarisEventManager {
+  @Nonnull
+  default void writeEvents(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+    BasePersistence ms = callCtx.getMetaStore();
+    ms.writeEvents(polarisEvents);
+  }
+}

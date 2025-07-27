@@ -16,15 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.catalog.TableIdentifier;
-
-/**
- * Emitted after Polaris refreshes its known version of a table's metadata by fetching the latest.
- *
- * @param eventId The event unique identifier
- * @param tableIdentifier The identifier of the table that was refreshed.
- */
-public record AfterTableRefreshedEvent(String eventId, TableIdentifier tableIdentifier)
+/** Emitted Polaris creates a catalog. */
+public record AfterCatalogCreatedEvent(String eventId, String catalogName)
     implements PolarisEvent {}
