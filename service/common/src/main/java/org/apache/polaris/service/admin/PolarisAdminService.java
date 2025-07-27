@@ -1030,7 +1030,7 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
-  private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
+  private @Nonnull PrincipalWithCredentials rotateCredentialsHelper(
           String principalName, boolean shouldReset) {
     PrincipalEntity currentPrincipalEntity =
             findPrincipalByName(principalName)
@@ -1149,7 +1149,7 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ROTATE_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
 
-    return resetCredentialsHelper(principalName, false);
+    return rotateCredentialsHelper(principalName, false);
   }
 
   public @Nonnull PrincipalWithCredentials resetCredentials(

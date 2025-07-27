@@ -809,12 +809,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               params));
     } catch (SQLException e) {
       LOGGER.error(
-          "Failed to rotatePrincipalSecrets  for clientId: {}, due to {}",
+          "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
           clientId,
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to rotatePrincipalSecrets for clientId: %s", clientId), e);
+          String.format("Failed to rest PrincipalSecrets for clientId: %s", clientId), e);
     }
 
     // return those
