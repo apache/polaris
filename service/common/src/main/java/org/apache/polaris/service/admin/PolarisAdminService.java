@@ -1087,7 +1087,7 @@ public class PolarisAdminService {
 
     if (FederatedEntities.isFederated(currentPrincipalEntity)) {
       throw new ValidationException(
-          "Cannot rotate/reset credentials for a federated principal: %s", principalName);
+          "Cannot reset credentials for a federated principal: %s", principalName);
     }
     PolarisPrincipalSecrets currentSecrets =
         metaStoreManager
@@ -1112,7 +1112,7 @@ public class PolarisAdminService {
       throw new IllegalStateException(
           String.format(
               "Failed to %s secrets for principal '%s'",
-              shouldReset ? "reset" : "rotate", principalName));
+              "reset", principalName));
     }
     PolarisEntity newPrincipal =
         PolarisEntity.of(
@@ -1121,10 +1121,8 @@ public class PolarisAdminService {
                 0L,
                 currentPrincipalEntity.getId(),
                 currentPrincipalEntity.getType()));
-    LOGGER.error(newPrincipal.toString());
 
     PrincipalEntity newPrincipalEntity = PrincipalEntity.of(newPrincipal);
-
     if(customClientId!=null && customClientSecret!=null) {
       PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
       updateBuilder.setClientId(newSecrets.getPrincipalClientId());
@@ -1140,10 +1138,7 @@ public class PolarisAdminService {
                                       new CommitFailedException(
                                               "Concurrent modification on Principal '%s'; retry later", principalName));
       newPrincipalEntity =updatedNewPrincipalEntity;
-      LOGGER.error(updatedNewPrincipalEntity.asPrincipal().toString());
     }
-    LOGGER.error(newPrincipalEntity.asPrincipal().toString());
-
     return new PrincipalWithCredentials(
         newPrincipalEntity.asPrincipal(),
         new PrincipalWithCredentialsCredentials(
