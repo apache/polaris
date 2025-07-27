@@ -1072,8 +1072,31 @@ public class PolarisAdminService {
                 0L,
                 currentPrincipalEntity.getId(),
                 currentPrincipalEntity.getType()));
+    LOGGER.error(newPrincipal.toString());
+
+    PrincipalEntity newPrincipalEntity = PrincipalEntity.of(newPrincipal);
+
+    if(customClientId!=null && customClientSecret!=null) {
+      PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
+      updateBuilder.setClientId(newSecrets.getPrincipalClientId());
+      PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
+      updatedNewPrincipalEntity =
+              Optional.ofNullable(
+                              PrincipalEntity.of(
+                                      PolarisEntity.of(
+                                              metaStoreManager.updateEntityPropertiesIfNotChanged(
+                                                      getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+                      .orElseThrow(
+                              () ->
+                                      new CommitFailedException(
+                                              "Concurrent modification on Principal '%s'; retry later", principalName));
+      newPrincipalEntity =updatedNewPrincipalEntity;
+      LOGGER.error(updatedNewPrincipalEntity.asPrincipal().toString());
+    }
+    LOGGER.error(newPrincipalEntity.asPrincipal().toString());
+
     return new PrincipalWithCredentials(
-        PrincipalEntity.of(newPrincipal).asPrincipal(),
+        newPrincipalEntity.asPrincipal(),
         new PrincipalWithCredentialsCredentials(
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }

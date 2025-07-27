@@ -1197,13 +1197,15 @@ components:
         clientId:
           type: string
           description: Optional client ID to set for the principal.
-          minLength: 1
-          maxLength: 256
+          minLength: 16
+          maxLength: 16
+          pattern: '^[0-9a-f]{16}$'
         clientSecret:
           type: string
           description: Optional client secret to set for the principal.
-          minLength: 1
-          maxLength: 256
+          minLength: 32
+          maxLength: 32
+          pattern: '^[0-9a-f]{32}$'
 
     Principal:
       description: A Polaris principal.
