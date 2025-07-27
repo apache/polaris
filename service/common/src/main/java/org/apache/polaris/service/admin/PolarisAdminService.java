@@ -1031,53 +1031,52 @@ public class PolarisAdminService {
   }
 
   private @Nonnull PrincipalWithCredentials rotateCredentialsHelper(
-          String principalName, boolean shouldReset) {
+      String principalName, boolean shouldReset) {
     PrincipalEntity currentPrincipalEntity =
-            findPrincipalByName(principalName)
-                    .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
+        findPrincipalByName(principalName)
+            .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
 
     if (FederatedEntities.isFederated(currentPrincipalEntity)) {
       throw new ValidationException(
-              "Cannot rotate/reset credentials for a federated principal: %s", principalName);
+          "Cannot rotate/reset credentials for a federated principal: %s", principalName);
     }
     PolarisPrincipalSecrets currentSecrets =
-            metaStoreManager
-                    .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
-                    .getPrincipalSecrets();
+        metaStoreManager
+            .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
+            .getPrincipalSecrets();
     if (currentSecrets == null) {
       throw new IllegalArgumentException(
-              String.format("Failed to load current secrets for principal '%s'", principalName));
+          String.format("Failed to load current secrets for principal '%s'", principalName));
     }
     PolarisPrincipalSecrets newSecrets =
-            metaStoreManager
-                    .rotatePrincipalSecrets(
-                            getCurrentPolarisContext(),
-                            currentPrincipalEntity.getClientId(),
-                            currentPrincipalEntity.getId(),
-                            shouldReset,
-                            currentSecrets.getMainSecretHash(),
-                            null,
-                            null)
-                    .getPrincipalSecrets();
+        metaStoreManager
+            .rotatePrincipalSecrets(
+                getCurrentPolarisContext(),
+                currentPrincipalEntity.getClientId(),
+                currentPrincipalEntity.getId(),
+                shouldReset,
+                currentSecrets.getMainSecretHash(),
+                null,
+                null)
+            .getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
-              String.format(
-                      "Failed to %s secrets for principal '%s'",
-                      shouldReset ? "reset" : "rotate", principalName));
+          String.format(
+              "Failed to %s secrets for principal '%s'",
+              shouldReset ? "reset" : "rotate", principalName));
     }
     PolarisEntity newPrincipal =
-            PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                            getCurrentPolarisContext(),
-                            0L,
-                            currentPrincipalEntity.getId(),
-                            currentPrincipalEntity.getType()));
+        PolarisEntity.of(
+            metaStoreManager.loadEntity(
+                getCurrentPolarisContext(),
+                0L,
+                currentPrincipalEntity.getId(),
+                currentPrincipalEntity.getType()));
     return new PrincipalWithCredentials(
-            PrincipalEntity.of(newPrincipal).asPrincipal(),
-            new PrincipalWithCredentialsCredentials(
-                    newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
+        PrincipalEntity.of(newPrincipal).asPrincipal(),
+        new PrincipalWithCredentialsCredentials(
+            newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }
-
 
   private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
       String principalName, boolean shouldReset, String customClientId, String customClientSecret) {
@@ -1110,9 +1109,7 @@ public class PolarisAdminService {
             .getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
-          String.format(
-              "Failed to %s secrets for principal '%s'",
-              "reset", principalName));
+          String.format("Failed to %s secrets for principal '%s'", "reset", principalName));
     }
     PolarisEntity newPrincipal =
         PolarisEntity.of(
@@ -1123,21 +1120,21 @@ public class PolarisAdminService {
                 currentPrincipalEntity.getType()));
 
     PrincipalEntity newPrincipalEntity = PrincipalEntity.of(newPrincipal);
-    if(customClientId!=null && customClientSecret!=null) {
+    if (customClientId != null && customClientSecret != null) {
       PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
       updateBuilder.setClientId(newSecrets.getPrincipalClientId());
       PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
       updatedNewPrincipalEntity =
-              Optional.ofNullable(
-                              PrincipalEntity.of(
-                                      PolarisEntity.of(
-                                              metaStoreManager.updateEntityPropertiesIfNotChanged(
-                                                      getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
-                      .orElseThrow(
-                              () ->
-                                      new CommitFailedException(
-                                              "Concurrent modification on Principal '%s'; retry later", principalName));
-      newPrincipalEntity =updatedNewPrincipalEntity;
+          Optional.ofNullable(
+                  PrincipalEntity.of(
+                      PolarisEntity.of(
+                          metaStoreManager.updateEntityPropertiesIfNotChanged(
+                              getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+              .orElseThrow(
+                  () ->
+                      new CommitFailedException(
+                          "Concurrent modification on Principal '%s'; retry later", principalName));
+      newPrincipalEntity = updatedNewPrincipalEntity;
     }
     return new PrincipalWithCredentials(
         newPrincipalEntity.asPrincipal(),
