@@ -237,11 +237,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
                                                         IamResource.create(
-                                                            "arn:aws:kms:"
-                                                                + region
-                                                                + ":"
-                                                                + accountId
-                                                                + ":key/*")))
+                                                            kmsArn(
+                                                                awsPartition, region, accountId))))
                                         .satisfies(
                                             st ->
                                                 assertThat(st.conditions())
@@ -394,11 +391,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
                                                         IamResource.create(
-                                                            "arn:aws:kms:"
-                                                                + region
-                                                                + ":"
-                                                                + accountId
-                                                                + ":key/*")))
+                                                            kmsArn(
+                                                                AWS_PARTITION, region, accountId))))
                                         .satisfies(
                                             st ->
                                                 assertThat(st.conditions())
@@ -521,11 +515,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
                                                         IamResource.create(
-                                                            "arn:aws:kms:"
-                                                                + region
-                                                                + ":"
-                                                                + accountId
-                                                                + ":key/*")))
+                                                            kmsArn(
+                                                                AWS_PARTITION, region, accountId))))
                                         .satisfies(
                                             st ->
                                                 assertThat(st.conditions())
@@ -626,11 +617,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
                                                         IamResource.create(
-                                                            "arn:aws:kms:"
-                                                                + region
-                                                                + ":"
-                                                                + accountId
-                                                                + ":key/*")))
+                                                            kmsArn(
+                                                                AWS_PARTITION, region, accountId))))
                                         .satisfies(
                                             st ->
                                                 assertThat(st.conditions())
@@ -787,5 +775,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private static @Nonnull String s3Path(String bucket, String keyPrefix) {
     return "s3://" + bucket + "/" + keyPrefix;
+  }
+
+  private static @Nonnull String kmsArn(String partition, String region, String accountId) {
+    return "arn:" + partition + ":kms:" + region + ":" + accountId + ":key/*";
   }
 }

@@ -350,11 +350,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ENABLE_KMS_SUPPORT_FOR_S3 =
-      PolarisConfiguration.<Boolean>builder()
+  public static final FeatureConfiguration<KmsSupportLevel> KMS_SUPPORT_LEVEL_S3 =
+      PolarisConfiguration.<KmsSupportLevel>builder()
           .key("ENABLE_KMS_SUPPORT_FOR_S3")
           .catalogConfig("polaris.config.enable-kms-support-for-s3")
           .description("If true, enables KMS support for S3 storage integration")
-          .defaultValue(false)
+          .defaultValue(KmsSupportLevel.NONE)
           .buildFeatureConfiguration();
+
+  public enum KmsSupportLevel {
+    NONE,
+    CATALOG,
+    TABLE
+  }
 }

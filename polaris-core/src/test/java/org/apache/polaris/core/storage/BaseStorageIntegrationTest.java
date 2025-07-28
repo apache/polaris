@@ -38,8 +38,8 @@ public abstract class BaseStorageIntegrationTest {
           @Override
           public <T> @Nullable T getConfiguration(
               @Nonnull RealmContext realmContext, String configName) {
-            if (FeatureConfiguration.ENABLE_KMS_SUPPORT_FOR_S3.key().equals(configName)) {
-              return (T) Boolean.TRUE;
+            if (FeatureConfiguration.KMS_SUPPORT_LEVEL_S3.key().equals(configName)) {
+              return (T) FeatureConfiguration.KmsSupportLevel.CATALOG;
             }
             return PolarisConfigurationStore.super.getConfiguration(realmContext, configName);
           }
