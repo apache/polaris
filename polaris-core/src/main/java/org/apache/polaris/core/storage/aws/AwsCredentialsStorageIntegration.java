@@ -30,9 +30,6 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -278,8 +275,6 @@ public class AwsCredentialsStorageIntegration
 
   private boolean isKMSSupported(CallContext callContext) {
     return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(callContext.getRealmContext(), ENABLE_KMS_SUPPORT_FOR_S3);
+        .getRealmConfig().getConfig(ENABLE_KMS_SUPPORT_FOR_S3);
   }
 }
