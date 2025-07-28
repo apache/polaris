@@ -199,6 +199,42 @@ paths:
         404:
           description: "The catalog or principal does not exist"
 
+  /principals/{principalName}/reset:
+    parameters:
+      - name: principalName
+        in: path
+        description: The principal's name
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+    post:
+      operationId: resetCredentials
+      description: >
+        Reset a principal's credentials to a new set. By default, the system generates random credentials unless
+        explicitly allowed to accept user-provided credentials via configuration.  
+        This API is *not* idempotent and will return the newly created credentials.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPrincipalRequest'
+      responses:
+        200:
+          description: The principal details along with the newly reset credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalWithCredentials"
+        403:
+          description: The caller does not have permission to reset credentials
+        404:
+          description: The principal does not exist
+
+
     put:
       operationId: updatePrincipal
       description: Update an existing principal
@@ -1247,6 +1283,22 @@ components:
       required:
         - currentEntityVersion
         - properties
+
+    ResetPrincipalRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          description: Optional client ID to set for the principal.
+          minLength: 16
+          maxLength: 16
+          pattern: '^[0-9a-f]{16}$'
+        clientSecret:
+          type: string
+          description: Optional client secret to set for the principal.
+          minLength: 32
+          maxLength: 32
+          pattern: '^[0-9a-f]{32}$'
 
     PrincipalRoles:
       type: object

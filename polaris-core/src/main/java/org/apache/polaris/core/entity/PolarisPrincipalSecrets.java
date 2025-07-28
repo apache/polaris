@@ -36,7 +36,7 @@ public class PolarisPrincipalSecrets {
   private final long principalId;
 
   // the client id for that principal
-  private final String principalClientId;
+  private String principalClientId;
 
   // the main secret hash for that principal
   private String mainSecret;
@@ -145,6 +145,19 @@ public class PolarisPrincipalSecrets {
 
     this.mainSecret = this.generateRandomHexString(32);
     this.mainSecretHash = hashSecret(mainSecret);
+  }
+
+  /** Reset the main secrets */
+  public void resetSecrets(String customClientSecret) {
+    this.mainSecret = customClientSecret;
+    this.mainSecretHash = hashSecret(mainSecret);
+
+    this.secondarySecret = null;
+    this.secondarySecretHash = hashSecret(mainSecret);
+  }
+
+  public void setPrincipalClientId(String customClientId) {
+    this.principalClientId = customClientId;
   }
 
   public long getPrincipalId() {
