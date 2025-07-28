@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.context.CallContext;
@@ -53,7 +52,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @param allowedWriteLocations a set of allowed to write locations
    * @return An enum map including the scoped credentials
    */
-  public abstract EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+  public abstract AccessConfig getSubscopedCreds(
       @Nonnull CallContext callContext,
       @Nonnull T storageConfig,
       boolean allowListOperation,

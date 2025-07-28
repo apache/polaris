@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,9 +70,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -247,8 +246,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
       // get internal properties
-      Map<String, String> properties =
-          this.deserializeProperties(callCtx, entity.getInternalProperties());
+      Map<String, String> properties = this.deserializeProperties(entity.getInternalProperties());
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -428,7 +426,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // validate input
     callCtx.getDiagServices().checkNotNull(catalog, "unexpected_null_catalog");
 
-    Map<String, String> internalProp = getInternalPropertyMap(callCtx, catalog);
+    Map<String, String> internalProp = getInternalPropertyMap(catalog);
     String integrationIdentifierOrId =
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
@@ -443,8 +441,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   callCtx,
                   catalog.getCatalogId(),
                   catalog.getId(),
-                  PolarisStorageConfigurationInfo.deserialize(
-                      callCtx.getDiagServices(), storageConfigInfoStr));
+                  PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
     } else {
       integration = null;
     }
@@ -755,7 +752,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // get internal properties
       Map<String, String> properties =
-          this.deserializeProperties(callCtx, refreshPrincipal.getInternalProperties());
+          this.deserializeProperties(refreshPrincipal.getInternalProperties());
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -801,14 +798,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             .generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
     // generate properties
-    Map<String, String> internalProperties = getInternalPropertyMap(callCtx, principal);
+    Map<String, String> internalProperties = getInternalPropertyMap(principal);
     internalProperties.put(
         PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
 
     // remember client id
     PolarisBaseEntity updatedPrincipal =
         new PolarisBaseEntity.Builder(principal)
-            .internalProperties(this.serializeProperties(callCtx, internalProperties))
+            .internalProperties(this.serializeProperties(internalProperties))
             .build();
     // now create and persist new catalog entity
     EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, updatedPrincipal);
@@ -863,7 +860,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisBaseEntity principal = loadEntityResult.getEntity();
     Map<String, String> internalProps =
         PolarisObjectMapperUtil.deserializeProperties(
-            callCtx,
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
     boolean doReset =
@@ -882,14 +878,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       internalProps.put(
           PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     }
@@ -1229,10 +1225,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, refreshEntityToDrop));
+      properties.put("data", PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
       PolarisBaseEntity.Builder taskEntityBuilder =
           new PolarisBaseEntity.Builder()
-              .properties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties))
+              .properties(PolarisObjectMapperUtil.serializeProperties(properties))
               .id(ms.generateNewId(callCtx))
               .catalogId(0L)
               .name("entityCleanup_" + entityToDrop.getId())
@@ -1241,7 +1237,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               .createTimestamp(callCtx.getClock().millis());
       if (cleanupProperties != null) {
         taskEntityBuilder.internalProperties(
-            PolarisObjectMapperUtil.serializeProperties(callCtx, cleanupProperties));
+            PolarisObjectMapperUtil.serializeProperties(cleanupProperties));
       }
       // TODO: Add a way to create the task entities atomically with dropping the entity;
       // in the meantime, if the server fails partway through a dropEntity, it's possible that
@@ -1525,7 +1521,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   PolarisBaseEntity.Builder updatedTaskBuilder =
                       new PolarisBaseEntity.Builder(task);
                   Map<String, String> properties =
-                      PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
+                      PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
                   properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
                   properties.put(
                       PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
@@ -1537,7 +1533,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                                   properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                               + 1));
                   updatedTaskBuilder.properties(
-                      PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+                      PolarisObjectMapperUtil.serializeProperties(properties));
                   EntityResult result =
                       updateEntityPropertiesIfNotChanged(callCtx, null, updatedTaskBuilder.build());
                   if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
@@ -1614,14 +1610,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
-      EnumMap<StorageAccessProperty, String> creds =
+      AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
               callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations);
-      return new ScopedCredentialsResult(creds);
+      return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
@@ -1631,18 +1627,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /**
    * Get the internal property map for an entity
    *
-   * @param callCtx the polaris call context
    * @param entity the target entity
    * @return a map of string representing the internal properties
    */
-  public Map<String, String> getInternalPropertyMap(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+  public Map<String, String> getInternalPropertyMap(@Nonnull PolarisBaseEntity entity) {
     String internalPropStr = entity.getInternalProperties();
     Map<String, String> res = new HashMap<>();
     if (internalPropStr == null) {
       return res;
     }
-    return deserializeProperties(callCtx, internalPropStr);
+    return deserializeProperties(internalPropStr);
   }
 
   /** {@inheritDoc} */

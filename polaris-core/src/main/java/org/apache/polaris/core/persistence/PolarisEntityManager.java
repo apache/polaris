@@ -25,7 +25,6 @@ import java.util.List;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -82,15 +81,11 @@ public class PolarisEntityManager {
       // root entity, then we must actually create a representation of this root entity in the
       // entity store itself.
       PolarisEntity serviceAdminPrincipalRole =
-          PolarisEntity.of(
-              metaStoreManager
-                  .readEntityByName(
-                      callContext.getPolarisCallContext(),
-                      null,
-                      PolarisEntityType.PRINCIPAL_ROLE,
-                      PolarisEntitySubType.NULL_SUBTYPE,
-                      PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
-                  .getEntity());
+          metaStoreManager
+              .findPrincipalRoleByName(
+                  callContext.getPolarisCallContext(),
+                  PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+              .orElse(null);
       if (serviceAdminPrincipalRole == null) {
         throw new IllegalStateException("Failed to resolve service_admin PrincipalRole");
       }

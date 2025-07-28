@@ -30,7 +30,6 @@ import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -76,13 +75,10 @@ public class DefaultAuthenticator
                     PolarisEntityType.PRINCIPAL));
       } else if (credentials.getPrincipalName() != null) {
         principal =
-            PolarisEntity.of(
-                metaStoreManager.readEntityByName(
-                    callContext.getPolarisCallContext(),
-                    null,
-                    PolarisEntityType.PRINCIPAL,
-                    PolarisEntitySubType.NULL_SUBTYPE,
-                    credentials.getPrincipalName()));
+            metaStoreManager
+                .findPrincipalByName(
+                    callContext.getPolarisCallContext(), credentials.getPrincipalName())
+                .orElse(null);
       }
     } catch (Exception e) {
       LOGGER

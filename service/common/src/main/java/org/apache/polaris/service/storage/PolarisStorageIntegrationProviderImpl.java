@@ -26,17 +26,16 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
@@ -99,13 +98,13 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageIntegration =
             new PolarisStorageIntegration<>("file") {
               @Override
-              public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+              public AccessConfig getSubscopedCreds(
                   @Nonnull CallContext callContext,
                   @Nonnull T storageConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations) {
-                return new EnumMap<>(StorageAccessProperty.class);
+                return AccessConfig.builder().build();
               }
 
               @Override

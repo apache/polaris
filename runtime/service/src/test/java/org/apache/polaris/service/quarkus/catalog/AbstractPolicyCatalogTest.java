@@ -57,8 +57,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -176,7 +174,7 @@ public abstract class AbstractPolicyCatalogTest {
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
@@ -185,19 +183,9 @@ public abstract class AbstractPolicyCatalogTest {
 
     callContext = polarisContext;
 
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
-
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);

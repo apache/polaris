@@ -48,9 +48,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -162,7 +159,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
@@ -172,19 +169,10 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     CallContext.setCurrentContext(polarisContext);
 
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     AuthenticatedPolarisPrincipal authenticatedRoot =
-        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+        new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);

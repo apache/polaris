@@ -22,7 +22,7 @@ SHELL = /usr/bin/env bash -o pipefail
 
 ## Variables
 BUILD_IMAGE ?= true
-CONTAINER_TOOL ?= docker
+DOCKER ?= docker
 MINIKUBE_PROFILE ?= minikube
 DEPENDENCIES ?= ct helm helm-docs java21 git
 OPTIONAL_DEPENDENCIES := jq kubectl minikube
@@ -47,7 +47,7 @@ version: ## Display version information
 .PHONY: build
 build: build-server build-admin ## Build Polaris server, admin, and container images
 
-build-server: DEPENDENCIES := java21 $(CONTAINER_TOOL)
+build-server: DEPENDENCIES := java21 $(DOCKER)
 .PHONY: build-server
 build-server: check-dependencies ## Build Polaris server and container image
 	@echo "--- Building Polaris server ---"
@@ -55,10 +55,10 @@ build-server: check-dependencies ## Build Polaris server and container image
 		:polaris-server:assemble \
 		:polaris-server:quarkusAppPartsBuild --rerun \
 		-Dquarkus.container-image.build=$(BUILD_IMAGE) \
-		-Dquarkus.docker.executable-name=$(CONTAINER_TOOL)
+		-Dquarkus.docker.executable-name=$(DOCKER)
 	@echo "--- Polaris server build complete ---"
 
-build-admin: DEPENDENCIES := java21 $(CONTAINER_TOOL)
+build-admin: DEPENDENCIES := java21 $(DOCKER)
 .PHONY: build-admin
 build-admin: check-dependencies ## Build Polaris admin and container image
 	@echo "--- Building Polaris admin ---"
@@ -66,7 +66,7 @@ build-admin: check-dependencies ## Build Polaris admin and container image
 		:polaris-admin:assemble \
 		:polaris-admin:quarkusAppPartsBuild --rerun \
 		-Dquarkus.container-image.build=$(BUILD_IMAGE) \
-		-Dquarkus.docker.executable-name=$(CONTAINER_TOOL)
+		-Dquarkus.docker.executable-name=$(DOCKER)
 	@echo "--- Polaris admin build complete ---"
 
 build-spark-plugin-3.5-2.12: DEPENDENCIES := java21
@@ -125,7 +125,7 @@ helm-lint: check-dependencies ## Run Helm chart lint check
 
 ##@ Minikube
 
-minikube-start-cluster: DEPENDENCIES := minikube $(CONTAINER_TOOL)
+minikube-start-cluster: DEPENDENCIES := minikube $(DOCKER)
 .PHONY: minikube-start-cluster
 minikube-start-cluster: check-dependencies ## Start the Minikube cluster
 	@echo "--- Checking Minikube cluster status ---"
@@ -133,15 +133,15 @@ minikube-start-cluster: check-dependencies ## Start the Minikube cluster
 		echo "--- Minikube cluster is already running. Skipping start ---"; \
 	else \
 		echo "--- Starting Minikube cluster ---"; \
-		if [ "$(CONTAINER_TOOL)" = "podman" ]; then \
-			minikube start -p $(MINIKUBE_PROFILE) --driver=$(CONTAINER_TOOL) --container-runtime=cri-o; \
+		if [ "$(DOCKER)" = "podman" ]; then \
+			minikube start -p $(MINIKUBE_PROFILE) --driver=$(DOCKER) --container-runtime=cri-o; \
 		else \
-			minikube start -p $(MINIKUBE_PROFILE) --driver=$(CONTAINER_TOOL); \
+			minikube start -p $(MINIKUBE_PROFILE) --driver=$(DOCKER); \
 		fi; \
 		echo "--- Minikube cluster started ---"; \
 	fi
 
-minikube-stop-cluster: DEPENDENCIES := minikube $(CONTAINER_TOOL)
+minikube-stop-cluster: DEPENDENCIES := minikube $(DOCKER)
 .PHONY: minikube-stop-cluster
 minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 	@echo "--- Checking Minikube cluster status ---"
@@ -153,7 +153,7 @@ minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 		echo "--- Minikube cluster is already stopped or does not exist. Skipping stop ---"; \
 	fi
 
-minikube-load-images: DEPENDENCIES := minikube $(CONTAINER_TOOL)
+minikube-load-images: DEPENDENCIES := minikube $(DOCKER)
 .PHONY: minikube-load-images
 minikube-load-images: minikube-start-cluster check-dependencies ## Load local Docker images into the Minikube cluster
 	@echo "--- Loading images into Minikube cluster ---"
@@ -163,7 +163,7 @@ minikube-load-images: minikube-start-cluster check-dependencies ## Load local Do
 	@minikube image tag -p $(MINIKUBE_PROFILE) docker.io/apache/polaris-admin-tool:latest docker.io/apache/polaris-admin-tool:$(BUILD_VERSION)
 	@echo "--- Images loaded into Minikube cluster ---"
 
-minikube-cleanup: DEPENDENCIES := minikube $(CONTAINER_TOOL)
+minikube-cleanup: DEPENDENCIES := minikube $(DOCKER)
 .PHONY: minikube-cleanup
 minikube-cleanup: check-dependencies ## Cleanup the Minikube cluster
 	@echo "--- Checking Minikube cluster status ---"
