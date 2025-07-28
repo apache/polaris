@@ -65,8 +65,8 @@ install-poetry-deps:
 	@echo "Poetry and dependencies installed."
 
 .PHONY: regenerate-client
-regenerate-client: ## Regenerate the client code
-	../templates/regenerate.sh
+regenerate-client: setup-env ## Regenerate the client code
+	python3 build.py
 
 .PHONY: test-client
 test-client: setup-env ## Run client tests
