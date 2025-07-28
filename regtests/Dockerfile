@@ -50,7 +50,6 @@ RUN python3 -m venv /home/spark/polaris/polaris-venv && \
     cd /home/spark/polaris/client/python && \
     poetry install && \
     deactivate && \
-    cd /home/spark/polaris && \
     /home/spark/polaris/regtests/setup.sh
 
 COPY --chown=spark ./regtests /home/spark/polaris/regtests
