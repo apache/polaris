@@ -41,6 +41,7 @@ COPY --chown=spark ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
 COPY --chown=spark ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
 COPY --chown=spark ./client/python /home/spark/polaris/client/python
 COPY --chown=spark ./polaris /home/spark/polaris/polaris
+COPY --chown=spark ./client/templates /home/spark/polaris/client/templates
 COPY --chown=spark ./regtests/requirements.txt /tmp/
 
 RUN python3 -m venv /home/spark/polaris/polaris-venv && \

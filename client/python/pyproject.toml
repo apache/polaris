@@ -70,4 +70,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
 generate-setup-file = false
-script = "build.py"
+script = "generate_clients.py"

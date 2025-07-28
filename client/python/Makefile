@@ -66,7 +66,7 @@ install-poetry-deps:
 
 .PHONY: regenerate-client
 regenerate-client: setup-env ## Regenerate the client code
-	python3 build.py
+	python3 generate_clients.py
 
 .PHONY: test-client
 test-client: setup-env ## Run client tests

@@ -78,7 +78,7 @@ EXCLUDE_PATHS = [
     Path("docker-compose.yml"),
     Path(".pre-commit-config.yaml"),
     Path("README.md"),
-    Path("build.py"),
+    Path("generate_clients.py"),
     Path(".venv"),
 ]
 EXCLUDE_EXTENSIONS = [
@@ -218,7 +218,7 @@ def prepend_licenses() -> None:
                 # e.g., for '.keep', this is 'keep'
                 file_extension = relative_file_path.name.lstrip(".")
             else:
-                # For standard files like build.py
+                # For standard files like generate_clients.py
                 file_extension = file_path.suffix.lstrip(".")
 
             # Check if extension is excluded
