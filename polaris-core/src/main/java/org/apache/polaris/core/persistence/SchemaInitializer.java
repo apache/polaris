@@ -26,5 +26,4 @@ public interface SchemaInitializer {
   boolean setupSchema(SchemaOptions schemaOptions);
 
   boolean isSchemaPresent(String schemaName);
-
 }

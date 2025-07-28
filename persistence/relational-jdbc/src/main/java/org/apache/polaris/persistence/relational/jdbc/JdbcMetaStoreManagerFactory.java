@@ -151,8 +151,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory, Sch
         } else {
           if (!isSchemaPresent(POLARIS_SCHEMA_NAME)) {
             throw new IllegalStateException(
-                "Schema does not exist for realm '" + realm + "' and schema-setup is false. " +
-                    "Either set schema-setup is true or initialize the schema using SchemaSetupCommand.");
+                "Schema does not exist for realm '"
+                    + realm
+                    + "' and schema-setup is false. "
+                    + "Either set schema-setup is true or initialize the schema using SchemaSetupCommand.");
           }
         }
         initializeForRealm(
@@ -279,16 +281,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory, Sch
     }
   }
 
-
   @Override
   public boolean setupSchema(SchemaOptions schemaOptions) {
     DatasourceOperations datasourceOperations = getDatasourceOperations();
     try {
       // Run the set-up script to create the tables.
       datasourceOperations.executeScript(
-          datasourceOperations
-              .getDatabaseType()
-              .openInitScriptResource(schemaOptions));
+          datasourceOperations.getDatabaseType().openInitScriptResource(schemaOptions));
 
     } catch (SQLException e) {
       throw new RuntimeException(
