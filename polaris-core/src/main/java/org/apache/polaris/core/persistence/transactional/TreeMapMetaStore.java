@@ -25,7 +25,6 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -410,18 +409,16 @@ public class TreeMapMetaStore {
   /**
    * Run inside a read/write transaction
    *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
    * @return the result of the execution
    */
   public <T> T runInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
 
     synchronized (lock) {
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startWriteTransaction();
         return transactionCode.get();
       } catch (Throwable e) {
@@ -436,21 +433,16 @@ public class TreeMapMetaStore {
     }
   }
 
-  /**
-   * Run inside a read/write transaction
-   *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
-   */
+  /** Run inside a read/write transaction */
   public void runActionInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
 
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startWriteTransaction();
         transactionCode.run();
       } catch (Throwable e) {
@@ -468,18 +460,16 @@ public class TreeMapMetaStore {
   /**
    * Run inside a read only transaction
    *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
    * @return the result of the execution
    */
   public <T> T runInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startReadTransaction();
         return transactionCode.get();
       } finally {
@@ -489,20 +479,15 @@ public class TreeMapMetaStore {
     }
   }
 
-  /**
-   * Run inside a read only transaction
-   *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
-   */
+  /** Run inside a read only transaction */
   public void runActionInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startReadTransaction();
         transactionCode.run();
       } finally {
