@@ -424,11 +424,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .getSubscopedCreds(
                 newCallContext(),
                 new AwsStorageConfigurationInfo(
-                    S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    region),
+                    S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, region),
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -660,11 +656,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .getSubscopedCreds(
                 newCallContext(),
                 new AwsStorageConfigurationInfo(
-                    S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    region),
+                    S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, region),
                 true, /* allowList = true */
                 Set.of(),
                 Set.of());

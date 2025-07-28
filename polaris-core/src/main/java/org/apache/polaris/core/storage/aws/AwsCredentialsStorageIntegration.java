@@ -274,7 +274,6 @@ public class AwsCredentialsStorageIntegration
   }
 
   private boolean isKMSSupported(CallContext callContext) {
-    return callContext
-        .getRealmConfig().getConfig(ENABLE_KMS_SUPPORT_FOR_S3);
+    return callContext.getRealmConfig().getConfig(ENABLE_KMS_SUPPORT_FOR_S3);
   }
 }
