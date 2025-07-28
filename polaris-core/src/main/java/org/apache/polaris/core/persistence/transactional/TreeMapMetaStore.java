@@ -193,6 +193,7 @@ public class TreeMapMetaStore {
   private Transaction tr;
 
   // diagnostic services
+  private final PolarisDiagnostics initialDiagnosticServices;
   private PolarisDiagnostics diagnosticServices;
 
   // all entities
@@ -300,6 +301,7 @@ public class TreeMapMetaStore {
                     policyMappingRecord.getTargetId()),
             PolarisPolicyMappingRecord::new);
 
+    this.initialDiagnosticServices = diagnostics;
     // no transaction open yet
     this.diagnosticServices = diagnostics;
     this.tr = null;
@@ -428,7 +430,7 @@ public class TreeMapMetaStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
@@ -452,7 +454,7 @@ public class TreeMapMetaStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
@@ -474,7 +476,7 @@ public class TreeMapMetaStore {
         return transactionCode.get();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
@@ -492,7 +494,7 @@ public class TreeMapMetaStore {
         transactionCode.run();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
