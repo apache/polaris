@@ -169,9 +169,6 @@ public class IcebergCatalogAdapter
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   /**

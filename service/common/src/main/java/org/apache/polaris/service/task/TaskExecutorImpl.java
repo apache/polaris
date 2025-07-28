@@ -122,8 +122,6 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     boolean success = false;
     try {
-      // set the call context INSIDE the async task
-      CallContext.setCurrentContext(ctx);
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
