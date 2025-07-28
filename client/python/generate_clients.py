@@ -139,7 +139,6 @@ def generate_polaris_management_client() -> None:
             OPEN_API_GENERATOR_IGNORE,
         ],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
     )
 
 
@@ -163,7 +162,6 @@ def generate_polaris_catalog_client() -> None:
             OPEN_API_GENERATOR_IGNORE,
         ],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
     )
 
 
@@ -188,7 +186,6 @@ def generate_iceberg_catalog_client() -> None:
             OPEN_API_GENERATOR_IGNORE,
         ],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
     )
 
 
