@@ -102,7 +102,7 @@ public class PolarisCatalogUtils {
    * Load spark table using DataSourceV2.
    *
    * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
-   *     DeltaTableV2. For hudi tables we will return a Spark V1Table.
+   *     DeltaTableV2.
    */
   public static Table loadV2SparkTable(GenericTable genericTable) {
     SparkSession sparkSession = SparkSession.active();
@@ -114,12 +114,15 @@ public class PolarisCatalogUtils {
         provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());
   }
 
-  /** Return a Spark V1Table for Hudi tables. */
-  public static Table loadV1SparkHudiTable(
+  /**
+   * Return a Spark V1Table for formats that do not use DataSourceV2. Currently, this is being used
+   * for Hudi tables
+   */
+  public static Table loadV1SparkTable(
       GenericTable genericTable, Identifier identifier, String catalogName) {
     Map<String, String> tableProperties = normalizeTablePropertiesForLoadSparkTable(genericTable);
 
-    // Need full identifier in order to construct CatalogTable correctly for Hudi
+    // Need full identifier in order to construct CatalogTable
     String namespacePath = String.join(".", identifier.namespace());
     TableIdentifier tableIdentifier =
         new TableIdentifier(

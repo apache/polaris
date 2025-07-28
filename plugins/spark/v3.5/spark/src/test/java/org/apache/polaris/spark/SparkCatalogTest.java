@@ -657,7 +657,7 @@ public class SparkCatalogTest {
           mockedStaticUtils
               .when(
                   () ->
-                      PolarisCatalogUtils.loadV1SparkHudiTable(
+                      PolarisCatalogUtils.loadV1SparkTable(
                           Mockito.any(), Mockito.any(), Mockito.any()))
               .thenReturn(table);
         } else {

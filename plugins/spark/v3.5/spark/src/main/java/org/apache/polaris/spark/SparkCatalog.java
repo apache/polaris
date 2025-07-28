@@ -192,9 +192,9 @@ public class SparkCatalog
       } else if (PolarisCatalogUtils.useHudi(provider)) {
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.alterTable(ident, changes);
+      } else {
+        return this.polarisSparkCatalog.alterTable(ident);
       }
-
-      return this.polarisSparkCatalog.alterTable(ident);
     }
   }
 

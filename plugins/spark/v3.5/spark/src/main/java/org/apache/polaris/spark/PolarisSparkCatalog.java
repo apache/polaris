@@ -72,7 +72,7 @@ public class PolarisSparkCatalog implements TableCatalog {
       GenericTable genericTable =
           this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
       if (PolarisCatalogUtils.useHudi(genericTable.getFormat())) {
-        return PolarisCatalogUtils.loadV1SparkHudiTable(genericTable, identifier, name());
+        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
@@ -115,7 +115,7 @@ public class PolarisSparkCatalog implements TableCatalog {
               null,
               properties);
       if (PolarisCatalogUtils.useHudi(format)) {
-        return PolarisCatalogUtils.loadV1SparkHudiTable(genericTable, identifier, name());
+        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
