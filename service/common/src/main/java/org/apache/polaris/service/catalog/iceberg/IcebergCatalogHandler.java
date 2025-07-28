@@ -51,7 +51,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
@@ -84,6 +83,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -997,7 +997,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure
-      throw new CommitFailedException(
+      throw new CommitConflictException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
     }

@@ -106,6 +106,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -2127,7 +2128,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Schema expected = update.apply();
 
     Assertions.assertThatThrownBy(() -> update.commit())
-        .isInstanceOf(CommitFailedException.class)
+        .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
   }
 
