@@ -68,7 +68,7 @@ public class TreeMapMetaStore {
      * @param key key for that value
      */
     public T read(String key) {
-      TreeMapMetaStore.this.ensureReadTr();
+      ensureReadTr();
       T value = this.slice.getOrDefault(key, null);
       return (value != null) ? this.copyRecord.apply(value) : null;
     }
@@ -79,7 +79,7 @@ public class TreeMapMetaStore {
      * @param prefix key prefix
      */
     public List<T> readRange(String prefix) {
-      TreeMapMetaStore.this.ensureReadTr();
+      ensureReadTr();
       if (prefix.isEmpty()) {
         return new ArrayList<>(this.slice.values());
       }
@@ -99,7 +99,7 @@ public class TreeMapMetaStore {
      * @param value value to write
      */
     public void write(T value) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       T valueToWrite = (value != null) ? this.copyRecord.apply(value) : null;
       String key = this.buildKey(valueToWrite);
       // write undo if needs be
@@ -115,7 +115,7 @@ public class TreeMapMetaStore {
      * @param key key for the record to remove
      */
     public void delete(String key) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       if (slice.containsKey(key)) {
         // write undo if needs be
         if (!this.undoSlice.containsKey(key)) {
@@ -131,7 +131,7 @@ public class TreeMapMetaStore {
      * @param prefix key prefix for the record to remove
      */
     public void deleteRange(String prefix) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       List<T> elements = this.readRange(prefix);
       for (T element : elements) {
         this.delete(element);
@@ -139,7 +139,7 @@ public class TreeMapMetaStore {
     }
 
     void deleteAll() {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       slice.clear();
       undoSlice.clear();
     }
@@ -155,7 +155,7 @@ public class TreeMapMetaStore {
 
     /** Rollback all changes made to this slice since transaction started */
     private void rollback() {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       undoSlice.forEach(
           (key, value) -> {
             if (value == null) {
@@ -398,7 +398,7 @@ public class TreeMapMetaStore {
   }
 
   /** Ensure that a read/write FDB transaction has been started */
-  public void ensureReadWriteTr() {
+  private void ensureReadWriteTr() {
     this.diagnosticServices.check(
         this.tr != null && this.tr.isWrite(), "no_write_transaction_started");
   }
