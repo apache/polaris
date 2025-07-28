@@ -116,6 +116,31 @@ public class DatasourceOperations {
     }
   }
 
+
+  public boolean checkSchemaExists(@Nonnull String schemaName) {
+    final String sql = "SELECT 1 FROM information_schema.schemata WHERE schema_name = ?";
+    final boolean[] exists = {false};
+
+    try {
+      runWithinTransaction(connection -> {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+          statement.setString(1, schemaName);
+          try (ResultSet resultSet = statement.executeQuery()) {
+            exists[0] = resultSet.next();
+          }
+        }
+        return true;
+      });
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+
+    return exists[0];
+  }
+
+
+
+
   /**
    * Executes SELECT Query and returns the results after applying a transformer
    *

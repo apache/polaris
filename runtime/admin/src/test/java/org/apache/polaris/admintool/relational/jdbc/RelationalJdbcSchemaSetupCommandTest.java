@@ -17,29 +17,10 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.admintool.relational.jdbc;
 
-import jakarta.annotation.Nullable;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.admintool.SchemaSetupCommandTestBase;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  @Nullable
-  Integer schemaVersion();
-
-  @Nullable
-  String schemaFile();
-
-  @Value.Default
-  default boolean setupSchema() {
-    return true;
-  }
-
-  @Value.Check
-  default void validate() {
-    if (schemaVersion() != null && schemaFile() != null) {
-      throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
-    }
-  }
-}
+@TestProfile(RelationalJdbcAdminProfile.class)
+public class RelationalJdbcSchemaSetupCommandTest extends SchemaSetupCommandTestBase {}

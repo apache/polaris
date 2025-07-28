@@ -41,6 +41,7 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.SchemaInitializer;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
@@ -61,9 +62,11 @@ import org.slf4j.LoggerFactory;
  */
 @ApplicationScoped
 @Identifier("relational-jdbc")
-public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
+public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory, SchemaInitializer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
+
+  private static final String POLARIS_SCHEMA_NAME = "POLARIS_SCHEMA";
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
@@ -143,15 +146,14 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
-        try {
-          // Run the set-up script to create the tables.
-          datasourceOperations.executeScript(
-              datasourceOperations
-                  .getDatabaseType()
-                  .openInitScriptResource(bootstrapOptions.schemaOptions()));
-        } catch (SQLException e) {
-          throw new RuntimeException(
-              String.format("Error executing sql script: %s", e.getMessage()), e);
+        if (bootstrapOptions.schemaOptions().setupSchema()) {
+          setupSchema(bootstrapOptions.schemaOptions());
+        } else {
+          if (!isSchemaPresent(POLARIS_SCHEMA_NAME)) {
+            throw new IllegalStateException(
+                "Schema does not exist for realm '" + realm + "' and schema-setup is false. " +
+                    "Either set schema-setup is true or initialize the schema using SchemaSetupCommand.");
+          }
         }
         initializeForRealm(
             datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
@@ -275,5 +277,28 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       throw new IllegalStateException(
           "Realm is not bootstrapped, please run server in bootstrap mode.");
     }
+  }
+
+
+  @Override
+  public boolean setupSchema(SchemaOptions schemaOptions) {
+    DatasourceOperations datasourceOperations = getDatasourceOperations();
+    try {
+      // Run the set-up script to create the tables.
+      datasourceOperations.executeScript(
+          datasourceOperations
+              .getDatabaseType()
+              .openInitScriptResource(schemaOptions));
+
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Error executing sql script: %s", e.getMessage()), e);
+    }
+    return true;
+  }
+
+  @Override
+  public boolean isSchemaPresent(String schemaName) {
+    return getDatasourceOperations().checkSchemaExists(schemaName);
   }
 }

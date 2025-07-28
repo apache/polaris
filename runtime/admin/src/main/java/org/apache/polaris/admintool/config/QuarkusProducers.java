@@ -29,6 +29,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.SchemaInitializer;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -41,6 +42,12 @@ public class QuarkusProducers {
       @ConfigProperty(name = "polaris.persistence.type") String persistenceType,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories.select(Identifier.Literal.of(persistenceType)).get();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public SchemaInitializer schemaInitializer(MetaStoreManagerFactory metaStoreManagerFactory) {
+    return (SchemaInitializer) metaStoreManagerFactory;
   }
 
   // CDI dependencies of EclipseLink's MetaStoreManagerFactory:

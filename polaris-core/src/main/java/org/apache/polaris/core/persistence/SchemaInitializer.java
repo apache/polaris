@@ -17,29 +17,14 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nullable;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  @Nullable
-  Integer schemaVersion();
+public interface SchemaInitializer {
 
-  @Nullable
-  String schemaFile();
+  boolean setupSchema(SchemaOptions schemaOptions);
 
-  @Value.Default
-  default boolean setupSchema() {
-    return true;
-  }
+  boolean isSchemaPresent(String schemaName);
 
-  @Value.Check
-  default void validate() {
-    if (schemaVersion() != null && schemaFile() != null) {
-      throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
-    }
-  }
 }
