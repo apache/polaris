@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -29,15 +30,12 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -192,14 +190,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       CallContext.setCurrentContext(polarisContext);
     }
 
-    EntityResult preliminaryRootPrincipalLookup =
-        metaStoreManager.readEntityByName(
-            polarisContext,
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootPrincipalName());
-    if (preliminaryRootPrincipalLookup.isSuccess()) {
+    Optional<PrincipalEntity> preliminaryRootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext);
+    if (preliminaryRootPrincipal.isPresent()) {
       String overrideMessage =
           "It appears this metastore manager has already been bootstrapped. "
               + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
@@ -209,16 +202,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
     metaStoreManager.bootstrapPolarisService(polarisContext);
 
-    EntityResult rootPrincipalLookup =
-        metaStoreManager.readEntityByName(
-            polarisContext,
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootPrincipalName());
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     return metaStoreManager.loadPrincipalSecrets(
         polarisContext,
-        PolarisEntity.of(rootPrincipalLookup.getEntity())
+        rootPrincipal
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getClientIdPropertyName()));
   }
@@ -240,15 +228,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       CallContext.setCurrentContext(polarisContext);
     }
 
-    EntityResult rootPrincipalLookup =
-        metaStoreManager.readEntityByName(
-            polarisContext,
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootPrincipalName());
-
-    if (!rootPrincipalLookup.isSuccess()) {
+    Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
+    if (rootPrincipal.isEmpty()) {
       LOGGER.error(
           "\n\n Realm {} is not bootstrapped, could not load root principal. Please run Bootstrap command. \n\n",
           realmContext.getRealmIdentifier());
