@@ -747,4 +747,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
           @Nonnull PolarisCallContext callContext, T entity) {
     return Optional.empty();
   }
+
+  @Nullable
+  @Override
+  public PolarisPrincipalSecrets resetPrincipalSecrets(@Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId, boolean reset, @Nonnull String oldSecretHash, String customClientId, String customClientSecret) {
+    return null;
+  }
 }

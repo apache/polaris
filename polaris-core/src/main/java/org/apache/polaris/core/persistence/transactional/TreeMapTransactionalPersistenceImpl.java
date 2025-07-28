@@ -485,6 +485,22 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return principalSecrets;
   }
 
+  @Override
+  public @Nonnull PolarisPrincipalSecrets resetPrincipalSecrets(
+          @Nonnull PolarisCallContext callCtx,
+          @Nonnull String clientId,
+          long principalId,
+          boolean reset,
+          @Nonnull String oldSecretHash,
+          String customClientId,
+          String customClientSecret) {
+    // get metastore we should be using
+    callCtx
+            .getDiagServices()
+            .fail("illegal_method_in_transaction_workspace", "resetPrincipalSecrets");
+    return null;
+  }
+
   /** {@inheritDoc} */
   @Override
   public void deletePrincipalSecretsInCurrentTxn(

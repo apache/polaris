@@ -82,6 +82,29 @@ public interface IntegrationPersistence {
       @Nonnull String oldSecretHash);
 
   /**
+   * Reset the secrets of a principal entity, i.e. make the specified secrets as main and secondary
+   * and assign a new client id
+   *
+   * @param callCtx call context
+   * @param clientId principal client id
+   * @param principalId principal id
+   * @param reset true if the principal secrets should be disabled and replaced with a one-time
+   *     password
+   * @param oldSecretHash the principal secret's old main secret hash
+   * @param customClientId the principal secret's old main secret hash
+   * @param customClientSecret the principal secret's old main secret hash
+   */
+  @Nullable
+  PolarisPrincipalSecrets resetPrincipalSecrets(
+          @Nonnull PolarisCallContext callCtx,
+          @Nonnull String clientId,
+          long principalId,
+          boolean reset,
+          @Nonnull String oldSecretHash,
+          String customClientId,
+          String customClientSecret);
+
+  /**
    * When dropping a principal, we also need to drop the secrets of that principal
    *
    * @param callCtx the call context
