@@ -79,6 +79,7 @@ EXCLUDE_PATHS = [
     Path(".pre-commit-config.yaml"),
     Path("README.md"),
     Path("build.py"),
+    Path(".venv"),
 ]
 EXCLUDE_EXTENSIONS = [
     "json",
