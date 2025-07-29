@@ -121,28 +121,25 @@ public class DatasourceOperations {
     final boolean[] exists = {false};
 
     try {
-      runWithinTransaction(connection -> {
-        try (ResultSet schemas = connection.getMetaData().getSchemas()) {
-          while (schemas.next()) {
-            if (schemaOptions.schemaName().equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
-              exists[0] = true;
-              break;
+      runWithinTransaction(
+          connection -> {
+            try (ResultSet schemas = connection.getMetaData().getSchemas()) {
+              while (schemas.next()) {
+                if (schemaOptions.schemaName().equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
+                  exists[0] = true;
+                  break;
+                }
+              }
             }
-          }
-        }
-        return true;
-      });
+            return true;
+          });
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to check schema existence: " + schemaOptions.schemaName(), e);
+      throw new RuntimeException(
+          "Failed to check schema existence: " + schemaOptions.schemaName(), e);
     }
 
     return exists[0];
   }
-
-
-
-
-
 
   /**
    * Executes SELECT Query and returns the results after applying a transformer

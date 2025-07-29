@@ -36,12 +36,12 @@ public interface SchemaOptions {
   default boolean setupSchema() {
     return true;
   }
+
   @NotNull
   @Value.Default
   default String schemaName() {
     return "POLARIS_SCHEMA";
   }
-
 
   @Value.Check
   default void validate() {
