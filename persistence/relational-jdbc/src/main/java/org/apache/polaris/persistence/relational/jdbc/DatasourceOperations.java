@@ -41,6 +41,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,27 +117,32 @@ public class DatasourceOperations {
     }
   }
 
-  public boolean checkSchemaExists(@Nonnull String schemaName) {
-    final String sql = "SELECT 1 FROM information_schema.schemata WHERE schema_name = ?";
+  public boolean checkSchemaExists(SchemaOptions schemaOptions) {
     final boolean[] exists = {false};
 
     try {
-      runWithinTransaction(
-          connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-              statement.setString(1, schemaName);
-              try (ResultSet resultSet = statement.executeQuery()) {
-                exists[0] = resultSet.next();
-              }
+      runWithinTransaction(connection -> {
+        try (ResultSet schemas = connection.getMetaData().getSchemas()) {
+          while (schemas.next()) {
+            if (schemaOptions.schemaName().equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
+              exists[0] = true;
+              break;
             }
-            return true;
-          });
+          }
+        }
+        return true;
+      });
     } catch (SQLException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to check schema existence: " + schemaOptions.schemaName(), e);
     }
 
     return exists[0];
   }
+
+
+
+
+
 
   /**
    * Executes SELECT Query and returns the results after applying a transformer

@@ -19,7 +19,9 @@
 
 package org.apache.polaris.admintool;
 
+import jakarta.inject.Inject;
 import org.apache.polaris.admintool.BootstrapCommand.InputOptions.SchemaInputOptions;
+import org.apache.polaris.core.persistence.SchemaInitializer;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import picocli.CommandLine.ArgGroup;
@@ -30,6 +32,8 @@ import picocli.CommandLine.Command;
     mixinStandardHelpOptions = true,
     description = "Set up the polaris schema for Polaris metadata storage")
 public class SchemaSetupCommand extends BaseCommand {
+
+  @Inject SchemaInitializer schemaInitializer;
 
   @ArgGroup(exclusive = false)
   public SchemaInputOptions schemaInputOptions;

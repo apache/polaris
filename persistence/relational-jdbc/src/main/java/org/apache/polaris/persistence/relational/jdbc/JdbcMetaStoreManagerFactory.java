@@ -149,7 +149,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory, Sch
         if (bootstrapOptions.schemaOptions().setupSchema()) {
           setupSchema(bootstrapOptions.schemaOptions());
         } else {
-          if (!isSchemaPresent(POLARIS_SCHEMA_NAME)) {
+          if (!isSchemaPresent(bootstrapOptions.schemaOptions())) {
             throw new IllegalStateException(
                 "Schema does not exist for realm '"
                     + realm
@@ -297,7 +297,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory, Sch
   }
 
   @Override
-  public boolean isSchemaPresent(String schemaName) {
-    return getDatasourceOperations().checkSchemaExists(schemaName);
+  public boolean isSchemaPresent(SchemaOptions schemaOptions) {
+    return getDatasourceOperations().checkSchemaExists(schemaOptions);
   }
 }

@@ -21,7 +21,6 @@ package org.apache.polaris.admintool;
 import jakarta.inject.Inject;
 import java.util.concurrent.Callable;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.SchemaInitializer;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
@@ -33,8 +32,6 @@ public abstract class BaseCommand implements Callable<Integer> {
   public static final int EXIT_CODE_SCHEMA_ERROR = 5;
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
-  @Inject SchemaInitializer schemaInitializer;
 
   @Spec CommandSpec spec;
 }
