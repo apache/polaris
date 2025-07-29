@@ -635,7 +635,7 @@ paths:
                 TableToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
         '409':
-          description: Conflict - CommitConflictException, one or more requirements failed. The client may retry.
+          description: Conflict - Transaction commit failed due to concurrent modifications. The client may retry.
           content:
             application/json:
               schema:
@@ -930,7 +930,7 @@ paths:
                 TableToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
         '409':
-          description: Conflict - CommitConflictException, one or more requirements failed. The client may retry.
+          description: Conflict - Transaction commit failed due to concurrent modifications. The client may retry.
           content:
             application/json:
               schema:
@@ -1140,7 +1140,7 @@ paths:
                 ViewToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchViewError'
         '409':
-          description: Conflict - CommitConflictException, one or more requirements failed. The client may retry.
+          description: Conflict - Transaction commit failed due to concurrent modifications. The client may retry.
           content:
             application/json:
               schema:
