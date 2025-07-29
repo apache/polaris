@@ -1040,7 +1040,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      storageConfigInfo, Set.of(PolarisStorageActions.ALL), locations);
+                      callContext.getRealmConfig(),
+                      storageConfigInfo,
+                      Set.of(PolarisStorageActions.ALL),
+                      locations);
           validationResults
               .values()
               .forEach(
