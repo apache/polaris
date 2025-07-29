@@ -167,6 +167,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             && (isStorageProviderRetryableException(ex)
                 || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
       };
+  private static final int NUM_OF_RETRIES = 3;
 
   private final StorageCredentialCache storageCredentialCache;
   private final ResolverFactory resolverFactory;
@@ -708,10 +709,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity returnedEntity =
         Optional.ofNullable(
                 getMetaStoreManager()
-                    .updateEntityPropertiesIfNotChanged(
+                    .retryUpdateEntityProperties(
                         getCurrentPolarisContext(),
                         PolarisEntity.toCoreList(parentPath),
-                        updatedEntity)
+                        updatedEntity,
+                        properties,
+                        NUM_OF_RETRIES)
                     .getEntity())
             .map(PolarisEntity::new)
             .orElse(null);
@@ -740,10 +743,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity returnedEntity =
         Optional.ofNullable(
                 getMetaStoreManager()
-                    .updateEntityPropertiesIfNotChanged(
+                    .retryRemoveEntityProperties(
                         getCurrentPolarisContext(),
                         PolarisEntity.toCoreList(parentPath),
-                        updatedEntity)
+                        updatedEntity,
+                        properties,
+                        NUM_OF_RETRIES)
                     .getEntity())
             .map(PolarisEntity::new)
             .orElse(null);

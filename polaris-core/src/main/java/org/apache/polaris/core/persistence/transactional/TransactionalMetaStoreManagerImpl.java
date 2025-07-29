@@ -18,6 +18,10 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
+import static org.apache.polaris.core.entity.PolarisBaseEntity.convertPropertiesToJson;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -29,9 +33,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.validation.constraints.NotNull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -89,6 +95,7 @@ import org.slf4j.LoggerFactory;
 public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TransactionalMetaStoreManagerImpl.class);
+  private static final int MAX_UPDATE_RETRIES = 5;
 
   /**
    * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot
@@ -1191,6 +1198,138 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // need to run inside a read/write transaction
     return ms.runInTransaction(
         callCtx, () -> this.updateEntitiesPropertiesIfNotChanged(callCtx, ms, entities));
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult retryUpdateEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Map<String, String> properties,
+      int numOfRetries) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.updateEntityPropertiesInternal(
+                callCtx, catalogPath, entity, emptySet(), properties, numOfRetries));
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult retryRemoveEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      @NotNull Set<String> keys,
+      int numOfRetries) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    return ms.runInTransaction(
+        callCtx,
+        () ->
+            this.updateEntityPropertiesInternal(
+                callCtx, catalogPath, entity, keys, emptyMap(), numOfRetries));
+  }
+
+  private @Nonnull EntityResult updateEntityPropertiesInternal(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Set<String> keysOrEmpty,
+      Map<String, String> propertiesOrEmpty,
+      int numOfRetries) {
+    numOfRetries = numOfRetries < 0 || numOfRetries > 5 ? MAX_UPDATE_RETRIES : numOfRetries;
+    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
+
+    int attempt = 0;
+    while (attempt < numOfRetries) {
+      try {
+        PolarisBaseEntity persistedEntity;
+        if ((persistedEntity =
+                tryUpdateEntity(callCtx, catalogPath, entity, keysOrEmpty, propertiesOrEmpty))
+            != null) {
+          return new EntityResult(persistedEntity);
+        }
+      } catch (Exception e) {
+        LOGGER.debug("Persistence failed {}, retrying... Attempt {}", e, attempt + 1);
+      }
+      attempt++;
+      sleepBeforeRetry(attempt, numOfRetries);
+    }
+
+    return new EntityResult(
+        BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "Failed after max retries");
+  }
+
+  private PolarisBaseEntity tryUpdateEntity(
+      PolarisCallContext callCtx,
+      List<PolarisEntityCore> catalogPath,
+      PolarisBaseEntity entity,
+      Set<String> keys,
+      Map<String, String> properties) {
+    TransactionalPersistence ms = (TransactionalPersistence) callCtx.getMetaStore();
+    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath, entity);
+
+    if (resolver.isFailure()) {
+      return null;
+    }
+
+    PolarisBaseEntity entityRefreshed =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+
+    callCtx
+        .getDiagServices()
+        .checkNotNull(entityRefreshed, "unexpected_entity_not_found", "entity={}", entity);
+    PolarisBaseEntity updatedEntity;
+
+    if (entityRefreshed.getEntityVersion() != entity.getEntityVersion()) {
+      LOGGER.debug("Concurrent update detected for entity: {}", entity);
+      Map<String, String> updatedProperties = new HashMap<>(entityRefreshed.getPropertiesAsMap());
+      Map<String, String> updatedInternalProperties =
+          new HashMap<>(entityRefreshed.getInternalPropertiesAsMap());
+      if (!properties.isEmpty()) {
+        // Merge new properties into existing map.
+        updatedProperties.putAll(properties);
+        updatedInternalProperties.putAll(entity.getInternalPropertiesAsMap());
+        updatedEntity =
+            new PolarisBaseEntity.Builder(entityRefreshed)
+                .properties(convertPropertiesToJson(updatedProperties))
+                .internalProperties(convertPropertiesToJson(updatedInternalProperties))
+                .build();
+      } else {
+        keys.forEach(updatedProperties::remove);
+        updatedEntity =
+            new PolarisBaseEntity.Builder(entityRefreshed)
+                .properties(convertPropertiesToJson(updatedProperties))
+                .internalProperties(entity.getInternalProperties())
+                .build();
+      }
+      LOGGER.debug("Updated entity: {}", updatedEntity);
+    } else {
+      updatedEntity =
+          new PolarisBaseEntity.Builder(entityRefreshed)
+              .internalProperties(entity.getInternalProperties())
+              .properties(entity.getProperties())
+              .build();
+    }
+    return persistEntityAfterChange(callCtx, ms, updatedEntity, false, entityRefreshed);
+  }
+
+  private void sleepBeforeRetry(int attempt, int maxRetries) {
+    if (attempt < maxRetries) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(attempt * 100L);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.debug("Thread interrupted while retrying", ex);
+      }
+    }
   }
 
   /**

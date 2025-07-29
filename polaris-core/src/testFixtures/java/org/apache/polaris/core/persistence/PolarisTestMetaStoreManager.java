@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence;
 import static org.apache.polaris.core.entity.PolarisBaseEntity.convertPropertiesToJson;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
@@ -1564,6 +1565,80 @@ public class PolarisTestMetaStoreManager {
     }
   }
 
+  public PolarisBaseEntity updateEntityWithRetry(
+      List<PolarisEntityCore> catalogPath,
+      PolarisBaseEntity entity,
+      String props,
+      String internalProps)
+      throws JsonProcessingException {
+    // ok, remember version and grants_version
+    int version = entity.getEntityVersion();
+    int grantRecsVersion = entity.getGrantRecordsVersion();
+
+    // derive the catalogId for that entity
+    long catalogId =
+        (catalogPath == null) ? PolarisEntityConstants.getNullId() : catalogPath.get(0).getId();
+    Assertions.assertThat(catalogId).isEqualTo(entity.getCatalogId());
+    // let's make some property updates
+    PolarisBaseEntity updatedPropEntity =
+        new PolarisBaseEntity.Builder(entity)
+            .properties(props)
+            .internalProperties(internalProps)
+            .build();
+
+    // update that property
+    Map<String, String> propertiesMap = objectMapper.readValue(props, new TypeReference<>() {});
+    PolarisBaseEntity updatedEntity =
+        polarisMetaStoreManager
+            .retryUpdateEntityProperties(
+                this.polarisCallContext, catalogPath, updatedPropEntity, propertiesMap, 3)
+            .getEntity();
+
+    // entity should have been updated
+    Assertions.assertThat(updatedEntity).isNotNull();
+
+    // read back this entity and ensure that the update was performed
+    PolarisBaseEntity afterUpdateEntity =
+        this.ensureExistsById(
+            catalogPath,
+            entity.getId(),
+            true,
+            entity.getName(),
+            entity.getType(),
+            entity.getSubType());
+
+    // verify that version has changed, but not grantRecsVersion
+    Assertions.assertThat(updatedEntity.getEntityVersion()).isEqualTo(version + 2);
+    Assertions.assertThat(entity.getEntityVersion()).isEqualTo(version);
+    Assertions.assertThat(afterUpdateEntity.getEntityVersion()).isEqualTo(version + 2);
+
+    // grantRecsVersion should not have changed
+    Assertions.assertThat(updatedEntity.getGrantRecordsVersion()).isEqualTo(grantRecsVersion);
+    Assertions.assertThat(entity.getGrantRecordsVersion()).isEqualTo(grantRecsVersion);
+    Assertions.assertThat(afterUpdateEntity.getGrantRecordsVersion()).isEqualTo(grantRecsVersion);
+
+    // update should have been performed
+    Assertions.assertThat(jsonNode(afterUpdateEntity.getProperties()))
+        .isEqualTo(jsonNode(updatedEntity.getProperties()));
+
+    // lookup the tracking slice to verify this has been updated too
+    if (supportsChangeTracking) {
+      List<PolarisChangeTrackingVersions> versions =
+          polarisMetaStoreManager
+              .loadEntitiesChangeTracking(
+                  this.polarisCallContext,
+                  List.of(new PolarisEntityId(catalogId, updatedPropEntity.getId())))
+              .getChangeTrackingVersions();
+      Assertions.assertThat(versions).hasSize(1);
+      Assertions.assertThat(versions.get(0).getEntityVersion())
+          .isEqualTo(updatedEntity.getEntityVersion());
+      Assertions.assertThat(versions.get(0).getGrantRecordsVersion())
+          .isEqualTo(updatedEntity.getGrantRecordsVersion());
+    }
+
+    return updatedEntity;
+  }
+
   /** Execute a list operation and validate the result */
   private void validateListReturn(
       List<PolarisEntityCore> path,
@@ -2230,6 +2305,22 @@ public class PolarisTestMetaStoreManager {
             "{\"v3pproperty\": \"some value\"}",
             "{\"v3pinternal_property\": \"some other value\"}");
     Assertions.assertThat(T6v3p).isNull();
+
+    if (!(polarisMetaStoreManager instanceof AtomicOperationMetaStoreManager)) {
+      try {
+        PolarisBaseEntity T6v3p2 =
+            this.updateEntityWithRetry(
+                List.of(catalog, N5, N5_N6),
+                T6v2,
+                "{\"v3pproperty\": \"some value\"}",
+                "{\"v3pinternal_property\": \"some other value\"}");
+        Assertions.assertThat(T6v3p2).isNotNull();
+        Assertions.assertThat(T6v3p2.getPropertiesAsMap().get("v3pproperty"))
+            .isEqualTo("some value");
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    }
 
     // update an entity which does not exist
     PolarisBaseEntity T5v1 =
