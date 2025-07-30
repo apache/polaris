@@ -1608,7 +1608,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             entityId);
 
     PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
+        BaseMetaStoreManager.extractStorageConfiguration(
+            callCtx.getDiagServices(), reloadedEntity.getEntity());
     try {
       AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(

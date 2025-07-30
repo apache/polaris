@@ -1120,7 +1120,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callContext.getDiagServices(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
