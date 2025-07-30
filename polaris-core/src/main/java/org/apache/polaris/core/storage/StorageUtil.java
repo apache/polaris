@@ -80,7 +80,8 @@ public class StorageUtil {
     Set<String> locations = new HashSet<>();
     locations.add(baseLocation);
     locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    locations.add(
+        properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
     locations.remove(null);
     return removeRedundantLocations(locations);
   }

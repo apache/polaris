@@ -105,8 +105,7 @@ public class StorageUtilTest {
                 "/1/",
                 Map.of(
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/2/",
-                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/3/"
-                )))
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/3/")))
         .contains("/1/", "/2/", "/3/");
   }
 }
