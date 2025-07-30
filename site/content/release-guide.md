@@ -215,7 +215,7 @@ Create the signature and checksum for the Helm package tgz and prov files:
 ```
 shasum -a 512 polaris-x.y.z.tgz > polaris-x.y.z.tgz.sha512
 gpg --armor --output polaris-x.y.z.tgz.asc --detach-sig polaris-x.y.z.tgz
-shasum -a 512 polaris-x.y.z.tgz.prov > polaris-x.y.z.tgz.prov
+shasum -a 512 polaris-x.y.z.tgz.prov > polaris-x.y.z.tgz.prov.sha512
 gpg --armor --output polaris-x.y.z.tgz.prov.asc --detach-sig polaris-x.y.z.tgz.prov
 ```
 
