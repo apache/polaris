@@ -66,10 +66,10 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -82,7 +82,6 @@ import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -182,7 +181,7 @@ public abstract class PolarisAuthzTestBase {
   protected final ReservedProperties reservedProperties = ReservedProperties.NONE;
 
   @Inject protected MetaStoreManagerFactory managerFactory;
-  @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
+  @Inject protected ResolutionManifestFactory resolutionManifestFactory;
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject protected PolarisDiagnostics diagServices;
@@ -198,7 +197,6 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
-  protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
   protected UserSecretsManager userSecretsManager;
   protected PolarisBaseEntity catalogEntity;
@@ -238,7 +236,6 @@ public abstract class PolarisAuthzTestBase {
             diagServices,
             configurationStore,
             clock);
-    this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
     callContext = polarisContext;
 
@@ -249,7 +246,7 @@ public abstract class PolarisAuthzTestBase {
     this.adminService =
         new PolarisAdminService(
             callContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext(authenticatedRoot, Set.of()),
@@ -438,7 +435,7 @@ public abstract class PolarisAuthzTestBase {
     Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
+            callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
             storageCredentialCache,

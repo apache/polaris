@@ -186,7 +186,7 @@ public class ManagementServiceTest {
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     return new PolarisAdminService(
         callContext,
-        services.entityManagerFactory().getOrCreateEntityManager(callContext.getRealmContext()),
+        services.resolutionManifestFactory(),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),
         new SecurityContext() {
