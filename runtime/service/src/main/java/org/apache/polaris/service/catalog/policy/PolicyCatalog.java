@@ -54,9 +54,9 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.policy.AccessControlPolicyUtil;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.policy.PolicyUtil;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -428,10 +428,12 @@ public class PolicyCatalog {
 
     return Stream.concat(
             nonInheritablePolicies.stream()
-                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
+                .filter(
+                    p -> AccessControlPolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
                 .map(policy -> constructApplicablePolicy(policy, false)),
             inheritablePolicies.values().stream()
-                .filter(p -> PolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
+                .filter(
+                    p -> AccessControlPolicyUtil.filterApplicablePolicy(p, authenticatedPrincipal))
                 .map(
                     policy ->
                         constructApplicablePolicy(
@@ -544,7 +546,7 @@ public class PolicyCatalog {
         .setName(policyEntity.getName())
         .setDescription(policyEntity.getDescription())
         .setContent(
-            PolicyUtil.replaceContextVariable(
+            AccessControlPolicyUtil.replaceContextVariable(
                 policyEntity.getContent(), policyEntity.getPolicyType(), authenticatedPrincipal))
         .setVersion(policyEntity.getPolicyVersion())
         .setInherited(inherited)
