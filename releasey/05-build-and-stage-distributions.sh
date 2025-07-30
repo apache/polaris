@@ -86,10 +86,10 @@ if ! validate_and_extract_git_tag_version "${git_tag}"; then
   exit 1
 fi
 
-version="${major}.${minor}.${patch}-incubating"
+polaris_version="${major}.${minor}.${patch}-incubating"
 
 print_info "Starting build and stage distributions process..."
-print_info "Version: ${version}"
+print_info "Version: ${polaris_version}"
 print_info "RC number: ${rc_number}"
 echo
 
@@ -119,6 +119,16 @@ if [[ ${DRY_RUN:-1} -ne 1 ]]; then
   fi
 fi
 
+# Create Helm package
+print_info "Creating Helm package..."
+exec_process cd helm
+exec_process helm package polaris
+exec_process helm gpg sign polaris-${polaris_version}.tgz
+exec_process shasum -a 512 polaris-${polaris_version}.tgz > polaris-${polaris_version}.tgz.sha512
+exec_process gpg --armor --output polaris-${polaris_version}.tgz.asc --detach-sig polaris-${polaris_version}.tgz
+exec_process shasum -a 512 polaris-${polaris_version}.tgz.prov > polaris-${polaris_version}.tgz.prov.sha512
+exec_process gpg --armor --output polaris-${polaris_version}.tgz.prov.asc --detach-sig polaris-${polaris_version}.tgz.prov
+
 # Stage to Apache dist dev repository
 print_info "Staging artifacts to Apache dist dev repository..."
 
@@ -127,21 +137,27 @@ dist_dev_dir="polaris-dist-dev"
 exec_process svn co "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
 print_info "Copying files to destination directory..."
-version_dir="${dist_dev_dir}/${version}"
-helm_chart_version_dir="${dist_dev_dir}/helm-chart/${version}"
+version_dir="${dist_dev_dir}/${polaris_version}"
+helm_chart_version_dir="${dist_dev_dir}/helm-chart/${polaris_version}"
 exec_process mkdir -p "${version_dir}"
 exec_process mkdir -p "${helm_chart_version_dir}"
 exec_process cp "${source_dist_dir}"/* "${version_dir}/"
 exec_process cp "${binary_dist_dir}"/* "${version_dir}/"
-exec_process cp -r "${helm_chart_dir}" "${helm_chart_version_dir}/"
+
+print_info "Copying Helm package files..."
+exec_process cp helm/polaris-${polaris_version}.tgz* "${helm_chart_version_dir}/"
 
 print_info "Adding files to SVN..."
 exec_process svn add "${version_dir}"
 exec_process svn add "${helm_chart_version_dir}"
 
-# Commit changes
+print_info "Updating Helm index..."
+exec_process cd "${dist_dev_dir}/helm-chart"
+exec_process helm repo index .
+exec_process cd ../..
+
 print_info "Committing changes..."
-exec_process svn commit -m "Stage Apache Polaris ${version} RC${rc_number}"
+exec_process svn commit -m "Stage Apache Polaris ${polaris_version} RC${rc_number}"
 
 # Publish Maven artifacts
 print_info "Publishing Maven artifacts to Apache staging repository..."

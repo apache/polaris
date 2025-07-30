@@ -50,3 +50,6 @@ VERSION_REGEX_GIT_TAG="^apache-polaris-$VERSION_REGEX-incubating-rc([0-9]+)$"
 GRADLE_PROPERTIES_FILE=${GRADLE_PROPERTIES_FILE:-"${HOME}/.gradle/gradle.properties"}
 VERSION_FILE="$libs_dir/../../version.txt"
 CHANGELOG_FILE="$libs_dir/../../CHANGELOG.md"
+HELM_CHART_YAML_FILE="$libs_dir/../../helm/polaris/Chart.yaml"
+HELM_README_FILE="$libs_dir/../../helm/polaris/README.md"
+HELM_VALUES_FILE="$libs_dir/../../helm/polaris/values.yaml"

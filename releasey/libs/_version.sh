@@ -66,6 +66,13 @@ function validate_and_extract_git_tag_version {
 
 function update_version {
   local version="$1"
+  local current_version=$(cat "$VERSION_FILE")
+  update_version_txt "${version}"
+  update_helm_version "${current_version}" "${version}"
+}
+
+function update_version_txt {
+  local version="$1"
   # This function is only there for dry-run support.  Because of the
   # redirection, we cannot use exec_process with the exact command that will be
   # executed.
@@ -74,6 +81,19 @@ function update_version {
   else
     exec_process "echo ${version} > $VERSION_FILE"
   fi
+}
+
+function update_helm_version {
+  local old_version="$1"
+  local new_version="$2"
+  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_CHART_YAML_FILE"
+  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_VALUES_FILE"
+  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_README_FILE"
+  # The readme file may contain version with double dash for shields.io badges
+  # We need a second `sed` command to ensure that the version replacement preserves this double-dash syntax.
+  local current_version_with_dash=$(echo "$old_version" | sed 's/-/--/g')
+  local version_with_dash=$(echo "$version" | sed 's/-/--/g')
+  exec_process sed -i~ "s/${current_version_with_dash}/${version_with_dash}/" "$HELM_README_FILE"
 }
 
 function ensure_cwd_is_project_root() {

@@ -129,7 +129,7 @@ if ! validate_and_extract_rc_version "${version}"; then
 fi
 
 # Define polaris_version from extracted components
-polaris_version="${major}.${minor}.${patch}"
+polaris_version="${major}.${minor}.${patch}-incubating"
 release_branch="release/${polaris_version}"
 
 # Handle RC > 1 scenarios
@@ -182,7 +182,7 @@ print_info "Setting version to ${polaris_version} in version.txt"
 update_version "${polaris_version}"
 
 print_info "Committing and pushing version change"
-exec_process git add "$VERSION_FILE"
+exec_process git add "$VERSION_FILE" "$HELM_CHART_YAML_FILE" "$HELM_README_FILE" "$HELM_VALUES_FILE"
 exec_process git commit -m "[chore] Bump version to ${polaris_version} for release"
 exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}"
 

@@ -96,7 +96,7 @@ if ! validate_and_extract_rc_version "${version}"; then
 fi
 
 # Define polaris_version from extracted components
-polaris_version="${major}.${minor}.${patch}"
+polaris_version="${major}.${minor}.${patch}-incubating"
 
 print_info "Starting release candidate tag creation..."
 print_info "Version: ${version}"
