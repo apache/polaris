@@ -635,7 +635,6 @@ public abstract class AbstractPolicyCatalogTest {
     // attach a different type of policy to namespace
     policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null);
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), ACCESS_CONTROL);
-    System.out.println(applicablePolicies);
     // only p2 is with the type fetched
     assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
   }
@@ -655,7 +654,7 @@ public abstract class AbstractPolicyCatalogTest {
 
   private static String replaceContextVariable(String content, String policyType) {
     if (policyType.equals(ACCESS_CONTROL.getName())) {
-      return "{\"principalRole\":\"ANALYST\",\"columnProjections\":[\"name\",\"location\"],\"rowFilters\":[\"{\\\"type\\\":\\\"eq\\\",\\\"term\\\":\\\"country\\\",\\\"value\\\":\\\"USA\\\"}\",\"false\"]}";
+      return "{\"principalRole\":null,\"columnProjections\":[\"name\",\"location\"],\"rowFilters\":[\"{\\\"type\\\":\\\"eq\\\",\\\"term\\\":\\\"country\\\",\\\"value\\\":\\\"USA\\\"}\",\"false\"]}";
     }
     return content;
   }
