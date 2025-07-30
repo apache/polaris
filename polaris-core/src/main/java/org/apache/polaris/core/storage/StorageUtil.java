@@ -79,13 +79,9 @@ public class StorageUtil {
       String baseLocation, Map<String, String> properties) {
     Set<String> locations = new HashSet<>();
     locations.add(baseLocation);
-    if (properties.containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)) {
-      locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
-    }
-    if (properties.containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)) {
-      locations.add(
-          properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
-    }
+    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
+    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    locations.remove(null);
     return removeRedundantLocations(locations);
   }
 
@@ -97,13 +93,10 @@ public class StorageUtil {
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
   private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
     HashSet<String> result = new HashSet<>(locationStrings);
-    result.remove(null);
 
     for (String potentialParent : locationStrings) {
       for (String potentialChild : locationStrings) {
-        if (potentialParent != null
-            && potentialChild != null
-            && !potentialParent.equals(potentialChild)) {
+        if (!potentialParent.equals(potentialChild)) {
           StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
           StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
           if (potentialChildLocation.isChildOf(potentialParentLocation)) {
