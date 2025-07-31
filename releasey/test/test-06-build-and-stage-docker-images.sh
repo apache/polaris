@@ -28,7 +28,7 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releasey_dir="${test_dir}/.."
+releasey_dir=$(cd "${test_dir}/.." && pwd)
 LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
@@ -40,26 +40,19 @@ function usage() {
 $(basename "$0") <tag> [--help | -h]
 
   Tests the 06-build-and-stage-docker-images.sh script by running it in dry-run mode
-  and verifying the commands that would be executed.
-
-  Arguments:
-    tag
-        The git tag to checkout before running the test (e.g., apache-polaris-1.1.0-incubating-rc1)
+  and verifying the commands that would be executed.  This script creates a tag for
+  testing purposes: apache-polaris-99.98.97-incubating-rc96.  The tag is deleted after
+  the test is complete.
 
   Options:
     -h --help
         Print usage information.
 
   Examples:
-    $(basename "$0") apache-polaris-1.1.0-incubating-rc1
+    $(basename "$0")
 
 EOF
 }
-
-ensure_cwd_is_project_root
-
-# Parse arguments
-tag=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -68,39 +61,27 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
   *)
-    if [[ -z "$tag" ]]; then
-      tag="$1"
-    else
-      print_error "Unknown option/argument $1"
-      usage >&2
-      exit 1
-    fi
+    print_error "Unknown option/argument $1"
+    usage >&2
+    exit 1
     ;;
   esac
-  shift
 done
 
-# Validate required arguments
-if [[ -z "$tag" ]]; then
-  print_error "Tag parameter is required"
-  usage >&2
-  exit 1
-fi
-
-# Validate tag format and extract version components
-if ! validate_and_extract_git_tag_version "${tag}"; then
-  print_error "Invalid tag format: ${tag}"
-  print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
-  exit 1
-fi
-
-version="${major}.${minor}.${patch}-incubating"
-docker_tag="${version}-rc${rc_number}"
+tag="apache-polaris-99.98.97-incubating-rc96"
+version="99.98.97-incubating"
+rc_number=96
+docker_tag="99.98.97-incubating-rc96"
 
 print_info "Starting test for 06-build-and-stage-docker-images.sh..."
 print_info "Tag: ${tag}"
 print_info "Version: ${version}"
 print_info "Docker tag: ${docker_tag}"
+
+# Create a temporary tag for testing purposes
+print_info "Creating temporary tag: ${tag}..."
+git tag "${tag}"
+trap 'git tag -d "${tag}"' EXIT
 
 # Save current git branch or ref
 print_info "Saving current git state..."
@@ -119,10 +100,12 @@ if ! git checkout "${tag}" >/dev/null 2>&1; then
   print_error "Failed to checkout tag: ${tag}"
   exit 1
 fi
-trap 'rm -f "$temp_file"; git checkout "$restore_target" >/dev/null 2>&1' EXIT
 
 print_info "Create temporary file to capture the commands that would be executed..."
 temp_file=$(mktemp)
+
+# Ensure we always clean up
+trap 'rm -f "$temp_file"; git checkout "$restore_target" >/dev/null 2>&1; git tag -d "${tag}"' EXIT
 
 print_info "Running script (version determined from current git tag)..."
 DRY_RUN=1 \
@@ -140,7 +123,8 @@ print_info "Verifying output content..."
 actual_content=$(cat "$temp_file")
 
 # Generate expected content based on the tag
-expected_content="./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform=linux/amd64,linux/arm64 -Dquarkus.container-image.tag=${docker_tag}
+expected_content="cd ${releasey_dir}/..
+./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform=linux/amd64,linux/arm64 -Dquarkus.container-image.tag=${docker_tag}
 ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform=linux/amd64,linux/arm64 -Dquarkus.container-image.tag=${docker_tag}"
 
 # Compare content
