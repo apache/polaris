@@ -945,13 +945,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
             .resetPrincipalSecrets(
-                callCtx,
-                clientId,
-                principalId,
-                doReset,
-                oldSecretHash,
-                customClientId,
-                customClientSecret);
+                callCtx, clientId, principalId, doReset, customClientId, customClientSecret);
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset

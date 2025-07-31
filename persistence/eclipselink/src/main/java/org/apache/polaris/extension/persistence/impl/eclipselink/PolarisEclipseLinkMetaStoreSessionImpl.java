@@ -755,7 +755,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
     return null;

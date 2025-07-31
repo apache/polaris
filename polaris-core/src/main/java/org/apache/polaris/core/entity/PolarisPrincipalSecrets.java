@@ -149,11 +149,11 @@ public class PolarisPrincipalSecrets {
 
   /** Reset the main secrets */
   public void resetSecrets(String customClientSecret) {
-    this.mainSecret = customClientSecret;
-    this.mainSecretHash = hashSecret(mainSecret);
+    this.mainSecret = null;
+    this.mainSecretHash = hashSecret(customClientSecret);
 
     this.secondarySecret = null;
-    this.secondarySecretHash = hashSecret(mainSecret);
+    this.secondarySecretHash = hashSecret(customClientSecret);
   }
 
   public void setPrincipalClientId(String customClientId) {

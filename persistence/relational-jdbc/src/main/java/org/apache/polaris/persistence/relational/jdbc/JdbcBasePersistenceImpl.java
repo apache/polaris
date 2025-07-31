@@ -780,7 +780,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
