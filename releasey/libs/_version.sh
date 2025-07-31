@@ -95,13 +95,3 @@ function update_helm_version {
   local version_with_dash=$(echo "$version" | sed 's/-/--/g')
   exec_process sed -i~ "s/${current_version_with_dash}/${version_with_dash}/" "$HELM_README_FILE"
 }
-
-function ensure_cwd_is_project_root() {
-  # This function verifies that the script is executed from the project root
-  # directory and that the gradle wrapper script is present.
-  if [[ ! -f "gradlew" ]]; then
-    print_error "This script must be executed from the project root directory."
-    print_error "Current directory: $(pwd)"
-    return 1
-  fi
-}

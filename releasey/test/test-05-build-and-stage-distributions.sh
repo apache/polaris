@@ -28,7 +28,7 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releasey_dir="${test_dir}/.."
+releasey_dir=$(cd "${test_dir}/.." && pwd)
 LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
@@ -40,24 +40,19 @@ function usage() {
 $(basename "$0") <tag> [--help | -h]
 
   Tests the 05-build-and-stage-distributions.sh script by running it in dry-run mode
-  and verifying the commands that would be executed.
-
-  Arguments:
-    tag
-        The git tag to checkout before running the test (e.g., apache-polaris-1.1.0-incubating-rc1)
+  and verifying the commands that would be executed.  This script creates a tag for
+  testing purposes: apache-polaris-99.98.97-incubating-rc96.  The tag is deleted after
+  the test is complete.
 
   Options:
     -h --help
         Print usage information.
 
   Examples:
-    $(basename "$0") apache-polaris-1.1.0-incubating-rc1
+    $(basename "$0")
 
 EOF
 }
-
-# Parse arguments
-tag=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -66,37 +61,25 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
   *)
-    if [[ -z "$tag" ]]; then
-      tag="$1"
-    else
-      print_error "Unknown option/argument $1"
-      usage >&2
-      exit 1
-    fi
+    print_error "Unknown option/argument $1"
+    usage >&2
+    exit 1
     ;;
   esac
-  shift
 done
 
-# Validate required arguments
-if [[ -z "$tag" ]]; then
-  print_error "Tag parameter is required"
-  usage >&2
-  exit 1
-fi
-
-# Validate tag format and extract version components
-if ! validate_and_extract_git_tag_version "${tag}"; then
-  print_error "Invalid tag format: ${tag}"
-  print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
-  exit 1
-fi
-
-version="${major}.${minor}.${patch}-incubating"
+tag="apache-polaris-99.98.97-incubating-rc96"
+version="99.98.97-incubating"
+rc_number=96
 
 print_info "Starting test for 05-build-and-stage-distributions.sh..."
 print_info "Tag: ${tag}"
 print_info "Version: ${version}"
+
+# Create a temporary tag for testing purposes
+print_info "Creating temporary tag: ${tag}..."
+git tag "${tag}"
+trap 'git tag -d "${tag}"' EXIT
 
 # Save current git branch or ref
 print_info "Saving current git state..."
@@ -115,41 +98,42 @@ if ! git checkout "${tag}" >/dev/null 2>&1; then
   print_error "Failed to checkout tag: ${tag}"
   exit 1
 fi
-trap 'rm -f "$temp_file"; git checkout "$restore_target" >/dev/null 2>&1' EXIT
 
 print_info "Create temporary file to capture the commands that would be executed..."
 temp_file=$(mktemp)
 
-print_info "Running script (version determined from current git tag)..."
+# Ensure we always clean up
+trap 'rm -f "$temp_file"; git checkout "$restore_target" >/dev/null 2>&1; git tag -d "${tag}"' EXIT
+
+print_info "Running script..."
 DRY_RUN=1 \
   "${releasey_dir}/05-build-and-stage-distributions.sh" \
   3>"$temp_file"
 
-# Restore original git state
-print_info "Restoring original git state: ${restore_target}..."
-if ! git checkout "${restore_target}" >/dev/null 2>&1; then
-  print_error "Failed to restore original git state: ${restore_target}"
-  exit 1
-fi
-
 print_info "Verifying output content..."
 actual_content=$(cat "$temp_file")
 
-# Generate expected content based on the tag
-# Note: The wildcard expansion will depend on what files actually exist
-# We need to get the actual files that would be expanded
-binary_files=$(ls runtime/distribution/build/distributions/* 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
-
-expected_content="./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
-svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
-mkdir -p polaris-dist-dev/${version}
-mkdir -p polaris-dist-dev/helm-chart/${version}
-cp build/distribution/* polaris-dist-dev/${version}/
-cp ${binary_files} polaris-dist-dev/${version}/
-cp -r helm/polaris polaris-dist-dev/helm-chart/${version}/
-svn add polaris-dist-dev/${version}
-svn add polaris-dist-dev/helm-chart/${version}
+expected_content="cd ${releasey_dir}/..
+./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+cd ${releasey_dir}/../helm
+helm package polaris
+helm gpg sign polaris-${version}.tgz
+shasum -a 512 polaris-${version}.tgz > polaris-${version}.tgz.sha512
+gpg --armor --output polaris-${version}.tgz.asc --detach-sig polaris-${version}.tgz
+shasum -a 512 polaris-${version}.tgz.prov > polaris-${version}.tgz.prov.sha512
+gpg --armor --output polaris-${version}.tgz.prov.asc --detach-sig polaris-${version}.tgz.prov
+svn co https://dist.apache.org/repos/dist/dev/incubator/polaris ${releasey_dir}/polaris-dist-dev
+mkdir -p ${releasey_dir}/polaris-dist-dev/${version}
+mkdir -p ${releasey_dir}/polaris-dist-dev/helm-chart/${version}
+cp build/distribution/* ${releasey_dir}/polaris-dist-dev/${version}/
+cp runtime/distribution/build/distributions/* ${releasey_dir}/polaris-dist-dev/${version}/
+cp helm/polaris-${version}.tgz* ${releasey_dir}/polaris-dist-dev/helm-chart/${version}/
+svn add ${releasey_dir}/polaris-dist-dev/${version}
+svn add ${releasey_dir}/polaris-dist-dev/helm-chart/${version}
 svn commit -m Stage Apache Polaris ${version} RC${rc_number}
+cd ${releasey_dir}/polaris-dist-dev/helm-chart
+helm repo index .
+cd ${releasey_dir}/..
 ./gradlew publishToApache -Prelease -PuseGpgAgent"
 
 # Compare content
@@ -158,7 +142,7 @@ if [[ "$actual_content" == "$expected_content" ]]; then
 else
   print_error "❌ Test failed! Output content does not match expected result."
   echo
-  diff -u <(echo "$expected_content") <(echo "$actual_content")
+  diff -u <(echo "$expected_content") <(echo "$actual_content") | diff-so-fancy
   echo
   print_error "Content verification failed"
   exit 1
