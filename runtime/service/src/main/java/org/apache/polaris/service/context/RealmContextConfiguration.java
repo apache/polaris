@@ -18,9 +18,11 @@
  */
 package org.apache.polaris.service.context;
 
+import io.smallrye.config.ConfigMapping;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
+@ConfigMapping(prefix = "polaris.realm-context")
 public interface RealmContextConfiguration {
 
   /**
@@ -46,4 +48,10 @@ public interface RealmContextConfiguration {
   default String defaultRealm() {
     return realms().getFirst();
   }
+
+  /**
+   * The type of the realm context resolver. Must be a registered {@link
+   * org.apache.polaris.service.context.RealmContextResolver} identifier.
+   */
+  String type();
 }

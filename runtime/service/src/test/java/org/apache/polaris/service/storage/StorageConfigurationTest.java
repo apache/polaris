@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -69,6 +70,46 @@ public class StorageConfigurationTest {
       public Optional<Duration> gcpAccessTokenLifespan() {
         return Optional.of(TEST_TOKEN_LIFESPAN);
       }
+
+      @Override
+      public OptionalInt clientsCacheMaxSize() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public OptionalInt maxHttpConnections() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public Optional<Duration> readTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionAcquisitionTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionMaxIdleTime() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionTimeToLive() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Boolean> expectContinueEnabled() {
+        return Optional.empty();
+      }
     };
   }
 
@@ -91,6 +132,46 @@ public class StorageConfigurationTest {
 
       @Override
       public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.empty();
+      }
+
+      @Override
+      public OptionalInt clientsCacheMaxSize() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public OptionalInt maxHttpConnections() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public Optional<Duration> readTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionAcquisitionTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionMaxIdleTime() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionTimeToLive() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Boolean> expectContinueEnabled() {
         return Optional.empty();
       }
     };

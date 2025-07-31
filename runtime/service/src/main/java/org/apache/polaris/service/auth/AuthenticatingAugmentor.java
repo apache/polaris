@@ -28,8 +28,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that, after Quarkus OIDC or Internal Auth extracted
@@ -65,7 +63,7 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
   }
 
   private PrincipalAuthInfo extractPrincipalAuthInfo(SecurityIdentity identity) {
-    QuarkusPrincipalAuthInfo credential = identity.getCredential(QuarkusPrincipalAuthInfo.class);
+    PrincipalAuthInfo credential = identity.getCredential(PrincipalAuthInfo.class);
     if (credential == null) {
       throw new AuthenticationFailedException("No token credential available");
     }

@@ -25,7 +25,6 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.EnumSet;
-import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;

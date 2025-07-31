@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.config;
 
+import io.smallrye.config.ConfigMapping;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ import org.slf4j.LoggerFactory;
  * Used to track entity properties reserved for use by the catalog. These properties may not be
  * overridden by the end user.
  */
+@ConfigMapping(prefix = "polaris.reserved-properties")
 public interface ReservedProperties {
   Logger LOGGER = LoggerFactory.getLogger(ReservedProperties.class);
 
@@ -55,13 +58,17 @@ public interface ReservedProperties {
    * A list of prefixes that are considered reserved. Any property starting with one of these
    * prefixes is a reserved property.
    */
-  List<String> prefixes();
+  default List<String> prefixes() {
+    return List.of("polaris.");
+  }
 
   /**
    * A list of properties that are *not* considered reserved, even if they start with a reserved
    * prefix
    */
-  Set<String> allowlist();
+  default Set<String> allowlist() {
+    return AllowlistHolder.INSTANCE;
+  }
 
   /** If true, attempts to modify a reserved property should throw an exception. */
   default boolean shouldThrow() {
@@ -147,5 +154,24 @@ public interface ReservedProperties {
       }
       default -> update;
     };
+  }
+
+  class AllowlistHolder {
+    static final Set<String> INSTANCE = computeAllowlist();
+
+    private static Set<String> computeAllowlist() {
+      Set<String> allowlist = new HashSet<>();
+      PolarisConfiguration.getAllConfigurations()
+          .forEach(
+              c -> {
+                if (c.hasCatalogConfig()) {
+                  allowlist.add(c.catalogConfig());
+                }
+                if (c.hasCatalogConfigUnsafe()) {
+                  allowlist.add(c.catalogConfigUnsafe());
+                }
+              });
+      return allowlist;
+    }
   }
 }

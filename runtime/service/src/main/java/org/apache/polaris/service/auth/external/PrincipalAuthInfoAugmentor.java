@@ -33,7 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticatingAugmentor;
-import org.apache.polaris.service.auth.QuarkusPrincipalAuthInfo;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -99,5 +99,5 @@ public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
       @Nullable Long getPrincipalId,
       @Nullable String getPrincipalName,
       Set<String> getPrincipalRoles)
-      implements QuarkusPrincipalAuthInfo {}
+      implements PrincipalAuthInfo {}
 }

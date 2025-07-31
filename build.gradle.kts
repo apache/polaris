@@ -103,7 +103,6 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("logs/**")
   excludes.add("runtime/service/src/**/banner.txt")
-  excludes.add("runtime/admin/src/**/banner.txt")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")

@@ -34,18 +34,17 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.auth.QuarkusAuthenticationConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -74,7 +73,7 @@ public class ProductionReadinessChecks {
   public void warnOnFailedChecks(
       @Observes Startup event,
       Instance<ProductionReadinessCheck> checks,
-      QuarkusReadinessConfiguration config) {
+      ReadinessConfiguration config) {
     List<Error> errors = checks.stream().flatMap(check -> check.getErrors().stream()).toList();
     if (!errors.isEmpty()) {
       var utf8 = Charset.defaultCharset().equals(StandardCharsets.UTF_8);
@@ -115,8 +114,7 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
-  public ProductionReadinessCheck checkTokenBrokers(
-      QuarkusAuthenticationConfiguration configuration) {
+  public ProductionReadinessCheck checkTokenBrokers(AuthenticationConfiguration configuration) {
     List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
     configuration
         .realms()
@@ -208,7 +206,7 @@ public class ProductionReadinessChecks {
   }
 
   private static String authRealmSegment(String realm) {
-    return realm.equals(QuarkusAuthenticationConfiguration.DEFAULT_REALM_KEY) ? "" : realm + ".";
+    return realm.equals(AuthenticationConfiguration.DEFAULT_REALM_KEY) ? "" : realm + ".";
   }
 
   @Produces

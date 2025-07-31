@@ -35,7 +35,6 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.service.admin.PolarisAdminService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 

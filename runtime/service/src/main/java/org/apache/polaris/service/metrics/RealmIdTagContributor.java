@@ -30,7 +30,7 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   public static final String TAG_REALM = "realm_id";
 
-  @Inject QuarkusMetricsConfiguration metricsConfiguration;
+  @Inject MetricsConfiguration metricsConfiguration;
 
   @Override
   public Tags contribute(Context context) {

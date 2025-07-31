@@ -31,8 +31,6 @@ import java.security.Principal;
 import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -79,7 +77,7 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentAuthenticationFailure() {
     // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
-    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
+    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(nonPolarisPrincipal)
@@ -99,7 +97,7 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentRuntimeException() {
     // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
-    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
+    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(nonPolarisPrincipal)
@@ -121,7 +119,7 @@ public class AuthenticatingAugmentorTest {
     // Given
     AuthenticatedPolarisPrincipal polarisPrincipal = mock(AuthenticatedPolarisPrincipal.class);
     when(polarisPrincipal.getName()).thenReturn("user1");
-    QuarkusPrincipalAuthInfo credential = mock(QuarkusPrincipalAuthInfo.class);
+    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(polarisPrincipal)

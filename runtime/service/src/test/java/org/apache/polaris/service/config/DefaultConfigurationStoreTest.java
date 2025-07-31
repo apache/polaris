@@ -29,8 +29,6 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
-import org.apache.polaris.service.config.FeaturesConfiguration;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -159,7 +157,7 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testInjectedFeaturesConfiguration() {
-    assertThat(featuresConfiguration).isInstanceOf(QuarkusResolvedFeaturesConfiguration.class);
+    assertThat(featuresConfiguration).isInstanceOf(ResolvedFeaturesConfiguration.class);
 
     assertThat(featuresConfiguration.defaults())
         .containsKeys(falseByDefaultKey, trueByDefaultKey)

@@ -21,12 +21,15 @@ package org.apache.polaris.service.storage;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithName;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -35,7 +38,8 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 
-public interface StorageConfiguration {
+@ConfigMapping(prefix = "polaris.storage")
+public interface StorageConfiguration extends S3AccessConfig {
 
   Duration DEFAULT_TOKEN_LIFESPAN = Duration.ofHours(1);
 
@@ -43,24 +47,28 @@ public interface StorageConfiguration {
    * The AWS access key to use for authentication. If not present, the default credentials provider
    * chain will be used.
    */
+  @WithName("aws.access-key")
   Optional<String> awsAccessKey();
 
   /**
    * The AWS secret key to use for authentication. If not present, the default credentials provider
    * chain will be used.
    */
+  @WithName("aws.secret-key")
   Optional<String> awsSecretKey();
 
   /**
    * The GCP access token to use for authentication. If not present, the default credentials
    * provider chain will be used.
    */
+  @WithName("gcp.token")
   Optional<String> gcpAccessToken();
 
   /**
    * The lifespan of the GCP access token. If not present, the {@linkplain #DEFAULT_TOKEN_LIFESPAN
    * default token lifespan} will be used.
    */
+  @WithName("gcp.lifespan")
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {

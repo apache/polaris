@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.quarkus.security.credential.Credential;
 import jakarta.annotation.Nullable;
 import java.util.Set;
 
@@ -26,9 +27,13 @@ import java.util.Set;
  * configured authentication mechanism. Used to determine the principal id, name, and roles while
  * authenticating a request.
  *
+ * <p>This interface also implements Quarkus {@link Credential}, thus allowing it to be used as a
+ * {@linkplain io.quarkus.security.identity.SecurityIdentity#getCredential(Class) security identity
+ * credential}.
+ *
  * @see DefaultAuthenticator
  */
-public interface PrincipalAuthInfo {
+public interface PrincipalAuthInfo extends Credential {
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable

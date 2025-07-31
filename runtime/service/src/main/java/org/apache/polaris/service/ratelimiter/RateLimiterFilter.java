@@ -27,7 +27,7 @@ import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
-import org.apache.polaris.service.config.PolarisFilterPriorities;
+import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 /** Request filter that returns a 429 Too Many Requests if the rate limiter says so */
 @Provider
 @PreMatching
-@Priority(PolarisFilterPriorities.RATE_LIMITER_FILTER)
+@Priority(FilterPriorities.RATE_LIMITER_FILTER)
 @ApplicationScoped
 public class RateLimiterFilter implements ContainerRequestFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);

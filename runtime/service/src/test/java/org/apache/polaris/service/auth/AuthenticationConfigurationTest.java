@@ -28,7 +28,6 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.Map;
-import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
 import org.junit.jupiter.api.Test;
@@ -37,12 +36,12 @@ import org.junit.jupiter.api.Test;
 @TestProfile(AuthenticationConfigurationTest.Profile.class)
 public class AuthenticationConfigurationTest {
 
-  @Inject QuarkusAuthenticationConfiguration authConfig;
+  @Inject AuthenticationConfiguration authConfig;
   @Inject OidcConfiguration oidcConfig;
 
   @Test
   void smokeTest() {
-    Map<String, QuarkusAuthenticationRealmConfiguration> realms = authConfig.realms();
+    Map<String, AuthenticationRealmConfiguration> realms = authConfig.realms();
     assertThat(realms).hasSize(3);
 
     assertThat(realms.get(DEFAULT_REALM_KEY).type()).isEqualTo(AuthenticationType.MIXED);
