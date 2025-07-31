@@ -97,11 +97,11 @@ sed -i~ s/${version_before_script}/42.41.40-incubating/g ${LIBS_DIR}/../../helm/
 sed -i~ s/${version_before_script//-/--}/42.41.40--incubating/ ${LIBS_DIR}/../../helm/polaris/README.md
 git add ${LIBS_DIR}/../../version.txt ${LIBS_DIR}/../../helm/polaris/Chart.yaml ${LIBS_DIR}/../../helm/polaris/README.md ${LIBS_DIR}/../../helm/polaris/values.yaml
 git commit -m [chore] Bump version to 42.41.40-incubating for release
-git push release/42.41.40-incubating
+git push
 ./gradlew patchChangelog
 git add ${LIBS_DIR}/../../CHANGELOG.md
 git commit -m [chore] Update changelog for release
-git push release/42.41.40-incubating"
+git push"
 
 # Compare content
 if [[ "$actual_content" == "$expected_content" ]]; then
