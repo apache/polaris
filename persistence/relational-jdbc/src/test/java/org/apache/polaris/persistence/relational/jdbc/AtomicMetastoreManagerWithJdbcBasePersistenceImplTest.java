@@ -45,6 +45,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
+    int schemaVersion = 2;
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations;
     try {
@@ -53,7 +54,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
       InputStream scriptStream =
           classLoader.getResourceAsStream(
-              String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
+              String.format("%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion));
       datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -68,7 +69,8 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             datasourceOperations,
             RANDOM_SECRETS,
             Mockito.mock(),
-            realmContext.getRealmIdentifier());
+            realmContext.getRealmIdentifier(),
+            schemaVersion);
     return new PolarisTestMetaStoreManager(
         new AtomicOperationMetaStoreManager(),
         new PolarisCallContext(
