@@ -137,7 +137,7 @@ By default, logs are written to the console and to a file located in the `./logs
 file is rotated daily and compressed. The maximum size of the log file is 10MB, and the maximum
 number of backup files is 14.
 
-JSON logging can be enabled by setting the `quarkus.log.console.json` and `quarkus.log.file.json`
+JSON logging can be enabled by setting the `quarkus.log.console.json.enabled` and `quarkus.log.file.json.enabled`
 properties to `true`. By default, JSON logging is disabled.
 
 The log level can be set for the entire application or for specific packages. The default log level
