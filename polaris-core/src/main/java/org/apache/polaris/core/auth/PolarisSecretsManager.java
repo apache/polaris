@@ -57,15 +57,11 @@ public interface PolarisSecretsManager {
 
   @Nonnull
   PrincipalSecretsResult resetPrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull String clientId,
-          long principalId,
-          boolean reset,
-          @Nonnull String oldSecretHash,
-          String customClientId,
-          String customClientSecret);
-
-
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret);
 }
-
-

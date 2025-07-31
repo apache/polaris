@@ -161,7 +161,7 @@ public class PolarisServiceImpl
   /** From PolarisCatalogsApiService */
   @Override
   public Response createCatalog(
-          CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
+      CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
@@ -276,7 +276,7 @@ public class PolarisServiceImpl
   /** From PolarisPrincipalsApiService */
   @Override
   public Response createPrincipal(
-          CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
+      CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalEntity principal =
         new PrincipalEntity.Builder()
@@ -296,10 +296,10 @@ public class PolarisServiceImpl
 
   @Override
   public Response resetCredentials(
-          String principalName,
-          ResetPrincipalRequest resetPrincipalRequest,
-          RealmContext realmContext,
-          SecurityContext securityContext) {
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.resetCredentials(principalName, resetPrincipalRequest)).build();
   }

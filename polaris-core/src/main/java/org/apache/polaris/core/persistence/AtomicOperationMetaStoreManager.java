@@ -914,55 +914,62 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull String clientId,
-          long principalId,
-          boolean reset,
-          @Nonnull String oldSecretHash,
-          String customClientId,
-          String customClientSecret) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
     // if not found, the principal must have been dropped
     EntityResult loadEntityResult =
-            loadEntity(
-                    callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
     if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
       return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     PolarisBaseEntity principal = loadEntityResult.getEntity();
     Map<String, String> internalProps =
-            PolarisObjectMapperUtil.deserializeProperties(
-                    principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
+        PolarisObjectMapperUtil.deserializeProperties(
+            principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
     boolean doReset =
-            reset
-                    || internalProps.get(
+        reset
+            || internalProps.get(
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-                    != null;
+                != null;
     PolarisPrincipalSecrets secrets =
-            ((IntegrationPersistence) ms)
-                    .resetPrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash,customClientId, customClientSecret);
+        ((IntegrationPersistence) ms)
+            .resetPrincipalSecrets(
+                callCtx,
+                clientId,
+                principalId,
+                doReset,
+                oldSecretHash,
+                customClientId,
+                customClientSecret);
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     if (reset
-            && !internalProps.containsKey(
+        && !internalProps.containsKey(
             PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-            && customClientId != null
-            && customClientSecret != null) {
+        && customClientId != null
+        && customClientSecret != null) {
       internalProps.put(
-              PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
+          PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
       principalBuilder.internalProperties(
-              PolarisObjectMapperUtil.serializeProperties(internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     }
 
     return (secrets == null)
-            ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
-            : new PrincipalSecretsResult(secrets);
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
   }
 
   /** {@inheritDoc} */

@@ -979,17 +979,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   @Override
   public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull String clientId,
-          long principalId,
-          boolean reset,
-          @Nonnull String oldSecretHash,
-          String customClientId,
-          String customClientSecret) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret) {
     // get metastore we should be using
     callCtx
-            .getDiagServices()
-            .fail("illegal_method_in_transaction_workspace", "resetPrincipalSecrets");
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "resetPrincipalSecrets");
     return null;
   }
 
