@@ -173,7 +173,7 @@ print_info "Creating release branch: ${release_branch}"
 exec_process git branch "${release_branch}"
 
 print_info "Pushing release branch to ${APACHE_REMOTE_NAME}"
-exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}"
+exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}" --set-upstream
 
 print_info "Checking out release branch"
 exec_process git checkout "${release_branch}"
@@ -184,7 +184,7 @@ update_version "${polaris_version}"
 print_info "Committing and pushing version change"
 exec_process git add "$VERSION_FILE" "$HELM_CHART_YAML_FILE" "$HELM_README_FILE" "$HELM_VALUES_FILE"
 exec_process git commit -m "[chore] Bump version to ${polaris_version} for release"
-exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}"
+exec_process git push
 
 print_info "Updating CHANGELOG.md"
 exec_process ./gradlew patchChangelog
@@ -192,7 +192,7 @@ exec_process ./gradlew patchChangelog
 print_info "Committing changelog change"
 exec_process git add "$CHANGELOG_FILE"
 exec_process git commit -m "[chore] Update changelog for release"
-exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}"
+exec_process git push
 
 echo
 print_success "🎉 Release branch ${release_branch} created successfully!"
