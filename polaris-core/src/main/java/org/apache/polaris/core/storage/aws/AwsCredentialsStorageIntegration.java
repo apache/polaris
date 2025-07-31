@@ -120,6 +120,11 @@ public class AwsCredentialsStorageIntegration
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
+    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
+    }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
