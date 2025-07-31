@@ -79,8 +79,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-ensure_cwd_is_project_root
-
 print_info "Starting release setup verification..."
 echo
 

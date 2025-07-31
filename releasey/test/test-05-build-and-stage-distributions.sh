@@ -56,8 +56,6 @@ $(basename "$0") <tag> [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 # Parse arguments
 tag=""
 

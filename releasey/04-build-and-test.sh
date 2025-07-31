@@ -54,8 +54,6 @@ $(basename "$0") [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 while [[ $# -gt 0 ]]; do
   case $1 in
     --help|-h)
@@ -75,6 +73,7 @@ echo
 
 # Clean and build Polaris
 print_info "Building Polaris..."
+exec_process cd "${releasey_dir}/.."
 exec_process ./gradlew clean build
 
 current_commit=$(git rev-parse HEAD)

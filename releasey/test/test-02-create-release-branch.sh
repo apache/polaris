@@ -28,7 +28,7 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releasey_dir="${test_dir}/.."
+releasey_dir=$(cd "${test_dir}/.." && pwd)
 LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
@@ -51,8 +51,6 @@ $(basename "$0") [--help | -h]
 
 EOF
 }
-
-ensure_cwd_is_project_root
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -98,6 +96,7 @@ sed -i~ s/${version_before_script//-/--}/42.41.40--incubating/ ${LIBS_DIR}/../..
 git add ${LIBS_DIR}/../../version.txt ${LIBS_DIR}/../../helm/polaris/Chart.yaml ${LIBS_DIR}/../../helm/polaris/README.md ${LIBS_DIR}/../../helm/polaris/values.yaml
 git commit -m [chore] Bump version to 42.41.40-incubating for release
 git push
+cd ${releasey_dir}/..
 ./gradlew patchChangelog
 git add ${LIBS_DIR}/../../CHANGELOG.md
 git commit -m [chore] Update changelog for release

@@ -30,7 +30,7 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releasey_dir="${test_dir}/.."
+releasey_dir=$(cd "${test_dir}/.." && pwd)
 LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
@@ -53,8 +53,6 @@ $(basename "$0") [--help | -h]
 
 EOF
 }
-
-ensure_cwd_is_project_root
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -86,7 +84,8 @@ print_info "Verifying output content..."
 # Read the actual content
 actual_content=$(cat "$temp_file")
 
-expected_content="./gradlew clean build
+expected_content="cd ${releasey_dir}/..
+./gradlew clean build
 curl -s -H \"Authorization: Bearer dummy_token\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/apache/polaris/commits/$(git rev-parse HEAD)/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
 
 # Compare content

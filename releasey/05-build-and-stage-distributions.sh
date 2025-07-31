@@ -53,8 +53,6 @@ $(basename "$0") [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 while [[ $# -gt 0 ]]; do
   case $1 in
     --help|-h)
@@ -95,6 +93,7 @@ echo
 
 # Build distributions
 print_info "Building source and binary distributions..."
+exec_process cd "${releasey_dir}/.."
 exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
 
 # Create Helm package
@@ -110,8 +109,8 @@ exec_process gpg --armor --output polaris-${polaris_version}.tgz.prov.asc --deta
 # Stage to Apache dist dev repository
 print_info "Staging artifacts to Apache dist dev repository..."
 
-print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH}..."
-dist_dev_dir="polaris-dist-dev"
+dist_dev_dir=${releasey_dir}/polaris-dist-dev
+print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
 exec_process svn co "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
 print_info "Copying files to destination directory..."

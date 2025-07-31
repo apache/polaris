@@ -52,8 +52,6 @@ $(basename "$0") [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 while [[ $# -gt 0 ]]; do
   case $1 in
   --help | -h)

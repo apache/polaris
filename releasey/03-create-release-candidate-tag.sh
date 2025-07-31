@@ -53,8 +53,6 @@ $(basename "$0") --version VERSION [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 version=""
 
 while [[ $# -gt 0 ]]; do

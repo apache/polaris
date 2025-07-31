@@ -64,8 +64,6 @@ $(basename "$0") --version VERSION [--commit GIT_COMMIT] [--recreate] [--help | 
 EOF
 }
 
-ensure_cwd_is_project_root
-
 version=""
 commit="HEAD"
 recreate=false
@@ -187,6 +185,7 @@ exec_process git commit -m "[chore] Bump version to ${polaris_version} for relea
 exec_process git push
 
 print_info "Updating CHANGELOG.md"
+exec_process cd "${releasey_dir}/.."
 exec_process ./gradlew patchChangelog
 
 print_info "Committing changelog change"
