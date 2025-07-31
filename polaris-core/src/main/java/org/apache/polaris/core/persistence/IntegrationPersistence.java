@@ -90,7 +90,6 @@ public interface IntegrationPersistence {
    * @param principalId principal id
    * @param reset true if the principal secrets should be disabled and replaced with a one-time
    *     password
-   * @param oldSecretHash the principal secret's old main secret hash
    * @param customClientId the principal secret's old main secret hash
    * @param customClientSecret the principal secret's old main secret hash
    */
@@ -100,7 +99,6 @@ public interface IntegrationPersistence {
       @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret);
 
