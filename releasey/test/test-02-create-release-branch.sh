@@ -75,6 +75,7 @@ temp_file=$(mktemp)
 trap 'rm -f "$temp_file"' EXIT
 
 print_info "Running script..."
+version_before_script=$(cat "${VERSION_FILE}")
 DRY_RUN=1 \
   "${releases_dir}/02-create-release-branch.sh" \
   --version 42.41.40-incubating-rc1 \
@@ -86,17 +87,21 @@ actual_content=$(cat "$temp_file")
 
 # Define expected content
 expected_content="git checkout HEAD
-git branch release/42.41.40
-git push apache release/42.41.40
-git checkout release/42.41.40
-echo 42.41.40 > /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../version.txt
-git add /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../version.txt
-git commit -m [chore] Bump version to 42.41.40 for release
-git push apache release/42.41.40
+git branch release/42.41.40-incubating
+git push apache release/42.41.40-incubating --set-upstream
+git checkout release/42.41.40-incubating
+echo 42.41.40-incubating > ${LIBS_DIR}/../../version.txt
+sed -i~ s/${version_before_script}/42.41.40-incubating/g ${LIBS_DIR}/../../helm/polaris/Chart.yaml
+sed -i~ s/${version_before_script}/42.41.40-incubating/g ${LIBS_DIR}/../../helm/polaris/values.yaml
+sed -i~ s/${version_before_script}/42.41.40-incubating/g ${LIBS_DIR}/../../helm/polaris/README.md
+sed -i~ s/${version_before_script//-/--}/42.41.40--incubating/ ${LIBS_DIR}/../../helm/polaris/README.md
+git add ${LIBS_DIR}/../../version.txt ${LIBS_DIR}/../../helm/polaris/Chart.yaml ${LIBS_DIR}/../../helm/polaris/README.md ${LIBS_DIR}/../../helm/polaris/values.yaml
+git commit -m [chore] Bump version to 42.41.40-incubating for release
+git push release/42.41.40-incubating
 ./gradlew patchChangelog
-git add /Users/plaporte/env/home/dremio/projects/polaris/releasey/libs/../../CHANGELOG.md
+git add ${LIBS_DIR}/../../CHANGELOG.md
 git commit -m [chore] Update changelog for release
-git push apache release/42.41.40"
+git push release/42.41.40-incubating"
 
 # Compare content
 if [[ "$actual_content" == "$expected_content" ]]; then
