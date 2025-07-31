@@ -56,7 +56,7 @@ public abstract class MetricsTestBase {
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry registry;
-  @Inject QuarkusMetricsConfiguration metricsConfiguration;
+  @Inject MetricsConfiguration metricsConfiguration;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;

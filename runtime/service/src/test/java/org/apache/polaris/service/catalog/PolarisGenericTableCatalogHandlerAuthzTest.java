@@ -26,8 +26,8 @@ import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 

@@ -49,8 +49,7 @@ class PrincipalAuthInfoAugmentorTest {
 
   @BeforeEach
   public void setup() {
-    principalMapper =
-        mock(org.apache.polaris.service.auth.external.mapping.PrincipalMapper.class);
+    principalMapper = mock(org.apache.polaris.service.auth.external.mapping.PrincipalMapper.class);
     principalRolesMapper =
         mock(org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper.class);
     config = mock(OidcTenantConfiguration.class);
@@ -59,8 +58,8 @@ class PrincipalAuthInfoAugmentorTest {
     when(config.principalMapper().type()).thenReturn("default");
     when(config.principalRolesMapper().type()).thenReturn("default");
     @SuppressWarnings("unchecked")
-    Instance<org.apache.polaris.service.auth.external.mapping.PrincipalMapper>
-        principalMappers = mock(Instance.class);
+    Instance<org.apache.polaris.service.auth.external.mapping.PrincipalMapper> principalMappers =
+        mock(Instance.class);
     when(principalMappers.select(Identifier.Literal.of("default"))).thenReturn(principalMappers);
     when(principalMappers.get()).thenReturn(principalMapper);
     @SuppressWarnings("unchecked")

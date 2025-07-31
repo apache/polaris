@@ -48,6 +48,7 @@ public class ExceptionMapperTest {
   public void testFullExceptionIsLogged(
       ExceptionMapper<Exception> mapper, Exception exception, Level level) {
     Logger logger = (Logger) LoggerFactory.getLogger(mapper.getClass());
+    logger.setLevel(level);
     ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
     listAppender.start();
     logger.addAppender(listAppender);

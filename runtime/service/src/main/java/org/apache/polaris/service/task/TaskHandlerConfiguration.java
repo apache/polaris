@@ -18,9 +18,15 @@
  */
 package org.apache.polaris.service.task;
 
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+
+@ConfigMapping(prefix = "polaris.tasks")
 public interface TaskHandlerConfiguration {
 
+  @WithDefault("-1")
   int maxConcurrentTasks();
 
+  @WithDefault("-1")
   int maxQueuedTasks();
 }

@@ -18,7 +18,15 @@
  */
 package org.apache.polaris.service.task;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import io.quarkus.runtime.Startup;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +44,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +52,7 @@ import org.slf4j.LoggerFactory;
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
  * {@link CallContext}.
  */
+@ApplicationScoped
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
@@ -52,18 +62,28 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final PolarisEventListener polarisEventListener;
+  private final Tracer tracer;
 
+  @SuppressWarnings("unused") // Required by CDI
+  public TaskExecutorImpl() {
+    this(null, null, null, null, null);
+  }
+
+  @Inject
   public TaskExecutorImpl(
-      Executor executor,
+      @Identifier("task-executor") Executor executor,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
+      Tracer tracer,
       PolarisEventListener polarisEventListener) {
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
+    this.tracer = tracer;
     this.polarisEventListener = polarisEventListener;
   }
 
+  @Startup
   public void init() {
     addTaskHandler(new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
@@ -106,7 +126,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
-            () -> handleTask(taskEntityId, callContext, attempt), executor)
+            () -> handleTaskWithTracing(taskEntityId, callContext, attempt), executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
@@ -163,6 +183,24 @@ public class TaskExecutorImpl implements TaskExecutor {
     } finally {
       polarisEventListener.onAfterTaskAttempted(
           new AfterTaskAttemptedEvent(taskEntityId, ctx, attempt, success));
+    }
+  }
+
+  protected void handleTaskWithTracing(long taskEntityId, CallContext callContext, int attempt) {
+    Span span =
+        tracer
+            .spanBuilder("polaris.task")
+            .setParent(Context.current())
+            .setAttribute(
+                TracingFilter.REALM_ID_ATTRIBUTE,
+                callContext.getRealmContext().getRealmIdentifier())
+            .setAttribute("polaris.task.entity.id", taskEntityId)
+            .setAttribute("polaris.task.attempt", attempt)
+            .startSpan();
+    try (Scope ignored = span.makeCurrent()) {
+      handleTask(taskEntityId, callContext, attempt);
+    } finally {
+      span.end();
     }
   }
 }

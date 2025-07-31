@@ -28,7 +28,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.service.auth.ActiveRolesProvider;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that adds active roles to the {@link

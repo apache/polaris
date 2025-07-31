@@ -41,8 +41,8 @@ import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.DecodedToken;
+import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.apache.polaris.service.auth.TokenBroker;
-import org.apache.polaris.service.auth.QuarkusPrincipalAuthInfo;
 
 /**
  * A custom {@link HttpAuthenticationMechanism} that handles internal token authentication, that is,
@@ -131,8 +131,7 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
         .item(new HttpCredentialTransport(HttpCredentialTransport.Type.AUTHORIZATION, BEARER));
   }
 
-  static class InternalPrincipalAuthInfo extends TokenCredential
-      implements QuarkusPrincipalAuthInfo {
+  static class InternalPrincipalAuthInfo extends TokenCredential implements PrincipalAuthInfo {
 
     private final DecodedToken token;
 

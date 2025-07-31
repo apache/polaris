@@ -25,8 +25,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.apache.polaris.service.config.PolarisFilterPriorities;
-import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.config.FilterPriorities;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 
 public class RealmContextFilter {
@@ -35,7 +34,7 @@ public class RealmContextFilter {
 
   @Inject RealmContextResolver realmContextResolver;
 
-  @ServerRequestFilter(preMatching = true, priority = PolarisFilterPriorities.REALM_CONTEXT_FILTER)
+  @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REALM_CONTEXT_FILTER)
   public Uni<Response> resolveRealmContext(ContainerRequestContext rc) {
     return Uni.createFrom()
         .completionStage(

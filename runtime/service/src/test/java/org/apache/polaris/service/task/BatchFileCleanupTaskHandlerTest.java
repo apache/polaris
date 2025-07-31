@@ -49,9 +49,6 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
-import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
-import org.apache.polaris.service.task.TaskFileIOSupplier;
-import org.apache.polaris.service.task.TaskUtils;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

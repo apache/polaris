@@ -30,7 +30,6 @@ import io.smallrye.mutiny.Uni;
 import java.security.Principal;
 import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

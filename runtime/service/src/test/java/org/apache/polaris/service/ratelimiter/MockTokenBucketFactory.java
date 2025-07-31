@@ -23,8 +23,6 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
-import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.threeten.extra.MutableClock;
 
 /** TokenBucketFactory with a mock clock */
