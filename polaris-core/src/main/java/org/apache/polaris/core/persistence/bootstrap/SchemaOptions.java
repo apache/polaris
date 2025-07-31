@@ -20,7 +20,6 @@
 package org.apache.polaris.core.persistence.bootstrap;
 
 import jakarta.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -35,12 +34,6 @@ public interface SchemaOptions {
   @Value.Default
   default boolean setupSchema() {
     return true;
-  }
-
-  @NotNull
-  @Value.Default
-  default String schemaName() {
-    return "POLARIS_SCHEMA";
   }
 
   @Value.Check

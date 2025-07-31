@@ -41,7 +41,6 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
-import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +116,7 @@ public class DatasourceOperations {
     }
   }
 
-  public boolean checkSchemaExists(SchemaOptions schemaOptions) {
+  public boolean checkSchemaExists(String schemaName) {
     final boolean[] exists = {false};
 
     try {
@@ -125,7 +124,7 @@ public class DatasourceOperations {
           connection -> {
             try (ResultSet schemas = connection.getMetaData().getSchemas()) {
               while (schemas.next()) {
-                if (schemaOptions.schemaName().equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
+                if (schemaName.equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
                   exists[0] = true;
                   break;
                 }
@@ -134,8 +133,7 @@ public class DatasourceOperations {
             return true;
           });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          "Failed to check schema existence: " + schemaOptions.schemaName(), e);
+      throw new RuntimeException("Failed to check schema existence: " + schemaName, e);
     }
 
     return exists[0];

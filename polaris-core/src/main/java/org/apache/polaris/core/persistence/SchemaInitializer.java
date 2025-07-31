@@ -24,6 +24,4 @@ import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 public interface SchemaInitializer {
 
   boolean setupSchema(SchemaOptions schemaOptions);
-
-  boolean isSchemaPresent(SchemaOptions schemaName);
 }
