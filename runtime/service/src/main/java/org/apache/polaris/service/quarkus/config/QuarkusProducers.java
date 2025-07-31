@@ -151,11 +151,10 @@ public class QuarkusProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
+      BasePersistence metaStoreSession,
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
-      MetaStoreManagerFactory metaStoreManagerFactory,
       Clock clock) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
     return new PolarisCallContext(
         realmContext, metaStoreSession, diagServices, configurationStore, clock);
   }
