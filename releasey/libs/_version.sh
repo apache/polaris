@@ -22,10 +22,10 @@
 # Utility functions for version validation and version.txt manipulation
 #
 
-libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$libs_dir/_constants.sh"
-source "$libs_dir/_log.sh"
+source "$LIBS_DIR/_constants.sh"
+source "$LIBS_DIR/_log.sh"
 
 function validate_and_extract_rc_version {
   # This function validates the format of a release candidate version and extracts its components (major.minor.patch and rc number).

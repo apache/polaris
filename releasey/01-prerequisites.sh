@@ -33,16 +33,16 @@
 set -euo pipefail
 
 releases_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-libs_dir="${releases_dir}/libs"
+LIBS_DIR="${releases_dir}/libs"
 
-source "${libs_dir}/_log.sh"
-source "${libs_dir}/_constants.sh"
-source "${libs_dir}/_exec.sh"
-source "${libs_dir}/_version.sh"
-source "${libs_dir}/_gpg.sh"
-source "${libs_dir}/_nexus.sh"
-source "${libs_dir}/_github.sh"
-source "${libs_dir}/_docker.sh"
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_exec.sh"
+source "${LIBS_DIR}/_version.sh"
+source "${LIBS_DIR}/_gpg.sh"
+source "${LIBS_DIR}/_nexus.sh"
+source "${LIBS_DIR}/_github.sh"
+source "${LIBS_DIR}/_docker.sh"
 
 function usage() {
   cat << EOF

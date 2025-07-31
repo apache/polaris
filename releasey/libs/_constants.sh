@@ -18,7 +18,7 @@
 # under the License.
 #
 
-libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # GPG constants
 KEYS_URL=${KEYS_URL:-"https://downloads.apache.org/incubator/polaris/KEYS"}
@@ -48,8 +48,8 @@ VERSION_REGEX_GIT_TAG="^apache-polaris-$VERSION_REGEX-incubating-rc([0-9]+)$"
 
 # Other project constants
 GRADLE_PROPERTIES_FILE=${GRADLE_PROPERTIES_FILE:-"${HOME}/.gradle/gradle.properties"}
-VERSION_FILE="$libs_dir/../../version.txt"
-CHANGELOG_FILE="$libs_dir/../../CHANGELOG.md"
-HELM_CHART_YAML_FILE="$libs_dir/../../helm/polaris/Chart.yaml"
-HELM_README_FILE="$libs_dir/../../helm/polaris/README.md"
-HELM_VALUES_FILE="$libs_dir/../../helm/polaris/values.yaml"
+VERSION_FILE="$LIBS_DIR/../../version.txt"
+CHANGELOG_FILE="$LIBS_DIR/../../CHANGELOG.md"
+HELM_CHART_YAML_FILE="$LIBS_DIR/../../helm/polaris/Chart.yaml"
+HELM_README_FILE="$LIBS_DIR/../../helm/polaris/README.md"
+HELM_VALUES_FILE="$LIBS_DIR/../../helm/polaris/values.yaml"

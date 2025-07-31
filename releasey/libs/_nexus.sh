@@ -32,12 +32,12 @@
 
 set -euo pipefail
 
-libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source common logging functions and constants
-source "${libs_dir}/_log.sh"
-source "${libs_dir}/_constants.sh"
-source "${libs_dir}/_exec.sh"
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_exec.sh"
 
 function check_apache_credentials_are_set_in_gradle_properties() {
   # Check if Apache credentials are configured in ~/.gradle/gradle.properties, return non-zero if not

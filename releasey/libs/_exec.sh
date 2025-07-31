@@ -22,10 +22,10 @@
 # Execution wrapper function for system-modifying commands
 #
 
-libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$libs_dir/_constants.sh"
-source "$libs_dir/_log.sh"
+source "$LIBS_DIR/_constants.sh"
+source "$LIBS_DIR/_log.sh"
 
 function exec_process {
   # See print_command for information on why fd 3 is used.

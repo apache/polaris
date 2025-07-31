@@ -29,11 +29,11 @@ set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 releases_dir="${test_dir}/.."
-libs_dir="${releases_dir}/libs"
+LIBS_DIR="${releases_dir}/libs"
 
-source "${libs_dir}/_log.sh"
-source "${libs_dir}/_constants.sh"
-source "${libs_dir}/_version.sh"
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_version.sh"
 
 function usage() {
   cat <<EOF

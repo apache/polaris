@@ -32,12 +32,12 @@
 
 set -euo pipefail
 
-libs_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source common logging functions and constants
-source "${libs_dir}/_log.sh"
-source "${libs_dir}/_constants.sh"
-source "${libs_dir}/_exec.sh"
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_exec.sh"
 
 function get_secret_keys() {
   # Get list of secret keys (private keys) that can be used for signing
