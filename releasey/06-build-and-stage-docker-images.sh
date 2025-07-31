@@ -58,8 +58,6 @@ $(basename "$0") [--help | -h]
 EOF
 }
 
-ensure_cwd_is_project_root
-
 while [[ $# -gt 0 ]]; do
   case $1 in
     --help|-h)
@@ -102,6 +100,7 @@ echo
 
 # Build and push polaris-server Docker image
 print_info "Building and pushing polaris-server Docker image..."
+exec_process cd "${releasey_dir}/.."
 exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true \
   -Dquarkus.container-image.push=true \

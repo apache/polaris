@@ -142,7 +142,7 @@ if [[ "$actual_content" == "$expected_content" ]]; then
 else
   print_error "❌ Test failed! Output content does not match expected result."
   echo
-  diff -u <(echo "$expected_content") <(echo "$actual_content") | diff-so-fancy
+  diff -u <(echo "$expected_content") <(echo "$actual_content")
   echo
   print_error "Content verification failed"
   exit 1
