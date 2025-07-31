@@ -97,28 +97,6 @@ echo
 print_info "Building source and binary distributions..."
 exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
 
-print_info "Verifying distribution files exist..."
-source_dist_dir="build/distribution"
-binary_dist_dir="runtime/distribution/build/distributions"
-helm_chart_dir="helm/polaris"
-
-if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  if [[ ! -d "${source_dist_dir}" ]]; then
-    print_error "Source distribution directory not found: ${source_dist_dir}"
-    exit 1
-  fi
-  
-  if [[ ! -d "${binary_dist_dir}" ]]; then
-    print_error "Binary distribution directory not found: ${binary_dist_dir}"
-    exit 1
-  fi
-  
-  if [[ ! -d "${helm_chart_dir}" ]]; then
-    print_error "Helm chart directory not found: ${helm_chart_dir}"
-    exit 1
-  fi
-fi
-
 # Create Helm package
 print_info "Creating Helm package..."
 exec_process cd helm
@@ -141,8 +119,8 @@ version_dir="${dist_dev_dir}/${polaris_version}"
 helm_chart_version_dir="${dist_dev_dir}/helm-chart/${polaris_version}"
 exec_process mkdir -p "${version_dir}"
 exec_process mkdir -p "${helm_chart_version_dir}"
-exec_process cp "${source_dist_dir}"/* "${version_dir}/"
-exec_process cp "${binary_dist_dir}"/* "${version_dir}/"
+exec_process cp build/distribution/* "${version_dir}/"
+exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
 
 print_info "Copying Helm package files..."
 exec_process cp helm/polaris-${polaris_version}.tgz* "${helm_chart_version_dir}/"
