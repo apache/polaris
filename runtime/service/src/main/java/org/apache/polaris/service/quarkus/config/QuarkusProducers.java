@@ -151,12 +151,19 @@ public class QuarkusProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      BasePersistence metaStoreSession,
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       Clock clock) {
+    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
     return new PolarisCallContext(
         realmContext, metaStoreSession, diagServices, configurationStore, clock);
+  }
+
+  @Produces
+  @RequestScoped
+  public BasePersistence polarisMetaStoreSession(CallContext callContext) {
+    return callContext.getPolarisCallContext().getMetaStore();
   }
 
   @Produces
@@ -376,13 +383,6 @@ public class QuarkusProducers {
   public UserSecretsManager userSecretsManager(
       RealmContext realmContext, UserSecretsManagerFactory userSecretsManagerFactory) {
     return userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public BasePersistence polarisMetaStoreSession(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateSession(realmContext);
   }
 
   @Produces
