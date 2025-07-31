@@ -30,8 +30,8 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releases_dir="${test_dir}/.."
-LIBS_DIR="${releases_dir}/libs"
+releasey_dir="${test_dir}/.."
+LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_constants.sh"
@@ -79,7 +79,7 @@ trap 'rm -f "$temp_file"' EXIT
 print_info "Running script..."
 # Set a dummy GitHub token for testing to avoid API calls
 DRY_RUN=1 GITHUB_TOKEN="dummy_token" \
-  "${releases_dir}/04-build-and-test.sh" \
+  "${releasey_dir}/04-build-and-test.sh" \
   3>"$temp_file"
 
 print_info "Verifying output content..."

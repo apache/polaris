@@ -32,8 +32,8 @@
 
 set -euo pipefail
 
-releases_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIBS_DIR="${releases_dir}/libs"
+releasey_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_constants.sh"

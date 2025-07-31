@@ -28,8 +28,8 @@
 set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-releases_dir="${test_dir}/.."
-LIBS_DIR="${releases_dir}/libs"
+releasey_dir="${test_dir}/.."
+LIBS_DIR="${releasey_dir}/libs"
 
 source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_constants.sh"
@@ -126,7 +126,7 @@ temp_file=$(mktemp)
 
 print_info "Running script (version determined from current git tag)..."
 DRY_RUN=1 \
-  "${releases_dir}/06-build-and-stage-docker-images.sh" \
+  "${releasey_dir}/06-build-and-stage-docker-images.sh" \
   3>"$temp_file"
 
 # Restore original git state
