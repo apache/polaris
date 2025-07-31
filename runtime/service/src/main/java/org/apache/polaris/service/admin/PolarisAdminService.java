@@ -526,7 +526,8 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
-    if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
+    if (!resolutionManifest.getIsPassthroughFacade()
+        && !subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
 
@@ -1686,6 +1687,9 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE;
     authorizeGrantOnNamespaceOperationOrThrow(op, catalogName, namespace, catalogRoleName);
 
+    CatalogEntity catalogEntity =
+        findCatalogByName(catalogName)
+            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
@@ -1693,7 +1697,19 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
-      throw new NotFoundException("Namespace %s not found", namespace);
+      if (resolutionManifest.getIsPassthroughFacade()) {
+        resolvedPathWrapper =
+            createSyntheticNamespaceEntities(catalogEntity, namespace, resolvedPathWrapper);
+        if (resolvedPathWrapper == null
+            || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create synthetic namespace entities for namespace %s in catalog %s",
+                  namespace.toString(), catalogName));
+        }
+      } else {
+        throw new NotFoundException("Namespace %s not found", namespace);
+      }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -1735,6 +1751,79 @@ public class PolarisAdminService {
             namespaceEntity,
             privilege)
         .isSuccess();
+  }
+
+  /**
+   * Creates and persists the missing synthetic namespace entities for external catalogs.
+   *
+   * @param catalogEntity the external passthrough facade catalog entity.
+   * @param namespace the expected fully resolved namespace to be created.
+   * @param existingPath the partially resolved path currently stored in the metastore.
+   * @return the fully resolved path wrapper.
+   */
+  private PolarisResolvedPathWrapper createSyntheticNamespaceEntities(
+      CatalogEntity catalogEntity, Namespace namespace, PolarisResolvedPathWrapper existingPath) {
+
+    if (existingPath == null) {
+      throw new IllegalStateException(
+          String.format("Catalog entity %s does not exist.", catalogEntity.getName()));
+    }
+
+    List<PolarisEntity> completePath = new ArrayList<>(existingPath.getRawFullPath());
+    PolarisEntity currentParent = existingPath.getRawLeafEntity();
+
+    String[] allNamespaceLevels = namespace.levels();
+    int matchingLevel = -1;
+    for (PolarisEntity entity : completePath.subList(1, completePath.size())) {
+      if (entity.getName().equals(allNamespaceLevels[matchingLevel + 1])) {
+        matchingLevel++;
+      } else {
+        break;
+      }
+    }
+
+    for (int i = matchingLevel + 1; i < allNamespaceLevels.length; i++) {
+      String namespacePart = allNamespaceLevels[i];
+
+      // TODO: Instead of creating synthetic entitties, rely on external catalog mediated backfill.
+      PolarisEntity syntheticNamespace =
+          new PolarisEntity.Builder()
+              .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+              .setCatalogId(catalogEntity.getId())
+              .setParentId(currentParent.getId())
+              .setType(PolarisEntityType.NAMESPACE)
+              .setName(namespacePart)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+
+      EntityResult result =
+          metaStoreManager.createEntityIfNotExists(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(completePath),
+              syntheticNamespace);
+
+      if (result.isSuccess()) {
+        syntheticNamespace = PolarisEntity.of(result.getEntity());
+      } else {
+        Namespace partialNamespace = Namespace.of(Arrays.copyOf(allNamespaceLevels, i + 1));
+        PolarisResolvedPathWrapper partialPath =
+            resolutionManifest.getResolvedPath(partialNamespace);
+        PolarisEntity partialLeafEntity = partialPath.getRawLeafEntity();
+        if (partialLeafEntity == null
+            || !(partialLeafEntity.getName().equals(namespacePart)
+                && partialLeafEntity.getType() == PolarisEntityType.NAMESPACE)) {
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create or find namespace entity '%s' in federated catalog '%s'",
+                  namespacePart, catalogEntity.getName()));
+        }
+        syntheticNamespace = partialLeafEntity;
+      }
+      completePath.add(syntheticNamespace);
+      currentParent = syntheticNamespace;
+    }
+    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
+    return resolvedPathWrapper;
   }
 
   public boolean grantPrivilegeOnTableToRole(
@@ -2014,9 +2103,9 @@ public class PolarisAdminService {
       TableIdentifier identifier,
       List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
-      throw new NotFoundException("Parent catalog %s not found", catalogName);
-    }
+    CatalogEntity catalogEntity =
+        findCatalogByName(catalogName)
+            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
@@ -2026,7 +2115,20 @@ public class PolarisAdminService {
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+      if (resolutionManifest.getIsPassthroughFacade()) {
+        resolvedPathWrapper =
+            createSyntheticTableLikeEntities(
+                catalogEntity, identifier, subTypes, resolvedPathWrapper);
+        if (resolvedPathWrapper == null
+            || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create synthetic table-like entity for table %s in catalog %s",
+                  identifier.name(), catalogEntity.getName()));
+        }
+      } else {
+        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+      }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
@@ -2039,6 +2141,74 @@ public class PolarisAdminService {
             tableLikeEntity,
             privilege)
         .isSuccess();
+  }
+
+  /**
+   * Creates and persists the missing synthetic table-like entity and its parent namespace entities
+   * for external catalogs.
+   *
+   * @param catalogEntity the external passthrough facade catalog entity.
+   * @param identifier the path of the table-like entity(including the namespace).
+   * @param subTypes the expected subtypes of the table-like entity
+   * @param existingPathWrapper the partially resolved path currently stored in the metastore.
+   * @return the resolved path wrapper
+   */
+  private PolarisResolvedPathWrapper createSyntheticTableLikeEntities(
+      CatalogEntity catalogEntity,
+      TableIdentifier identifier,
+      List<PolarisEntitySubType> subTypes,
+      PolarisResolvedPathWrapper existingPathWrapper) {
+
+    Namespace namespace = identifier.namespace();
+    PolarisResolvedPathWrapper resolvedNamespacePathWrapper =
+        !namespace.isEmpty()
+            ? createSyntheticNamespaceEntities(catalogEntity, namespace, existingPathWrapper)
+            : existingPathWrapper;
+
+    if (resolvedNamespacePathWrapper == null
+        || (!namespace.isEmpty()
+            && !resolvedNamespacePathWrapper.isFullyResolvedNamespace(
+                catalogEntity.getName(), namespace))) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to create synthetic namespace entities for namespace %s in catalog %s",
+              namespace.toString(), catalogEntity.getName()));
+    }
+
+    // TODO: Instead of creating a synthetic table-like entity, rely on external catalog mediated
+    // backfill.
+    PolarisEntity parentNamespaceEntity = resolvedNamespacePathWrapper.getRawLeafEntity();
+    PolarisEntity syntheticTableEntity =
+        new PolarisEntity.Builder()
+            .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+            .setCatalogId(parentNamespaceEntity.getCatalogId())
+            .setParentId(parentNamespaceEntity.getId())
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(subTypes.get(0))
+            .setName(identifier.name())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+
+    EntityResult result =
+        metaStoreManager.createEntityIfNotExists(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(resolvedNamespacePathWrapper.getRawFullPath()),
+            syntheticTableEntity);
+
+    if (result.isSuccess()) {
+      syntheticTableEntity = PolarisEntity.of(result.getEntity());
+    } else {
+      PolarisResolvedPathWrapper tablePathWrapper = resolutionManifest.getResolvedPath(identifier);
+      PolarisEntity leafEntity =
+          tablePathWrapper != null ? tablePathWrapper.getRawLeafEntity() : null;
+      if (leafEntity == null || !subTypes.contains(leafEntity.getSubType())) {
+        throw new RuntimeException(
+            String.format(
+                "Failed to create or find table entity '%s' in federated catalog '%s'",
+                identifier.name(), catalogEntity.getName()));
+      }
+    }
+    return resolutionManifest.getResolvedPath(identifier);
   }
 
   /**
