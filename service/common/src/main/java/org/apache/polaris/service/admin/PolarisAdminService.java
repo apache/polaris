@@ -41,7 +41,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -92,6 +91,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -880,7 +880,7 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
 
     if (currentCatalogEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
-      throw new CommitFailedException(
+      throw new CommitConflictException(
           "Failed to update Catalog; currentEntityVersion '%s', expected '%s'",
           currentCatalogEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
@@ -932,7 +932,7 @@ public class PolarisAdminService {
                             getCurrentPolarisContext(), null, updatedEntity))))
             .orElseThrow(
                 () ->
-                    new CommitFailedException(
+                    new CommitConflictException(
                         "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
   }
@@ -1048,7 +1048,7 @@ public class PolarisAdminService {
           "Cannot update a federated principal: %s", currentPrincipalEntity.getName());
     }
     if (currentPrincipalEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
-      throw new CommitFailedException(
+      throw new CommitConflictException(
           "Failed to update Principal; currentEntityVersion '%s', expected '%s'",
           currentPrincipalEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
@@ -1069,7 +1069,7 @@ public class PolarisAdminService {
                             getCurrentPolarisContext(), null, updatedEntity))))
             .orElseThrow(
                 () ->
-                    new CommitFailedException(
+                    new CommitConflictException(
                         "Concurrent modification on Principal '%s'; retry later", name));
     return returnedEntity;
   }
@@ -1220,7 +1220,7 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("PrincipalRole %s not found", name));
 
     if (currentPrincipalRoleEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
-      throw new CommitFailedException(
+      throw new CommitConflictException(
           "Failed to update PrincipalRole; currentEntityVersion '%s', expected '%s'",
           currentPrincipalRoleEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
@@ -1242,7 +1242,7 @@ public class PolarisAdminService {
                             getCurrentPolarisContext(), null, updatedEntity))))
             .orElseThrow(
                 () ->
-                    new CommitFailedException(
+                    new CommitConflictException(
                         "Concurrent modification on PrincipalRole '%s'; retry later", name));
     return returnedEntity;
   }
@@ -1347,7 +1347,7 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", name));
 
     if (currentCatalogRoleEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
-      throw new CommitFailedException(
+      throw new CommitConflictException(
           "Failed to update CatalogRole; currentEntityVersion '%s', expected '%s'",
           currentCatalogRoleEntity.getEntityVersion(), updateRequest.getCurrentEntityVersion());
     }
@@ -1371,7 +1371,7 @@ public class PolarisAdminService {
                             updatedEntity))))
             .orElseThrow(
                 () ->
-                    new CommitFailedException(
+                    new CommitConflictException(
                         "Concurrent modification on CatalogRole '%s'; retry later", name));
     return returnedEntity;
   }

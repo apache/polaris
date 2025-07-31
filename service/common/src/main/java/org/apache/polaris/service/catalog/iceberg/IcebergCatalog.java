@@ -2357,7 +2357,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NotFoundException("Parent path does not exist for %s", identifier);
 
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-          throw new CommitFailedException(
+          throw new CommitConflictException(
               "Failed to commit Table or View %s because it was concurrently modified", identifier);
 
         default:
