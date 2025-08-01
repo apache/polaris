@@ -42,6 +42,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 
+- **S3 remote request signing** has been added, allowing Polaris to work with S3-compatible object storage systems.
+  *Remote signing is currently experimental and not enabled by default*. In particular, RBAC checks are currently not
+  production-ready. One new table privilege was introduced: `TABLE_REMOTE_SIGN`. To enable remote signing:
+    1. Set the system-wide property `REMOTE_SIGNING_ENABLED` or the catalog-level `polaris.request-signing.enabled`
+       property to `true`.
+    2. Grant the `TABLE_REMOTE_SIGN` privilege to a catalog role. The catalog role must also be granted the 
+       `TABLE_READ_DATA` and `TABLE_WRITE_DATA` privileges.
+
 ### Upgrade notes
 
 - The legacy management endpoints at `/metrics` and `/healthcheck` have been removed. Please use the

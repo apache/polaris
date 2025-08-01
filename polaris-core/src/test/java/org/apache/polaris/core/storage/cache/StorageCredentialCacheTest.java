@@ -372,6 +372,8 @@ public class StorageCredentialCacheTest {
       res.add(
           new ScopedCredentialsResult(
               StorageAccessConfig.builder()
+                  .supportsCredentialVending(true)
+                  .supportsRemoteSigning(true)
                   .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
                   .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
                   .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
@@ -381,6 +383,8 @@ public class StorageCredentialCacheTest {
       res.add(
           new ScopedCredentialsResult(
               StorageAccessConfig.builder()
+                  .supportsCredentialVending(true)
+                  .supportsRemoteSigning(true)
                   .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
                   .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                   .build()));
@@ -388,6 +392,8 @@ public class StorageCredentialCacheTest {
       res.add(
           new ScopedCredentialsResult(
               StorageAccessConfig.builder()
+                  .supportsCredentialVending(true)
+                  .supportsRemoteSigning(true)
                   .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
                   .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
                   .build()));
@@ -418,6 +424,8 @@ public class StorageCredentialCacheTest {
     ScopedCredentialsResult properties =
         new ScopedCredentialsResult(
             StorageAccessConfig.builder()
+                .supportsCredentialVending(true)
+                .supportsRemoteSigning(true)
                 .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
                 .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
                 .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
