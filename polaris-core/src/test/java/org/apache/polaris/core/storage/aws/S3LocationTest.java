@@ -19,8 +19,11 @@
 
 package org.apache.polaris.core.storage.aws;
 
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
+
 import org.apache.polaris.core.storage.StorageLocation;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -49,5 +52,23 @@ class S3LocationTest {
     StorageLocation loc3 = StorageLocation.of(childScheme + "://bucket/schema1");
     Assertions.assertThat(loc2.toString().equals(loc3.toString())).isFalse();
     Assertions.assertThat(loc2.equals(loc3)).isTrue();
+  }
+
+  @Test
+  public void testNormalize() {
+    StorageLocation loc1 = StorageLocation.of("s3://bucket/schema1").normalize();
+    StorageLocation loc2 = StorageLocation.of("s3a://bucket/schema1").normalize();
+    Assertions.assertThat(loc1.toString())
+        .isEqualTo(loc2.toString())
+        .isEqualTo("s3://bucket/schema1");
+    Assertions.assertThat(loc1)
+        .asInstanceOf(type(S3Location.class))
+        .extracting(S3Location::getScheme)
+        .isEqualTo("s3");
+    Assertions.assertThat(loc2)
+        .asInstanceOf(type(S3Location.class))
+        .extracting(S3Location::getScheme)
+        .isEqualTo("s3");
+    Assertions.assertThat(loc1).isEqualTo(loc2);
   }
 }

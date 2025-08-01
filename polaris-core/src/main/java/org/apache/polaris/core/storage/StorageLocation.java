@@ -139,4 +139,9 @@ public class StorageLocation {
       return location;
     }
   }
+
+  /** Returns a normalized version of this location. */
+  public StorageLocation normalize() {
+    return this;
+  }
 }

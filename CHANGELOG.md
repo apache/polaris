@@ -29,6 +29,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- **S3 remote signing** support has been added. *Remote signing is currently experimental and 
+  disabled by default*. One new table privilege was introduced: `TABLE_REMOTE_SIGN`. To enable 
+  remote signing:
+    1. Set the system-wide feature `REMOTE_SIGNING_ENABLED` or the catalog-level property 
+       `polaris.remote-signing.enabled` to `true`.
+    2. Grant the `TABLE_REMOTE_SIGN` privilege to a catalog role. The catalog role must also be 
+       granted the following privileges: `TABLE_READ_DATA` (for reads) and/or `TABLE_WRITE_DATA` 
+       (for writes).
+
 ### Upgrade notes
 
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.

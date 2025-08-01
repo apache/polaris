@@ -19,8 +19,10 @@
 package org.apache.polaris.core.storage;
 
 import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.azure.AzureProperties;
 import org.apache.iceberg.gcp.GCPProperties;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
@@ -51,6 +53,24 @@ public enum StorageAccessProperty {
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
       "the endpoint to load vended credentials for a table from the catalog",
       false,
+      false),
+  AWS_REMOTE_SIGNING_ENABLED(
+      Boolean.class,
+      S3FileIOProperties.REMOTE_SIGNING_ENABLED,
+      "whether to enable remote signing for S3 requests",
+      false),
+
+  @Deprecated
+  AWS_SIGNER_URI(
+      String.class,
+      "s3.signer.uri",
+      "the base URI for the remote signer service, used for signing S3 requests. Deprecated, use signer.uri instead.",
+      false),
+  @Deprecated
+  AWS_SIGNER_ENDPOINT(
+      String.class,
+      "s3.signer.endpoint",
+      "the endpoint for the remote signer service, used for signing S3 requests. Deprecated, use signer.endpoint instead.",
       false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token", true),
@@ -88,7 +108,30 @@ public enum StorageAccessProperty {
       AzureProperties.ADLS_SAS_TOKEN_EXPIRES_AT_MS_PREFIX,
       "The expiration time for the access token, in milliseconds",
       true,
-      true);
+      true),
+
+  // Remote signing properties
+  SIGNER_URI(
+      String.class,
+      RESTCatalogProperties.SIGNER_URI,
+      "The base URI for the remote signer service, used for signing requests",
+      false),
+  SIGNER_ENDPOINT(
+      String.class,
+      RESTCatalogProperties.SIGNER_ENDPOINT,
+      "The endpoint for the remote signer service, used for signing requests",
+      false),
+  SIGNER_PROPERTY_TOKEN(
+      String.class,
+      RemoteSigningProperty.TOKEN.longName(),
+      "The encrypted remote signing token, used for signing requests",
+      false),
+  SIGNER_PROPERTY_PATH_STYLE_ACCESS(
+      String.class,
+      RemoteSigningProperty.PATH_STYLE_ACCESS.longName(),
+      "Whether the signer client will use path style access URLs. Optional. Relevant only for S3",
+      false),
+  ;
 
   private final Class valueType;
   private final String propertyName;

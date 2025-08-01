@@ -95,7 +95,8 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
-    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    StorageAccessConfig.Builder accessConfig =
+        StorageAccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(false);
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
@@ -167,36 +168,69 @@ public class AwsCredentialsStorageIntegration
               });
     }
 
-    if (region != null) {
-      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
-    }
-
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
         });
 
-    URI endpointUri = storageConfig.getEndpointUri();
+    addCommonProperties(accessConfig);
+
+    return accessConfig.build();
+  }
+
+  @Override
+  public StorageAccessConfig getRemoteSigningAccessConfig(
+      URI signerUri, String signerEndpoint, String signerToken) {
+
+    @SuppressWarnings("deprecation")
+    StorageAccessConfig.Builder accessConfig =
+        StorageAccessConfig.builder()
+            .supportsCredentialVending(false)
+            .supportsRemoteSigning(true)
+            .put(StorageAccessProperty.AWS_REMOTE_SIGNING_ENABLED, Boolean.TRUE.toString())
+            .put(StorageAccessProperty.SIGNER_PROPERTY_TOKEN, signerToken)
+            // Iceberg >= 1.11
+            .put(StorageAccessProperty.SIGNER_URI, signerUri.toString())
+            .put(StorageAccessProperty.SIGNER_ENDPOINT, signerEndpoint)
+            // Iceberg < 1.11 (deprecated)
+            .put(StorageAccessProperty.AWS_SIGNER_URI, signerUri.toString())
+            .put(StorageAccessProperty.AWS_SIGNER_ENDPOINT, signerEndpoint);
+
+    addCommonProperties(accessConfig);
+
+    if (Boolean.TRUE.equals(config().getPathStyleAccess())) {
+      accessConfig.put(
+          StorageAccessProperty.SIGNER_PROPERTY_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
+    }
+
+    return accessConfig.build();
+  }
+
+  private void addCommonProperties(StorageAccessConfig.Builder accessConfig) {
+    if (config().getRegion() != null) {
+      accessConfig.put(StorageAccessProperty.CLIENT_REGION, config().getRegion());
+    }
+
+    URI endpointUri = config().getEndpointUri();
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
-    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+
+    URI internalEndpointUri = config().getInternalEndpointUri();
     if (internalEndpointUri != null) {
       accessConfig.putInternalProperty(
           StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
     }
 
-    if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
+    if (Boolean.TRUE.equals(config().getPathStyleAccess())) {
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
+    if ("aws-us-gov".equals(config().getAwsPartition()) && config().getRegion() == null) {
       throw new IllegalArgumentException(
           String.format(
-              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+              "AWS region must be set when using partition %s", config().getAwsPartition()));
     }
-
-    return accessConfig.build();
   }
 
   private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {

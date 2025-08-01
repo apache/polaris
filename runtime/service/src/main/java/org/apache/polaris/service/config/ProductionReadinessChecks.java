@@ -19,6 +19,7 @@
 package org.apache.polaris.service.config;
 
 import static java.lang.String.format;
+import static org.apache.polaris.core.config.FeatureConfiguration.REMOTE_SIGNING_ENABLED;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -47,6 +48,7 @@ import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.storage.sign.RemoteSigningConfiguration;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -377,6 +379,67 @@ public class ProductionReadinessChecks {
                         + "configuration.",
                     name),
                 format("polaris.features.\"%s\"", authTypesKey)));
+      }
+    }
+
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkRemoteSigning(FeaturesConfiguration featureConfiguration) {
+    var errors = new ArrayList<Error>();
+    var offending = REMOTE_SIGNING_ENABLED;
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(offending.key()))) {
+      errors.add(
+          Error.ofSevere(
+              "Remote signing is an experimental feature and should not be enabled in production.",
+              format("polaris.features.\"%s\"", offending.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if (Boolean.parseBoolean(overrides.overrides().get(offending.key()))) {
+                errors.add(
+                    Error.ofSevere(
+                        "Remote signing is an experimental feature and should not be enabled in production.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, offending.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkSigningKeys(
+      FeaturesConfiguration featureConfiguration, RemoteSigningConfiguration signingConfig) {
+    var errors = new ArrayList<Error>();
+
+    // Check if remote signing is enabled in defaults or any realm override
+    boolean remoteSigningEnabled =
+        Boolean.parseBoolean(featureConfiguration.defaults().get(REMOTE_SIGNING_ENABLED.key()));
+    if (!remoteSigningEnabled) {
+      for (var entry : featureConfiguration.realmOverrides().entrySet()) {
+        if (Boolean.parseBoolean(entry.getValue().overrides().get(REMOTE_SIGNING_ENABLED.key()))) {
+          remoteSigningEnabled = true;
+          break;
+        }
+      }
+    }
+
+    if (remoteSigningEnabled) {
+      if (signingConfig.keys().isEmpty()
+          && signingConfig.keyFiles().isEmpty()
+          && signingConfig.keyDirectory().isEmpty()) {
+        errors.add(
+            Error.of(
+                "Remote signing is enabled but no JWE secret key is configured: a random key will be generated.",
+                "polaris.remote-signing.[keys|key-files|key-directory]"));
       }
     }
 

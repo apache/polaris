@@ -25,6 +25,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
@@ -94,6 +95,9 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageLocationTranslator;
+import org.apache.polaris.service.storage.sign.RemoteSigner;
+import org.apache.polaris.service.storage.sign.RemoteSigningTokenService;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -293,7 +297,11 @@ public record TestServices(
           new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal, realmContext);
+              storageCredentialCache,
+              storageCredentialsVendor,
+              principal,
+              realmContext,
+              storageIntegrationProvider);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -328,6 +336,14 @@ public record TestServices(
             @Override
             public IcebergCatalogHandler createHandler(
                 String catalogName, PolarisPrincipal principal) {
+
+              @SuppressWarnings("unchecked")
+              Instance<RemoteSigner> signers = Mockito.mock(Instance.class);
+
+              @SuppressWarnings("unchecked")
+              Instance<StorageLocationTranslator> storageLocationTranslators =
+                  Mockito.mock(Instance.class);
+
               return ImmutableIcebergCatalogHandler.builder()
                   .catalogName(catalogName)
                   .polarisPrincipal(principal)
@@ -347,6 +363,10 @@ public record TestServices(
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)
+                  .uriInfo(Mockito.mock(UriInfo.class))
+                  .remoteSigners(signers)
+                  .storageLocationTranslators(storageLocationTranslators)
+                  .remoteSigningTokenService(Mockito.mock(RemoteSigningTokenService.class))
                   .build();
             }
           };
@@ -384,11 +404,11 @@ public record TestServices(
               serviceIdentityProvider,
               principal,
               authorizer,
-              reservedProperties);
+              ReservedProperties.NONE);
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
-                  realmConfig, reservedProperties, adminService, serviceIdentityProvider));
+                  realmConfig, ReservedProperties.NONE, adminService, serviceIdentityProvider));
 
       return new TestServices(
           clock,

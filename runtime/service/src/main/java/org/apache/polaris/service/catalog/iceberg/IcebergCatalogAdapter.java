@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static jakarta.ws.rs.core.HttpHeaders.CACHE_CONTROL;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
@@ -31,6 +33,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
@@ -44,13 +47,16 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RemoteSignRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.rest.responses.RemoteSignResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -252,11 +258,14 @@ public class IcebergCatalogAdapter
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+  private static EnumSet<AccessDelegationMode> parseAccessDelegationModes(
+      String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
     Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        delegationModes.isEmpty()
+            || delegationModes.contains(VENDED_CREDENTIALS)
+            || delegationModes.contains(REMOTE_SIGNING),
         "Unsupported access delegation mode: %s",
         accessDelegationMode);
     return delegationModes;
@@ -359,9 +368,7 @@ public class IcebergCatalogAdapter
   }
 
   private static Optional<String> getRefreshCredentialsEndpoint(
-      EnumSet<AccessDelegationMode> delegationModes,
-      String prefix,
-      TableIdentifier tableIdentifier) {
+      Set<AccessDelegationMode> delegationModes, String prefix, TableIdentifier tableIdentifier) {
     return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
         ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
         : Optional.empty();
@@ -545,6 +552,7 @@ public class IcebergCatalogAdapter
               catalog.loadTableWithAccessDelegation(
                   tableIdentifier,
                   "all",
+                  EnumSet.of(VENDED_CREDENTIALS),
                   Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
@@ -727,5 +735,38 @@ public class IcebergCatalogAdapter
     }
     return withCatalogByName(
         securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
+  }
+
+  @Override
+  public Response signRequest(
+      String prefix,
+      String namespace,
+      String table,
+      RemoteSignRequest signRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    Namespace ns = decodeNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          RemoteSignResponse response = catalog.signRequest(signRequest, tableIdentifier);
+          String cacheControl = "no-cache";
+          boolean shouldCache =
+              realmConfig.getConfig(FeatureConfiguration.REMOTE_SIGNING_CACHE_ENABLED);
+          if (shouldCache) {
+            boolean readRequest =
+                signRequest.method().equalsIgnoreCase("GET")
+                    || signRequest.method().equalsIgnoreCase("HEAD");
+            if (readRequest) {
+              cacheControl = "private";
+            }
+          }
+          return Response.status(Response.Status.OK)
+              .entity(response)
+              .header(CACHE_CONTROL, cacheControl)
+              .build();
+        });
   }
 }

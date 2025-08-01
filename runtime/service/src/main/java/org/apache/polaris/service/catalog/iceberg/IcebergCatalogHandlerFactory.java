@@ -22,6 +22,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -38,6 +39,9 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.storage.StorageLocationTranslator;
+import org.apache.polaris.service.storage.sign.RemoteSigner;
+import org.apache.polaris.service.storage.sign.RemoteSigningTokenService;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
@@ -58,6 +62,10 @@ public class IcebergCatalogHandlerFactory {
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
   @Inject Clock clock;
+  @Inject UriInfo uriInfo;
+  @Inject @Any Instance<RemoteSigner> remoteSigners;
+  @Inject @Any Instance<StorageLocationTranslator> storageLocationTranslators;
+  @Inject RemoteSigningTokenService remoteSigningTokenService;
 
   public IcebergCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableIcebergCatalogHandler.builder()
@@ -79,6 +87,10 @@ public class IcebergCatalogHandlerFactory {
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
         .clock(clock)
+        .uriInfo(uriInfo)
+        .remoteSigners(remoteSigners)
+        .storageLocationTranslators(storageLocationTranslators)
+        .remoteSigningTokenService(remoteSigningTokenService)
         .build();
   }
 }

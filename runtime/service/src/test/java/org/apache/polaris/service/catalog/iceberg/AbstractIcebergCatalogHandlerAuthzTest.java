@@ -416,7 +416,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testCreateTableDirectWithWriteDelegationPrivileges() {
+  Stream<DynamicNode> testCreateTableDirectWithWriteDelegationVendedCredentialsPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -428,17 +428,51 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     final CreateTableRequest createDirectWithWriteDelegationRequest =
         CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).stageCreate().build();
 
-    return authzTestsBuilder("createTableDirectWithWriteDelegation")
+    return authzTestsBuilder("createTableDirectWithWriteDelegationVendedCredentials")
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
                     .createTableDirectWithWriteDelegation(
-                        NS2, createDirectWithWriteDelegationRequest, Optional.empty()))
+                        NS2,
+                        createDirectWithWriteDelegationRequest,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldFailWith(
             PolarisPrivilege.TABLE_CREATE) // TABLE_CREATE itself is insufficient for delegation
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testCreateTableDirectWithWriteDelegationRemoteSigningPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
+    CreateTableRequest createDirectWithWriteDelegationRequest =
+        CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).stageCreate().build();
+
+    return authzTestsBuilder("createTableDirectWithWriteDelegationRemoteSigning")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableDirectWithWriteDelegation(
+                        NS2,
+                        createDirectWithWriteDelegationRequest,
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -465,7 +499,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testCreateTableStagedWithWriteDelegationPrivileges() {
+  Stream<DynamicNode> testCreateTableStagedWithWriteDelegationVendedCredentialsPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -477,13 +511,46 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .stageCreate()
             .build();
 
-    return authzTestsBuilder("createTableStagedWithWriteDelegation")
+    return authzTestsBuilder("createTableStagedWithWriteDelegationVendedCredentials")
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
                     .createTableStagedWithWriteDelegation(
-                        NS2, createStagedWithWriteDelegationRequest, Optional.empty()))
+                        NS2,
+                        createStagedWithWriteDelegationRequest,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testCreateTableStagedWithWriteDelegationRemoteSigningPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+
+    CreateTableRequest createTableRequest =
+        CreateTableRequest.builder()
+            .withName("stagetable")
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    return authzTestsBuilder("createTableStagedWithWriteDelegationRemoteSigning")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableStagedWithWriteDelegation(
+                        NS2,
+                        createTableRequest,
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
@@ -688,7 +755,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testRegisterTableWithWriteDelegationPrivileges() {
+  Stream<DynamicNode> testRegisterTableWithWriteDelegationVendedCredentialsPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -705,7 +772,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .metadataLocation(metadataLocation)
             .build();
 
-    return authzTestsBuilder("registerTableWithWriteDelegation")
+    return authzTestsBuilder("registerTableWithWriteDelegationVendedCredentials")
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
@@ -765,6 +832,56 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
+  Stream<DynamicNode> testRegisterTableWithWriteDelegationRemoteSigningPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    // To get a handy metadata file we can use one from another table.
+    // to avoid overlapping directories, drop the original table and recreate it via registerTable
+    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
+
+    RegisterTableRequest registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name(TABLE_NS1_1.name())
+            .metadataLocation(metadataLocation)
+            .build();
+
+    return authzTestsBuilder("registerTableWithWriteDelegationRemoteSigning")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .registerTable(
+                        NS1,
+                        registerRequest,
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1))
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
   Stream<DynamicNode> testLoadTablePrivileges() {
     return authzTestsBuilder("loadTable")
         .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
@@ -792,54 +909,150 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithReadAccessDelegationPrivileges() {
-    return authzTestsBuilder("loadTableWithAccessDelegation")
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationVendedCredentialsPrivileges() {
+    return authzTestsBuilder("loadTableWithReadAccessDelegationVendedCredentials")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegation(
+                        TABLE_NS1A_2,
+                        "all",
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationPrivileges() {
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationVendedCredentialsPrivileges() {
     // TODO: Once we give different creds for read/write privilege, move this
     // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
     // to receive a read-only credential.
-    return authzTestsBuilder("loadTableWithAccessDelegation (write)")
+    return authzTestsBuilder("loadTableWithWriteAccessDelegationVendedCredentials")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegation(
+                        TABLE_NS1A_2,
+                        "all",
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithReadAccessDelegationIfStalePrivileges() {
-    return authzTestsBuilder("loadTableWithAccessDelegationIfStale")
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationRemoteSigningPrivileges() {
+    return authzTestsBuilder("loadTableWithReadAccessDelegationRemoteSigning")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegation(
+                        TABLE_NS1A_2,
+                        "all",
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationRemoteSigningPrivileges() {
+    // TODO: Once we give different creds for read/write privilege, move this
+    // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
+    // to receive a read-only credential.
+    return authzTestsBuilder("loadTableWithWriteAccessDelegationRemoteSigning")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegation(
+                        TABLE_NS1A_2,
+                        "all",
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationIfStaleVendedCredentialsPrivileges() {
+    return authzTestsBuilder("loadTableWithReadAccessDelegationIfStaleVendedCredentials")
         .action(
             () ->
                 newHandler()
                     .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                        TABLE_NS1A_2,
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        "all",
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationIfStalePrivileges() {
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationIfStaleVendedCredentialsPrivileges() {
     // TODO: Once we give different creds for read/write privilege, move this
     // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
     // to receive a read-only credential.
-    return authzTestsBuilder("loadTableWithAccessDelegationIfStale (write)")
+    return authzTestsBuilder("loadTableWithWriteAccessDelegationIfStaleVendedCredentials")
         .action(
             () ->
                 newHandler()
                     .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                        TABLE_NS1A_2,
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        "all",
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationIfStaleRemoteSigningPrivileges() {
+    return authzTestsBuilder("loadTableWithReadAccessDelegationIfStaleRemoteSigning")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegationIfStale(
+                        TABLE_NS1A_2,
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        "all",
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationIfStaleRemoteSigningPrivileges() {
+    // TODO: Once we give different creds for read/write privilege, move this
+    // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
+    // to receive a read-only credential.
+    return authzTestsBuilder("loadTableWithWriteAccessDelegationIfStaleRemoteSigning")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegationIfStale(
+                        TABLE_NS1A_2,
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        "all",
+                        EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                        Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_REMOTE_SIGN)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
