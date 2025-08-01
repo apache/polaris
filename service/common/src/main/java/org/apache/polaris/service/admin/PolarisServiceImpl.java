@@ -111,8 +111,6 @@ public class PolarisServiceImpl
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
     this.reservedProperties = reservedProperties;
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   private PolarisAdminService newAdminService(

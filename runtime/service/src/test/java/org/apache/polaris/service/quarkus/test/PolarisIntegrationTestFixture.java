@@ -36,7 +36,6 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -116,17 +115,13 @@ public class PolarisIntegrationTestFixture {
             helper.diagServices,
             helper.configurationStore,
             helper.clock);
-    try {
-      PolarisMetaStoreManager metaStoreManager =
-          helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-      PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-      Map<String, String> propertiesMap = readInternalProperties(principal);
-      return metaStoreManager
-          .loadPrincipalSecrets(polarisContext, propertiesMap.get("client_id"))
-          .getPrincipalSecrets();
-    } finally {
-      CallContext.unsetCurrentContext();
-    }
+    PolarisMetaStoreManager metaStoreManager =
+        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    Map<String, String> propertiesMap = readInternalProperties(principal);
+    return metaStoreManager
+        .loadPrincipalSecrets(polarisContext, propertiesMap.get("client_id"))
+        .getPrincipalSecrets();
   }
 
   private SnowmanCredentials createSnowmanCredentials(TestEnvironment testEnv) {

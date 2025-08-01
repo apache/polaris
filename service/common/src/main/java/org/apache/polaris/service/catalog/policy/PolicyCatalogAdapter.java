@@ -70,9 +70,6 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
-
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
