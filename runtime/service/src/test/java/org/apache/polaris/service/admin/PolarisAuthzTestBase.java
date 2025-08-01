@@ -125,6 +125,7 @@ public abstract class PolarisAuthzTestBase {
           .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true")
+          .put("polaris.features.\"REMOTE_SIGNING_ENABLED\"", "true")
           .build();
     }
   }

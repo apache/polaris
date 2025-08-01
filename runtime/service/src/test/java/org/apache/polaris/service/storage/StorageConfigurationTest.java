@@ -192,7 +192,7 @@ public class StorageConfigurationTest {
       staticMock.when(StsClient::builder).thenReturn(mockBuilder);
 
       StorageConfiguration config = configWithAwsCredentialsAndGcpToken();
-      Supplier<StsClient> supplier = config.stsClientSupplier(true);
+      Supplier<StsClient> supplier = config.stsClientSupplier();
       StsClient client1 = supplier.get();
       StsClient client2 = supplier.get();
 
@@ -209,7 +209,7 @@ public class StorageConfigurationTest {
   @Test
   public void testStaticStsCredentials() {
     StorageConfiguration config = configWithAwsCredentialsAndGcpToken();
-    AwsCredentialsProvider credentialsProvider = config.stsCredentials();
+    AwsCredentialsProvider credentialsProvider = config.awsSystemCredentials().orElseThrow();
     assertThat(credentialsProvider).isInstanceOf(StaticCredentialsProvider.class);
     assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
     assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
