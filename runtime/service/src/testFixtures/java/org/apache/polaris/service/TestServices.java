@@ -31,7 +31,6 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -59,6 +58,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
@@ -74,6 +74,7 @@ import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -102,8 +103,13 @@ public record TestServices(
   private static final String GCP_ACCESS_TOKEN = "abc";
 
   @FunctionalInterface
-  public interface FileIOFactorySupplier
-      extends BiFunction<StorageCredentialCache, MetaStoreManagerFactory, FileIOFactory> {}
+  public interface FileIOFactorySupplier {
+    FileIOFactory supplyFileIOFactory(
+        StorageConfiguration storageConfiguration,
+        StorageCredentialCache storageCredentialCache,
+        MetaStoreManagerFactory metaStoreManagerFactory,
+        Clock clock);
+  }
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -200,12 +206,18 @@ public record TestServices(
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
+      StorageConfiguration storageConfiguration =
+          Mockito.mock(StorageConfiguration.class, Mockito.RETURNS_DEFAULTS);
+
       FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
+          fileIOFactorySupplier.supplyFileIOFactory(
+              storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventListener polarisEventListener = new TestPolarisEventListener();
+      CatalogPrefixParser prefixParser = new DefaultCatalogPrefixParser();
+
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
@@ -214,7 +226,10 @@ public record TestServices(
               metaStoreManagerFactory,
               taskExecutor,
               fileIOFactory,
-              polarisEventListener);
+              polarisEventListener,
+              storageIntegrationProvider,
+              prefixParser,
+              Mockito.mock());
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
