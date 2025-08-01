@@ -349,4 +349,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<KmsSupportLevel> KMS_SUPPORT_LEVEL_S3 =
+      PolarisConfiguration.<KmsSupportLevel>builder()
+          .key("ENABLE_KMS_SUPPORT_FOR_S3")
+          .catalogConfig("polaris.config.enable-kms-support-for-s3")
+          .description("If true, enables KMS support for S3 storage integration")
+          .defaultValue(KmsSupportLevel.NONE)
+          .buildFeatureConfiguration();
+
+  public enum KmsSupportLevel {
+    NONE,
+    CATALOG,
+    TABLE
+  }
 }
