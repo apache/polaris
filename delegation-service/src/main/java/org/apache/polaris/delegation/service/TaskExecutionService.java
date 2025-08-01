@@ -72,22 +72,23 @@ public class TaskExecutionService {
 
   /** Executes a table purge task by cleaning up data files. */
   private TaskExecutionResponse executePurgeTableTask(TaskExecutionRequest request) {
-    // No need to check instanceof since TaskExecutionRequest now uses TablePurgeParameters directly
+    String realmIdentifier = request.getCommonPayload().getRealmIdentifier();
     TablePurgeParameters purgeParams = request.getOperationParameters();
     TableIdentity tableIdentity = purgeParams.getTableIdentity();
 
     LOGGER.info(
-        "Executing table purge for table: {}.{}.{}",
+        "Executing table purge for table: {}.{}.{} in realm: {}",
         tableIdentity.getCatalogName(),
         String.join(".", tableIdentity.getNamespaceLevels()),
-        tableIdentity.getTableName());
+        tableIdentity.getTableName(),
+        realmIdentifier);
 
     try {
       // Execute the actual data file cleanup
       long startTime = System.currentTimeMillis();
 
-      // This is the core operation: delete data files from storage
-      StorageFileManager.CleanupResult result = storageFileManager.cleanupTableFiles(tableIdentity);
+      StorageFileManager.CleanupResult result =
+          storageFileManager.cleanupTableFiles(tableIdentity, realmIdentifier);
 
       long duration = System.currentTimeMillis() - startTime;
 
@@ -104,10 +105,15 @@ public class TaskExecutionService {
         LOGGER.error("Table purge failed: {}", errorSummary);
         return new TaskExecutionResponse("failed", errorSummary);
       }
-
     } catch (Exception e) {
-      LOGGER.error("Error during table purge execution", e);
-      return new TaskExecutionResponse("failed", "Table purge execution failed: " + e.getMessage());
+      LOGGER.error(
+          "Failed to execute purge task for table: {}.{}.{} in realm: {}",
+          tableIdentity.getCatalogName(),
+          String.join(".", tableIdentity.getNamespaceLevels()),
+          tableIdentity.getTableName(),
+          realmIdentifier,
+          e);
+      return new TaskExecutionResponse("failed", "Table purge failed: " + e.getMessage());
     }
   }
 

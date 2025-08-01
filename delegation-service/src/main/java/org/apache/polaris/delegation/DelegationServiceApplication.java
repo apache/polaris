@@ -21,10 +21,14 @@ package org.apache.polaris.delegation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.sun.net.httpserver.HttpExchange;
 import jakarta.ws.rs.ApplicationPath;
 import jakarta.ws.rs.core.Application;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.polaris.delegation.api.DelegationApi;
 import org.apache.polaris.delegation.api.model.TaskExecutionRequest;
 import org.apache.polaris.delegation.api.model.TaskExecutionResponse;
@@ -32,9 +36,6 @@ import org.apache.polaris.delegation.service.TaskExecutionService;
 import org.apache.polaris.delegation.service.storage.StorageFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import com.sun.net.httpserver.HttpExchange;
 
 /**
  * Main application class for the Polaris Delegation Service.
@@ -135,6 +136,10 @@ public class DelegationServiceApplication extends Application {
     com.sun.net.httpserver.HttpServer server =
         com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(host, port), 0);
 
+    // Configure the server to use virtual threads for handling HTTP connections
+    // This allows multiple concurrent HTTP requests to be processed simultaneously
+    server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+
     // Create a simple context for health checks
     server.createContext(
         "/health",
@@ -150,27 +155,31 @@ public class DelegationServiceApplication extends Application {
     server.createContext(
         "/api/v1/tasks/execute/synchronous",
         exchange -> {
-          // Handle each request asynchronously using virtual threads
-          @SuppressWarnings("FutureReturnValueIgnored")
-          var unused = requestExecutor.submit(() -> {
+          // Handle each request in a virtual thread but wait for completion (synchronous response)
+          try {
+            CompletableFuture<Void> requestFuture =
+                CompletableFuture.runAsync(
+                    () -> {
+                      handleDelegationRequest(exchange, objectMapper, taskExecutionService);
+                    },
+                    requestExecutor);
+
+            // Wait for the request to complete before returning (maintains synchronous contract)
+            requestFuture.get();
+          } catch (Exception e) {
+            LOGGER.error("Error in request processing", e);
             try {
-              handleDelegationRequest(exchange, objectMapper, taskExecutionService);
-            } catch (Exception e) {
-              LOGGER.error("Unexpected error in request handler", e);
-              try {
-                if (!exchange.getResponseBody().toString().isEmpty()) {
-                  return; // Response already sent
-                }
-                String errorResponse = "{\"status\":\"failed\",\"result_summary\":\"Internal server error\"}";
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(500, errorResponse.getBytes(StandardCharsets.UTF_8).length);
-                exchange.getResponseBody().write(errorResponse.getBytes(StandardCharsets.UTF_8));
-                exchange.close();
-              } catch (Exception responseError) {
-                LOGGER.error("Failed to send error response", responseError);
-              }
+              String errorResponse =
+                  "{\"status\":\"failed\",\"result_summary\":\"Internal server error\"}";
+              exchange.getResponseHeaders().add("Content-Type", "application/json");
+              exchange.sendResponseHeaders(
+                  500, errorResponse.getBytes(StandardCharsets.UTF_8).length);
+              exchange.getResponseBody().write(errorResponse.getBytes(StandardCharsets.UTF_8));
+              exchange.close();
+            } catch (Exception responseError) {
+              LOGGER.error("Failed to send error response", responseError);
             }
-          });
+          }
         });
 
     // Start the server
@@ -189,8 +198,10 @@ public class DelegationServiceApplication extends Application {
                   LOGGER.info("Shutting down Polaris Delegation Service...");
                   requestExecutor.shutdown();
                   try {
-                    if (!requestExecutor.awaitTermination(30, java.util.concurrent.TimeUnit.SECONDS)) {
-                      LOGGER.warn("Request executor did not terminate gracefully, forcing shutdown");
+                    if (!requestExecutor.awaitTermination(
+                        30, java.util.concurrent.TimeUnit.SECONDS)) {
+                      LOGGER.warn(
+                          "Request executor did not terminate gracefully, forcing shutdown");
                       requestExecutor.shutdownNow();
                     }
                   } catch (InterruptedException e) {
@@ -206,8 +217,8 @@ public class DelegationServiceApplication extends Application {
   }
 
   /**
-   * Handles a single delegation request. This method contains all the request processing logic
-   * and runs in a virtual thread for concurrent request handling.
+   * Handles a single delegation request. This method contains all the request processing logic and
+   * runs in a virtual thread for concurrent request handling.
    */
   private static void handleDelegationRequest(
       HttpExchange exchange, ObjectMapper objectMapper, TaskExecutionService taskExecutionService) {
@@ -244,10 +255,30 @@ public class DelegationServiceApplication extends Application {
       // Serialize response to JSON
       String responseJson = objectMapper.writeValueAsString(response);
 
-      LOGGER.info("   Task executed successfully. Response: {}", responseJson);
+      // Determine HTTP status code and log message based on task execution result
+      boolean isSuccess = "success".equalsIgnoreCase(response.getStatus());
+      int httpStatusCode;
+
+      if (isSuccess) {
+        httpStatusCode = 200; // OK - Task completed successfully
+        LOGGER.info("   Task executed successfully. Response: {}", responseJson);
+      } else {
+        // Determine if this is a client error (4xx) or server error (5xx)
+        String resultSummary = response.getResultSummary();
+        if (resultSummary != null
+            && (resultSummary.contains("does not exist")
+                || resultSummary.contains("NoSuchTableException")
+                || resultSummary.contains("404"))) {
+          httpStatusCode = 422; // Unprocessable Entity - Valid request, but table doesn't exist
+        } else {
+          httpStatusCode = 500; // Internal Server Error - Unexpected failure
+        }
+        LOGGER.warn("   Task execution failed. Response: {}", responseJson);
+      }
 
       exchange.getResponseHeaders().add("Content-Type", "application/json");
-      exchange.sendResponseHeaders(200, responseJson.getBytes(StandardCharsets.UTF_8).length);
+      exchange.sendResponseHeaders(
+          httpStatusCode, responseJson.getBytes(StandardCharsets.UTF_8).length);
       exchange.getResponseBody().write(responseJson.getBytes(StandardCharsets.UTF_8));
       exchange.close();
 
@@ -260,8 +291,7 @@ public class DelegationServiceApplication extends Application {
                 + e.getMessage()
                 + "\"}";
         exchange.getResponseHeaders().add("Content-Type", "application/json");
-        exchange.sendResponseHeaders(
-            500, errorResponse.getBytes(StandardCharsets.UTF_8).length);
+        exchange.sendResponseHeaders(500, errorResponse.getBytes(StandardCharsets.UTF_8).length);
         exchange.getResponseBody().write(errorResponse.getBytes(StandardCharsets.UTF_8));
         exchange.close();
       } catch (Exception responseError) {

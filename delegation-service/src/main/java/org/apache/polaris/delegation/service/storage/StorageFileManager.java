@@ -117,21 +117,24 @@ public class StorageFileManager {
    * </ol>
    *
    * @param tableIdentity the table to clean up
+   * @param realmIdentifier the realm identifier for proper multi-tenant context
    * @return cleanup result with success status and file counts
    */
-  public CleanupResult cleanupTableFiles(TableIdentity tableIdentity) {
+  public CleanupResult cleanupTableFiles(TableIdentity tableIdentity, String realmIdentifier) {
     LOGGER.info(
-        "Starting storage cleanup for table: {}.{}.{} using Polaris loadTable API",
+        "Starting storage cleanup for table: {}.{}.{} in realm: {} using Polaris loadTable API",
         tableIdentity.getCatalogName(),
         String.join(".", tableIdentity.getNamespaceLevels()),
-        tableIdentity.getTableName());
+        tableIdentity.getTableName(),
+        realmIdentifier);
 
     try {
       // Step 1: Authenticate with Polaris
       String bearerToken = authenticateWithPolaris();
 
-      // Step 2: Load table metadata via Polaris API
-      PolarisTableResponse tableResponse = loadTableViaPolaris(tableIdentity, bearerToken);
+      // Step 2: Load table metadata via Polaris API with realm context
+      PolarisTableResponse tableResponse =
+          loadTableViaPolaris(tableIdentity, bearerToken, realmIdentifier);
 
       // Step 3: Create FileIO using credentials from Polaris
       FileIO fileIO = createFileIOFromPolarisResponse(tableResponse);
@@ -179,8 +182,8 @@ public class StorageFileManager {
   }
 
   /** Loads table metadata via Polaris's REST API. */
-  private PolarisTableResponse loadTableViaPolaris(TableIdentity tableIdentity, String bearerToken)
-      throws Exception {
+  private PolarisTableResponse loadTableViaPolaris(
+      TableIdentity tableIdentity, String bearerToken, String realmIdentifier) throws Exception {
     String namespace = String.join(".", tableIdentity.getNamespaceLevels());
     String tableUrl =
         String.format(
@@ -190,15 +193,21 @@ public class StorageFileManager {
             namespace,
             tableIdentity.getTableName());
 
-    // Add access delegation header to get storage credentials
-    HttpRequest request =
+    // Build HTTP request with proper realm context
+    HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder()
             .uri(URI.create(tableUrl))
-            .header("Authorization", "Bearer " + bearerToken)
-            // .header("X-Iceberg-Access-Delegation", "vended-credentials")  // Commented out for
-            // demo
-            .GET()
-            .build();
+            .header("Authorization", "Bearer " + bearerToken);
+    // .header("X-Iceberg-Access-Delegation", "vended-credentials")  // Commented out for demo
+
+    if (realmIdentifier != null && !realmIdentifier.isEmpty()) {
+      requestBuilder.header("Polaris-Realm", realmIdentifier);
+      LOGGER.debug("Setting Polaris-Realm header to: {}", realmIdentifier);
+    } else {
+      LOGGER.warn("No realm identifier provided - Polaris will use default realm");
+    }
+
+    HttpRequest request = requestBuilder.GET().build();
 
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -267,7 +276,6 @@ public class StorageFileManager {
     AtomicLong totalDeletedFiles = new AtomicLong(0);
     List<String> allErrors = new ArrayList<>();
 
-    // Convert TableIdentity to TableIdentifier for consistency with local implementation
     Namespace namespace = Namespace.of(tableIdentity.getNamespaceLevels().toArray(new String[0]));
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, tableIdentity.getTableName());
 
@@ -668,7 +676,6 @@ public class StorageFileManager {
               // Totally normal for a file to already be missing, e.g. a data file
               // may be in multiple manifests. There's a possibility we check the
               // file's existence, but then it is deleted before we have a chance to
-              // send the delete request. In such a case, we should retry and find
               if (exists(file, fileIO)) {
                 fileIO.deleteFile(file);
               } else {
