@@ -615,7 +615,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
+              .createTableDirectWithWriteDelegation(
+                  NS2,
+                  createDirectWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS));
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
@@ -645,7 +648,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
+              .createTableDirectWithWriteDelegation(
+                  NS2,
+                  createDirectWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS));
         });
   }
 
@@ -720,7 +726,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
+              .createTableStagedWithWriteDelegation(
+                  NS2,
+                  createStagedWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS));
         },
         // createTableStagedWithWriteDelegation doesn't actually commit any metadata
         null,
@@ -749,7 +758,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
+              .createTableStagedWithWriteDelegation(
+                  NS2,
+                  createStagedWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS));
         });
   }
 
@@ -896,7 +908,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, Set.of(AccessDelegationMode.VENDED_CREDENTIALS)),
         null /* cleanupAction */);
   }
 
@@ -912,7 +927,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, Set.of(AccessDelegationMode.VENDED_CREDENTIALS)));
   }
 
   @Test
@@ -925,7 +943,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, Set.of(AccessDelegationMode.VENDED_CREDENTIALS)),
         null /* cleanupAction */);
   }
 
@@ -941,7 +962,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, Set.of(AccessDelegationMode.VENDED_CREDENTIALS)));
   }
 
   @Test
@@ -954,7 +978,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.VENDED_CREDENTIALS)),
         null /* cleanupAction */);
   }
 
@@ -973,7 +999,45 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.VENDED_CREDENTIALS)));
+  }
+
+  @Test
+  public void testLoadTableWithReadRemoteSigningIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.REMOTE_SIGNING)),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithReadRemoteSigningIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.REMOTE_SIGNING)));
   }
 
   @Test
@@ -989,7 +1053,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.VENDED_CREDENTIALS)),
         null /* cleanupAction */);
   }
 
@@ -1008,7 +1074,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    Set.of(AccessDelegationMode.VENDED_CREDENTIALS)));
   }
 
   @Test
@@ -1793,7 +1861,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             managerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(storageCredentialCache, managerFactory),
-            polarisEventListener) {
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock()) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,

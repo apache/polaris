@@ -349,4 +349,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> REMOTE_SIGNING_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("REMOTE_SIGNING_ENABLED")
+          .catalogConfig("polaris.config.remote-signing.enabled")
+          .description(
+              "If true, the remote signing endpoints are enabled either globally, or for a specific catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> REMOTE_SIGNING_EXTERNAL_CATALOGS_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("REMOTE_SIGNING_EXTERNAL_CATALOGS_ENABLED")
+          .description("If set to true, allows remote signing for external catalogs.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

@@ -25,11 +25,9 @@ import io.quarkus.test.junit.TestProfile;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
@@ -40,7 +38,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @QuarkusIntegrationTest
 @TestProfile(PolarisRestCatalogMinIOIT.Profile.class)
 @ExtendWith(MinioExtension.class)
-@ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
@@ -75,14 +72,12 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
   }
 
   @Override
-  protected void initializeClientFileIO(FileIO fileIO) {
-    fileIO.initialize(
-        ImmutableMap.<String, String>builder()
-            .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-            .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-            .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
-            .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY)
-            .build());
+  protected ImmutableMap.Builder<String, String> clientFileIOProperties() {
+    return super.clientFileIOProperties()
+        .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
+        .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
   }
 
   @Override

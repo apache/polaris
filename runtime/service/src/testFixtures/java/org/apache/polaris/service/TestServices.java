@@ -56,6 +56,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
@@ -201,6 +202,8 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventListener polarisEventListener = new TestPolarisEventListener();
+      CatalogPrefixParser prefixParser = new DefaultCatalogPrefixParser();
+
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               storageCredentialCache,
@@ -208,7 +211,10 @@ public record TestServices(
               metaStoreManagerFactory,
               taskExecutor,
               fileIOFactory,
-              polarisEventListener);
+              polarisEventListener,
+              storageIntegrationProvider,
+              prefixParser,
+              Mockito.mock());
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 

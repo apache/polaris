@@ -32,7 +32,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * configuration.
  */
 public interface SupportsCredentialDelegation {
-  AccessConfig getAccessConfig(
+  AccessConfig getAccessConfigForCredentialDelegation(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions);

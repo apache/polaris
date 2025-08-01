@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.storage;
 
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
+import org.apache.iceberg.aws.s3.signer.S3V4RestSignerClient;
+
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
  *
@@ -39,6 +42,21 @@ public enum StorageAccessProperty {
       Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
+  AWS_REMOTE_SIGNING_ENABLED(
+      Boolean.class,
+      S3FileIOProperties.REMOTE_SIGNING_ENABLED,
+      "whether to enable remote signing for S3 requests",
+      false),
+  AWS_REMOTE_SIGNER_URI(
+      String.class,
+      S3V4RestSignerClient.S3_SIGNER_URI,
+      "the base URI for the remote signer service, used for signing S3 requests",
+      false),
+  AWS_REMOTE_SIGNER_ENDPOINT(
+      String.class,
+      S3V4RestSignerClient.S3_SIGNER_ENDPOINT,
+      "the endpoint for the remote signer service, used for signing S3 requests",
+      false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token"),
   GCS_ACCESS_TOKEN_EXPIRES_AT(
