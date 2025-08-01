@@ -80,6 +80,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOTE_SIGN;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
@@ -212,7 +213,9 @@ public enum PolarisAuthorizableOperation {
   GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES),
   ADD_POLICY_GRANT_TO_CATALOG_ROLE(POLICY_MANAGE_GRANTS_ON_SECURABLE),
   REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE(
-      POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE);
+      POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
+  SIGN_S3_REQUEST(TABLE_REMOTE_SIGN),
+  ;
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
   private final EnumSet<PolarisPrivilege> privilegesOnSecondary;

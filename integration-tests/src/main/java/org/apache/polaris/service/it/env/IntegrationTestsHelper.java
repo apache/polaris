@@ -19,9 +19,17 @@
 package org.apache.polaris.service.it.env;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.TestInfo;
 
 public final class IntegrationTestsHelper {
 
@@ -53,5 +61,61 @@ public final class IntegrationTestsHelper {
     envVar = envVar != null ? envVar : defaultLocalDirectory.toString();
     envVar = envVar.startsWith("/") ? "file://" + envVar : envVar;
     return URI.create(envVar + "/").normalize();
+  }
+
+  /**
+   * Extract a value from the annotated elements of the test method and class.
+   *
+   * <p>This method looks for annotations of the specified type on both the test method and the test
+   * class, extracts the value using the provided extractor function, and returns it. If the value
+   * is not present in either the method or class annotations, the provided default value is
+   * returned.
+   */
+  public static <A extends Annotation, T> T extractFromAnnotatedElements(
+      TestInfo testInfo, Class<A> annotationClass, Function<A, T> extractor, T def) {
+    Method method = testInfo.getTestMethod().orElseThrow();
+    Optional<T> methodCatalogConfig =
+        Optional.ofNullable(method.getAnnotation(annotationClass)).map(extractor);
+    if (methodCatalogConfig.isPresent()) {
+      return methodCatalogConfig.get();
+    }
+    Optional<T> classCatalogConfig =
+        testInfo.getTestClass().map(clz -> clz.getAnnotation(annotationClass)).map(extractor);
+    return classCatalogConfig.orElse(def);
+  }
+
+  /**
+   * Collect properties from annotated elements in the test method and class.
+   *
+   * <p>This method looks for annotations of the specified type on both the test method and the test
+   * class, extracts properties using the provided extractor function, and combines them into a map.
+   * If a property appears in both the method and class annotations, the value from the method
+   * annotation will be used.
+   */
+  public static <A extends Annotation> Map<String, String> mergeFromAnnotatedElements(
+      TestInfo testInfo,
+      Class<A> annotationClass,
+      Function<A, String[]> propertiesExtractor,
+      Map<String, String> defaults) {
+    Method method = testInfo.getTestMethod().orElseThrow();
+    Optional<A> methodCatalogConfig = Optional.ofNullable(method.getAnnotation(annotationClass));
+    Optional<A> classCatalogConfig =
+        testInfo.getTestClass().map(clz -> clz.getAnnotation(annotationClass));
+    String[] methodProperties = methodCatalogConfig.map(propertiesExtractor).orElse(new String[0]);
+    String[] classProperties = classCatalogConfig.map(propertiesExtractor).orElse(new String[0]);
+    String[] properties =
+        Stream.concat(Arrays.stream(methodProperties), Arrays.stream(classProperties))
+            .toArray(String[]::new);
+    ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+    builder.putAll(defaults);
+    if (properties.length % 2 != 0) {
+      throw new IllegalArgumentException(
+          "Properties must be in key-value pairs, but found an odd number of elements: "
+              + Arrays.toString(properties));
+    }
+    for (int i = 0; i < properties.length; i += 2) {
+      builder.put(properties[i], properties[i + 1]);
+    }
+    return builder.buildKeepingLast();
   }
 }

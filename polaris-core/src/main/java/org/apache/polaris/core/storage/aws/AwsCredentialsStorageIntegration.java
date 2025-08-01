@@ -143,6 +143,37 @@ public class AwsCredentialsStorageIntegration
     return accessConfig.build();
   }
 
+  public AccessConfig getRemoteSigningAccessConfig(URI signerUri, String signerEndpoint) {
+
+    AwsStorageConfigurationInfo storageConfig = config();
+    String region = storageConfig.getRegion();
+
+    if (storageConfig.getAwsPartition().equals("aws-us-gov") && region == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+    }
+
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    if (region != null) {
+      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
+    }
+
+    URI endpointUri = storageConfig.getEndpointUri();
+    if (endpointUri != null) {
+      accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+    }
+    if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
+      accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
+    }
+
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNING_ENABLED, Boolean.TRUE.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_URI, signerUri.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_ENDPOINT, signerEndpoint);
+
+    return accessConfig.build();
+  }
+
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write

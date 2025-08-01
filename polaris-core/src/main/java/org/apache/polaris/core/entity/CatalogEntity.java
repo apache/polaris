@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -205,9 +206,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .orElse(null);
   }
 
+  public boolean isExternal() {
+    return Objects.equals(getCatalogType(), Catalog.TypeEnum.EXTERNAL);
+  }
+
   public boolean isPassthroughFacade() {
     return getInternalPropertiesAsMap()
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public boolean isStaticFacade() {
+    return isExternal() && !isPassthroughFacade();
   }
 
   public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {

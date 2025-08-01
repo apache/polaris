@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-iceberg-aws-sign-service"))
   implementation(project(":polaris-api-catalog-service"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
