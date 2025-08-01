@@ -59,6 +59,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 
 public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -115,7 +116,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
     boolean isBlobService = service.equals("blob");
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/polaris-test/",
                 service));
@@ -186,7 +187,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     String allowedPrefix = "polaris-test";
     String blockedPrefix = "blocked-prefix";
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
@@ -256,7 +257,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     String allowedPrefix = "polaris-test/scopedcreds/";
     String blockedPrefix = "blocked-prefix";
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
@@ -401,7 +402,8 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
   protected static class AzureTestArgs implements ArgumentsProvider {
     @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+    public Stream<? extends Arguments> provideArguments(
+        ParameterDeclarations parameterDeclarations, ExtensionContext extensionContext) {
       return Stream.of(
           Arguments.of(/* allowedList= */ true, "blob"),
           Arguments.of(/* allowedList= */ false, "blob"),
