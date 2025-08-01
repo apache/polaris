@@ -73,7 +73,7 @@ public class PolarisS3InteroperabilityTest {
 
   public PolarisS3InteroperabilityTest() {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (accessConfigProvider) ->
+        (accessConfigProvider, storageConfiguration, clock) ->
             (FileIOFactory)
                 (callContext,
                     ioImplClassName,

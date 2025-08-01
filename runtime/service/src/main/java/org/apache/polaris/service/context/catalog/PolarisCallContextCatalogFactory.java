@@ -21,6 +21,7 @@ package org.apache.polaris.service.context.catalog;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
@@ -32,6 +33,8 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -50,6 +53,9 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final ResolverFactory resolverFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final CatalogPrefixParser prefixParser;
+  private final UriInfo uriInfo;
 
   @Inject
   public PolarisCallContextCatalogFactory(
@@ -58,13 +64,19 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      CatalogPrefixParser prefixParser,
+      UriInfo uriInfo) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
     this.polarisEventListener = polarisEventListener;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.prefixParser = prefixParser;
+    this.uriInfo = uriInfo;
   }
 
   @Override
@@ -90,7 +102,10 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             securityContext,
             taskExecutor,
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            uriInfo);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

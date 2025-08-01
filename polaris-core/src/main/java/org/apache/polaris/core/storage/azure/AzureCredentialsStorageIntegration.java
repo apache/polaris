@@ -181,7 +181,8 @@ public class AzureCredentialsStorageIntegration
       String storageDnsName,
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    AccessConfig.Builder accessConfig =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(false);
     handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));

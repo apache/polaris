@@ -26,8 +26,10 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +67,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.AccessConfigProvider;
@@ -73,6 +76,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -102,11 +106,14 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageConfiguration storageConfiguration;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject CatalogPrefixParser prefixParser;
+  @Inject Clock clock;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -159,7 +166,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
     accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+        new AccessConfigProvider(
+            storageCredentialCache,
+            metaStoreManagerFactory,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock(UriInfo.class));
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -215,7 +227,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+    this.fileIOFactory =
+        new DefaultFileIOFactory(accessConfigProvider, storageConfiguration, clock);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -250,7 +263,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             securityContext,
             taskExecutor,
             fileIOFactory,
-            new NoOpPolarisEventListener());
+            new NoOpPolarisEventListener(),
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

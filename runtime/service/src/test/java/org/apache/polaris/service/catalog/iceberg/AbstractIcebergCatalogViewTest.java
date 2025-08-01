@@ -24,10 +24,12 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,8 +58,10 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.AccessConfigProvider;
@@ -68,6 +72,7 @@ import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.test.TestData;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
@@ -111,11 +116,15 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageConfiguration storageConfiguration;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject CatalogPrefixParser prefixParser;
+  @Inject Clock clock;
 
   private IcebergCatalog catalog;
 
@@ -166,7 +175,12 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
     accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+        new AccessConfigProvider(
+            storageCredentialCache,
+            metaStoreManagerFactory,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock(UriInfo.class));
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
@@ -210,7 +224,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
-    FileIOFactory fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+    FileIOFactory fileIOFactory =
+        new DefaultFileIOFactory(accessConfigProvider, storageConfiguration, clock);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
@@ -224,7 +239,10 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             securityContext,
             Mockito.mock(),
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")

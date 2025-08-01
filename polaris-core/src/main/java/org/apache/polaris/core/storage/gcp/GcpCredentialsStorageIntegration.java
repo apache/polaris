@@ -109,7 +109,8 @@ public class GcpCredentialsStorageIntegration
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    AccessConfig.Builder accessConfig =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(false);
     accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,

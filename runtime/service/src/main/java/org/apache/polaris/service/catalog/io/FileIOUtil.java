@@ -63,7 +63,8 @@ public class FileIOUtil {
   }
 
   /**
-   * Refreshes or generates subscoped creds for accessing table storage based on the params.
+   * Refreshes or generates subscoped creds for accessing table storage based on the params. Returns
+   * empty if subscoped credentials are disabled.
    *
    * <p>Use cases:
    *
@@ -73,8 +74,15 @@ public class FileIOUtil {
    *   <li>In {@link DefaultFileIOFactory}, subscoped credentials are obtained to access the storage
    *       and read/write metadata JSON files.
    * </ul>
+   *
+   * FIXME reword this comment
+   *
+   * <p>Note: when using S3 remote signing, this method is not called from {@link IcebergCatalog}
+   * since clients will use remote signing instead. However, it is still called from {@link
+   * DefaultFileIOFactory} to obtain subscoped credentials for the server itself, when it needs to
+   * access the storage to read/write metadata files.
    */
-  public static AccessConfig refreshAccessConfig(
+  public static AccessConfig refreshAccessConfigWithCredentialSubscoping(
       CallContext callContext,
       StorageCredentialCache storageCredentialCache,
       PolarisCredentialVendor credentialVendor,
@@ -93,7 +101,7 @@ public class FileIOUtil {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
-      return AccessConfig.builder().build();
+      return AccessConfig.EMPTY;
     }
 
     boolean allowList =

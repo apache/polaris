@@ -34,7 +34,8 @@ public class AccessConfigTest {
 
   @Test
   public void testPutGet() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    AccessConfig.Builder b =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(true);
     b.put(AWS_ENDPOINT, "ep1");
     b.put(AWS_SECRET_KEY, "sk2");
     AccessConfig c = b.build();
@@ -46,7 +47,8 @@ public class AccessConfigTest {
 
   @Test
   public void testGetExtraProperty() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    AccessConfig.Builder b =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(true);
     b.putExtraProperty(AWS_ENDPOINT.getPropertyName(), "extra");
     AccessConfig c = b.build();
     assertThat(c.extraProperties()).isEqualTo(Map.of(AWS_ENDPOINT.getPropertyName(), "extra"));
@@ -55,7 +57,8 @@ public class AccessConfigTest {
 
   @Test
   public void testGetInternalProperty() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    AccessConfig.Builder b =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(true);
     b.putExtraProperty(AWS_ENDPOINT.getPropertyName(), "extra");
     b.putInternalProperty(AWS_ENDPOINT.getPropertyName(), "ep1");
     AccessConfig c = b.build();
@@ -66,7 +69,8 @@ public class AccessConfigTest {
 
   @Test
   public void testNoCredentialOverride() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    AccessConfig.Builder b =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(true);
     b.put(AWS_SECRET_KEY, "sk-test");
     b.putExtraProperty(AWS_SECRET_KEY.getPropertyName(), "sk-extra");
     b.putInternalProperty(AWS_SECRET_KEY.getPropertyName(), "sk-internal");
@@ -79,7 +83,8 @@ public class AccessConfigTest {
 
   @Test
   public void testExpiresAt() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    AccessConfig.Builder b =
+        AccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(true);
     assertThat(b.build().expiresAt()).isEmpty();
     b.put(GCS_ACCESS_TOKEN_EXPIRES_AT, "111");
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(111));
