@@ -277,7 +277,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     awsConfigModel.getRegion(),
                     awsConfigModel.getEndpoint(),
                     awsConfigModel.getStsEndpoint(),
-                    awsConfigModel.getPathStyleAccess());
+                    awsConfigModel.getPathStyleAccess(),
+                    awsConfigModel.getEndpointInternal());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
