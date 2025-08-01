@@ -134,7 +134,7 @@ svn commit -m Stage Apache Polaris ${version} RC${rc_number}
 cd ${releasey_dir}/polaris-dist-dev/helm-chart
 helm repo index .
 cd ${releasey_dir}/..
-./gradlew publishToApache -Prelease -PuseGpgAgent"
+./gradlew publishToApache -Prelease -PuseGpgAgent -Dorg.gradle.parallel=false"
 
 # Compare content
 if [[ "$actual_content" == "$expected_content" ]]; then

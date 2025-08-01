@@ -139,7 +139,7 @@ exec_process cd "${releasey_dir}/.."
 
 # Publish Maven artifacts
 print_info "Publishing Maven artifacts to Apache staging repository..."
-exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
+exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent -Dorg.gradle.parallel=false
 
 echo
 print_success "🎉 Distributions built and staged successfully!"
