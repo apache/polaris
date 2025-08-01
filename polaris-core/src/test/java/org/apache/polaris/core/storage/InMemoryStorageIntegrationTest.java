@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -48,14 +47,14 @@ class InMemoryStorageIntegrationTest {
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations(
                     allowedScheme + "://bucket/path/to/warehouse",
                     allowedScheme + "://bucket/anotherpath/to/warehouse",
-                    allowedScheme + "://bucket2/warehouse/"),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+                    allowedScheme + "://bucket2/warehouse/")
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 locationScheme + "://bucket/path/to/warehouse/namespace/table",
@@ -83,11 +82,11 @@ class InMemoryStorageIntegrationTest {
   @Test
   public void testAwsAccountIdParsing() {
     AwsStorageConfigurationInfo awsConfig =
-        new AwsStorageConfigurationInfo(
-            PolarisStorageConfigurationInfo.StorageType.S3,
-            List.of("s3://bucket/path/to/warehouse"),
-            "arn:aws:iam::012345678901:role/jdoe",
-            "us-east-2");
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation("s3://bucket/path/to/warehouse")
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .region("us-east-2")
+            .build();
 
     String expectedAccountId = "012345678901";
     String actualAccountId = awsConfig.getAwsAccountId();
@@ -105,7 +104,7 @@ class InMemoryStorageIntegrationTest {
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
-            new FileStorageConfigurationInfo(List.of("file://", "*")),
+            FileStorageConfigurationInfo.builder().addAllowedLocations("file://", "*").build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 s3Scheme + "://bucket/path/to/warehouse/namespace/table",
@@ -147,11 +146,10 @@ class InMemoryStorageIntegrationTest {
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of(),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+            AwsStorageConfigurationInfo.builder()
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -184,11 +182,11 @@ class InMemoryStorageIntegrationTest {
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation("s3://bucket/path/to/warehouse")
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
