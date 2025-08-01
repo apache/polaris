@@ -62,16 +62,16 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     }
 
     RealmContext realmContext = () -> "REALM";
-    JdbcBasePersistenceImpl basePersistence =
+    JdbcBasePersistenceImpl metaStore =
         new JdbcBasePersistenceImpl(
             datasourceOperations,
             RANDOM_SECRETS,
             Mockito.mock(),
             realmContext.getRealmIdentifier(),
             schemaVersion);
-    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(realmContext, basePersistence, diagServices);
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(clock, () -> metaStore);
+    PolarisCallContext callCtx = new PolarisCallContext(realmContext, diagServices);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 

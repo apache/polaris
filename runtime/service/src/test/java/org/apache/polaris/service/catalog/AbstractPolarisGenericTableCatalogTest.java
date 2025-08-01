@@ -146,12 +146,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore);
+    polarisContext = new PolarisCallContext(realmContext, diagServices, configurationStore);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

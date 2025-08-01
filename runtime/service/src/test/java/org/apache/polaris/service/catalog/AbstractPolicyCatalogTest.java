@@ -122,8 +122,8 @@ public abstract class AbstractPolicyCatalogTest {
           PolicyAttachmentTarget.TypeEnum.TABLE_LIKE, List.of(TABLE.toString().split("\\.")));
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
@@ -169,12 +169,7 @@ public abstract class AbstractPolicyCatalogTest {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore);
+    polarisContext = new PolarisCallContext(realmContext, diagServices, configurationStore);
 
     callContext = polarisContext;
 
