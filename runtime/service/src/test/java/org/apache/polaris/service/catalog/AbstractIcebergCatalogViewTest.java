@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -68,6 +70,7 @@ import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.test.TestData;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
@@ -110,11 +113,15 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageConfiguration storageConfiguration;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject CatalogPrefixParser prefixParser;
+  @Inject Clock clock;
 
   private IcebergCatalog catalog;
 
@@ -207,7 +214,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new PolarisPassthroughResolutionView(
             polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+        new DefaultFileIOFactory(
+            storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
@@ -220,7 +228,10 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             securityContext,
             Mockito.mock(),
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
