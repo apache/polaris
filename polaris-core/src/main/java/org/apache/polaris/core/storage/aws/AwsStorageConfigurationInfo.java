@@ -18,20 +18,27 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
 import java.net.URI;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /** Aws Polaris Storage Configuration information */
-public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableAwsStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableAwsStorageConfigurationInfo.class)
+@JsonTypeName("AwsStorageConfigurationInfo")
+public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+
+  public static ImmutableAwsStorageConfigurationInfo.Builder builder() {
+    return ImmutableAwsStorageConfigurationInfo.builder();
+  }
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
@@ -39,74 +46,9 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
 
-  // AWS role to be assumed
-  private final @Nonnull String roleARN;
-
-  // AWS external ID, optional
-  @JsonProperty(value = "externalId")
-  private @Nullable String externalId = null;
-
-  /** User ARN for the service principal */
-  @JsonProperty(value = "userARN")
-  private @Nullable String userARN = null;
-
-  /** User ARN for the service principal */
-  @JsonProperty(value = "region")
-  private @Nullable String region = null;
-
-  /** Endpoint URI for S3 API calls */
-  @JsonProperty(value = "endpoint")
-  private @Nullable String endpoint;
-
-  /** Endpoint URI for internal Polaris calls to S3 API */
-  @JsonProperty(value = "endpointInternal")
-  private @Nullable String endpointInternal;
-
-  /** Endpoint URI for STS API calls */
-  @JsonProperty(value = "stsEndpoint")
-  private @Nullable String stsEndpoint;
-
-  /** A flag indicating whether path-style bucket access should be forced in S3 clients. */
-  @JsonProperty(value = "pathStyleAccess")
-  private Boolean pathStyleAccess;
-
-  @JsonCreator
-  public AwsStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
-          List<String> allowedLocations,
-      @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
-      @JsonProperty(value = "externalId") @Nullable String externalId,
-      @JsonProperty(value = "region", required = false) @Nullable String region,
-      @JsonProperty(value = "endpoint") @Nullable String endpoint,
-      @JsonProperty(value = "stsEndpoint") @Nullable String stsEndpoint,
-      @JsonProperty(value = "pathStyleAccess") @Nullable Boolean pathStyleAccess,
-      @JsonProperty(value = "endpointInternal") @Nullable String endpointInternal) {
-    super(storageType, allowedLocations);
-    this.roleARN = roleARN;
-    this.externalId = externalId;
-    this.region = region;
-    this.endpoint = endpoint;
-    this.stsEndpoint = stsEndpoint;
-    this.pathStyleAccess = pathStyleAccess;
-    this.endpointInternal = endpointInternal;
-  }
-
-  public AwsStorageConfigurationInfo(
-      @Nonnull StorageType storageType,
-      @Nonnull List<String> allowedLocations,
-      @Nonnull String roleARN,
-      @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, null, region, null, null, null, null);
-  }
-
-  public AwsStorageConfigurationInfo(
-      @Nonnull StorageType storageType,
-      @Nonnull List<String> allowedLocations,
-      @Nonnull String roleARN,
-      @Nullable String externalId,
-      @Nullable String region) {
-    this(storageType, allowedLocations, roleARN, externalId, region, null, null, null, null);
+  @Override
+  public StorageType getStorageType() {
+    return StorageType.S3;
   }
 
   @Override
@@ -127,76 +69,62 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     }
   }
 
-  public @Nonnull String getRoleARN() {
-    return roleARN;
-  }
+  public abstract String getRoleARN();
 
-  public @Nullable String getExternalId() {
-    return externalId;
-  }
-
-  public void setExternalId(@Nullable String externalId) {
-    this.externalId = externalId;
-  }
-
-  public @Nullable String getUserARN() {
-    return userARN;
-  }
-
-  public void setUserARN(@Nullable String userARN) {
-    this.userARN = userARN;
-  }
-
-  public @Nullable String getRegion() {
-    return region;
-  }
-
-  public void setRegion(@Nullable String region) {
-    this.region = region;
-  }
-
+  /** AWS external ID, optional */
   @Nullable
-  public String getEndpoint() {
-    return endpoint;
-  }
+  public abstract String getExternalId();
+
+  /** User ARN for the service principal */
+  @Nullable
+  public abstract String getUserARN();
+
+  /** AWS region */
+  @Nullable
+  public abstract String getRegion();
+
+  /** Endpoint URI for S3 API calls */
+  @Nullable
+  public abstract String getEndpoint();
+
+  /** Internal endpoint URI for S3 API calls */
+  @Nullable
+  public abstract String getEndpointInternal();
 
   @JsonIgnore
   @Nullable
   public URI getEndpointUri() {
-    return endpoint == null ? null : URI.create(endpoint);
+    return getEndpoint() == null ? null : URI.create(getEndpoint());
   }
 
   @JsonIgnore
   @Nullable
   public URI getInternalEndpointUri() {
-    return endpointInternal == null ? getEndpointUri() : URI.create(endpointInternal);
+    return getEndpointInternal() == null ? getEndpointUri() : URI.create(getEndpointInternal());
   }
 
-  /** Returns a flag indicating whether path-style bucket access should be forced in S3 clients. */
-  public @Nullable Boolean getPathStyleAccess() {
-    return pathStyleAccess;
-  }
+  /** Flag indicating whether path-style bucket access should be forced in S3 clients. */
+  public abstract @Nullable Boolean getPathStyleAccess();
 
+  /** Endpoint URI for STS API calls */
   @Nullable
-  public String getStsEndpoint() {
-    return stsEndpoint;
-  }
+  public abstract String getStsEndpoint();
 
   /** Returns the STS endpoint if set, defaulting to {@link #getEndpointUri()} otherwise. */
   @JsonIgnore
   @Nullable
   public URI getStsEndpointUri() {
-    return stsEndpoint == null ? getInternalEndpointUri() : URI.create(stsEndpoint);
+    return getStsEndpoint() == null ? getInternalEndpointUri() : URI.create(getStsEndpoint());
   }
 
   @JsonIgnore
   public String getAwsAccountId() {
-    return parseAwsAccountId(roleARN);
+    return parseAwsAccountId(getRoleARN());
   }
 
   @JsonIgnore
   public String getAwsPartition() {
-    return parseAwsPartition(roleARN);
+    return parseAwsPartition(getRoleARN());
   }
 
   private static String parseAwsAccountId(String arn) {
@@ -217,18 +145,5 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     } else {
       throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
     }
-  }
-
-  @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("storageType", getStorageType())
-        .add("storageType", getStorageType().name())
-        .add("roleARN", roleARN)
-        .add("userARN", userARN)
-        .add("externalId", externalId)
-        .add("allowedLocation", getAllowedLocations())
-        .add("region", region)
-        .toString();
   }
 }

@@ -18,26 +18,22 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /** Gcp storage storage configuration information. */
-public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableGcpStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableGcpStorageConfigurationInfo.class)
+@JsonTypeName("GcpStorageConfigurationInfo")
+public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  /** The gcp service account */
-  @JsonProperty(value = "gcpServiceAccount", required = false)
-  private @Nullable String gcpServiceAccount = null;
-
-  @JsonCreator
-  public GcpStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
-          List<String> allowedLocations) {
-    super(StorageType.GCS, allowedLocations);
+  public static ImmutableGcpStorageConfigurationInfo.Builder builder() {
+    return ImmutableGcpStorageConfigurationInfo.builder();
   }
 
   @Override
@@ -45,20 +41,12 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return "org.apache.iceberg.gcp.gcs.GCSFileIO";
   }
 
-  public void setGcpServiceAccount(@Nullable String gcpServiceAccount) {
-    this.gcpServiceAccount = gcpServiceAccount;
-  }
-
-  public @Nullable String getGcpServiceAccount() {
-    return gcpServiceAccount;
-  }
-
   @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("storageType", getStorageType())
-        .add("allowedLocation", getAllowedLocations())
-        .add("gcpServiceAccount", gcpServiceAccount)
-        .toString();
+  public StorageType getStorageType() {
+    return StorageType.GCS;
   }
+
+  /** The gcp service account */
+  @Nullable
+  public abstract String getGcpServiceAccount();
 }

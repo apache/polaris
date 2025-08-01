@@ -30,18 +30,34 @@ import java.util.List;
 public class StorageConfigurationOverride extends PolarisStorageConfigurationInfo {
 
   private final PolarisStorageConfigurationInfo parentStorageConfiguration;
+  private final List<String> allowedLocations;
 
   public StorageConfigurationOverride(
       @Nonnull PolarisStorageConfigurationInfo parentStorageConfiguration,
       List<String> allowedLocations) {
-    super(parentStorageConfiguration.getStorageType(), allowedLocations, false);
     this.parentStorageConfiguration = parentStorageConfiguration;
+    this.allowedLocations = List.copyOf(allowedLocations);
     allowedLocations.forEach(this::validatePrefixForStorageType);
+  }
+
+  @Override
+  public List<String> getAllowedLocations() {
+    return allowedLocations;
+  }
+
+  @Override
+  public StorageType getStorageType() {
+    return parentStorageConfiguration.getStorageType();
   }
 
   @Override
   public String getFileIoImplClassName() {
     return parentStorageConfiguration.getFileIoImplClassName();
+  }
+
+  @Override
+  public boolean validatePrefix() {
+    return false;
   }
 
   // delegate to the wrapped class in case they override the parent behavior
