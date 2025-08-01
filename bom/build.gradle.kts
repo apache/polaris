@@ -28,6 +28,7 @@ dependencies {
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
+    api(project(":polaris-api-s3-sign-service"))
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-minio-testcontainer"))

@@ -119,7 +119,7 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
-  public static Optional<LocationRestrictions> forEntityPath(
+  public static Optional<LocationRestrictions> getLocationRestrictionsForEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(

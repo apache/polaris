@@ -394,6 +394,47 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  protected void authorizeRemoteSigningOrThrow(
+      EnumSet<PolarisAuthorizableOperation> ops, TableIdentifier identifier) {
+
+    ensureResolutionManifestForTable(identifier);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, true);
+
+    // If the table doesn't exist, we still need to check allowed locations from the parent
+    // namespace.
+    if (target == null) {
+      resolutionManifest = newResolutionManifest();
+      Namespace namespace = identifier.namespace();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+          namespace);
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */),
+          identifier);
+      resolutionManifest.resolveAll();
+      target = resolutionManifest.getResolvedPath(namespace, true);
+      if (target == null) {
+        throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+      }
+    }
+
+    for (PolarisAuthorizableOperation op : ops) {
+      authorizer.authorizeOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          op,
+          target,
+          null /* secondary */);
+    }
+
+    initializeCatalog();
+  }
+
   /**
    * Helper function for when a TABLE_LIKE entity is not found so we want to throw the appropriate
    * exception. Used in Iceberg APIs, so the Iceberg messages cannot be changed.

@@ -28,6 +28,12 @@ public class PolarisResourcePaths {
   private static final Joiner SLASH = Joiner.on("/").skipNulls();
   public static final String PREFIX = "prefix";
 
+  /**
+   * The "api/" path segment is the first path segment of all Polaris and Iceberg REST API paths. It
+   * is not included in the constants below, as it is considered implicit.
+   */
+  public static final String API_PATH_SEGMENT = "api";
+
   // Generic Table endpoints
   public static final String V1_GENERIC_TABLES =
       "polaris/v1/{prefix}/namespaces/{namespace}/generic-tables";
@@ -76,6 +82,17 @@ public class PolarisResourcePaths {
         "namespaces",
         RESTUtil.encodeNamespace(ident.namespace()),
         "generic-tables",
+        RESTUtil.encodeString(ident.name()));
+  }
+
+  public String s3RemoteSigning(TableIdentifier ident) {
+    return SLASH.join(
+        "s3-sign",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespace(ident.namespace()),
+        "tables",
         RESTUtil.encodeString(ident.name()));
   }
 }

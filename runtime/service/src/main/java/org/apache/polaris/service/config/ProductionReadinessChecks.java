@@ -383,4 +383,32 @@ public class ProductionReadinessChecks {
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
   }
+
+  @Produces
+  public ProductionReadinessCheck checkRemoteSigning(FeaturesConfiguration featureConfiguration) {
+    var errors = new ArrayList<Error>();
+    var offending = FeatureConfiguration.REMOTE_SIGNING_ENABLED;
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(offending.key()))) {
+      errors.add(
+          Error.ofSevere(
+              "Remote signing is an experimental feature and should not be enabled in production.",
+              format("polaris.features.\"%s\"", offending.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if (Boolean.parseBoolean(overrides.overrides().get(offending.key()))) {
+                errors.add(
+                    Error.ofSevere(
+                        "Remote signing is an experimental feature and should not be enabled in production.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, offending.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
 }

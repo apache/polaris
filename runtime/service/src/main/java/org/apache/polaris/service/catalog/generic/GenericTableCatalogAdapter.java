@@ -101,7 +101,7 @@ public class GenericTableCatalogAdapter
         resolutionManifestFactory,
         metaStoreManager,
         principal,
-        prefixParser.prefixToCatalogName(realmContext, prefix),
+        prefixParser.prefixToCatalogName(prefix),
         polarisAuthorizer,
         polarisCredentialManager,
         externalCatalogFactories);

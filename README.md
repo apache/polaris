@@ -52,7 +52,8 @@ Apache Polaris is organized into the following modules:
   - `polaris-api-management-service` - Polaris Management API service classes
   - `polaris-api-iceberg-service` - The Iceberg REST service classes
   - `polaris-api-catalog-service` - The Polaris Catalog API service classes
-  - Runtime modules:
+  - `polaris-api-s3-sign-service` - The Iceberg REST service for S3 remote signing
+- Runtime modules:
       - [`polaris-admin`](./runtime/admin/README.md) - The Polaris Admin Tool; mainly for bootstrapping persistence
       - [`polaris-runtime-defaults`](./runtime/defaults/README.md) - The runtime configuration defaults
       - [`polaris-distribution`](./runtime/distribution/README.md) - The Polaris distribution
@@ -97,7 +98,6 @@ In addition to modules, there are:
 Outside of this repository, there are several other tools that can be found in a separate [Polaris-Tools](https://github.com/apache/polaris-tools) repository.
 
 ## Building and Running
-
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.

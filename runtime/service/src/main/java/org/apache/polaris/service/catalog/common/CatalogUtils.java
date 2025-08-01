@@ -72,7 +72,7 @@ public class CatalogUtils {
       Set<String> locations,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
 
-    PolarisStorageConfigurationInfo.forEntityPath(
+    PolarisStorageConfigurationInfo.getLocationRestrictionsForEntityPath(
             realmConfig, resolvedStorageEntity.getRawFullPath())
         .ifPresentOrElse(
             restrictions -> restrictions.validate(realmConfig, identifier, locations),

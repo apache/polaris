@@ -23,10 +23,16 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface StorageAccessConfig {
+
+  StorageAccessConfig EMPTY =
+      StorageAccessConfig.builder()
+          .supportsCredentialVending(false)
+          .supportsRemoteSigning(false)
+          .build();
+
   Map<String, String> credentials();
 
   Map<String, String> extraProperties();
@@ -43,10 +49,13 @@ public interface StorageAccessConfig {
    * Indicates whether the storage integration subsystem that produced this object is capable of
    * credential vending in principle.
    */
-  @Value.Default
-  default boolean supportsCredentialVending() {
-    return true;
-  }
+  boolean supportsCredentialVending();
+
+  /**
+   * Indicates whether the storage integration subsystem that produced this object is capable of
+   * remote signing in principle.
+   */
+  boolean supportsRemoteSigning();
 
   default String get(StorageAccessProperty key) {
     if (key.isCredential()) {
@@ -76,6 +85,9 @@ public interface StorageAccessConfig {
 
     @CanIgnoreReturnValue
     Builder supportsCredentialVending(boolean supportsCredentialVending);
+
+    @CanIgnoreReturnValue
+    Builder supportsRemoteSigning(boolean supportsRemoteSigning);
 
     default Builder put(StorageAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {

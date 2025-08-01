@@ -59,7 +59,7 @@ public class CatalogPolicyEventServiceDelegator
       CreatePolicyRequest createPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_POLICY,
@@ -91,7 +91,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_POLICIES,
@@ -121,7 +121,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_LOAD_POLICY,
@@ -151,7 +151,7 @@ public class CatalogPolicyEventServiceDelegator
       UpdatePolicyRequest updatePolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_UPDATE_POLICY,
@@ -183,7 +183,7 @@ public class CatalogPolicyEventServiceDelegator
       Boolean detachAll,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_DROP_POLICY,
@@ -216,7 +216,7 @@ public class CatalogPolicyEventServiceDelegator
       AttachPolicyRequest attachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_ATTACH_POLICY,
@@ -249,7 +249,7 @@ public class CatalogPolicyEventServiceDelegator
       DetachPolicyRequest detachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_DETACH_POLICY,
@@ -284,7 +284,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES,

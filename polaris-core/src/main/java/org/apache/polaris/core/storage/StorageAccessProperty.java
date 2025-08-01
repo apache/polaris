@@ -19,6 +19,8 @@
 package org.apache.polaris.core.storage;
 
 import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
+import org.apache.iceberg.aws.s3.signer.S3V4RestSignerClient;
 import org.apache.iceberg.azure.AzureProperties;
 import org.apache.iceberg.gcp.GCPProperties;
 
@@ -51,6 +53,21 @@ public enum StorageAccessProperty {
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
       "the endpoint to load vended credentials for a table from the catalog",
       false,
+      false),
+  AWS_REMOTE_SIGNING_ENABLED(
+      Boolean.class,
+      S3FileIOProperties.REMOTE_SIGNING_ENABLED,
+      "whether to enable remote signing for S3 requests",
+      false),
+  AWS_REMOTE_SIGNER_URI(
+      String.class,
+      S3V4RestSignerClient.S3_SIGNER_URI,
+      "the base URI for the remote signer service, used for signing S3 requests",
+      false),
+  AWS_REMOTE_SIGNER_ENDPOINT(
+      String.class,
+      S3V4RestSignerClient.S3_SIGNER_ENDPOINT,
+      "the endpoint for the remote signer service, used for signing S3 requests",
       false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token", true),

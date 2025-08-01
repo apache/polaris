@@ -19,17 +19,17 @@
 package org.apache.polaris.service.catalog;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 public class DefaultCatalogPrefixParser implements CatalogPrefixParser {
+
   @Override
-  public String prefixToCatalogName(RealmContext realm, String prefix) {
+  public String prefixToCatalogName(String prefix) {
     return prefix;
   }
 
   @Override
-  public String catalogNameToPrefix(RealmContext realm, String catalogName) {
+  public String catalogNameToPrefix(String catalogName) {
     return catalogName;
   }
 }

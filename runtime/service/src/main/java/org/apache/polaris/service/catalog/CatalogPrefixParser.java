@@ -18,28 +18,23 @@
  */
 package org.apache.polaris.service.catalog;
 
-import org.apache.polaris.core.context.RealmContext;
-
 /** An extension point for converting Iceberg REST API "prefix" values to Polaris Catalog names. */
 public interface CatalogPrefixParser {
 
   /**
-   * Produces the name of a Polaris catalog from the given Iceberg Catalog REST API "prefix" for the
-   * specified realm.
+   * Produces the name of a Polaris catalog from the given Iceberg Catalog REST API "prefix".
    *
-   * @param realm identifies the realm where the API request is to be served.
    * @param prefix the "prefix" according to the Iceberg REST Catalog API specification.
    * @return Polaris Catalog name
    */
-  String prefixToCatalogName(RealmContext realm, String prefix);
+  String prefixToCatalogName(String prefix);
 
   /**
    * Produces the "prefix" according to the Iceberg REST Catalog API specification for the given
-   * Polaris catalog name in the specified realm.
+   * Polaris catalog name.
    *
-   * @param realm identifies the realm owning the catalog
    * @param catalogName name of a Polaris catalog.
    * @return the "prefix" for the Iceberg REST client to be used for requests to the given catalog.
    */
-  String catalogNameToPrefix(RealmContext realm, String catalogName);
+  String catalogNameToPrefix(String catalogName);
 }

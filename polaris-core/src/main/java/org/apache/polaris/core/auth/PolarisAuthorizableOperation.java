@@ -85,6 +85,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOTE_SIGN;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
@@ -246,7 +247,10 @@ public enum PolarisAuthorizableOperation {
   REMOVE_TABLE_PROPERTIES(TABLE_REMOVE_PROPERTIES),
   SET_TABLE_STATISTICS(TABLE_SET_STATISTICS),
   REMOVE_TABLE_STATISTICS(TABLE_REMOVE_STATISTICS),
-  REMOVE_TABLE_PARTITION_SPECS(TABLE_REMOVE_PARTITION_SPECS);
+  REMOVE_TABLE_PARTITION_SPECS(TABLE_REMOVE_PARTITION_SPECS),
+  SIGN_S3_READ_REQUEST(EnumSet.of(TABLE_REMOTE_SIGN, TABLE_READ_DATA)),
+  SIGN_S3_WRITE_REQUEST(EnumSet.of(TABLE_REMOTE_SIGN, TABLE_WRITE_DATA)),
+  ;
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
   private final EnumSet<PolarisPrivilege> privilegesOnSecondary;
