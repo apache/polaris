@@ -39,8 +39,8 @@ import org.apache.polaris.core.config.RealmConfig;
 public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigurationInfo>
     extends PolarisStorageIntegration<T> {
 
-  public InMemoryStorageIntegration(String identifierOrId) {
-    super(identifierOrId);
+  protected InMemoryStorageIntegration(T config, String identifierOrId) {
+    super(config, identifierOrId);
   }
 
   /**

@@ -2054,17 +2054,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             catalogId,
             entityId);
 
-    PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(
-            callCtx.getDiagServices(), reloadedEntity.getEntity());
     try {
       AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
-              callCtx,
-              storageConfigurationInfo,
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations);
+              callCtx, allowListOperation, allowedReadLocations, allowedWriteLocations);
       return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
