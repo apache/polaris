@@ -49,17 +49,21 @@ public class AwsCredentialsStorageIntegration
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
-  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
-    this((destination) -> fixedClient);
-  }
-
-  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
-    this(stsClientProvider, Optional.empty());
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config, StsClient fixedClient) {
+    this(config, (destination) -> fixedClient);
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+      AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
+    this(config, stsClientProvider, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config,
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> credentialsProvider) {
+    super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
   }
@@ -68,12 +72,12 @@ public class AwsCredentialsStorageIntegration
   @Override
   public AccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    AwsStorageConfigurationInfo storageConfig = config();
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())

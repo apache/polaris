@@ -59,8 +59,10 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    super(GcpCredentialsStorageIntegration.class.getName());
+      GcpStorageConfigurationInfo config,
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory) {
+    super(config, GcpCredentialsStorageIntegration.class.getName());
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -71,7 +73,6 @@ public class GcpCredentialsStorageIntegration
   @Override
   public AccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {

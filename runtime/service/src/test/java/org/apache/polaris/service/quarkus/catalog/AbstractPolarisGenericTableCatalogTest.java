@@ -222,7 +222,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(stsClient);
+        new AwsCredentialsStorageIntegration(
+            (AwsStorageConfigurationInfo)
+                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
+            stsClient);
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
