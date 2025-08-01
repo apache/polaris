@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,8 +60,27 @@ public class QueryGenerator {
       @Nonnull List<String> projections,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    QueryFragment where = generateWhereClause(new HashSet<>(projections), whereClause);
-    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql());
+    return generateSelectQuery(projections, tableName, whereClause, Map.of(), null);
+  }
+
+  /**
+   * Generates a SELECT query with projection and filtering.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereEquals Column-value pairs used in WHERE filtering.
+   * @return A parameterized SELECT query.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @Nonnull List<String> projections,
+      @Nonnull String tableName,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater,
+      @Nullable String orderByColumn) {
+    QueryFragment where =
+        generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
+    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), orderByColumn);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
@@ -108,7 +128,8 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where).sql(), params);
+        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where, null).sql(),
+        params);
   }
 
   /**
@@ -157,7 +178,7 @@ public class QueryGenerator {
       @Nonnull List<Object> values,
       @Nonnull Map<String, Object> whereClause) {
     List<Object> bindingParams = new ArrayList<>(values);
-    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
     String sql =
         "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
@@ -177,32 +198,47 @@ public class QueryGenerator {
       @Nonnull List<String> tableColumns,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
   private static PreparedQuery generateSelectQuery(
-      @Nonnull List<String> columnNames, @Nonnull String tableName, @Nonnull String filter) {
+      @Nonnull List<String> columnNames,
+      @Nonnull String tableName,
+      @Nonnull String filter,
+      @Nullable String orderByColumn) {
     String sql =
         "SELECT "
             + String.join(", ", columnNames)
             + " FROM "
             + getFullyQualifiedTableName(tableName)
             + filter;
+    if (orderByColumn != null) {
+      sql += " ORDER BY " + orderByColumn + " ASC";
+    }
     return new PreparedQuery(sql, Collections.emptyList());
   }
 
   @VisibleForTesting
   static QueryFragment generateWhereClause(
-      @Nonnull Set<String> tableColumns, @Nonnull Map<String, Object> whereClause) {
+      @Nonnull Set<String> tableColumns,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater) {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
+    for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
       if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
         throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
       }
       conditions.add(entry.getKey() + " = ?");
+      parameters.add(entry.getValue());
+    }
+    for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {
+      if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
+        throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
+      }
+      conditions.add(entry.getKey() + " > ?");
       parameters.add(entry.getValue());
     }
     String clause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
@@ -258,7 +294,7 @@ public class QueryGenerator {
 
     QueryFragment where = new QueryFragment(clause, finalParams);
     PreparedQuery query =
-        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql());
+        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql(), null);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 

@@ -18,82 +18,75 @@
  */
 package org.apache.polaris.core.persistence.pagination;
 
-import java.util.List;
-import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import jakarta.annotation.Nullable;
+import java.util.Optional;
+import java.util.OptionalInt;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-/**
- * Represents a page token that can be used by operations like `listTables`. Clients that specify a
- * `pageSize` (or a `pageToken`) may receive a `next-page-token` in the response, the content of
- * which is a serialized PageToken.
- *
- * <p>By providing that in the next query's `pageToken`, the client can resume listing where they
- * left off. If the client provides a `pageToken` or `pageSize` but `next-page-token` is null in the
- * response, that means there is no more data to read.
- */
-public abstract class PageToken {
+/** A wrapper for pagination information passed in as part of a request. */
+@PolarisImmutable
+@JsonSerialize(as = ImmutablePageToken.class)
+@JsonDeserialize(as = ImmutablePageToken.class)
+public interface PageToken {
+  // Serialization property names are intentionally short to reduce the size of the serialized
+  // paging token.
 
-  /** Build a new PageToken that reads everything */
-  public static PageToken readEverything() {
-    return build(null, null);
+  /** The requested page size (optional). */
+  @JsonProperty("p")
+  OptionalInt pageSize();
+
+  /** Convenience for {@code pageSize().isPresent()}. */
+  default boolean paginationRequested() {
+    return pageSize().isPresent();
   }
-
-  /** Build a new PageToken from an input String, without a specified page size */
-  public static PageToken fromString(String token) {
-    return build(token, null);
-  }
-
-  /** Build a new PageToken from a limit */
-  public static PageToken fromLimit(Integer pageSize) {
-    return build(null, pageSize);
-  }
-
-  /** Build a {@link PageToken} from the input string and page size */
-  public static PageToken build(String token, Integer pageSize) {
-    if (token == null || token.isEmpty()) {
-      if (pageSize != null) {
-        return new LimitPageToken(pageSize);
-      } else {
-        return new ReadEverythingPageToken();
-      }
-    } else {
-      // TODO implement, split out by the token's prefix
-      throw new IllegalArgumentException("Unrecognized page token: " + token);
-    }
-  }
-
-  /** Serialize a {@link PageToken} into a string */
-  public abstract String toTokenString();
 
   /**
-   * Builds a new page token to reflect new data that's been read. If the amount of data read is
-   * less than the pageSize, this will return a {@link DonePageToken}
+   * Paging token value, if present. Serialized paging tokens always have a value, but "synthetic"
+   * paging tokens like {@link #readEverything()} or {@link #fromLimit(int)} do not have a token
+   * value.
    */
-  protected abstract PageToken updated(List<?> newData);
+  @JsonProperty("v")
+  Optional<Token> value();
+
+  // Note: another property can be added to contain a (cryptographic) signature, if we want to
+  // ensure that a paging-token hasn't been tampered.
 
   /**
-   * Builds a {@link Page <T>} from a {@link List<T>}. The {@link PageToken} attached to the new
-   * {@link Page <T>} is the same as the result of calling {@link #updated(List)} on this {@link
-   * PageToken}.
+   * Paging token value, if it is present and an instance of the given {@code type}. This is a
+   * convenience to prevent duplication of type casts.
    */
-  public final <T> Page<T> buildNextPage(List<T> data) {
-    return new Page<T>(updated(data), data);
+  default <T extends Token> Optional<T> valueAs(Class<T> type) {
+    return value()
+        .flatMap(
+            t ->
+                type.isAssignableFrom(t.getClass()) ? Optional.of(type.cast(t)) : Optional.empty());
   }
 
-  @Override
-  public final boolean equals(Object o) {
-    if (o instanceof PageToken) {
-      return Objects.equals(this.toTokenString(), ((PageToken) o).toTokenString());
-    } else {
-      return false;
-    }
+  /** Represents a non-paginated request. */
+  static PageToken readEverything() {
+    return PageTokenUtil.READ_EVERYTHING;
   }
 
-  @Override
-  public final int hashCode() {
-    if (toTokenString() == null) {
-      return 0;
-    } else {
-      return toTokenString().hashCode();
-    }
+  /** Represents a request to start paginating with a particular page size. */
+  static PageToken fromLimit(int limit) {
+    return PageTokenUtil.fromLimit(limit);
+  }
+
+  /**
+   * Reconstructs a page token from the API-level page token string (returned to the client in the
+   * response to a previous request for similar data) and an API-level new requested page size.
+   *
+   * @param serializedPageToken page token from the {@link Page#encodedResponseToken() previous
+   *     page}
+   * @param requestedPageSize optional page size for the next page. If not set, the page size of the
+   *     previous page (encoded in the page token string) will be reused.
+   * @see Page#encodedResponseToken()
+   */
+  static PageToken build(
+      @Nullable String serializedPageToken, @Nullable Integer requestedPageSize) {
+    return PageTokenUtil.decodePageRequest(serializedPageToken, requestedPageSize);
   }
 }

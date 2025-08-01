@@ -286,8 +286,12 @@ public class DatasourceOperations {
         if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
           String exceptionMessage =
               String.format(
-                  "Failed due to %s, after , %s attempts and %s milliseconds",
-                  sqlException.getMessage(), attempts, maxDuration);
+                  "Failed due to '%s' (error code %d, sql-state '%s'), after %s attempts and %s milliseconds",
+                  sqlException.getMessage(),
+                  sqlException.getErrorCode(),
+                  sqlException.getSQLState(),
+                  attempts,
+                  maxDuration);
           throw new SQLException(
               exceptionMessage, sqlException.getSQLState(), sqlException.getErrorCode(), e);
         }

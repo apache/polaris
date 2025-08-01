@@ -104,7 +104,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -116,6 +116,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.AccessConfig;
@@ -125,6 +126,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -166,7 +168,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
       };
 
-  private final PolarisEntityManager entityManager;
+  private final StorageCredentialCache storageCredentialCache;
+  private final ResolverFactory resolverFactory;
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -188,15 +191,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private PolarisMetaStoreManager metaStoreManager;
 
   /**
-   * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
-   *     perform mutations on entities.
    * @param callContext the current CallContext
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
   public IcebergCatalog(
-      PolarisEntityManager entityManager,
+      StorageCredentialCache storageCredentialCache,
+      ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
@@ -204,7 +206,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
-    this.entityManager = entityManager;
+    this.storageCredentialCache = storageCredentialCache;
+    this.resolverFactory = resolverFactory;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
@@ -458,14 +461,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listTables(Namespace namespace) {
-    return listTables(namespace, PageToken.readEverything()).items;
+    return listTables(namespace, PageToken.readEverything()).items();
   }
 
-  public Page<TableIdentifier> listTables(Namespace namespace, String pageToken, Integer pageSize) {
-    return listTables(namespace, buildPageToken(pageToken, pageSize));
-  }
-
-  private Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list tables for namespace. Namespace does not exist: '%s'", namespace);
@@ -717,7 +716,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -749,7 +748,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -778,14 +777,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
-    return listNamespaces(namespace, PageToken.readEverything()).items;
+    return listNamespaces(namespace, PageToken.readEverything()).items();
   }
 
-  public Page<Namespace> listNamespaces(Namespace namespace, String pageToken, Integer pageSize) {
-    return listNamespaces(namespace, buildPageToken(pageToken, pageSize));
-  }
-
-  private Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
+  public Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
       throws NoSuchNamespaceException {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
@@ -801,13 +796,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntityType.NAMESPACE,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 pageToken);
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(listResult.getEntities());
-    List<Namespace> namespaces = PolarisCatalogHelpers.nameAndIdToNamespaces(catalogPath, entities);
     return listResult
-        .getPageToken()
-        .map(token -> new Page<>(token, namespaces))
-        .orElseGet(() -> Page.fromItems(namespaces));
+        .getPage()
+        .map(
+            record ->
+                PolarisCatalogHelpers.nameAndIdToNamespace(
+                    catalogPath, new PolarisEntity.NameAndId(record.getName(), record.getId())));
   }
 
   @Override
@@ -819,14 +813,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
-    return listViews(namespace, PageToken.readEverything()).items;
+    return listViews(namespace, PageToken.readEverything()).items();
   }
 
-  public Page<TableIdentifier> listViews(Namespace namespace, String pageToken, Integer pageSize) {
-    return listViews(namespace, buildPageToken(pageToken, pageSize));
-  }
-
-  private Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
+  public Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
           "Cannot list views for namespace. Namespace does not exist: '%s'", namespace);
@@ -877,7 +867,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     return FileIOUtil.refreshAccessConfig(
         callContext,
-        entityManager,
+        storageCredentialCache,
         getCredentialVendor(),
         tableIdentifier,
         getLocationsAllowedToBeAccessed(tableMetadata),
@@ -1050,7 +1040,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      storageConfigInfo, Set.of(PolarisStorageActions.ALL), locations);
+                      callContext.getRealmConfig(),
+                      storageConfigInfo,
+                      Set.of(PolarisStorageActions.ALL),
+                      locations);
           validationResults
               .values()
               .forEach(
@@ -1219,7 +1212,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, securityContext, parentPath.getFirst().getName());
+            callContext, resolverFactory, securityContext, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(
@@ -2364,7 +2357,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NotFoundException("Parent path does not exist for %s", identifier);
 
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-          throw new CommitFailedException(
+          throw new CommitConflictException(
               "Failed to commit Table or View %s because it was concurrently modified", identifier);
 
         default:
@@ -2596,15 +2589,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 PolarisEntityType.TABLE_LIKE,
                 subType,
                 pageToken);
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(listResult.getEntities());
-    List<TableIdentifier> identifiers =
-        PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
 
+    Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
     return listResult
-        .getPageToken()
-        .map(token -> new Page<>(token, identifiers))
-        .orElseGet(() -> Page.fromItems(identifiers));
+        .getPage()
+        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
   }
 
   /**
@@ -2641,19 +2630,5 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return callContext
         .getRealmConfig()
         .getConfig(FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
-  }
-
-  /** Build a {@link PageToken} from a string and page size. */
-  private PageToken buildPageToken(@Nullable String tokenString, @Nullable Integer pageSize) {
-
-    boolean paginationEnabled =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
-    if (!paginationEnabled) {
-      return PageToken.readEverything();
-    } else {
-      return PageToken.build(tokenString, pageSize);
-    }
   }
 }

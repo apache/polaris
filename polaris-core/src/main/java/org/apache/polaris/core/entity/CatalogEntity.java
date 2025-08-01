@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -140,6 +139,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setRegion(awsConfig.getRegion())
+            .setEndpoint(awsConfig.getEndpoint())
+            .setStsEndpoint(awsConfig.getStsEndpoint())
+            .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -192,8 +194,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configStr != null) {
-      return PolarisStorageConfigurationInfo.deserialize(
-          new PolarisDefaultDiagServiceImpl(), configStr);
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
     }
     return null;
   }
@@ -214,7 +215,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
     if (configStr != null) {
-      return ConnectionConfigInfoDpo.deserialize(new PolarisDefaultDiagServiceImpl(), configStr);
+      return ConnectionConfigInfoDpo.deserialize(configStr);
     }
     return null;
   }
@@ -275,7 +276,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     awsConfigModel.getExternalId(),
                     awsConfigModel.getRegion(),
                     awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint());
+                    awsConfigModel.getStsEndpoint(),
+                    awsConfigModel.getPathStyleAccess(),
+                    awsConfigModel.getEndpointInternal());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;

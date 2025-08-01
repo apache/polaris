@@ -29,8 +29,18 @@ import org.junit.jupiter.api.Test;
 public class AwsStorageConfigurationInfoTest {
 
   private static AwsStorageConfigurationInfo config(String endpoint, String stsEndpoint) {
+    return config(endpoint, stsEndpoint, false);
+  }
+
+  private static AwsStorageConfigurationInfo config(
+      String endpoint, String stsEndpoint, Boolean pathStyle) {
+    return config(endpoint, stsEndpoint, pathStyle, null);
+  }
+
+  private static AwsStorageConfigurationInfo config(
+      String endpoint, String stsEndpoint, Boolean pathStyle, String internalEndpoint) {
     return new AwsStorageConfigurationInfo(
-        S3, List.of(), "role", null, null, endpoint, stsEndpoint);
+        S3, List.of(), "role", null, null, endpoint, stsEndpoint, pathStyle, internalEndpoint);
   }
 
   @Test
@@ -55,5 +65,52 @@ public class AwsStorageConfigurationInfoTest {
             AwsStorageConfigurationInfo::getEndpointUri,
             AwsStorageConfigurationInfo::getStsEndpointUri)
         .containsExactly(URI.create("http://s3.example.com"), URI.create("http://sts.example.com"));
+    assertThat(config("http://s3.example.com", null, false, "http://int.example.com"))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getStsEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(
+            URI.create("http://s3.example.com"),
+            URI.create("http://int.example.com"),
+            URI.create("http://int.example.com"));
+  }
+
+  @Test
+  public void testInternalEndpoint() {
+    assertThat(config(null, null))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(null, null);
+    assertThat(config(null, "http://sts.example.com"))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(null, null);
+    assertThat(config("http://s3.example.com", null))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(URI.create("http://s3.example.com"), URI.create("http://s3.example.com"));
+    assertThat(
+            config(
+                "http://s3.example.com", "http://sts.example.com", false, "http://int.example.com"))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(URI.create("http://s3.example.com"), URI.create("http://int.example.com"));
+    assertThat(config(null, "http://sts.example.com", false, "http://int.example.com"))
+        .extracting(
+            AwsStorageConfigurationInfo::getEndpointUri,
+            AwsStorageConfigurationInfo::getInternalEndpointUri)
+        .containsExactly(null, URI.create("http://int.example.com"));
+  }
+
+  @Test
+  public void testPathStyleAccess() {
+    assertThat(config(null, null, null).getPathStyleAccess()).isNull();
+    assertThat(config(null, null, false).getPathStyleAccess()).isFalse();
+    assertThat(config(null, null, true).getPathStyleAccess()).isTrue();
   }
 }

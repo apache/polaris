@@ -104,9 +104,9 @@ public class FileIOFactoryTest {
 
     // Spy FileIOFactory and check if the credentials are passed to the FileIO
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (entityManagerFactory, metaStoreManagerFactory) ->
+        (storageCredentialCache, metaStoreManagerFactory) ->
             Mockito.spy(
-                new DefaultFileIOFactory(entityManagerFactory, metaStoreManagerFactory) {
+                new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory) {
                   @Override
                   FileIO loadFileIOInternal(
                       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
@@ -139,7 +139,7 @@ public class FileIOFactoryTest {
     callContext =
         new PolarisCallContext(
             realmContext,
-            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.metaStoreManagerFactory().getOrCreateSession(realmContext),
             testServices.polarisDiagnostics(),
             testServices.configurationStore(),
             Clock.systemUTC());
@@ -233,7 +233,8 @@ public class FileIOFactoryTest {
             CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
-            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services.storageCredentialCache(),
+            services.resolverFactory(),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
             callContext,
             passthroughView,

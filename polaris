@@ -51,8 +51,7 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   pip install --upgrade pip
   pip install --upgrade -r regtests/requirements.txt
 
-  cp "${dir}"/client/python/pyproject.toml "${dir}"
-  pushd "$dir" && poetry install ; popd
+  (cd "${dir}/client/python" && poetry install)
 
   deactivate
 
@@ -63,5 +62,10 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   fi
 fi
 
-cd "$dir"
-env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
+# Check if the correct virtual environment is already active, if not, activate it.
+if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir}/polaris-venv")" ]; then
+  source "${dir}/polaris-venv/bin/activate"
+fi
+
+export SCRIPT_DIR="${dir}"
+exec polaris "$@"

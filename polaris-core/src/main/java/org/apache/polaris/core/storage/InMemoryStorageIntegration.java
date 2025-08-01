@@ -22,18 +22,17 @@ import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 /**
  * Base class for in-memory implementations of {@link PolarisStorageIntegration}. A basic
- * implementation of {@link #validateAccessToLocations(PolarisStorageConfigurationInfo, Set, Set)}
- * is provided that checks to see that the list of locations being accessed is among the list of
- * {@link PolarisStorageConfigurationInfo#getAllowedLocations()}. Locations being accessed must be
- * equal to or a subdirectory of at least one of the allowed locations.
+ * implementation of {@link #validateAccessToLocations(RealmConfig, PolarisStorageConfigurationInfo,
+ * Set, Set)} is provided that checks to see that the list of locations being accessed is among the
+ * list of {@link PolarisStorageConfigurationInfo#getAllowedLocations()}. Locations being accessed
+ * must be equal to or a subdirectory of at least one of the allowed locations.
  *
  * @param <T>
  */
@@ -56,6 +55,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
    */
   public static Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateSubpathsOfAllowedLocations(
+          @Nonnull RealmConfig realmConfig,
           @Nonnull PolarisStorageConfigurationInfo storageConfig,
           @Nonnull Set<PolarisStorageActions> actions,
           @Nonnull Set<String> locations) {
@@ -76,10 +76,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
     List<StorageLocation> allowedLocations =
         allowedLocationStrings.stream().map(StorageLocation::of).collect(Collectors.toList());
 
-    boolean allowWildcardLocation =
-        Optional.ofNullable(CallContext.getCurrentContext())
-            .map(ctx -> ctx.getRealmConfig().getConfig("ALLOW_WILDCARD_LOCATION", false))
-            .orElse(false);
+    boolean allowWildcardLocation = realmConfig.getConfig("ALLOW_WILDCARD_LOCATION", false);
 
     if (allowWildcardLocation && allowedLocationStrings.contains("*")) {
       return locations.stream()
@@ -122,9 +119,10 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
   @Override
   @Nonnull
   public Map<String, Map<PolarisStorageActions, ValidationResult>> validateAccessToLocations(
+      @Nonnull RealmConfig realmConfig,
       @Nonnull T storageConfig,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
-    return validateSubpathsOfAllowedLocations(storageConfig, actions, locations);
+    return validateSubpathsOfAllowedLocations(realmConfig, storageConfig, actions, locations);
   }
 }

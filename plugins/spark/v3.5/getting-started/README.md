@@ -52,7 +52,7 @@ This will spin up 2 container services
 * The `polaris` service for running Apache Polaris using an in-memory metastore
 * The `jupyter` service for running Jupyter notebook with PySpark
 
-NOTE: Starting the container first time may take a couple of minutes, because it will need to download the Spark 3.5.5.
+NOTE: Starting the container first time may take a couple of minutes, because it will need to download the Spark 3.5.6.
 When working with Delta, the Polaris Spark Client requires delta-io >= 3.2.1, and it requires at least Spark 3.5.3, 
 but the current jupyter Spark image only support Spark 3.5.0.
 

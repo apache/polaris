@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -44,7 +45,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -78,7 +79,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     // run transaction on our underlying store
-    return store.runInTransaction(callCtx, transactionCode);
+    return store.runInTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -87,7 +88,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInTransaction(callCtx, transactionCode);
+    store.runActionInTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -95,7 +96,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T> T runInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // run transaction on our underlying store
-    return store.runInReadTransaction(callCtx, transactionCode);
+    return store.runInReadTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -104,7 +105,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInReadTransaction(callCtx, transactionCode);
+    store.runActionInReadTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /**
@@ -367,13 +368,23 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .map(
                 nameRecord ->
                     this.lookupEntityInCurrentTxn(
-                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-            .filter(entityFilter);
-    if (pageToken instanceof HasPageSize) {
-      data = data.limit(((HasPageSize) pageToken).getPageSize());
-    }
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()));
 
-    return Page.fromItems(data.map(transformer).collect(Collectors.toList()));
+    Predicate<PolarisBaseEntity> tokenFilter =
+        pageToken
+            .valueAs(EntityIdToken.class)
+            .map(
+                entityIdToken -> {
+                  var nextId = entityIdToken.entityId();
+                  return (Predicate<PolarisBaseEntity>) e -> e.getId() > nextId;
+                })
+            .orElse(e -> true);
+
+    data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
+
+    data = data.filter(entityFilter);
+
+    return Page.mapped(pageToken, data, transformer, EntityIdToken::fromEntity);
   }
 
   /** {@inheritDoc} */
@@ -566,7 +577,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

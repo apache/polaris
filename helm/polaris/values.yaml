@@ -27,7 +27,7 @@ image:
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
-  tag: "1.1.0-incubating-SNAPSHOT"
+  tag: "latest"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # Note: if you are using EclipseLink, then this value must be at least two folders down to the
@@ -560,15 +560,20 @@ storage:
 
 # -- Polaris authentication configuration.
 authentication:
-  # -- The type of authentication to use. Two built-in types are supported: default and test;
-  # test is not recommended for production.
+  # -- The type of authentication to use. Three built-in types are supported: internal, external, and mixed.
+  type: internal
+  # -- The `Authenticator` implementation to use. Only one built-in type is supported: default.
   authenticator:
     type: default
-  # -- The type of token service to use. Two built-in types are supported: default and test;
-  # test is not recommended for production.
+  # -- The `ActiveRolesProvider` implementation to use. Only one built-in type is supported: default.
+  activeRolesProvider:
+    type: default
+  # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
   tokenService:
     type: default
-  # -- The type of token broker to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
+  # -- The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.
   tokenBroker:
     type: rsa-key-pair  # symmetric-key
     # -- Maximum token generation duration (e.g., PT1H for 1 hour).
@@ -596,7 +601,66 @@ authentication:
       # -- Optional: configuration specific to symmetric key secret.
       symmetricKey:
         # -- Key name inside the secret for the symmetric key
-        secretKey: symmetric.pem
+        secretKey: symmetric.key
+  # -- Authentication configuration overrides per realm.
+  realmOverrides: {}
+    # my-realm:
+    #   type: external
+    #   authenticator:
+    #     type: custom
+
+# -- Polaris OIDC configuration. Only relevant when at least one realm is configured for external
+# (or mixed) authentication. The currently supported configuration is for a single, default OIDC tenant.
+# For more complex scenarios, including OIDC multi-tenancy, you will need to provide the relevant
+# configuration using the `advancedConfig` section.
+oidc:
+  # -- The authentication server URL. Must be provided if at least one realm is configured for external
+  # authentication.
+  authServeUrl: ~  # https://auth.example.com/realms/polaris
+  # -- The client to use when authenticating with the authentication server.
+  client:
+    # -- The client ID to use when contacting the authentication server's introspection endpoint in
+    # order to validate tokens.
+    id: polaris
+    # -- The secret to pull the client secret from. If no client secret is required, leave the secret
+    # name unset.
+    secret:
+      # -- The name of the secret to pull the client secret from. If not provided, the client is assumed
+      # to not require a client secret when contacting the introspection endpoint.
+      name: ~
+      # -- The key name inside the secret to pull the client secret from.
+      key: clientSecret
+  # -- Principal mapping configuration.
+  principalMapper:
+    # -- The `PrincipalMapper` implementation to use. Only one built-in type is supported: default.
+    type: default
+    # -- The path to the claim that contains the principal ID. Nested paths can be expressed using
+    # "/" as a separator, e.g. "polaris/principal_id" would look for the "principal_id" field inside
+    # the "polaris" object in the token claims. Optional. Either this option or `nameClaimPath` (or both) must be provided.
+    idClaimPath: ~
+    # -- The claim that contains the principal name. Nested paths can be expressed using "/" as a
+    # separator, e.g. "polaris/principal_name" would look for the "principal_name" field inside
+    # the "polaris" object in the token claims. Optional. Either this option or `idClaimPath` (or both) must be provided.
+    nameClaimPath: ~
+  # -- Principal roles mapping configuration.
+  principalRolesMapper:
+    # -- The `PrincipalRolesMapper` implementation to use. Only one built-in type is supported: default.
+    type: default
+    # -- The path to the claim that contains the principal roles. Nested paths can be expressed using
+    # "/" as a separator, e.g. "polaris/principal_roles" would look for the "principal_roles" field inside
+    # the "polaris" object in the token claims. If not set, Quarkus looks for roles in standard locations.
+    # See https://quarkus.io/guides/security-oidc-bearer-token-authentication#token-claims-and-security-identity-roles.
+    rolesClaimPath: ~
+    # -- A regular expression that matches the role names in the identity. Only roles that match this
+    # regex will be included in the Polaris-specific roles.
+    filter: ~  # ^(?!profile$|email$).*
+    # -- A list of regex mappings that will be applied to each role name in the identity. This can
+    # be used to transform the role names in the identity into role names as expected by Polaris.
+    # The default ActiveRolesProvider expects the security identity to expose role names in the
+    # format `POLARIS_ROLE:<role name>`.
+    mappings: []
+      # - regex: role_(.*)
+      #   replacement: PRINCIPAL_ROLE:$1
 
 # -- Polaris CORS configuration.
 cors:

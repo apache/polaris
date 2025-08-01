@@ -99,7 +99,7 @@ menu:
       params:
         orderby: weight.desc
     - name: "In Development"
-      url: "/in-dev/"
+      url: "/in-dev/unreleased/"
       parent: "releases"
       weight: 10
     - name: "1.0.0"

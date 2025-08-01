@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
     OAUTH = "oauth"
     BEARER = "bearer"
     SIGV4 = "sigv4"
+    IMPLICIT = "implicit"
 
 
 class ServiceIdentityType(Enum):
@@ -163,8 +164,12 @@ class Arguments:
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     ICEBERG_REMOTE_CATALOG_NAME = "iceberg_remote_catalog_name"
+    ENDPOINT = "endpoint"
+    STS_ENDPOINT = "sts_endpoint"
+    PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
     CATALOG_SERVICE_IDENTITY_TYPE = "catalog_service_identity_type"
@@ -222,6 +227,11 @@ class Hints:
             EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
             REGION = "(Only for S3) The region to use when connecting to S3"
             USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"
+            ENDPOINT = "(Only for S3) The S3 endpoint to use when connecting to S3"
+            STS_ENDPOINT = (
+                "(Only for S3) The STS endpoint to use when connecting to STS"
+            )
+            PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
             MULTI_TENANT_APP_NAME = (
@@ -241,7 +251,7 @@ class Hints:
                 "The type of external catalog in [ICEBERG, HADOOP]."
             )
             CATALOG_AUTHENTICATION_TYPE = (
-                "The type of authentication in [OAUTH, BEARER, SIGV4]"
+                "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
             )
             CATALOG_SERVICE_IDENTITY_TYPE = "The type of service identity in [AWS_IAM]"
 

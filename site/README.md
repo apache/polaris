@@ -35,6 +35,21 @@ Then point your browser to http://localhost:1313/
 Then edit files from your IDE - you will see the changes in your browser. When changing the site structure,
 it is often necessary to restart Hugo - just run `site/bin/run-hugo-in-docker.sh` again. 
 
+## Dealing with `--userns and --pod cannot be used together` errors
+
+The scripts in the `bin/` directory are built to work with both Docker and podman. There are nuances in how
+both behave, especially wrt docker/podman-compose. Some local environment specifics require the use of
+`podman-compose`, others the use of `docker-compose`. The default behavior is to prefer the `podman` and
+`podman-compose` binaries, if those exist and fall back to `docker` and `docker-compose`. Some setups using
+podman however require the use of `docker-compose` even if `podman-compose` is installed. This may manifest
+in an error message stating that `--userns` and `--pod` cannot be used together. In that case create a file
+`.user-settings` in the `site/` folder and add these two lines:
+```bash
+DOCKER=docker
+COMPOSE=docker-compose
+```
+
+
 # Building the static site
 
 ## Building a static site - served at http://localhost:8080/

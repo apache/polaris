@@ -22,7 +22,6 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -75,9 +75,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -233,8 +233,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
       // get internal properties
-      Map<String, String> properties =
-          this.deserializeProperties(callCtx, entity.getInternalProperties());
+      Map<String, String> properties = this.deserializeProperties(entity.getInternalProperties());
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -686,8 +685,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link #listEntities(PolarisCallContext, List, PolarisEntityType, PolarisEntitySubType,
-   * PageToken)}
+   * See {@link PolarisMetaStoreManager#listEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, PageToken)}
    */
   private @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
@@ -701,23 +700,24 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new ListEntitiesResult(
-          BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null, Optional.empty());
+      return new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+    }
+
+    Predicate<PolarisBaseEntity> filter = entity -> true;
+    // prune the returned list with only entities matching the entity subtype
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      filter = e -> e.getSubTypeCode() == entitySubType.getCode();
     }
 
     // return list of active entities
     Page<EntityNameLookupRecord> resultPage =
         ms.listEntitiesInCurrentTxn(
-            callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType, pageToken);
-
-    // prune the returned list with only entities matching the entity subtype
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      resultPage =
-          pageToken.buildNextPage(
-              resultPage.items.stream()
-                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-                  .collect(Collectors.toList()));
-    }
+            callCtx,
+            resolver.getCatalogIdOrNull(),
+            resolver.getParentId(),
+            entityType,
+            filter,
+            pageToken);
 
     // done
     return ListEntitiesResult.fromPage(resultPage);
@@ -766,7 +766,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
       // get internal properties
       Map<String, String> properties =
-          this.deserializeProperties(callCtx, refreshPrincipal.getInternalProperties());
+          this.deserializeProperties(refreshPrincipal.getInternalProperties());
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -823,14 +823,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         ms.generateNewPrincipalSecretsInCurrentTxn(callCtx, principal.getName(), principal.getId());
 
     // generate properties
-    Map<String, String> internalProperties = getInternalPropertyMap(callCtx, principal);
+    Map<String, String> internalProperties = getInternalPropertyMap(principal);
     internalProperties.put(
         PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
 
     // remember client id
     PolarisBaseEntity updatedPrincipal =
         new PolarisBaseEntity.Builder(principal)
-            .internalProperties(this.serializeProperties(callCtx, internalProperties))
+            .internalProperties(this.serializeProperties(internalProperties))
             .build();
 
     // now create and persist new catalog entity
@@ -897,7 +897,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     Map<String, String> internalProps =
         PolarisObjectMapperUtil.deserializeProperties(
-            callCtx,
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
     boolean doReset =
@@ -915,14 +914,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       internalProps.put(
           PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
+          PolarisObjectMapperUtil.serializeProperties(internalProps));
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     }
@@ -962,7 +961,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
-    Map<String, String> internalProp = getInternalPropertyMap(callCtx, catalog);
+    Map<String, String> internalProp = getInternalPropertyMap(catalog);
     String integrationIdentifierOrId =
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
@@ -976,8 +975,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               callCtx,
               catalog.getCatalogId(),
               catalog.getId(),
-              PolarisStorageConfigurationInfo.deserialize(
-                  callCtx.getDiagServices(), storageConfigInfoStr));
+              PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
     } else {
       integration = null;
     }
@@ -1076,7 +1074,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             }
             createdEntities.add(entityCreateResult.getEntity());
           }
-          return new EntitiesResult(createdEntities);
+          return new EntitiesResult(Page.fromItems(createdEntities));
         });
   }
 
@@ -1180,7 +1178,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // good, all success
-    return new EntitiesResult(updatedEntities);
+    return new EntitiesResult(Page.fromItems(updatedEntities));
   }
 
   /** {@inheritDoc} */
@@ -1385,7 +1383,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   entity -> true,
                   Function.identity(),
                   PageToken.fromLimit(2))
-              .items;
+              .items();
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1431,7 +1429,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, refreshEntityToDrop));
+      properties.put("data", PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
       PolarisBaseEntity.Builder taskEntityBuilder =
           new PolarisBaseEntity.Builder()
               .id(ms.generateNewIdInCurrentTxn(callCtx))
@@ -1440,10 +1438,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               .typeCode(PolarisEntityType.TASK.getCode())
               .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
               .createTimestamp(callCtx.getClock().millis())
-              .properties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+              .properties(PolarisObjectMapperUtil.serializeProperties(properties));
       if (cleanupProperties != null) {
         taskEntityBuilder.internalProperties(
-            PolarisObjectMapperUtil.serializeProperties(callCtx, cleanupProperties));
+            PolarisObjectMapperUtil.serializeProperties(cleanupProperties));
       }
       PolarisBaseEntity taskEntity = taskEntityBuilder.build();
       createEntityIfNotExists(callCtx, ms, null, taskEntity);
@@ -1971,36 +1969,41 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             Function.identity(),
             pageToken);
 
-    List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
-    availableTasks.items.forEach(
-        task -> {
-          PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
-          Map<String, String> properties =
-              PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
-          properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-          properties.put(
-              PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-              String.valueOf(callCtx.getClock().millis()));
-          properties.put(
-              PolarisTaskConstants.ATTEMPT_COUNT,
-              String.valueOf(
-                  Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                      + 1));
-          updatedTask.properties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          EntityResult result =
-              updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
-          if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
-            loadedTasks.add(result.getEntity());
-          } else {
-            // TODO: Consider performing incremental leasing of individual tasks one at a time
-            // instead of requiring all-or-none semantics for all the tasks we think we listed,
-            // or else contention could be very bad.
-            ms.rollback();
-            throw new RetryOnConcurrencyException(
-                "Failed to lease available task with status %s, info: %s",
-                result.getReturnStatus(), result.getExtraInformation());
-          }
-        });
+    List<PolarisBaseEntity> loadedTasks =
+        availableTasks.items().stream()
+            .map(
+                task -> {
+                  PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
+                  Map<String, String> properties =
+                      PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
+                  properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+                  properties.put(
+                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
+                      String.valueOf(callCtx.getClock().millis()));
+                  properties.put(
+                      PolarisTaskConstants.ATTEMPT_COUNT,
+                      String.valueOf(
+                          Integer.parseInt(
+                                  properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                              + 1));
+                  updatedTask.properties(PolarisObjectMapperUtil.serializeProperties(properties));
+                  EntityResult result =
+                      updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
+                  if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+                    return result.getEntity();
+                  } else {
+                    // TODO: Consider performing incremental leasing of individual tasks one at a
+                    // time
+                    // instead of requiring all-or-none semantics for all the tasks we think we
+                    // listed,
+                    // or else contention could be very bad.
+                    ms.rollback();
+                    throw new RetryOnConcurrencyException(
+                        "Failed to lease available task with status %s, info: %s",
+                        result.getReturnStatus(), result.getExtraInformation());
+                  }
+                })
+            .collect(Collectors.toList());
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
@@ -2052,16 +2055,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             entityId);
 
     PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
+        BaseMetaStoreManager.extractStorageConfiguration(
+            callCtx.getDiagServices(), reloadedEntity.getEntity());
     try {
-      EnumMap<StorageAccessProperty, String> creds =
+      AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
               callCtx,
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations);
-      return new ScopedCredentialsResult(creds);
+      return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
@@ -2071,18 +2075,16 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   /**
    * Get the internal property map for an entity
    *
-   * @param callCtx the polaris call context
    * @param entity the target entity
    * @return a map of string representing the internal properties
    */
-  public Map<String, String> getInternalPropertyMap(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+  public Map<String, String> getInternalPropertyMap(@Nonnull PolarisBaseEntity entity) {
     String internalPropStr = entity.getInternalProperties();
     Map<String, String> res = new HashMap<>();
     if (internalPropStr == null) {
       return res;
     }
-    return deserializeProperties(callCtx, internalPropStr);
+    return deserializeProperties(internalPropStr);
   }
 
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long, PolarisEntityType)} */

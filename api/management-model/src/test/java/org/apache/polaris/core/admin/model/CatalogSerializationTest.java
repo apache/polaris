@@ -68,6 +68,7 @@ public class CatalogSerializationTest {
                 + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
                 + "\"storageConfigInfo\":{"
                 + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
                 + "}}");
