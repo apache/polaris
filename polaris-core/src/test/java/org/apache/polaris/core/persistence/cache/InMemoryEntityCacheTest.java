@@ -47,22 +47,11 @@ import org.mockito.Mockito;
 /** Unit testing of the entity cache */
 public class InMemoryEntityCacheTest {
 
-  // diag services
   private final PolarisDiagnostics diagServices;
-
-  // the entity store, use treemap implementation
   private final TreeMapMetaStore store;
-
-  // to interact with the metastore
   private final TransactionalPersistence metaStore;
-
-  // polaris call context
   private final PolarisCallContext callCtx;
-
-  // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
-
-  // the meta store manager
   private final PolarisMetaStoreManager metaStoreManager;
 
   /**
@@ -91,10 +80,8 @@ public class InMemoryEntityCacheTest {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new TreeMapMetaStore(diagServices);
     metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
-    metaStoreManager = new TransactionalMetaStoreManagerImpl();
-
-    // bootstrap the mata store with our test schema
+    metaStoreManager = new TransactionalMetaStoreManagerImpl(() -> metaStore);
+    callCtx = new PolarisCallContext(() -> "testRealm", diagServices);
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
   }

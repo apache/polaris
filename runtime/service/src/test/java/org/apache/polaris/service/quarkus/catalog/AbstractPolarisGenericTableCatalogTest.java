@@ -150,11 +150,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            realmContext, diagServices, configurationStore, Clock.systemDefaultZone());
 
     entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 

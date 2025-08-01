@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -56,6 +57,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -173,13 +175,9 @@ public class ManagementServiceTest {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 
-  private PolarisCallContext setupCallContext(PolarisMetaStoreManager metaStoreManager) {
-    MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
+  private PolarisCallContext setupCallContext() {
     RealmContext realmContext = services.realmContext();
-    return new PolarisCallContext(
-        realmContext,
-        metaStoreManagerFactory.getOrCreateSession(realmContext),
-        services.polarisDiagnostics());
+    return new PolarisCallContext(realmContext, services.polarisDiagnostics());
   }
 
   private PolarisAdminService setupPolarisAdminService(
@@ -255,7 +253,7 @@ public class ManagementServiceTest {
   @Test
   public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisCallContext callContext = setupCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
@@ -274,8 +272,12 @@ public class ManagementServiceTest {
   /** Simulates the case when a catalog is dropped after being found while listing all catalogs. */
   @Test
   public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
-    TestPolarisMetaStoreManager metaStoreManager = new TestPolarisMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    TestPolarisMetaStoreManager metaStoreManager =
+        new TestPolarisMetaStoreManager(
+            () ->
+                (TransactionalPersistence)
+                    services.metaStoreManagerFactory().getOrCreateSession(services.realmContext()));
+    PolarisCallContext callContext = setupCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
@@ -315,6 +317,10 @@ public class ManagementServiceTest {
    */
   public static class TestPolarisMetaStoreManager extends TransactionalMetaStoreManagerImpl {
     private Set<Long> fakeEntityNotFoundIds = new HashSet<>();
+
+    public TestPolarisMetaStoreManager(Supplier<TransactionalPersistence> metaStoreSupplier) {
+      super(metaStoreSupplier);
+    }
 
     public void setFakeEntityNotFoundIds(Set<Long> ids) {
       fakeEntityNotFoundIds = new HashSet<>(ids);
