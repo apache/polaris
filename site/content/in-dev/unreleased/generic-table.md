@@ -22,7 +22,7 @@ type: docs
 weight: 435
 ---
 
-The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, csv etc. It currently provides the following capabilities:
+The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, lance, csv etc. It currently provides the following capabilities:
 - Create a generic table under a namespace
 - Load a generic table
 - Drop a generic table
@@ -35,7 +35,7 @@ The Generic Table in Apache Polaris is designed to provide support for non-Icebe
 A generic table in Polaris is an entity that defines the following fields:
 
 - **name** (required): A unique identifier for the table within a namespace
-- **format** (required): The format for the generic table, i.e. "delta", "csv"
+- **format** (required): The format for the generic table, i.e. "delta", "lance", "csv"
 - **base-location** (optional): Table base location in URI format. For example: s3://<my-bucket>/path/to/table
   - The table base location is a location that includes all files for the table
   - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.

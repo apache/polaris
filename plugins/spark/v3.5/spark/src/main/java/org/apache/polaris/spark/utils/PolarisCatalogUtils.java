@@ -50,6 +50,11 @@ public class PolarisCatalogUtils {
     return "delta".equalsIgnoreCase(provider);
   }
 
+  /** Check whether the table provider is lance. */
+  public static boolean useLance(String provider) {
+    return "lance".equalsIgnoreCase(provider);
+  }
+
   /**
    * For tables whose location is manged by Spark Session Catalog, there will be no location or path
    * in the properties.

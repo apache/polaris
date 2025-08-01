@@ -50,7 +50,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1,com.lancedb:lance-spark-3.5_2.12:0.0.2 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -60,6 +60,9 @@ bin/spark-shell \
 --conf spark.sql.catalog.<catalog-name>.credential="root:secret" \
 --conf spark.sql.catalog.<catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<catalog-name>.token-refresh-enabled=true \
+--conf spark.sql.catalog.<lance-catalog-name>=com.lancedb.lance.spark.LanceNamespaceSparkCatalog \
+--conf spark.sql.catalog.<lance-catalog-name>.impl=<lance-namespace-impl> \
+--conf spark.sql.catalog.<lance-catalog-name>.<impl-config-key>=<impl-config-value> \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
@@ -73,7 +76,7 @@ The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.1.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.1.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1,com.lancedb:lance-spark-3.5_2.12:0.0.2 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -83,6 +86,9 @@ bin/spark-shell \
 --conf spark.sql.catalog.polaris.credential="root:secret" \
 --conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
+--conf spark.sql.catalog.<lance-catalog-name>=com.lancedb.lance.spark.LanceNamespaceSparkCatalog \
+--conf spark.sql.catalog.<lance-catalog-name>.impl=<lance-namespace-impl> \
+--conf spark.sql.catalog.<lance-catalog-name>.<impl-config-key>=<impl-config-value> \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
@@ -99,7 +105,7 @@ To start Spark using the bundle JAR, specify it with the `--jars` option as show
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1,com.lancedb:lance-spark-3.5_2.12:0.0.2 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -109,12 +115,15 @@ bin/spark-shell \
 --conf spark.sql.catalog.<catalog-name>.credential="root:secret" \
 --conf spark.sql.catalog.<catalog-name>.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.<catalog-name>.token-refresh-enabled=true \
+--conf spark.sql.catalog.<lance-catalog-name>=com.lancedb.lance.spark.LanceNamespaceSparkCatalog \
+--conf spark.sql.catalog.<lance-catalog-name>.impl=<lance-namespace-impl> \
+--conf spark.sql.catalog.<lance-catalog-name>.<impl-config-key>=<impl-config-value> \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
 # Limitations
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table
-requests to the Iceberg REST endpoints, and routes all Delta table requests to the Generic Table REST endpoints.
+The Polaris Spark client supports catalog management for Iceberg, Delta, and Lance tables. It routes Iceberg table
+requests to the Iceberg REST endpoints, and routes Delta and Lance table requests to the Generic Table REST endpoints.
 
 The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
 Following describes the current functionality limitations of the Polaris Spark client:
@@ -123,4 +132,4 @@ Following describes the current functionality limitations of the Polaris Spark c
 2) Create a Delta table without explicit location is not supported.
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
-5) For other non-Iceberg tables like csv, it is not supported today.
+5For other non-Iceberg tables like csv, it is not supported today.
