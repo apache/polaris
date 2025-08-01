@@ -40,7 +40,6 @@ import com.google.cloud.storage.StorageOptions;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -160,10 +159,11 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private AccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
-    List<String> allowedLoc = new ArrayList<>();
-    allowedLoc.addAll(allowedReadLoc);
-    allowedLoc.addAll(allowedWriteLoc);
-    GcpStorageConfigurationInfo gcpConfig = new GcpStorageConfigurationInfo(allowedLoc);
+    GcpStorageConfigurationInfo gcpConfig =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(allowedReadLoc)
+            .addAllAllowedLocations(allowedWriteLoc)
+            .build();
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
             GoogleCredentials.getApplicationDefault(),

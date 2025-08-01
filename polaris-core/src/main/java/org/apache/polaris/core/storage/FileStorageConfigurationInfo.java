@@ -18,27 +18,35 @@
  */
 package org.apache.polaris.core.storage;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Locale;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Support for file:// URLs in storage configuration. This is pretty-much only used for testing.
  * Supports URLs that start with file:// or /, but also supports wildcard (*) to support certain
  * test cases.
  */
-public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableFileStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableFileStorageConfigurationInfo.class)
+@JsonTypeName("FileStorageConfigurationInfo")
+public abstract class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  public FileStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
-          List<String> allowedLocations) {
-    super(StorageType.FILE, allowedLocations);
+  public static ImmutableFileStorageConfigurationInfo.Builder builder() {
+    return ImmutableFileStorageConfigurationInfo.builder();
   }
 
   @Override
   public String getFileIoImplClassName() {
     return "org.apache.iceberg.hadoop.HadoopFileIO";
+  }
+
+  @Override
+  public StorageType getStorageType() {
+    return StorageType.FILE;
   }
 
   @Override

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.storage.aws;
 
-import static org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType.S3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
@@ -89,8 +88,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3, List.of(warehouseDir), roleARN, externalId, null),
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(warehouseDir)
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .build(),
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"));
@@ -233,12 +235,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
                             newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                storageType,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                region),
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(region)
+                                .build(),
                             true,
                             Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                             Set.of(s3Path(bucket, firstPath))))
@@ -250,12 +252,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        storageType,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        region),
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(region)
+                        .build(),
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)));
@@ -345,18 +347,16 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
     AccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -446,12 +446,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
@@ -511,12 +511,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
                 true, /* allowList = true */
                 Set.of(),
                 Set.of());
@@ -551,12 +551,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
                             newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                clientRegion),
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(clientRegion)
+                                .build(),
                             true, /* allowList = true */
                             Set.of(),
                             Set.of()))
@@ -568,12 +568,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        S3,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        clientRegion),
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(clientRegion)
+                        .build(),
                     true, /* allowList = true */
                     Set.of(),
                     Set.of());
@@ -606,8 +606,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, null),
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .build(),
                     true, /* allowList = true */
                     Set.of(),
                     Set.of());
@@ -622,12 +625,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
                             newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                null),
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .build(),
                             true, /* allowList = true */
                             Set.of(),
                             Set.of()))
