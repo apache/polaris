@@ -68,4 +68,4 @@ if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir
 fi
 
 export SCRIPT_DIR="${dir}"
-exec polaris "$@"
+env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
