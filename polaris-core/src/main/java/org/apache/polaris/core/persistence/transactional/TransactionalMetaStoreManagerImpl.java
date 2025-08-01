@@ -2060,7 +2060,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     try {
       AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
-              callCtx,
+              callCtx.getRealmConfig(),
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,

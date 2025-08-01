@@ -47,7 +47,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -73,7 +73,7 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   public AccessConfig getSubscopedCreds(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -125,8 +125,7 @@ public class AzureCredentialsStorageIntegration
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
-    int intendedDurationSeconds =
-        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    int intendedDurationSeconds = realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
@@ -145,7 +144,7 @@ public class AzureCredentialsStorageIntegration
         .addKeyValue("container", location.getContainer())
         .addKeyValue("filePath", filePath)
         .log("Subscope Azure SAS");
-    String sasToken = "";
+    String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
       sasToken =
           getBlobUserDelegationSas(

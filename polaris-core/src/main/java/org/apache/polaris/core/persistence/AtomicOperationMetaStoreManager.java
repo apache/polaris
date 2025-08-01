@@ -1613,7 +1613,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     try {
       AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
-              callCtx,
+              callCtx.getRealmConfig(),
               storageConfigurationInfo,
               allowListOperation,
               allowedReadLocations,
