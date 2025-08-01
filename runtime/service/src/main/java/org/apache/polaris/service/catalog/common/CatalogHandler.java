@@ -239,6 +239,13 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  protected void authorizeRemoteSigningOperationOrThrow(
+      PolarisAuthorizableOperation op, TableIdentifier identifier) {
+    // Remote signing operations require the same access checks as creating a table-like
+    // entity under a namespace, so we can reuse the same authorization logic.
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+  }
+
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     resolutionManifest =

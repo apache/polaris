@@ -217,6 +217,7 @@ This product includes code from Apache Iceberg.
 
 * spec/iceberg-rest-catalog-open-api.yaml
 * spec/polaris-catalog-apis/oauth-tokens-api.yaml
+* spec/s3-sign/iceberg-s3-signer-open-api.yaml
 * integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationBase.java
 * runtime/service/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 * runtime/service/src/main/java/org/apache/polaris/service/catalog/iceberg/CatalogHandlerUtils.java
