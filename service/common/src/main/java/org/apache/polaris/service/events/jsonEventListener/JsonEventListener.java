@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
+package org.apache.polaris.service.events.jsonEventListener;
+
+import java.util.HashMap;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface QuarkusPolarisEventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   */
-  String type();
+public abstract class JsonEventListener extends PolarisEventListener {
+  protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
+
+  @Override
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+    HashMap<String, Object> properties = new HashMap<>();
+    properties.put("event_type", event.getClass().getSimpleName());
+    properties.put("table_identifier", event.tableIdentifier().toString());
+    transformAndSendEvent(properties);
+  }
 }
