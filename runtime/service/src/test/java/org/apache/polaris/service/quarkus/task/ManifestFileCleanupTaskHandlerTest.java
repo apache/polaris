@@ -42,7 +42,6 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -68,7 +67,7 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
@@ -98,9 +97,8 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler =
@@ -127,9 +125,8 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(polarisCallContext);
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -173,9 +170,8 @@ class ManifestFileCleanupTaskHandlerTest {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             new PolarisDefaultDiagServiceImpl());
-    CallContext.setCurrentContext(polarisCallContext);
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {

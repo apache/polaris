@@ -79,7 +79,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     // run transaction on our underlying store
-    return store.runInTransaction(callCtx, transactionCode);
+    return store.runInTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -88,7 +88,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInTransaction(callCtx, transactionCode);
+    store.runActionInTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -96,7 +96,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T> T runInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // run transaction on our underlying store
-    return store.runInReadTransaction(callCtx, transactionCode);
+    return store.runInReadTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -105,7 +105,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInReadTransaction(callCtx, transactionCode);
+    store.runActionInReadTransaction(callCtx.getDiagServices(), transactionCode);
   }
 
   /**
@@ -577,7 +577,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

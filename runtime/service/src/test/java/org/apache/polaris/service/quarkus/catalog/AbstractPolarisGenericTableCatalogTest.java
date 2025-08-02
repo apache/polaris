@@ -49,14 +49,12 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -104,6 +102,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
+  @Inject ResolverFactory resolverFactory;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -152,29 +151,16 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
 
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(
-            realmContext, polarisContext.getRealmConfig());
-    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
-
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
@@ -249,7 +235,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,

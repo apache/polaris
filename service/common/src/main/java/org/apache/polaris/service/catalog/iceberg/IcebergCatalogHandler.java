@@ -996,7 +996,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         metaStoreManager.updateEntitiesPropertiesIfNotChanged(
             callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
-      // TODO: Retries and server-side cleanup on failure
+      // TODO: Retries and server-side cleanup on failure, review possible exceptions
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());

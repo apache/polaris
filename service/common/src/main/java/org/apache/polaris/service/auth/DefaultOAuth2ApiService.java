@@ -110,7 +110,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     } else if (subjectToken != null) {
       tokenResponse =
           tokenBroker.generateFromToken(
-              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
+              subjectTokenType,
+              subjectToken,
+              grantType,
+              scope,
+              callContext.getPolarisCallContext(),
+              requestedTokenType);
     } else {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
     }

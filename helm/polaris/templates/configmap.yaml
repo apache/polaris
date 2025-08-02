@@ -136,7 +136,7 @@ data:
     {{- $_ = set $map "quarkus.log.console.enable" "true" -}}
     {{- $_ = set $map "quarkus.log.console.level" .Values.logging.console.threshold -}}
     {{- if .Values.logging.console.json -}}
-    {{- $_ = set $map "quarkus.log.console.json" "true" -}}
+    {{- $_ = set $map "quarkus.log.console.json.enabled" "true" -}}
     {{- else -}}
     {{- $_ = set $map "quarkus.log.console.format" .Values.logging.console.format -}}
     {{- end -}}
@@ -153,7 +153,7 @@ data:
     {{- $_ = set $map "quarkus.log.file.rotation.file-suffix" .Values.logging.file.rotation.fileSuffix -}}
     {{- end -}}
     {{- if .Values.logging.file.json -}}
-    {{- $_ = set $map "quarkus.log.file.json" "true" -}}
+    {{- $_ = set $map "quarkus.log.file.json.enabled" "true" -}}
     {{- else -}}
     {{- $_ = set $map "quarkus.log.file.format" .Values.logging.file.format -}}
     {{- end -}}

@@ -20,6 +20,8 @@
 
 set -e
 
+[[ -z ${DOCKER} ]] && DOCKER="$(which podman > /dev/null && echo podman || echo docker)"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd "$SCRIPT_DIR/../python" > /dev/null
 
@@ -62,7 +64,7 @@ echo "Regenerating python from the spec"
 
 OPEN_API_CLI_VERSION="v7.11.0"
 
-docker run --rm \
+${DOCKER} run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/polaris-management-service.yml \
@@ -73,7 +75,7 @@ docker run --rm \
   --additional-properties=pythonVersion=3.9 \
   --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
-docker run --rm \
+${DOCKER} run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/polaris-catalog-service.yaml \
@@ -85,7 +87,7 @@ docker run --rm \
   --additional-properties=pythonVersion=3.9 \
   --ignore-file-override /local/client/python/.openapi-generator-ignore > /dev/null
 
-docker run --rm \
+${DOCKER} run --rm \
   -v "${SCRIPT_DIR}/../..:/local" \
   openapitools/openapi-generator-cli:${OPEN_API_CLI_VERSION} generate \
   -i /local/spec/iceberg-rest-catalog-open-api.yaml \

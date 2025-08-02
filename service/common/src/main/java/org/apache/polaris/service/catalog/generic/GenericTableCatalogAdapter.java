@@ -69,9 +69,6 @@ public class GenericTableCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
-
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(

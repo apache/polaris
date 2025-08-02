@@ -58,6 +58,7 @@ public class NoneTokenBrokerFactory implements TokenBrokerFactory {
             String subjectToken,
             String grantType,
             String scope,
+            PolarisCallContext polarisCallContext,
             TokenType requestedTokenType) {
           return null;
         }

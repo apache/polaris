@@ -61,8 +61,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -72,6 +70,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -193,6 +192,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
+  @Inject protected ResolverFactory resolverFactory;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -234,28 +234,17 @@ public abstract class PolarisAuthzTestBase {
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            managerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             clock);
     this.entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
     callContext = polarisContext;
-    CallContext.setCurrentContext(callContext);
 
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
-
-    this.authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    this.authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     this.adminService =
         new PolarisAdminService(
@@ -419,30 +408,15 @@ public abstract class PolarisAuthzTestBase {
       String principalName,
       PrincipalWithCredentialsCredentials credentials,
       PolarisCallContext polarisContext) {
-    EntityResult lookupEntity =
-        metaStoreManager.readEntityByName(
-            callContext.getPolarisCallContext(),
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            principalName);
+    PrincipalEntity principal =
+        metaStoreManager.findPrincipalByName(polarisContext, principalName).orElseThrow();
     metaStoreManager.rotatePrincipalSecrets(
         callContext.getPolarisCallContext(),
         credentials.getClientId(),
-        lookupEntity.getEntity().getId(),
+        principal.getId(),
         false,
         credentials.getClientSecret()); // This should actually be the secret's hash
-
-    return new PrincipalEntity(
-        PolarisEntity.of(
-            metaStoreManager
-                .readEntityByName(
-                    polarisContext,
-                    null,
-                    PolarisEntityType.PRINCIPAL,
-                    PolarisEntitySubType.NULL_SUBTYPE,
-                    principalName)
-                .getEntity()));
+    return metaStoreManager.findPrincipalByName(polarisContext, principalName).orElseThrow();
   }
 
   /**
@@ -468,7 +442,7 @@ public abstract class PolarisAuthzTestBase {
     this.baseCatalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             callContext,
             passthroughView,
@@ -498,14 +472,14 @@ public abstract class PolarisAuthzTestBase {
     @Inject
     public TestPolarisCallContextCatalogFactory(
         StorageCredentialCache storageCredentialCache,
-        RealmEntityManagerFactory entityManagerFactory,
+        ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
           storageCredentialCache,
-          entityManagerFactory,
+          resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,
           fileIOFactory,

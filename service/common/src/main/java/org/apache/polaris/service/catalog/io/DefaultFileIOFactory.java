@@ -100,6 +100,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
     if (accessConfig.isPresent()) {
       properties.putAll(accessConfig.get().credentials());
       properties.putAll(accessConfig.get().extraProperties());
+      properties.putAll(accessConfig.get().internalProperties());
     }
 
     return loadFileIOInternal(ioImplClassName, properties);

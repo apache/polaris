@@ -25,13 +25,11 @@ import java.util.List;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 
 /**
  * Wraps logic of handling name-caching and entity-caching against a concrete underlying entity
@@ -40,31 +38,19 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
  */
 public class PolarisEntityManager {
   private final PolarisMetaStoreManager metaStoreManager;
-  private final EntityCache entityCache;
+  private final ResolverFactory resolverFactory;
 
   // Lazily instantiated only a single time per entity manager.
   private ResolvedPolarisEntity implicitResolvedRootContainerEntity = null;
 
   /**
    * @param metaStoreManager the metastore manager for the current realm
-   * @param entityCache the entity cache to use (it may be {@code null}).
+   * @param resolverFactory the resolver factory to use
    */
   public PolarisEntityManager(
-      @Nonnull PolarisMetaStoreManager metaStoreManager, @Nullable EntityCache entityCache) {
+      @Nonnull PolarisMetaStoreManager metaStoreManager, @Nonnull ResolverFactory resolverFactory) {
     this.metaStoreManager = metaStoreManager;
-    this.entityCache = entityCache;
-  }
-
-  public Resolver prepareResolver(
-      @Nonnull CallContext callContext,
-      @Nonnull SecurityContext securityContext,
-      @Nullable String referenceCatalogName) {
-    return new Resolver(
-        callContext.getPolarisCallContext(),
-        metaStoreManager,
-        securityContext,
-        entityCache,
-        referenceCatalogName);
+    this.resolverFactory = resolverFactory;
   }
 
   public PolarisResolutionManifest prepareResolutionManifest(
@@ -72,7 +58,8 @@ public class PolarisEntityManager {
       @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest manifest =
-        new PolarisResolutionManifest(callContext, this, securityContext, referenceCatalogName);
+        new PolarisResolutionManifest(
+            callContext, resolverFactory, securityContext, referenceCatalogName);
     manifest.setSimulatedResolvedRootContainerEntity(
         getSimulatedResolvedRootContainerEntity(callContext));
     return manifest;
@@ -94,15 +81,11 @@ public class PolarisEntityManager {
       // root entity, then we must actually create a representation of this root entity in the
       // entity store itself.
       PolarisEntity serviceAdminPrincipalRole =
-          PolarisEntity.of(
-              metaStoreManager
-                  .readEntityByName(
-                      callContext.getPolarisCallContext(),
-                      null,
-                      PolarisEntityType.PRINCIPAL_ROLE,
-                      PolarisEntitySubType.NULL_SUBTYPE,
-                      PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
-                  .getEntity());
+          metaStoreManager
+              .findPrincipalRoleByName(
+                  callContext.getPolarisCallContext(),
+                  PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+              .orElse(null);
       if (serviceAdminPrincipalRole == null) {
         throw new IllegalStateException("Failed to resolve service_admin PrincipalRole");
       }

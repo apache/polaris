@@ -139,7 +139,7 @@ public class FileIOFactoryTest {
     callContext =
         new PolarisCallContext(
             realmContext,
-            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
+            testServices.metaStoreManagerFactory().getOrCreateSession(realmContext),
             testServices.polarisDiagnostics(),
             testServices.configurationStore(),
             Clock.systemUTC());
@@ -234,7 +234,7 @@ public class FileIOFactoryTest {
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.storageCredentialCache(),
-            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services.resolverFactory(),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
             callContext,
             passthroughView,

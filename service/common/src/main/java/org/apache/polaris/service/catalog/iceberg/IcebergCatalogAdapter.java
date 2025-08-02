@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -136,6 +137,7 @@ public class IcebergCatalogAdapter
   private final CallContext callContext;
   private final CallContextCatalogFactory catalogFactory;
   private final PolarisEntityManager entityManager;
+  private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final PolarisAuthorizer polarisAuthorizer;
@@ -149,6 +151,7 @@ public class IcebergCatalogAdapter
       CallContext callContext,
       CallContextCatalogFactory catalogFactory,
       PolarisEntityManager entityManager,
+      ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
@@ -159,15 +162,13 @@ public class IcebergCatalogAdapter
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
     this.entityManager = entityManager;
+    this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   /**
@@ -771,7 +772,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver = entityManager.prepareResolver(callContext, securityContext, warehouse);
+    Resolver resolver = resolverFactory.createResolver(callContext, securityContext, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);

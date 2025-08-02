@@ -43,7 +43,6 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,9 +103,9 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -116,6 +115,8 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -235,6 +236,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
+  private ResolverFactory resolverFactory;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
@@ -274,32 +276,28 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
 
     EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
-    entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
+    resolverFactory =
+        (callContext, securityContext, referenceCatalogName) ->
+            new Resolver(
+                callContext.getPolarisCallContext(),
+                metaStoreManager,
+                securityContext,
+                entityCache,
+                referenceCatalogName);
+    QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    // LocalPolarisMetaStoreManagerFactory.bootstrapServiceAndCreatePolarisPrincipalForRealm sets
-    // the CallContext.setCurrentContext() but never clears it, whereas the NoSQL one resets it.
-    CallContext.setCurrentContext(polarisContext);
+    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
 
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
-
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     AuthenticatedPolarisPrincipal authenticatedRoot =
-        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+        new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
@@ -437,7 +435,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         storageCredentialCache,
-        entityManager,
+        resolverFactory,
         metaStoreManager,
         polarisContext,
         passthroughView,
@@ -1820,7 +1818,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    EnumMap<StorageAccessProperty, String> credentials =
+    Map<String, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
                 polarisContext,
@@ -1830,13 +1828,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
-            .getCredentials();
+            .getAccessConfig()
+            .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, SESSION_TOKEN);
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), TEST_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
@@ -2114,7 +2113,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Schema expected = update.apply();
 
     Assertions.assertThatThrownBy(() -> update.commit())
-        .isInstanceOf(CommitFailedException.class)
+        .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
   }
 

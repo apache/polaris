@@ -37,17 +37,18 @@ import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
@@ -71,14 +72,12 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+  public AccessConfig getSubscopedCreds(
       @Nonnull CallContext callContext,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    EnumMap<StorageAccessProperty, String> credentialMap =
-        new EnumMap<>(StorageAccessProperty.class);
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -171,12 +170,41 @@ public class AzureCredentialsStorageIntegration
       throw new RuntimeException(
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
-    credentialMap.put(StorageAccessProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(StorageAccessProperty.AZURE_ACCOUNT_HOST, storageDnsName);
-    credentialMap.put(
-        StorageAccessProperty.EXPIRATION_TIME,
-        String.valueOf(sanitizedEndTime.toInstant().toEpochMilli()));
-    return credentialMap;
+
+    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant());
+  }
+
+  @VisibleForTesting
+  static AccessConfig toAccessConfig(String sasToken, String storageDnsName, Instant expiresAt) {
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    handleAzureCredential(accessConfig, sasToken, storageDnsName);
+    accessConfig.put(
+        StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    return accessConfig.build();
+  }
+
+  private static void handleAzureCredential(
+      AccessConfig.Builder config, String sasToken, String host) {
+    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+
+    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
+    if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
+      int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
+      if (suffixIndex > 0) {
+        String withSuffixStripped = host.substring(0, suffixIndex);
+        config.putCredential(
+            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
+      }
+    }
+
+    if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
+      int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
+      if (suffixIndex > 0) {
+        String withSuffixStripped = host.substring(0, suffixIndex);
+        config.putCredential(
+            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
+      }
+    }
   }
 
   private String getBlobUserDelegationSas(

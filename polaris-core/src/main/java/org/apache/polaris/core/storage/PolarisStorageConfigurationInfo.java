@@ -34,7 +34,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -109,26 +108,22 @@ public abstract class PolarisStorageConfigurationInfo {
     try {
       return DEFAULT_MAPPER.writeValueAsString(this);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("serialize failed: " + e.getMessage(), e);
     }
   }
 
   /**
    * Deserialize a json string into a PolarisStorageConfiguration object
    *
-   * @param diagnostics the diagnostics instance
    * @param jsonStr a json string
    * @return the PolarisStorageConfiguration object
    */
-  public static PolarisStorageConfigurationInfo deserialize(
-      @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
+  public static PolarisStorageConfigurationInfo deserialize(final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
-    } catch (JsonProcessingException exception) {
-      diagnostics.fail(
-          "fail_to_deserialize_storage_configuration", exception, "jsonStr={}", jsonStr);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("deserialize failed: " + e.getMessage(), e);
     }
-    return null;
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
@@ -137,7 +132,6 @@ public abstract class PolarisStorageConfigurationInfo {
         .map(
             storageInfo ->
                 deserialize(
-                    callContext.getDiagServices(),
                     storageInfo
                         .getInternalPropertiesAsMap()
                         .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
