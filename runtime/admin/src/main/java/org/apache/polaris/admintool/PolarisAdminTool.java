@@ -31,6 +31,7 @@ import picocli.CommandLine.HelpCommand;
       HelpCommand.class,
       BootstrapCommand.class,
       PurgeCommand.class,
+      SchemaSetupCommand.class
     })
 public class PolarisAdminTool extends BaseCommand {
 

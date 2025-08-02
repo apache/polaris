@@ -116,6 +116,29 @@ public class DatasourceOperations {
     }
   }
 
+  public boolean checkSchemaExists(String schemaName) {
+    final boolean[] exists = {false};
+
+    try {
+      runWithinTransaction(
+          connection -> {
+            try (ResultSet schemas = connection.getMetaData().getSchemas()) {
+              while (schemas.next()) {
+                if (schemaName.equalsIgnoreCase(schemas.getString("TABLE_SCHEM"))) {
+                  exists[0] = true;
+                  break;
+                }
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to check schema existence: " + schemaName, e);
+    }
+
+    return exists[0];
+  }
+
   /**
    * Executes SELECT Query and returns the results after applying a transformer
    *
