@@ -21,12 +21,10 @@ package org.apache.polaris.service.quarkus.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,13 +53,13 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class ManagementServiceTest {
   private TestServices services;
@@ -173,7 +171,7 @@ public class ManagementServiceTest {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 
-  private PolarisCallContext setupCallContext(PolarisMetaStoreManager metaStoreManager) {
+  private PolarisCallContext setupCallContext() {
     MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
     RealmContext realmContext = services.realmContext();
     return new PolarisCallContext(
@@ -255,7 +253,7 @@ public class ManagementServiceTest {
   @Test
   public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisCallContext callContext = setupCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
@@ -274,8 +272,8 @@ public class ManagementServiceTest {
   /** Simulates the case when a catalog is dropped after being found while listing all catalogs. */
   @Test
   public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
-    TestPolarisMetaStoreManager metaStoreManager = new TestPolarisMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext(metaStoreManager);
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisCallContext callContext = setupCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
@@ -302,34 +300,19 @@ public class ManagementServiceTest {
                 "my-catalog-2"),
             List.of());
 
-    metaStoreManager.setFakeEntityNotFoundIds(Set.of(catalog1.getCatalog().getId()));
+    Mockito.doAnswer(
+            invocation -> {
+              Object entityId = invocation.getArgument(2);
+              if (entityId.equals(catalog1.getCatalog().getId())) {
+                return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
+              }
+              return invocation.callRealMethod();
+            })
+        .when(metaStoreManager)
+        .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
+
     List<PolarisEntity> catalogs = polarisAdminService.listCatalogs();
     assertThat(catalogs.size()).isEqualTo(1);
     assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
-  }
-
-  /**
-   * Intended to be a delegate to TransactionalMetaStoreManagerImpl with the ability to inject
-   * faults. Currently, you can force loadEntity() to return ENTITY_NOT_FOUND for a set of entity
-   * IDs.
-   */
-  public static class TestPolarisMetaStoreManager extends TransactionalMetaStoreManagerImpl {
-    private Set<Long> fakeEntityNotFoundIds = new HashSet<>();
-
-    public void setFakeEntityNotFoundIds(Set<Long> ids) {
-      fakeEntityNotFoundIds = new HashSet<>(ids);
-    }
-
-    @Override
-    public @Nonnull EntityResult loadEntity(
-        @Nonnull PolarisCallContext callCtx,
-        long entityCatalogId,
-        long entityId,
-        @Nonnull PolarisEntityType entityType) {
-      if (fakeEntityNotFoundIds.contains(entityId)) {
-        return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
-      }
-      return super.loadEntity(callCtx, entityCatalogId, entityId, entityType);
-    }
   }
 }
