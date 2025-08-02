@@ -19,15 +19,11 @@
 
 package org.apache.polaris.core.storage;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigImpl;
 
 public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    return new PolarisCallContext(
-        () -> "realm", Mockito.mock(BasePersistence.class), Mockito.mock(PolarisDiagnostics.class));
-  }
+
+  protected static final RealmConfigImpl EMPTY_REALM_CONFIG =
+      new RealmConfigImpl(new PolarisConfigurationStore() {}, () -> "realm");
 }

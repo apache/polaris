@@ -26,7 +26,6 @@ import java.util.Set;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
@@ -209,7 +208,7 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public AccessConfig getSubscopedCreds(
-        @Nonnull CallContext callContext,
+        @Nonnull RealmConfig realmConfig,
         @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,

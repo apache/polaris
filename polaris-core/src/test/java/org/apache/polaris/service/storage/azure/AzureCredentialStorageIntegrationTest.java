@@ -348,7 +348,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
     return azureCredsIntegration.getSubscopedCreds(
-        newCallContext(),
+        EMPTY_REALM_CONFIG,
         azureConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
