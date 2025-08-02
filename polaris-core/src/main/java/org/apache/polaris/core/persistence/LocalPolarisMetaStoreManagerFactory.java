@@ -86,18 +86,20 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * Subclasses can override this to inject different implementations of PolarisMetaStoreManager
    * into the existing realm-based setup flow.
    */
-  protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new TransactionalMetaStoreManagerImpl();
+  protected PolarisMetaStoreManager createNewMetaStoreManager(
+      Supplier<TransactionalPersistence> metaStoreSupplier) {
+    return new TransactionalMetaStoreManagerImpl(metaStoreSupplier);
   }
 
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet) {
     final StoreType backingStore = createBackingStore(diagnostics);
-    sessionSupplierMap.put(
-        realmContext.getRealmIdentifier(),
-        () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics));
+    Supplier<TransactionalPersistence> transactionalPersistenceSupplier =
+        () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics);
+    sessionSupplierMap.put(realmContext.getRealmIdentifier(), transactionalPersistenceSupplier);
 
-    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+    PolarisMetaStoreManager metaStoreManager =
+        createNewMetaStoreManager(transactionalPersistenceSupplier);
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
@@ -126,9 +128,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      TransactionalPersistence session = getOrCreateSession(realmContext);
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -148,15 +149,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       checkPolarisServiceBootstrappedForRealm(realmContext);
     }
     return metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
-    if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      initializeForRealm(realmContext, null);
-    }
-    checkPolarisServiceBootstrappedForRealm(realmContext);
-    return sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
   }
 
   @Override
@@ -182,9 +174,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     // CallContext may not have been resolved yet.
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagServices);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, diagServices);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
@@ -217,9 +207,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagServices);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, diagServices);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {

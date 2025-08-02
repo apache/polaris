@@ -36,8 +36,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,13 +51,9 @@ public class CatalogEntityTest {
 
   @BeforeEach
   public void setup() {
-    MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
     RealmContext realmContext = () -> "realm";
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
+        new PolarisCallContext(realmContext, new PolarisDefaultDiagServiceImpl());
     this.callContext = polarisCallContext;
   }
 

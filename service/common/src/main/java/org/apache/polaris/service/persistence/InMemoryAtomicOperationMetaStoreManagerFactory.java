@@ -21,9 +21,11 @@ package org.apache.polaris.service.persistence;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
@@ -46,7 +48,8 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
   }
 
   @Override
-  protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager();
+  protected PolarisMetaStoreManager createNewMetaStoreManager(
+      Supplier<TransactionalPersistence> metaStoreSupplier) {
+    return new AtomicOperationMetaStoreManager(metaStoreSupplier::get);
   }
 }
