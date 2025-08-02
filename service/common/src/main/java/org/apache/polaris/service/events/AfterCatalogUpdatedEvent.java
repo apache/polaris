@@ -16,16 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.Catalog;
 
-/**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
- */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+/** Emitted when Polaris updates a catalog. */
+public record AfterCatalogUpdatedEvent(Catalog catalog) implements PolarisEvent {}
