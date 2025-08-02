@@ -20,6 +20,14 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.view.ViewMetadata;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 
 public class StorageUtil {
   /**
@@ -61,5 +69,47 @@ public class StorageUtil {
    */
   public static @Nonnull String getBucket(URI uri) {
     return uri.getAuthority();
+  }
+
+  /** Given a TableMetadata, extracts the locations where the table's [meta]data might be found. */
+  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
+    return getLocationsAllowedToBeAccessed(tableMetadata.location(), tableMetadata.properties());
+  }
+
+  /** Given a baseLocation and entity (table?) properties, extracts the relevant locations */
+  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(
+      String baseLocation, Map<String, String> properties) {
+    Set<String> locations = new HashSet<>();
+    locations.add(baseLocation);
+    locations.add(properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY));
+    locations.add(
+        properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    locations.remove(null);
+    return removeRedundantLocations(locations);
+  }
+
+  /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
+  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
+    return Set.of(viewMetadata.location());
+  }
+
+  /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
+  private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
+    Set<StorageLocation> locations =
+        locationStrings.stream()
+            .filter(Objects::nonNull)
+            .map(StorageLocation::of)
+            .collect(Collectors.toSet());
+
+    for (StorageLocation potentialParent : locations) {
+      for (StorageLocation potentialChild : locations) {
+        if (!potentialParent.equals(potentialChild)) {
+          if (potentialChild.isChildOf(potentialParent)) {
+            locations.remove(potentialChild);
+          }
+        }
+      }
+    }
+    return locations.stream().map(StorageLocation::toString).collect(Collectors.toSet());
   }
 }
