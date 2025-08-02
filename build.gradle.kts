@@ -102,8 +102,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("gradle/wrapper/gradle-wrapper*")
 
   excludes.add("logs/**")
-  excludes.add("service/common/src/**/banner.txt")
-  excludes.add("quarkus/admin/src/**/banner.txt")
+  excludes.add("runtime/service/src/**/banner.txt")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")

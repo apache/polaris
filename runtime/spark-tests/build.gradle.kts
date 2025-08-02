@@ -65,7 +65,7 @@ tasks.named<Test>("intTest").configure {
     environment("AWS_REGION", "us-west-2")
   }
   // Note: the test secrets are referenced in
-  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
