@@ -80,7 +80,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
-  private final int version;
+  private final int schemaVersion;
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
@@ -89,12 +89,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId) {
+      String realmId,
+      int schemaVersion) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
-    this.version = loadVersion();
+    this.schemaVersion = schemaVersion;
   }
 
   @Override
@@ -645,7 +646,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  private int loadVersion() {
+  static int loadSchemaVersion(DatasourceOperations datasourceOperations) {
     PreparedQuery query = QueryGenerator.generateVersionQuery();
     try {
       List<SchemaVersion> schemaVersion =
@@ -665,7 +666,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
-    if (this.version < 2) {
+    if (this.schemaVersion < 2) {
       return Optional.empty();
     }
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()

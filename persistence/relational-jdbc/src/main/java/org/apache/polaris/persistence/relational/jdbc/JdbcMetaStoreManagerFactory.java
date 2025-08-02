@@ -96,6 +96,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // Materialize realmId so that background tasks that don't have an active
     // RealmContext (request-scoped bean) can still create a JdbcBasePersistenceImpl
     String realmId = realmContext.getRealmIdentifier();
+    // determine schemaVersion once per realm
+    final int schemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations);
     sessionSupplierMap.put(
         realmId,
         () ->
@@ -103,7 +105,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                 datasourceOperations,
                 secretsGenerator(realmId, rootCredentialsSet),
                 storageIntegrationProvider,
-                realmId));
+                realmId,
+                schemaVersion));
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmId, metaStoreManager);
