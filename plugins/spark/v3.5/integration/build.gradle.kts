@@ -66,6 +66,7 @@ dependencies {
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.25.1")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
+  testImplementation("com.lancedb:lance-spark-3.5_${scalaVersion}:0.0.2")
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
