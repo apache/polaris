@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -96,10 +95,11 @@ public class StorageUtil {
 
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
   private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
-    Set<StorageLocation> locations = locationStrings.stream()
-        .filter(Objects::nonNull)
-        .map(StorageLocation::of)
-        .collect(Collectors.toSet());
+    Set<StorageLocation> locations =
+        locationStrings.stream()
+            .filter(Objects::nonNull)
+            .map(StorageLocation::of)
+            .collect(Collectors.toSet());
 
     for (StorageLocation potentialParent : locations) {
       for (StorageLocation potentialChild : locations) {
