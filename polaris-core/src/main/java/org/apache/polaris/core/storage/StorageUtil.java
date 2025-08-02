@@ -22,7 +22,10 @@ import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -93,19 +96,20 @@ public class StorageUtil {
 
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
   private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
-    HashSet<String> result = new HashSet<>(locationStrings);
+    Set<StorageLocation> locations = locationStrings.stream()
+        .filter(Objects::nonNull)
+        .map(StorageLocation::of)
+        .collect(Collectors.toSet());
 
-    for (String potentialParent : locationStrings) {
-      for (String potentialChild : locationStrings) {
+    for (StorageLocation potentialParent : locations) {
+      for (StorageLocation potentialChild : locations) {
         if (!potentialParent.equals(potentialChild)) {
-          StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
-          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
-          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
-            result.remove(potentialChild);
+          if (potentialChild.isChildOf(potentialParent)) {
+            locations.remove(potentialChild);
           }
         }
       }
     }
-    return result;
+    return locations.stream().map(StorageLocation::toString).collect(Collectors.toSet());
   }
 }
