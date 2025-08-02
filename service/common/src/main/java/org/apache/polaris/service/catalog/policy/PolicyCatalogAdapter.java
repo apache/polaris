@@ -28,8 +28,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
@@ -51,7 +51,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
 
   private final RealmContext realmContext;
   private final CallContext callContext;
-  private final PolarisEntityManager entityManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
@@ -60,13 +60,13 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   public PolicyCatalogAdapter(
       RealmContext realmContext,
       CallContext callContext,
-      PolarisEntityManager entityManager,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser) {
     this.realmContext = realmContext;
     this.callContext = callContext;
-    this.entityManager = entityManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
@@ -79,7 +79,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
 
     return new PolicyCatalogHandler(
         callContext,
-        entityManager,
+        resolutionManifestFactory,
         metaStoreManager,
         securityContext,
         prefixParser.prefixToCatalogName(realmContext, prefix),

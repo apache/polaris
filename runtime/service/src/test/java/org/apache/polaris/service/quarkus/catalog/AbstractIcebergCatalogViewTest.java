@@ -49,8 +49,8 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -114,6 +114,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
+  @Inject ResolutionManifestFactory resolutionManifestFactory;
 
   private IcebergCatalog catalog;
 
@@ -163,9 +164,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             configurationStore,
             Clock.systemDefaultZone());
 
-    PolarisEntityManager entityManager =
-        new PolarisEntityManager(metaStoreManager, resolverFactory);
-
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     AuthenticatedPolarisPrincipal authenticatedRoot =
@@ -180,7 +178,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisAdminService adminService =
         new PolarisAdminService(
             polarisContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
@@ -206,7 +204,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
+            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 

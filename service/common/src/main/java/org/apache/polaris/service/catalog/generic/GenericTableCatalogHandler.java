@@ -28,8 +28,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -43,12 +43,12 @@ public class GenericTableCatalogHandler extends CatalogHandler {
 
   public GenericTableCatalogHandler(
       CallContext callContext,
-      PolarisEntityManager entityManager,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
       String catalogName,
       PolarisAuthorizer authorizer) {
-    super(callContext, entityManager, securityContext, catalogName, authorizer);
+    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
   }
 

@@ -92,7 +92,6 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -102,6 +101,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyEntity;
@@ -132,7 +132,7 @@ public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
   private final CallContext callContext;
-  private final PolarisEntityManager entityManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
@@ -145,14 +145,14 @@ public class PolarisAdminService {
 
   public PolarisAdminService(
       @NotNull CallContext callContext,
-      @NotNull PolarisEntityManager entityManager,
+      @NotNull ResolutionManifestFactory resolutionManifestFactory,
       @NotNull PolarisMetaStoreManager metaStoreManager,
       @NotNull UserSecretsManager userSecretsManager,
       @NotNull SecurityContext securityContext,
       @NotNull PolarisAuthorizer authorizer,
       @NotNull ReservedProperties reservedProperties) {
     this.callContext = callContext;
-    this.entityManager = entityManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;
     PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
@@ -202,7 +202,7 @@ public class PolarisAdminService {
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(
+        resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, null /* referenceCatalogName */);
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper rootContainerWrapper =
@@ -230,7 +230,8 @@ public class PolarisAdminService {
       PolarisEntityType entityType,
       @Nullable String referenceCatalogName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, referenceCatalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
     ResolverStatus status = resolutionManifest.resolveAll();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -264,7 +265,8 @@ public class PolarisAdminService {
   private void authorizeBasicCatalogRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleName);
@@ -285,7 +287,7 @@ public class PolarisAdminService {
   private void authorizeGrantOnRootContainerToPrincipalRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     ResolverStatus status = resolutionManifest.resolveAll();
@@ -319,7 +321,7 @@ public class PolarisAdminService {
       PolarisEntityType topLevelEntityType,
       String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
     resolutionManifest.addTopLevelName(
         topLevelEntityName, topLevelEntityType, false /* isOptional */);
     resolutionManifest.addTopLevelName(
@@ -353,7 +355,7 @@ public class PolarisAdminService {
   private void authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName, String principalName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     resolutionManifest.addTopLevelName(
@@ -387,7 +389,8 @@ public class PolarisAdminService {
       String catalogRoleName,
       String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleName);
@@ -423,7 +426,8 @@ public class PolarisAdminService {
   private void authorizeGrantOnCatalogOperationOrThrow(
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addTopLevelName(
         catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
     resolutionManifest.addPath(
@@ -456,7 +460,8 @@ public class PolarisAdminService {
       Namespace namespace,
       String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -497,7 +502,8 @@ public class PolarisAdminService {
       TableIdentifier identifier,
       String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
@@ -542,7 +548,8 @@ public class PolarisAdminService {
       PolicyIdentifier identifier,
       String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),

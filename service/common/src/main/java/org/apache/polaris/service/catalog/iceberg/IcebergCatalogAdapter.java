@@ -64,9 +64,9 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -136,7 +136,7 @@ public class IcebergCatalogAdapter
   private final RealmContext realmContext;
   private final CallContext callContext;
   private final CallContextCatalogFactory catalogFactory;
-  private final PolarisEntityManager entityManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
   private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
@@ -150,8 +150,8 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       CallContext callContext,
       CallContextCatalogFactory catalogFactory,
-      PolarisEntityManager entityManager,
       ResolverFactory resolverFactory,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
@@ -161,7 +161,7 @@ public class IcebergCatalogAdapter
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
-    this.entityManager = entityManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
     this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
@@ -197,7 +197,7 @@ public class IcebergCatalogAdapter
 
     return new IcebergCatalogHandler(
         callContext,
-        entityManager,
+        resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
         securityContext,

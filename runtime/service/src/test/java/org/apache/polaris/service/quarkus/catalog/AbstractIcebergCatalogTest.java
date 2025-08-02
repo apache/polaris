@@ -107,7 +107,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -115,6 +114,8 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -237,7 +238,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
   private ResolverFactory resolverFactory;
-  private PolarisEntityManager entityManager;
+  private ResolutionManifestFactory resolutionManifestFactory;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
@@ -292,7 +293,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
+    resolutionManifestFactory = new ResolutionManifestFactoryImpl(resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -308,7 +309,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     adminService =
         new PolarisAdminService(
             polarisContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
@@ -431,7 +432,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, catalogName);
+            polarisContext, resolutionManifestFactory, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         storageCredentialCache,
