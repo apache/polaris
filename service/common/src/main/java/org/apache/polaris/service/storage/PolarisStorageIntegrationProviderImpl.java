@@ -26,6 +26,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -52,11 +53,11 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
   @Inject
   public PolarisStorageIntegrationProviderImpl(
-      StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider) {
+      StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
     this(
         stsClientProvider,
         Optional.ofNullable(storageConfiguration.stsCredentials()),
-        storageConfiguration.gcpCredentialsSupplier());
+        storageConfiguration.gcpCredentialsSupplier(clock));
   }
 
   public PolarisStorageIntegrationProviderImpl(

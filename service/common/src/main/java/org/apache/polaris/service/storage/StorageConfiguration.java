@@ -22,8 +22,8 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -89,7 +89,7 @@ public interface StorageConfiguration {
     }
   }
 
-  default Supplier<GoogleCredentials> gcpCredentialsSupplier() {
+  default Supplier<GoogleCredentials> gcpCredentialsSupplier(Clock clock) {
     return Suppliers.memoize(
         () -> {
           if (gcpAccessToken().isEmpty()) {
@@ -103,7 +103,8 @@ public interface StorageConfiguration {
                 new AccessToken(
                     gcpAccessToken().get(),
                     new Date(
-                        Instant.now()
+                        clock
+                            .instant()
                             .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN))
                             .toEpochMilli()));
             return GoogleCredentials.create(accessToken);
