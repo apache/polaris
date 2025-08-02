@@ -89,6 +89,7 @@ To streamline the developer experience, especially for common setup and build ta
   - Managing development clusters: e.g., `make minikube-start-cluster, make minikube-cleanup`
   - Automating Helm tasks: e.g., `make helm-doc-generate, make helm-unittest`
   - Handling dependencies: e.g., `make install-dependencies-brew`
+  - Managing client operations: e.g., `make client-lint, make client-regenerate`
 
 To see available commands:
 ```bash
