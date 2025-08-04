@@ -882,7 +882,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreatePrincipalAndResetCredentialsWithCustomValues() {
-    // 1️⃣ Create a new principal using root user
+    //  Create a new principal using root user
     Principal principal = Principal.builder()
             .setName(client.newEntityName("myprincipal-reset"))
             .setProperties(Map.of("custom-tag", "bar"))
@@ -909,7 +909,7 @@ public class PolarisManagementServiceIntegrationTest {
     assertThat(resetCreds.getCredentials().getClientId()).isEqualTo("f174b76a7e1a99e2");
     assertThat(resetCreds.getCredentials().getClientSecret()).isEqualTo("27029d236abc08e204922b0a07031bc2");
 
-    // 3️⃣ Principal itself tries to reset with custom creds → should fail (403 Forbidden)
+    // Principal itself tries to reset with custom creds → should fail (403 Forbidden)
     String principalToken = client.obtainToken(resetCreds);
     customBody = Map.of(
             "clientId", "f174b76a7e1a99e3",
