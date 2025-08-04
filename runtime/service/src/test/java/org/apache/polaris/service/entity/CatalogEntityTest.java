@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -36,6 +37,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
@@ -49,18 +51,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private CallContext callContext;
 
   @BeforeEach
   public void setup() {
-    MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
     RealmContext realmContext = () -> "realm";
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
-    this.callContext = polarisCallContext;
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        new InMemoryPolarisMetaStoreManagerFactory(null, diagnostics);
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    this.callContext = new PolarisCallContext(realmContext, metaStore, diagnostics);
   }
 
   @ParameterizedTest

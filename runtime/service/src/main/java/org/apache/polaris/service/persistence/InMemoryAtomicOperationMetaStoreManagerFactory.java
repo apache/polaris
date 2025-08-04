@@ -35,8 +35,9 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class InMemoryAtomicOperationMetaStoreManagerFactory
     extends InMemoryPolarisMetaStoreManagerFactory {
 
-  public InMemoryAtomicOperationMetaStoreManagerFactory() {
-    super(null, null);
+  @SuppressWarnings("unused") // Required by CDI
+  protected InMemoryAtomicOperationMetaStoreManagerFactory() {
+    this(null, null);
   }
 
   @Inject

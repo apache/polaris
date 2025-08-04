@@ -66,7 +66,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   @Nullable private final Tracer tracer;
 
   @SuppressWarnings("unused") // Required by CDI
-  public TaskExecutorImpl() {
+  protected TaskExecutorImpl() {
     this(null, null, null, null, null);
   }
 
