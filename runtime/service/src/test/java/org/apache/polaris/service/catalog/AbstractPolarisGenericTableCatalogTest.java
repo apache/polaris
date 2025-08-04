@@ -41,8 +41,8 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
@@ -114,7 +114,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private FileIOFactory fileIOFactory;
-  private AuthenticatedPolarisPrincipal authenticatedRoot;
+  private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
   private ReservedProperties reservedProperties;
@@ -158,7 +158,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);

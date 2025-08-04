@@ -236,7 +236,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
-              callContext, authenticatedPrincipal, securityContext, resolutionManifest);
+              callContext, polarisPrincipal, securityContext, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;

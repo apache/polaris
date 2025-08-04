@@ -36,6 +36,9 @@ dependencies {
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")

@@ -41,7 +41,7 @@ import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.DecodedToken;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.TokenBroker;
 
 /**
@@ -108,7 +108,7 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
 
     return identityProviderManager.authenticate(
         HttpSecurityUtils.setRoutingContextAttribute(
-            new TokenAuthenticationRequest(new InternalPrincipalAuthInfo(credential, token)),
+            new TokenAuthenticationRequest(new InternalPolarisCredential(credential, token)),
             context));
   }
 
@@ -131,11 +131,11 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
         .item(new HttpCredentialTransport(HttpCredentialTransport.Type.AUTHORIZATION, BEARER));
   }
 
-  static class InternalPrincipalAuthInfo extends TokenCredential implements PrincipalAuthInfo {
+  static class InternalPolarisCredential extends TokenCredential implements PolarisCredential {
 
     private final DecodedToken token;
 
-    InternalPrincipalAuthInfo(String credential, DecodedToken token) {
+    InternalPolarisCredential(String credential, DecodedToken token) {
       super(credential, "bearer");
       this.token = token;
     }

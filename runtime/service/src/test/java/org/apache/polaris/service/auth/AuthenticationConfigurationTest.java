@@ -29,7 +29,7 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -46,19 +46,16 @@ public class AuthenticationConfigurationTest {
 
     assertThat(realms.get(DEFAULT_REALM_KEY).type()).isEqualTo(AuthenticationType.MIXED);
     assertThat(realms.get(DEFAULT_REALM_KEY).authenticator().type()).isEqualTo("custom");
-    assertThat(realms.get(DEFAULT_REALM_KEY).activeRolesProvider().type()).isEqualTo("custom");
     assertThat(realms.get(DEFAULT_REALM_KEY).tokenBroker().type()).isEqualTo("custom");
     assertThat(realms.get(DEFAULT_REALM_KEY).tokenService().type()).isEqualTo("custom");
 
     assertThat(realms.get("realm1").type()).isEqualTo(AuthenticationType.INTERNAL);
     assertThat(realms.get("realm1").authenticator().type()).isEqualTo("default");
-    assertThat(realms.get("realm1").activeRolesProvider().type()).isEqualTo("default");
     assertThat(realms.get("realm1").tokenBroker().type()).isEqualTo("default");
     assertThat(realms.get("realm1").tokenService().type()).isEqualTo("default");
 
     assertThat(realms.get("realm2").type()).isEqualTo(AuthenticationType.EXTERNAL);
     assertThat(realms.get("realm2").authenticator().type()).isEqualTo("default");
-    assertThat(realms.get("realm2").activeRolesProvider().type()).isEqualTo("default");
     assertThat(realms.get("realm2").tokenBroker().type()).isEqualTo("rsa-key-pair");
     assertThat(realms.get("realm2").tokenService().type()).isEqualTo("default");
 
@@ -82,13 +79,11 @@ public class AuthenticationConfigurationTest {
           // Default realm: mixed auth with custom impls
           .put("polaris.authentication.type", "mixed")
           .put("polaris.authentication.authenticator.type", "custom")
-          .put("polaris.authentication.active-roles-provider.type", "custom")
           .put("polaris.authentication.token-broker.type", "custom")
           .put("polaris.authentication.token-service.type", "custom")
           // realm1: internal auth with default impls
           .put("polaris.authentication.realm1.type", "internal")
           .put("polaris.authentication.realm1.authenticator.type", "default")
-          .put("polaris.authentication.realm1.active-roles-provider.type", "default")
           .put("polaris.authentication.realm1.token-broker.type", "default")
           .put("polaris.authentication.realm1.token-service.type", "default")
           // realm2: external auth

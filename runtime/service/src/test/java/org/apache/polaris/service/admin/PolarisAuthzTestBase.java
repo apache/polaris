@@ -51,9 +51,9 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -203,10 +203,10 @@ public abstract class PolarisAuthzTestBase {
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
   protected RealmConfig realmConfig;
-  protected AuthenticatedPolarisPrincipal authenticatedRoot;
+  protected PolarisPrincipal authenticatedRoot;
   protected PolarisAuthorizer polarisAuthorizer;
 
-  private PolarisCallContext polarisContext;
+  protected PolarisCallContext polarisContext;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -242,7 +242,7 @@ public abstract class PolarisAuthzTestBase {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    this.authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
+    this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     this.adminService =
         new PolarisAdminService(
@@ -250,7 +250,7 @@ public abstract class PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext(authenticatedRoot, Set.of()),
+            securityContext(authenticatedRoot),
             polarisAuthorizer,
             reservedProperties);
 
@@ -383,8 +383,7 @@ public abstract class PolarisAuthzTestBase {
     Assertions.assertThat(result.isSuccess()).isTrue();
   }
 
-  protected @Nonnull SecurityContext securityContext(
-      AuthenticatedPolarisPrincipal p, Set<String> roles) {
+  protected @Nonnull SecurityContext securityContext(PolarisPrincipal p) {
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
     Set<String> principalRoleNames = loadPrincipalRolesNames(p);
@@ -393,9 +392,14 @@ public abstract class PolarisAuthzTestBase {
     return securityContext;
   }
 
-  protected @Nonnull Set<String> loadPrincipalRolesNames(AuthenticatedPolarisPrincipal p) {
+  protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
+    PolarisBaseEntity principal =
+        metaStoreManager
+            .loadEntity(
+                callContext.getPolarisCallContext(), 0L, p.getId(), PolarisEntityType.PRINCIPAL)
+            .getEntity();
     return metaStoreManager
-        .loadGrantsToGrantee(callContext.getPolarisCallContext(), p.getPrincipalEntity())
+        .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
         .getGrantRecords()
         .stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
@@ -498,14 +502,14 @@ public abstract class PolarisAuthzTestBase {
     @Override
     public Catalog createCallContextCatalog(
         CallContext context,
-        AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+        PolarisPrincipal polarisPrincipal,
         SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
       Catalog catalog =
           super.createCallContextCatalog(
-              context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
+              context, polarisPrincipal, securityContext, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

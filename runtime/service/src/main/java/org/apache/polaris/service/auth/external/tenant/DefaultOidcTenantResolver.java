@@ -24,7 +24,6 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -38,8 +38,8 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -179,7 +179,7 @@ public class ManagementServiceTest {
         new SecurityContext() {
           @Override
           public Principal getUserPrincipal() {
-            return new AuthenticatedPolarisPrincipal(
+            return PolarisPrincipal.of(
                 new PrincipalEntity.Builder()
                     .setName(PolarisEntityConstants.getRootPrincipalName())
                     .build(),

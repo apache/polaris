@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -44,13 +44,13 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
   private GenericTableCatalogHandler newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName) {
-    final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new GenericTableCatalogHandler(
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        securityContext(authenticatedPrincipal, activatedPrincipalRoles),
+        securityContext(authenticatedPrincipal),
         catalogName,
         polarisAuthorizer);
   }

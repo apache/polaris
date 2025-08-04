@@ -29,14 +29,14 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public interface PolarisAuthorizer {
 
   void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary);
 
   void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,

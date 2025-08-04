@@ -30,8 +30,8 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -62,7 +62,7 @@ public class PolarisAdminServiceTest {
   @Mock private SecurityContext securityContext;
   @Mock private PolarisAuthorizer authorizer;
   @Mock private ReservedProperties reservedProperties;
-  @Mock private AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  @Mock private PolarisPrincipal authenticatedPrincipal;
   @Mock private PolarisResolutionManifest resolutionManifest;
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
 
