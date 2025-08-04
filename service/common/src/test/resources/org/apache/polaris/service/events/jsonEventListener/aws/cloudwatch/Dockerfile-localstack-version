@@ -20,4 +20,3 @@
 # Dockerfile to provide the image name and tag to a test.
 # Version is managed by Renovate - do not edit.
 FROM localstack/localstack:3.4
-

@@ -26,26 +26,78 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
 import org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch.AwsCloudWatchConfiguration;
 
+/**
+ * Quarkus-specific configuration interface for AWS CloudWatch event listener integration.
+ *
+ * <p>This interface extends the base {@link AwsCloudWatchConfiguration} and provides
+ * Quarkus-specific configuration mappings for AWS CloudWatch logging functionality.</p>
+ *
+ */
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener.aws-cloudwatch")
 @ApplicationScoped
 public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfiguration {
 
+  /**
+   * Returns the AWS CloudWatch log group name for event logging.
+   *
+   * <p>The log group is a collection of log streams that share the same retention,
+   * monitoring, and access control settings. If not specified, defaults to
+   * "polaris-cloudwatch-default-group".</p>
+   *
+   * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.log-group}</p>
+   *
+   * @return an Optional containing the log group name, or empty if not configured
+   */
   @WithName("log-group")
   @WithDefault("polaris-cloudwatch-default-group")
   @Override
   Optional<String> awsCloudwatchlogGroup();
 
+  /**
+   * Returns the AWS CloudWatch log stream name for event logging.
+   *
+   * <p>A log stream is a sequence of log events that share the same source.
+   * Each log stream belongs to one log group. If not specified, defaults to
+   * "polaris-cloudwatch-default-stream".</p>
+   *
+   * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.log-stream}</p>
+   *
+   * @return an Optional containing the log stream name, or empty if not configured
+   */
   @WithName("log-stream")
   @WithDefault("polaris-cloudwatch-default-stream")
   @Override
   Optional<String> awsCloudwatchlogStream();
 
+  /**
+   * Returns the AWS region where CloudWatch logs should be sent.
+   *
+   * <p>This specifies the AWS region for the CloudWatch service endpoint.
+   * The region must be a valid AWS region identifier. If not specified,
+   * defaults to "us-east-1".</p>
+   *
+   * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.region}</p>
+   *
+   * @return an Optional containing the AWS region, or empty if not configured
+   */
   @WithName("region")
   @WithDefault("us-east-1")
   @Override
   Optional<String> awsCloudwatchRegion();
 
+  /**
+   * Returns the synchronous mode setting for CloudWatch logging.
+   *
+   * <p>When set to "true", log events are sent to CloudWatch synchronously,
+   * which may impact application performance but ensures immediate delivery.
+   * When set to "false" (default), log events are sent asynchronously for
+   * better performance.</p>
+   *
+   * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.synchronous-mode}</p>
+   *
+   * @return a String value ("true" or "false") indicating the synchronous mode setting
+   */
   @WithName("synchronous-mode")
   @WithDefault("false")
   @Override
