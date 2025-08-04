@@ -104,7 +104,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -116,6 +116,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.AccessConfig;
@@ -167,8 +168,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
       };
 
-  private final PolarisEntityManager entityManager;
   private final StorageCredentialCache storageCredentialCache;
+  private final ResolverFactory resolverFactory;
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -197,7 +198,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   public IcebergCatalog(
       StorageCredentialCache storageCredentialCache,
-      PolarisEntityManager entityManager,
+      ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
@@ -205,8 +206,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
-    this.entityManager = entityManager;
     this.storageCredentialCache = storageCredentialCache;
+    this.resolverFactory = resolverFactory;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
@@ -715,7 +716,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -747,7 +748,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -1039,7 +1040,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      storageConfigInfo, Set.of(PolarisStorageActions.ALL), locations);
+                      callContext.getRealmConfig(),
+                      storageConfigInfo,
+                      Set.of(PolarisStorageActions.ALL),
+                      locations);
           validationResults
               .values()
               .forEach(
@@ -1208,7 +1212,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, securityContext, parentPath.getFirst().getName());
+            callContext, resolverFactory, securityContext, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(
@@ -2353,7 +2357,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NotFoundException("Parent path does not exist for %s", identifier);
 
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-          throw new CommitFailedException(
+          throw new CommitConflictException(
               "Failed to commit Table or View %s because it was concurrently modified", identifier);
 
         default:

@@ -64,10 +64,11 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -135,7 +136,8 @@ public class IcebergCatalogAdapter
   private final RealmContext realmContext;
   private final CallContext callContext;
   private final CallContextCatalogFactory catalogFactory;
-  private final PolarisEntityManager entityManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
   private final PolarisAuthorizer polarisAuthorizer;
@@ -148,7 +150,8 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       CallContext callContext,
       CallContextCatalogFactory catalogFactory,
-      PolarisEntityManager entityManager,
+      ResolverFactory resolverFactory,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
       PolarisAuthorizer polarisAuthorizer,
@@ -158,16 +161,14 @@ public class IcebergCatalogAdapter
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
-    this.entityManager = entityManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-
-    // FIXME: This is a hack to set the current context for downstream calls.
-    CallContext.setCurrentContext(callContext);
   }
 
   /**
@@ -196,7 +197,7 @@ public class IcebergCatalogAdapter
 
     return new IcebergCatalogHandler(
         callContext,
-        entityManager,
+        resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
         securityContext,
@@ -771,7 +772,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver = entityManager.prepareResolver(callContext, securityContext, warehouse);
+    Resolver resolver = resolverFactory.createResolver(callContext, securityContext, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);

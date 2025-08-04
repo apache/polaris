@@ -37,8 +37,8 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.NoOpPolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +47,7 @@ import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
 
-  private RealmEntityManagerFactory entityManagerFactory;
+  private ResolutionManifestFactory resolutionManifestFactory;
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private UserSecretsManagerFactory userSecretsManagerFactory;
   private PolarisAuthorizer polarisAuthorizer;
@@ -59,7 +59,7 @@ public class PolarisServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    entityManagerFactory = Mockito.mock(RealmEntityManagerFactory.class);
+    resolutionManifestFactory = Mockito.mock(ResolutionManifestFactory.class);
     metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
     userSecretsManagerFactory = Mockito.mock(UserSecretsManagerFactory.class);
     polarisAuthorizer = Mockito.mock(PolarisAuthorizer.class);
@@ -76,7 +76,7 @@ public class PolarisServiceImplTest {
 
     polarisService =
         new PolarisServiceImpl(
-            entityManagerFactory,
+            resolutionManifestFactory,
             metaStoreManagerFactory,
             userSecretsManagerFactory,
             polarisAuthorizer,

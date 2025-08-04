@@ -126,12 +126,10 @@ public class EntityWeigherTest {
 
   private static Map<String, String> getPropertiesMap(String properties) {
     if (properties == null || properties.isEmpty()) return new HashMap<>();
-    Map<String, String> propertiesMap;
     try {
-      propertiesMap = MAPPER.readValue(properties, new TypeReference<>() {});
+      return MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
-    return propertiesMap;
   }
 }

@@ -16,14 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
 
-import java.util.Map;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
+package org.apache.polaris.core.exceptions;
 
-/** Uses the resolved RealmContext to further resolve elements of the CallContext. */
-public interface CallContextResolver {
-  CallContext resolveCallContext(
-      RealmContext realmContext, String method, String path, Map<String, String> headers);
+import com.google.errorprone.annotations.FormatMethod;
+
+public class CommitConflictException extends PolarisException {
+  @FormatMethod
+  public CommitConflictException(String message, Object... args) {
+    super(String.format(message, args));
+  }
+
+  @FormatMethod
+  public CommitConflictException(Throwable cause, String message, Object... args) {
+    super(String.format(message, args), cause);
+  }
+
+  public CommitConflictException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

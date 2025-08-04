@@ -45,17 +45,13 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -117,6 +113,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject ResolverFactory resolverFactory;
+  @Inject ResolutionManifestFactory resolutionManifestFactory;
 
   private IcebergCatalog catalog;
 
@@ -161,31 +159,15 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     polarisContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore,
             Clock.systemDefaultZone());
 
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(
-            polarisContext.getRealmContext(), polarisContext.getRealmConfig());
-    PolarisEntityManager entityManager = new PolarisEntityManager(metaStoreManager, entityCache);
-
-    CallContext.setCurrentContext(polarisContext);
-
-    PrincipalEntity rootEntity =
-        new PrincipalEntity(
-            PolarisEntity.of(
-                metaStoreManager
-                    .readEntityByName(
-                        polarisContext,
-                        null,
-                        PolarisEntityType.PRINCIPAL,
-                        PolarisEntitySubType.NULL_SUBTYPE,
-                        "root")
-                    .getEntity()));
+    PrincipalEntity rootPrincipal =
+        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     AuthenticatedPolarisPrincipal authenticatedRoot =
-        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+        new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
 
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
@@ -196,7 +178,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisAdminService adminService =
         new PolarisAdminService(
             polarisContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
@@ -222,7 +204,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
+            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
@@ -230,7 +212,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     this.catalog =
         new IcebergCatalog(
             storageCredentialCache,
-            entityManager,
+            resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,

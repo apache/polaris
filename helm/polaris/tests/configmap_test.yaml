@@ -273,8 +273,8 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=true" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.json=true" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.json=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.json.enabled=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.json.enabled=true" }
 
   - it: should include logging categories
     set:

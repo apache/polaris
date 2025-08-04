@@ -18,9 +18,13 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
  * Holds fully-resolved path of PolarisEntities representing the targetEntity with all its grants
@@ -75,6 +79,43 @@ public class PolarisResolvedPathWrapper {
     return getResolvedParentPath().stream()
         .map(ResolvedPolarisEntity::getEntity)
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Checks if a namespace is fully resolved.
+   *
+   * @param catalogName the name of the catalog
+   * @param namespace the namespace we're trying to resolve
+   * @return true if the namespace is considered fully resolved for the given catalog type
+   */
+  public boolean isFullyResolvedNamespace(
+      @Nonnull String catalogName, @Nonnull Namespace namespace) {
+    if (resolvedPath == null) {
+      return false;
+    }
+
+    List<PolarisEntity> fullPath = getRawFullPath();
+    int expectedPathLength = 1 + namespace.levels().length;
+    if (fullPath.size() != expectedPathLength) {
+      return false;
+    }
+
+    if (!fullPath.get(0).getName().equals(catalogName)) {
+      return false;
+    }
+
+    String[] namespaceLevels = namespace.levels();
+    int levelsLength = namespaceLevels.length;
+    Iterator<PolarisEntity> fullPathIterator = fullPath.iterator();
+    fullPathIterator.next();
+    for (int i = 0; i < levelsLength; i++) {
+      PolarisEntity entity = fullPathIterator.next();
+      if (!entity.getName().equals(namespaceLevels[i])
+          || entity.getType() != PolarisEntityType.NAMESPACE) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
