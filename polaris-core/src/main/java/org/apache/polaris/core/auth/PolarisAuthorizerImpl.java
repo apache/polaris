@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootPrincipalName;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
@@ -596,6 +597,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           polarisPrincipal.getRoles(),
           activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
           authzOp);
+    }
+  }
+
+  @Override
+  public void authorizeOrThrow(@Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal) {
+    boolean isRoot =
+            getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
+    if (!isRoot) {
+      throw new ForbiddenException("Only %s principal can reset credentials", authenticatedPrincipal.getPrincipalEntity().getName());
     }
   }
 
