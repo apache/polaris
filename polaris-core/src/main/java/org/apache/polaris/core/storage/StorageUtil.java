@@ -96,10 +96,10 @@ public class StorageUtil {
     HashSet<String> result = new HashSet<>(locationStrings);
 
     for (String potentialParent : locationStrings) {
+      StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
       for (String potentialChild : locationStrings) {
+        StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
         if (!potentialParent.equals(potentialChild)) {
-          StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
-          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
           if (potentialChildLocation.isChildOf(potentialParentLocation)) {
             result.remove(potentialChild);
           }
