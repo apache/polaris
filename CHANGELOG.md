@@ -101,8 +101,7 @@ refresh-credentials flag for the desired storage provider.
 
 ### Deprecations
 
-- The property `polaris.active-roles-provider.type` is deprecated for removal.
-- The `ActiveRolesProvider` interface is deprecated for removal.
+* The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
 
 ### Fixes
 
