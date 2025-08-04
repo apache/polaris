@@ -186,9 +186,6 @@ public class PolarisServiceImpl
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-      
-      
-      
     }
 
     PolarisMetaStoreManager metaStoreManager =
