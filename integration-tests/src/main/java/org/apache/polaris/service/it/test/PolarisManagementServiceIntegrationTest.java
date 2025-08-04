@@ -883,22 +883,23 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testCreatePrincipalAndResetCredentialsWithCustomValues() {
     //  Create a new principal using root user
-    Principal principal = Principal.builder()
+    Principal principal =
+        Principal.builder()
             .setName(client.newEntityName("myprincipal-reset"))
             .setProperties(Map.of("custom-tag", "bar"))
             .build();
 
-    PrincipalWithCredentials creds = managementApi.createPrincipal(
-            new CreatePrincipalRequest(principal, true)
-    );
+    PrincipalWithCredentials creds =
+        managementApi.createPrincipal(new CreatePrincipalRequest(principal, true));
 
-    Map<String, String> customBody = Map.of(
+    Map<String, String> customBody =
+        Map.of(
             "clientId", "f174b76a7e1a99e2",
-            "clientSecret", "27029d236abc08e204922b0a07031bc2"
-    );
+            "clientSecret", "27029d236abc08e204922b0a07031bc2");
 
     PrincipalWithCredentials resetCreds;
-    try (Response response = managementApi
+    try (Response response =
+        managementApi
             .request("v1/principals/{p}/reset", Map.of("p", principal.getName()))
             .post(Entity.json(customBody))) {
 
@@ -907,23 +908,24 @@ public class PolarisManagementServiceIntegrationTest {
     }
 
     assertThat(resetCreds.getCredentials().getClientId()).isEqualTo("f174b76a7e1a99e2");
-    assertThat(resetCreds.getCredentials().getClientSecret()).isEqualTo("27029d236abc08e204922b0a07031bc2");
+    assertThat(resetCreds.getCredentials().getClientSecret())
+        .isEqualTo("27029d236abc08e204922b0a07031bc2");
 
     // Principal itself tries to reset with custom creds → should fail (403 Forbidden)
     String principalToken = client.obtainToken(resetCreds);
-    customBody = Map.of(
+    customBody =
+        Map.of(
             "clientId", "f174b76a7e1a99e3",
-            "clientSecret", "27029d236abc08e204922b0a07031bc3"
-    );
-    try (Response response = client.managementApi(principalToken)
+            "clientSecret", "27029d236abc08e204922b0a07031bc3");
+    try (Response response =
+        client
+            .managementApi(principalToken)
             .request("v1/principals/{p}/reset", Map.of("p", principal.getName()))
             .post(Entity.json(customBody))) {
 
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
-
-
 
   @Test
   public void testCreateFederatedPrincipalRoleSucceeds() {
