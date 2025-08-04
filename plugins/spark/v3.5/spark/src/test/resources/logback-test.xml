@@ -19,21 +19,14 @@
  under the License.
 
 -->
-<configuration>
+<configuration debug="false">
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  <root level="${log.level.console:-INFO}">
+  <root level="${test.log.level:-ERROR}">
     <appender-ref ref="console"/>
   </root>
-
-  <!--
-  Prevent the 'The Agroal dependency is present but no JDBC datasources have been defined.' build-time warning.
-  See https://github.com/quarkusio/quarkus/blob/2fbc20f445fad43aaf4f3f984b9ac8319c7c7f0a/extensions/agroal/deployment/src/main/java/io/quarkus/agroal/deployment/AgroalProcessor.java#L111
-  THIS IS A TECHNICAL NECESSITY, because of the
-  -->
-  <logger name="io.quarkus.agroal.deployment" level="ERROR"/>
 </configuration>

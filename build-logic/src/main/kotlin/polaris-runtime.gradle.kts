@@ -24,6 +24,14 @@ testing {
   suites {
     withType<JvmTestSuite> {
       targets.all {
+        testTask.configure {
+          systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
+          // Enable automatic extension detection to execute GradleDuplicateLoggingWorkaround
+          // automatically.
+          // See https://github.com/quarkusio/quarkus/issues/22844
+          systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")
+        }
+
         if (testTask.name != "test") {
           testTask.configure {
             // For Quarkus...
@@ -43,6 +51,23 @@ testing {
         }
       }
       sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
+    }
+  }
+}
+
+dependencies {
+  // All Quarkus projects should use JBoss LogManager with SLF4J, instead of Logback
+  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
+}
+
+configurations.all {
+  // Validate that Logback dependencies are not used in Quarkus modules.
+  dependencies.configureEach {
+    if (group == "ch.qos.logback") {
+      throw GradleException(
+        "Logback dependencies are not allowed in Quarkus modules. " +
+          "Found $group:$name in ${project.name}"
+      )
     }
   }
 }

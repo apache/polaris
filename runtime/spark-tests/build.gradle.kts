@@ -36,6 +36,7 @@ dependencies {
 
   testImplementation(project(":polaris-tests"))
   testImplementation(testFixtures(project(":polaris-runtime-service")))
+  testImplementation(project(":polaris-runtime-test-common"))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
@@ -60,7 +61,6 @@ dependencies {
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
