@@ -95,25 +95,19 @@ public class StorageUtil {
 
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
   private static @Nonnull Set<String> removeRedundantLocations(Set<String> locationStrings) {
-    Set<StorageLocation> locations =
-        locationStrings.stream()
-            .filter(Objects::nonNull)
-            .map(StorageLocation::of)
-            .collect(Collectors.toSet());
-    HashSet<StorageLocation> redundantLocations = new HashSet<>();
+    HashSet<String> result = new HashSet<>(locationStrings);
 
-    for (StorageLocation potentialParent : locations) {
-      for (StorageLocation potentialChild : locations) {
+    for (String potentialParent : locationStrings) {
+      for (String potentialChild : locationStrings) {
         if (!potentialParent.equals(potentialChild)) {
-          if (potentialChild.isChildOf(potentialParent)) {
-            redundantLocations.add(potentialChild);
+          StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
+          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
+          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
+            result.remove(potentialChild);
           }
         }
       }
     }
-    return locations.stream()
-        .filter(l -> !redundantLocations.contains(l))
-        .map(StorageLocation::toString)
-        .collect(Collectors.toSet());
+    return result;
   }
 }
