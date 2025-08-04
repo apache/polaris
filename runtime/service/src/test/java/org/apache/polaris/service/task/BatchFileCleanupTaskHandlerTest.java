@@ -43,16 +43,18 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
+  @Inject PolarisDiagnostics diagnostics;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmContext realmContext = () -> "realmName";
 
@@ -60,13 +62,14 @@ public class BatchFileCleanupTaskHandlerTest {
     return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
   }
 
+  private PolarisCallContext newCallContext() {
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    return new PolarisCallContext(realmContext, metaStore, diagnostics);
+  }
+
   @Test
   public void testMetadataFileCleanup() throws IOException {
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
+    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -175,11 +178,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testMetadataFileCleanupIfFileNotExist() throws IOException {
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
+    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     BatchFileCleanupTaskHandler handler =
@@ -219,11 +218,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
+    PolarisCallContext polarisCallContext = newCallContext();
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {

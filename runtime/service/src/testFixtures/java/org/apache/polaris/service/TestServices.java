@@ -297,4 +297,10 @@ public record TestServices(
           polarisEventListener);
     }
   }
+
+  public PolarisCallContext newCallContext() {
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    return new PolarisCallContext(
+        realmContext, metaStore, polarisDiagnostics, configurationStore, Clock.systemUTC());
+  }
 }
