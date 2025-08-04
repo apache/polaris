@@ -27,7 +27,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Set;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that adds active roles to the {@link
@@ -62,11 +62,10 @@ public class ActiveRolesAugmentor implements SecurityIdentityAugmentor {
   }
 
   private SecurityIdentity validateActiveRoles(SecurityIdentity identity) {
-    if (!(identity.getPrincipal() instanceof AuthenticatedPolarisPrincipal)) {
+    if (!(identity.getPrincipal() instanceof PolarisPrincipal)) {
       throw new AuthenticationFailedException("No Polaris principal found");
     }
-    AuthenticatedPolarisPrincipal polarisPrincipal =
-        identity.getPrincipal(AuthenticatedPolarisPrincipal.class);
+    PolarisPrincipal polarisPrincipal = identity.getPrincipal(PolarisPrincipal.class);
     Set<String> validRoleNames = activeRolesProvider.getActiveRoles(polarisPrincipal);
     return QuarkusSecurityIdentity.builder()
         .setAnonymous(false)

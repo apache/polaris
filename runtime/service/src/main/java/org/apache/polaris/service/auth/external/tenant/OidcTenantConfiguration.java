@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth.external;
+package org.apache.polaris.service.auth.external.tenant;
 
 import io.smallrye.config.WithDefault;
 import java.util.List;

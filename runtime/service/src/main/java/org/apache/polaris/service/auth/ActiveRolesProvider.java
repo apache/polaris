@@ -19,7 +19,7 @@
 package org.apache.polaris.service.auth;
 
 import java.util.Set;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
  * Provides the active roles for a given principal. Implementations may rely on the active request
@@ -32,5 +32,5 @@ public interface ActiveRolesProvider {
    * @param principal the currently authenticated principal
    * @return the active roles
    */
-  Set<String> getActiveRoles(AuthenticatedPolarisPrincipal principal);
+  Set<String> getActiveRoles(PolarisPrincipal principal);
 }
