@@ -96,7 +96,6 @@ public class PolarisServiceImpl
   private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
   private final ReservedProperties reservedProperties;
-  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisServiceImpl(
@@ -113,7 +112,6 @@ public class PolarisServiceImpl
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
     this.reservedProperties = reservedProperties;
-    this.polarisEventListener = polarisEventListener;
   }
 
   private PolarisAdminService newAdminService(
