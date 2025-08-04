@@ -70,14 +70,13 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.AfterAddGrantToCatalogRoleEvent;
 import org.apache.polaris.service.events.AfterAssignPrincipalRoleEvent;
@@ -155,7 +154,7 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
-  private final RealmEntityManagerFactory entityManagerFactory;
+  private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final UserSecretsManagerFactory userSecretsManagerFactory;
@@ -165,14 +164,14 @@ public class PolarisServiceImpl
 
   @Inject
   public PolarisServiceImpl(
-      RealmEntityManagerFactory entityManagerFactory,
+      ResolutionManifestFactory resolutionManifestFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
       ReservedProperties reservedProperties,
       PolarisEventListener polarisEventListener) {
-    this.entityManagerFactory = entityManagerFactory;
+    this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
@@ -187,17 +186,18 @@ public class PolarisServiceImpl
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
+      
+      
+      
     }
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     UserSecretsManager userSecretsManager =
         userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     return new PolarisAdminService(
         callContext,
-        entityManager,
+        resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
         securityContext,

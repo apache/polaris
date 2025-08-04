@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -151,6 +152,7 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
+          logQuery(query);
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(query.sql())) {
             List<Object> params = query.parameters();
@@ -176,6 +178,7 @@ public class DatasourceOperations {
   public int executeUpdate(QueryGenerator.PreparedQuery preparedQuery) throws SQLException {
     return withRetries(
         () -> {
+          logQuery(preparedQuery);
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -226,6 +229,7 @@ public class DatasourceOperations {
 
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
       throws SQLException {
+    logQuery(preparedQuery);
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
@@ -333,5 +337,18 @@ public class DatasourceOperations {
 
   private Connection borrowConnection() throws SQLException {
     return datasource.getConnection();
+  }
+
+  private static void logQuery(QueryGenerator.PreparedQuery query) {
+    LOGGER
+        .atDebug()
+        .addArgument(query.sql())
+        .addArgument(
+            () ->
+                query.parameters().stream()
+                    .map(o -> o != null ? o.toString() : "NULL")
+                    .collect(Collectors.joining("\n    ", "\n    ", "")))
+        .setMessage("query: {}{}")
+        .log();
   }
 }

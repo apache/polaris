@@ -37,11 +37,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -55,7 +55,7 @@ public class PolarisAdminServiceTest {
   @Mock private CallContext callContext;
   @Mock private PolarisCallContext polarisCallContext;
   @Mock private PolarisDiagnostics polarisDiagnostics;
-  @Mock private PolarisEntityManager entityManager;
+  @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
   @Mock private SecurityContext securityContext;
@@ -77,7 +77,7 @@ public class PolarisAdminServiceTest {
     adminService =
         new PolarisAdminService(
             callContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
@@ -113,7 +113,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -140,7 +140,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("complete-ns", "incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -194,7 +194,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -221,7 +221,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -262,7 +262,7 @@ public class PolarisAdminServiceTest {
   private void setupSuccessfulNamespaceResolution(
       String catalogName, String catalogRoleName, Namespace namespace) throws Exception {
 
-    when(entityManager.prepareResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
