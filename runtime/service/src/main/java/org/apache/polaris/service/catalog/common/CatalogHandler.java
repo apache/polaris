@@ -31,9 +31,9 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -60,7 +60,7 @@ public abstract class CatalogHandler {
   protected final PolarisAuthorizer authorizer;
 
   protected final CallContext callContext;
-  protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  protected final PolarisPrincipal polarisPrincipal;
   protected final SecurityContext securityContext;
 
   public CatalogHandler(
@@ -76,12 +76,11 @@ public abstract class CatalogHandler {
     diagServices.checkNotNull(securityContext, "null_security_context");
     diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
     diagServices.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "invalid_principal_type",
-        "Principal must be an AuthenticatedPolarisPrincipal");
+        "Principal must be a PolarisPrincipal");
     this.securityContext = securityContext;
-    this.authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
   }
 
@@ -143,7 +142,7 @@ public abstract class CatalogHandler {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -178,7 +177,7 @@ public abstract class CatalogHandler {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -217,7 +216,7 @@ public abstract class CatalogHandler {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -247,7 +246,7 @@ public abstract class CatalogHandler {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -299,7 +298,7 @@ public abstract class CatalogHandler {
             .toList();
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         targets,
@@ -369,7 +368,7 @@ public abstract class CatalogHandler {
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,

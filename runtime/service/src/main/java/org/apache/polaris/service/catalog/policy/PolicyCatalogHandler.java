@@ -168,7 +168,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -213,7 +213,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         targetCatalog,
@@ -273,7 +273,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         policyWrapper,

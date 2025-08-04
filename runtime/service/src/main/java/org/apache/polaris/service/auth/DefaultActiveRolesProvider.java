@@ -25,9 +25,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -41,9 +43,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the {@link ActiveRolesProvider} looks up the grant records for a
- * principal to determine roles that are available. {@link
- * AuthenticatedPolarisPrincipal#getActivatedPrincipalRoleNames()} is used to determine which of the
- * available roles are active for this request.
+ * principal to determine roles that are available. {@link PolarisPrincipal#getRoles()} is used to
+ * determine which of the available roles are active for this request.
  */
 @RequestScoped
 @Identifier("default")
@@ -54,11 +55,18 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Override
-  public Set<String> getActiveRoles(AuthenticatedPolarisPrincipal principal) {
+  public Set<String> getActiveRoles(PolarisPrincipal principal) {
+    if (!(principal instanceof PersistedPolarisPrincipal persistedPolarisPrincipal)) {
+      LOGGER.error(
+          "Expected an PersistedPolarisPrincipal, but got {}: {}",
+          principal.getClass().getName(),
+          ExceptionUtils.getStackTrace(new ServiceFailureException("Invalid principal type")));
+      throw new NotAuthorizedException("Unable to authenticate");
+    }
     List<PrincipalRoleEntity> activeRoles =
         loadActivePrincipalRoles(
-            principal.getActivatedPrincipalRoleNames(),
-            principal.getPrincipalEntity(),
+            principal.getRoles(),
+            persistedPolarisPrincipal.getEntity(),
             metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()));
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }

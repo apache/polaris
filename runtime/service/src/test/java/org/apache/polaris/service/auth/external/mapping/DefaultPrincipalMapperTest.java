@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external.mapping;
 
-import static org.apache.polaris.service.auth.external.OidcTenantResolvingAugmentor.TENANT_CONFIG_ATTRIBUTE;
+import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.TENANT_CONFIG_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,8 +30,8 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration.PrincipalMapper;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
