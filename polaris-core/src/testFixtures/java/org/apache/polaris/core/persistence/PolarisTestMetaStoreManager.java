@@ -2906,7 +2906,7 @@ public class PolarisTestMetaStoreManager {
     BasePersistence ms = polarisCallContext.getMetaStore();
     Assertions.assertThat(
             ms.loadAllTargetsOnPolicy(
-                polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
+                N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
         .isEmpty();
 
     attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P2);

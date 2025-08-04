@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -57,10 +56,9 @@ public interface TransactionalPersistence
    * error. The result of the supplier lambda is returned if success, else the error will be
    * re-thrown.
    *
-   * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
-  <T> T runInTransaction(@Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
+  <T> T runInTransaction(@Nonnull Supplier<T> transactionCode);
 
   /**
    * Run the specified transaction code (a runnable lambda type) in a database read/write
@@ -68,11 +66,9 @@ public interface TransactionalPersistence
    * the transaction will be committed, else the transaction will be automatically rolled-back on
    * error.
    *
-   * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
-  void runActionInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
+  void runActionInTransaction(@Nonnull Runnable transactionCode);
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read transaction. If
@@ -80,22 +76,18 @@ public interface TransactionalPersistence
    * will be committed, else the transaction will be automatically rolled-back on error. The result
    * of the supplier lambda is returned if success, else the error will be re-thrown.
    *
-   * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
-  <T> T runInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
+  <T> T runInReadTransaction(@Nonnull Supplier<T> transactionCode);
 
   /**
    * Run the specified transaction code (a runnable lambda type) in a database read transaction. If
    * the code of the transaction does not throw any exception and returns normally, the transaction
    * will be committed, else the transaction will be automatically rolled-back on error.
    *
-   * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
-  void runActionInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
+  void runActionInReadTransaction(@Nonnull Runnable transactionCode);
 
   /**
    * Lookup the specified set of entities by entityActiveKeys Return the result, a parallel list of
@@ -105,7 +97,7 @@ public interface TransactionalPersistence
    */
   @Nonnull
   List<EntityNameLookupRecord> lookupEntityActiveBatchInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
+      List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /** Rollback the current transaction */
   void rollback();
@@ -120,7 +112,7 @@ public interface TransactionalPersistence
   //
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#generateNewId} */
-  long generateNewIdInCurrentTxn(@Nonnull PolarisCallContext callCtx);
+  long generateNewIdInCurrentTxn();
 
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#writeEntity}
@@ -133,78 +125,61 @@ public interface TransactionalPersistence
    * entity, but TransactionalPersistence::writeEntityInCurrentTxn is *not* expected to do the same.
    */
   void writeEntityInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#writeEntities} */
   void writeEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#writeToGrantRecords} */
-  void writeToGrantRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
+  void writeToGrantRecordsInCurrentTxn(@Nonnull PolarisGrantRecord grantRec);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#deleteEntity} */
-  void deleteEntityInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+  void deleteEntityInCurrentTxn(@Nonnull PolarisBaseEntity entity);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#deleteFromGrantRecords} */
-  void deleteFromGrantRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
+  void deleteFromGrantRecordsInCurrentTxn(@Nonnull PolarisGrantRecord grantRec);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#deleteAllEntityGrantRecords} */
   void deleteAllEntityGrantRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
       @Nonnull List<PolarisGrantRecord> grantsOnSecurable);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#deleteAll} */
-  void deleteAllInCurrentTxn(@Nonnull PolarisCallContext callCtx);
+  void deleteAllInCurrentTxn();
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntity} */
   @Nullable
-  PolarisBaseEntity lookupEntityInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
+  PolarisBaseEntity lookupEntityInCurrentTxn(long catalogId, long entityId, int typeCode);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityByName} */
   @Nullable
   PolarisBaseEntity lookupEntityByNameInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      int typeCode,
-      @Nonnull String name);
+      long catalogId, long parentId, int typeCode, @Nonnull String name);
 
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityIdAndSubTypeByName}
    */
   @Nullable
   EntityNameLookupRecord lookupEntityIdAndSubTypeByNameInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      int typeCode,
-      @Nonnull String name);
+      long catalogId, long parentId, int typeCode, @Nonnull String name);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntities} */
   @Nonnull
-  List<PolarisBaseEntity> lookupEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+  List<PolarisBaseEntity> lookupEntitiesInCurrentTxn(List<PolarisEntityId> entityIds);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityVersions} */
   @Nonnull
   List<PolarisChangeTrackingVersions> lookupEntityVersionsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+      List<PolarisEntityId> entityIds);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
   Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -213,7 +188,6 @@ public interface TransactionalPersistence
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
   Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -223,7 +197,6 @@ public interface TransactionalPersistence
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
   <T> Page<T> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -234,13 +207,11 @@ public interface TransactionalPersistence
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityGrantRecordsVersion}
    */
-  int lookupEntityGrantRecordsVersionInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
+  int lookupEntityGrantRecordsVersionInCurrentTxn(long catalogId, long entityId);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#lookupGrantRecord} */
   @Nullable
   PolarisGrantRecord lookupGrantRecordInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -252,26 +223,22 @@ public interface TransactionalPersistence
    */
   @Nonnull
   List<PolarisGrantRecord> loadAllGrantRecordsOnSecurableInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
+      long securableCatalogId, long securableId);
 
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#loadAllGrantRecordsOnGrantee}
    */
   @Nonnull
   List<PolarisGrantRecord> loadAllGrantRecordsOnGranteeInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
+      long granteeCatalogId, long granteeId);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#hasChildren} */
   boolean hasChildrenInCurrentTxn(
-      @Nonnull PolarisCallContext callContext,
-      @Nullable PolarisEntityType optionalEntityType,
-      long catalogId,
-      long parentId);
+      @Nullable PolarisEntityType optionalEntityType, long catalogId, long parentId);
 
   /** See {@link org.apache.polaris.core.persistence.IntegrationPersistence#loadPrincipalSecrets} */
   @Nullable
-  PolarisPrincipalSecrets loadPrincipalSecretsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
+  PolarisPrincipalSecrets loadPrincipalSecretsInCurrentTxn(@Nonnull String clientId);
 
   /**
    * See {@link
@@ -279,24 +246,19 @@ public interface TransactionalPersistence
    */
   @Nonnull
   PolarisPrincipalSecrets generateNewPrincipalSecretsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId);
+      @Nonnull String principalName, long principalId);
 
   /**
    * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#rotatePrincipalSecrets}
    */
   @Nullable
   PolarisPrincipalSecrets rotatePrincipalSecretsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
-      long principalId,
-      boolean reset,
-      @Nonnull String oldSecretHash);
+      @Nonnull String clientId, long principalId, boolean reset, @Nonnull String oldSecretHash);
 
   /**
    * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#deletePrincipalSecrets}
    */
-  void deletePrincipalSecretsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
+  void deletePrincipalSecretsInCurrentTxn(@Nonnull String clientId, long principalId);
 
   /**
    * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#createStorageIntegration}
@@ -304,7 +266,6 @@ public interface TransactionalPersistence
   @Nullable
   <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
@@ -314,9 +275,7 @@ public interface TransactionalPersistence
    * org.apache.polaris.core.persistence.IntegrationPersistence#persistStorageIntegrationIfNeeded}
    */
   <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeededInCurrentTxn(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
+      @Nonnull PolarisBaseEntity entity, @Nullable PolarisStorageIntegration<T> storageIntegration);
 
   /**
    * See {@link
@@ -325,5 +284,5 @@ public interface TransactionalPersistence
   @Nullable
   <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
+          @Nonnull PolarisBaseEntity entity);
 }

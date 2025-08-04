@@ -38,7 +38,8 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     PolarisCallContext callCtx =
         new PolarisCallContext(
             () -> "testRealm",
-            new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS),
+            new TreeMapTransactionalPersistenceImpl(
+                diagServices, store, Mockito.mock(), RANDOM_SECRETS),
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault()));

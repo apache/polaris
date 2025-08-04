@@ -283,7 +283,7 @@ public class PolarisEntityResolver {
 
     // now lookup all these entities by name
     Iterator<EntityNameLookupRecord> activeRecordIt =
-        ms.lookupEntityActiveBatchInCurrentTxn(callCtx, entityActiveKeys).iterator();
+        ms.lookupEntityActiveBatchInCurrentTxn(entityActiveKeys).iterator();
 
     // now validate if there was a change and if yes, re-resolve again
     for (PolarisEntityCore resolveEntity : toResolve) {
