@@ -465,9 +465,7 @@
       "optionalClientScopes": [
         "address",
         "phone",
-        "catalog",
         "offline_access",
-        "sign",
         "microprofile-jwt"
       ],
       "authorizationSettings": {
@@ -791,18 +789,6 @@
       ]
     },
     {
-      "id": "f6cee4ef-a1b4-4662-8c53-d68b96ef03ae",
-      "name": "sign",
-      "description": "Iceberg sign scope",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true",
-        "gui.order": "",
-        "consent.screen.text": ""
-      }
-    },
-    {
       "id": "a1d49b93-c270-4dd0-9633-616fc0ca56a8",
       "name": "role_list",
       "description": "SAML role list",
@@ -1016,18 +1002,6 @@
       ]
     },
     {
-      "id": "460567bd-3fb5-4b38-8ce2-31b4ec9deff4",
-      "name": "catalog",
-      "description": "Iceberg catalog scope",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true",
-        "gui.order": "",
-        "consent.screen.text": ""
-      }
-    },
-    {
       "id": "22c58b6b-957f-4d39-ac20-3efa612c1b24",
       "name": "address",
       "description": "OpenID Connect built-in scope: address",
@@ -1131,9 +1105,7 @@
     "offline_access",
     "address",
     "phone",
-    "microprofile-jwt",
-    "sign",
-    "catalog"
+    "microprofile-jwt"
   ],
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",
