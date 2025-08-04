@@ -36,14 +36,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Singleton
-public class JacksonConfig implements ObjectMapperCustomizer {
+public class PolarisIcebergObjectMapperCustomizer implements ObjectMapperCustomizer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JacksonConfig.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PolarisIcebergObjectMapperCustomizer.class);
 
   private final long maxBodySize;
 
   @Inject
-  public JacksonConfig(
+  public PolarisIcebergObjectMapperCustomizer(
       @ConfigProperty(name = "quarkus.http.limits.max-body-size")
           @WithConverter(MemorySizeConverter.class)
           MemorySize maxBodySize) {
