@@ -1684,7 +1684,9 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createCatalog(catalog);
 
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
@@ -1771,7 +1773,9 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createCatalog(catalog);
 
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
@@ -1813,7 +1817,10 @@ public class PolarisManagementServiceIntegrationTest {
       // grant the admin role back to service_admin so that cleanup can happen
       client
           .managementApi(catalogAdminToken)
-          .grantCatalogRoleToPrincipalRole("service_admin", catalogName, catalogAdminRole);
+          .grantCatalogRoleToPrincipalRole(
+              PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
+              catalogName,
+              catalogAdminRole);
     }
   }
 
@@ -1856,7 +1863,9 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalogRole(catalogName2, catalogRoleName);
 
     // Get the catalog admin role from the *first* catalog and grant that role to the principal role
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     // Create a principal and grant the principal role to it

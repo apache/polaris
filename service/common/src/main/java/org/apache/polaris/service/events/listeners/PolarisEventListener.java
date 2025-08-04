@@ -42,7 +42,7 @@ public abstract class PolarisEventListener {
 
   /** {@link BeforeRequestRateLimitedEvent} */
   public void onBeforeRequestRateLimited(
-      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+      BeforeRequestRateLimitedEvent event, SecurityContext securityContext) {}
 
   /** {@link BeforeTableCommitedEvent} */
   public void onBeforeTableCommited(

@@ -104,6 +104,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -716,7 +717,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -748,7 +749,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
     }
     return true;
   }
@@ -1040,7 +1041,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      storageConfigInfo, Set.of(PolarisStorageActions.ALL), locations);
+                      callContext.getRealmConfig(),
+                      storageConfigInfo,
+                      Set.of(PolarisStorageActions.ALL),
+                      locations);
           validationResults
               .values()
               .forEach(
@@ -2376,7 +2380,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NotFoundException("Parent path does not exist for %s", identifier);
 
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-          throw new CommitFailedException(
+          throw new CommitConflictException(
               "Failed to commit Table or View %s because it was concurrently modified", identifier);
 
         default:

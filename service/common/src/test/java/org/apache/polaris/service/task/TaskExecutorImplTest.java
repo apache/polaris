@@ -47,7 +47,7 @@ public class TaskExecutorImplTest {
     MetaStoreManagerFactory metaStoreManagerFactory = testServices.metaStoreManagerFactory();
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    BasePersistence bp = metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+    BasePersistence bp = metaStoreManagerFactory.getOrCreateSession(realmContext);
 
     PolarisCallContext polarisCallCtx =
         new PolarisCallContext(realmContext, bp, testServices.polarisDiagnostics());

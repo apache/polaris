@@ -41,7 +41,7 @@ import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
   @Override
   public final void onBeforeRequestRateLimited(
-      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {}
+      BeforeRequestRateLimitedEvent event, SecurityContext securityContext) {}
 
   @Override
   public void onBeforeTableCommited(

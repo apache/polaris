@@ -69,6 +69,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -77,11 +78,16 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+/**
+ * These tests complement {@link QuarkusPolarisRestCatalogMinIOIT} to validate client-side access to
+ * MinIO storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses
+ * with some S3-specific options.
+ */
 @QuarkusIntegrationTest
-@TestProfile(QuarkusRestCatalogMinIoIT.Profile.class)
+@TestProfile(QuarkusRestCatalogMinIOSpecialIT.Profile.class)
 @ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class QuarkusRestCatalogMinIoIT {
+public class QuarkusRestCatalogMinIOSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
   private static final String MINIO_ACCESS_KEY = "test-ak-123";
@@ -149,6 +155,14 @@ public class QuarkusRestCatalogMinIoIT {
 
   private RESTCatalog createCatalog(
       Optional<String> endpoint, Optional<String> stsEndpoint, boolean pathStyleAccess) {
+    return createCatalog(endpoint, stsEndpoint, pathStyleAccess, Optional.empty());
+  }
+
+  private RESTCatalog createCatalog(
+      Optional<String> endpoint,
+      Optional<String> stsEndpoint,
+      boolean pathStyleAccess,
+      Optional<String> endpointInternal) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
@@ -160,6 +174,7 @@ public class QuarkusRestCatalogMinIoIT {
 
     endpoint.ifPresent(storageConfig::setEndpoint);
     stsEndpoint.ifPresent(storageConfig::setStsEndpoint);
+    endpointInternal.ifPresent(storageConfig::setEndpointInternal);
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
@@ -199,37 +214,54 @@ public class QuarkusRestCatalogMinIoIT {
   public void testCreateTable(boolean pathStyle) throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle)) {
-      catalogApi.createNamespace(catalogName, "test-ns");
-      TableIdentifier id = TableIdentifier.of("test-ns", "t1");
-      Table table = restCatalog.createTable(id, SCHEMA);
-      assertThat(table).isNotNull();
-      assertThat(restCatalog.tableExists(id)).isTrue();
-
-      TableOperations ops = ((HasTableOperations) table).operations();
-      URI location = URI.create(ops.current().metadataFileLocation());
-
-      GetObjectResponse response =
-          s3Client
-              .getObject(
-                  GetObjectRequest.builder()
-                      .bucket(location.getAuthority())
-                      .key(location.getPath().substring(1)) // drop leading slash
-                      .build())
-              .response();
-      assertThat(response.contentLength()).isGreaterThan(0);
-
-      LoadTableResponse loadTableResponse =
-          catalogApi.loadTableWithAccessDelegation(catalogName, id, "ALL");
-      assertThat(loadTableResponse.config()).containsKey("s3.endpoint");
-
+      LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog);
       if (pathStyle) {
         assertThat(loadTableResponse.config())
             .containsEntry("s3.path-style-access", Boolean.TRUE.toString());
       }
-
-      restCatalog.dropTable(id);
-      assertThat(restCatalog.tableExists(id)).isFalse();
     }
+  }
+
+  @Test
+  public void testInternalEndpoints() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of("http://s3.example.com"),
+            Optional.of(endpoint),
+            false,
+            Optional.of(endpoint))) {
+      LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog);
+      assertThat(loadTableResponse.config()).containsEntry("s3.endpoint", "http://s3.example.com");
+    }
+  }
+
+  public LoadTableResponse doTestCreateTable(RESTCatalog restCatalog) throws IOException {
+    catalogApi.createNamespace(catalogName, "test-ns");
+    TableIdentifier id = TableIdentifier.of("test-ns", "t1");
+    Table table = restCatalog.createTable(id, SCHEMA);
+    assertThat(table).isNotNull();
+    assertThat(restCatalog.tableExists(id)).isTrue();
+
+    TableOperations ops = ((HasTableOperations) table).operations();
+    URI location = URI.create(ops.current().metadataFileLocation());
+
+    GetObjectResponse response =
+        s3Client
+            .getObject(
+                GetObjectRequest.builder()
+                    .bucket(location.getAuthority())
+                    .key(location.getPath().substring(1)) // drop leading slash
+                    .build())
+            .response();
+    assertThat(response.contentLength()).isGreaterThan(0);
+
+    LoadTableResponse loadTableResponse =
+        catalogApi.loadTableWithAccessDelegation(catalogName, id, "ALL");
+    assertThat(loadTableResponse.config()).containsKey("s3.endpoint");
+
+    restCatalog.dropTable(id);
+    assertThat(restCatalog.tableExists(id)).isFalse();
+    return loadTableResponse;
   }
 
   @ParameterizedTest

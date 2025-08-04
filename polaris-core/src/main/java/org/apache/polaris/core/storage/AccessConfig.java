@@ -18,7 +18,10 @@
  */
 package org.apache.polaris.core.storage;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 @PolarisImmutable
@@ -27,7 +30,52 @@ public interface AccessConfig {
 
   Map<String, String> extraProperties();
 
-  static ImmutableAccessConfig.Builder builder() {
+  /**
+   * Configuration properties that are relevant only to the Polaris Server, but not to clients.
+   * These properties override corresponding entries from {@link #extraProperties()}.
+   */
+  Map<String, String> internalProperties();
+
+  Optional<Instant> expiresAt();
+
+  default String get(StorageAccessProperty key) {
+    if (key.isCredential()) {
+      return credentials().get(key.getPropertyName());
+    } else {
+      String value = internalProperties().get(key.getPropertyName());
+      return value != null ? value : extraProperties().get(key.getPropertyName());
+    }
+  }
+
+  static AccessConfig.Builder builder() {
     return ImmutableAccessConfig.builder();
+  }
+
+  interface Builder {
+    @CanIgnoreReturnValue
+    Builder putCredential(String key, String value);
+
+    @CanIgnoreReturnValue
+    Builder putExtraProperty(String key, String value);
+
+    @CanIgnoreReturnValue
+    Builder putInternalProperty(String key, String value);
+
+    @CanIgnoreReturnValue
+    Builder expiresAt(Instant expiresAt);
+
+    default Builder put(StorageAccessProperty key, String value) {
+      if (key.isExpirationTimestamp()) {
+        expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
+      }
+
+      if (key.isCredential()) {
+        return putCredential(key.getPropertyName(), value);
+      } else {
+        return putExtraProperty(key.getPropertyName(), value);
+      }
+    }
+
+    AccessConfig build();
   }
 }

@@ -84,7 +84,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
@@ -92,6 +91,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -144,7 +144,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public IcebergCatalogHandler(
       CallContext callContext,
-      PolarisEntityManager entityManager,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
       SecurityContext securityContext,
@@ -154,7 +154,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       PolarisEventListener polarisEventListener) {
-    super(callContext, entityManager, securityContext, catalogName, authorizer);
+    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
@@ -1015,7 +1015,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         metaStoreManager.updateEntitiesPropertiesIfNotChanged(
             callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
-      // TODO: Retries and server-side cleanup on failure
+      // TODO: Retries and server-side cleanup on failure, review possible exceptions
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());

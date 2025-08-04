@@ -29,11 +29,14 @@ import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEventManager;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -419,5 +422,39 @@ public interface PolarisMetaStoreManager
    */
   default boolean requiresEntityReload() {
     return true;
+  }
+
+  default Optional<PrincipalEntity> findRootPrincipal(PolarisCallContext polarisCallContext) {
+    return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
+  }
+
+  default Optional<PrincipalEntity> findPrincipalByName(
+      PolarisCallContext polarisCallContext, String principalName) {
+    EntityResult entityResult =
+        readEntityByName(
+            polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            principalName);
+    if (!entityResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(entityResult.getEntity()).map(PrincipalEntity::of);
+  }
+
+  default Optional<PrincipalRoleEntity> findPrincipalRoleByName(
+      PolarisCallContext polarisCallContext, String principalRoleName) {
+    EntityResult entityResult =
+        readEntityByName(
+            polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            principalRoleName);
+    if (!entityResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(entityResult.getEntity()).map(PrincipalRoleEntity::of);
   }
 }

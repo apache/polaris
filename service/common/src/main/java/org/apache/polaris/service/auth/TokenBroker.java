@@ -36,34 +36,8 @@ public interface TokenBroker {
   boolean supportsRequestedTokenType(TokenType tokenType);
 
   /**
-   * Generate a token from client secrets without specifying the requested token type
-   *
-   * @param clientId
-   * @param clientSecret
-   * @param grantType
-   * @param scope
-   * @return the response indicating an error or the requested token
-   * @deprecated - use the method with the requested token type
-   */
-  @Deprecated
-  default TokenResponse generateFromClientSecrets(
-      final String clientId,
-      final String clientSecret,
-      final String grantType,
-      final String scope,
-      PolarisCallContext polarisCallContext) {
-    return generateFromClientSecrets(
-        clientId, clientSecret, grantType, scope, polarisCallContext, TokenType.ACCESS_TOKEN);
-  }
-
-  /**
    * Generate a token from client secrets
    *
-   * @param clientId
-   * @param clientSecret
-   * @param grantType
-   * @param scope
-   * @param requestedTokenType
    * @return the response indicating an error or the requested token
    */
   TokenResponse generateFromClientSecrets(
@@ -75,31 +49,8 @@ public interface TokenBroker {
       TokenType requestedTokenType);
 
   /**
-   * Generate a token from an existing token of a specified type without specifying the requested
-   * token type
-   *
-   * @param subjectTokenType
-   * @param subjectToken
-   * @param grantType
-   * @param scope
-   * @return the response indicating an error or the requested token
-   * @deprecated - use the method with the requested token type
-   */
-  @Deprecated
-  default TokenResponse generateFromToken(
-      TokenType subjectTokenType, String subjectToken, final String grantType, final String scope) {
-    return generateFromToken(
-        subjectTokenType, subjectToken, grantType, scope, TokenType.ACCESS_TOKEN);
-  }
-
-  /**
    * Generate a token from an existing token of a specified type
    *
-   * @param subjectTokenType
-   * @param subjectToken
-   * @param grantType
-   * @param scope
-   * @param requestedTokenType
    * @return the response indicating an error or the requested token
    */
   TokenResponse generateFromToken(
@@ -107,6 +58,7 @@ public interface TokenBroker {
       String subjectToken,
       final String grantType,
       final String scope,
+      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType);
 
   DecodedToken verify(String token);

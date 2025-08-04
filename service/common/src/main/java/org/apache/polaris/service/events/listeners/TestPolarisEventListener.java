@@ -51,7 +51,7 @@ public class TestPolarisEventListener extends PolarisEventListener {
 
   @Override
   public void onBeforeRequestRateLimited(
-      BeforeRequestRateLimitedEvent event, CallContext callCtx, SecurityContext securityContext) {
+      BeforeRequestRateLimitedEvent event, SecurityContext securityContext) {
     history.add(event);
   }
 

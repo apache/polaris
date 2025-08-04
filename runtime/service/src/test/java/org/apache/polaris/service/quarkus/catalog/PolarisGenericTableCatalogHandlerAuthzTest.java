@@ -49,7 +49,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
     return new GenericTableCatalogHandler(
         callContext,
-        entityManager,
+        resolutionManifestFactory,
         metaStoreManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         catalogName,

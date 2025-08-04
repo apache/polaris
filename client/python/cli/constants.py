@@ -164,6 +164,7 @@ class Arguments:
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     ICEBERG_REMOTE_CATALOG_NAME = "iceberg_remote_catalog_name"
     ENDPOINT = "endpoint"

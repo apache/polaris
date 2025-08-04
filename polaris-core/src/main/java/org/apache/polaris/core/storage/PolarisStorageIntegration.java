@@ -19,9 +19,9 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 
 /**
@@ -53,7 +53,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @param allowedWriteLocations a set of allowed to write locations
    * @return An enum map including the scoped credentials
    */
-  public abstract EnumMap<StorageAccessProperty, String> getSubscopedCreds(
+  public abstract AccessConfig getSubscopedCreds(
       @Nonnull CallContext callContext,
       @Nonnull T storageConfig,
       boolean allowListOperation,
@@ -94,12 +94,14 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   @Nonnull
   public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateAccessToLocations(
+          @Nonnull RealmConfig realmConfig,
           @Nonnull T storageConfig,
           @Nonnull Set<PolarisStorageActions> actions,
           @Nonnull Set<String> locations);
 
   /**
-   * Result of calling {@link #validateAccessToLocations(PolarisStorageConfigurationInfo, Set, Set)}
+   * Result of calling {@link #validateAccessToLocations(RealmConfig,
+   * PolarisStorageConfigurationInfo, Set, Set)}
    */
   public static final class ValidationResult {
     private final boolean success;
