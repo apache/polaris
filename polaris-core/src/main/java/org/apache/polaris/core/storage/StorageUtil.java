@@ -100,16 +100,20 @@ public class StorageUtil {
             .filter(Objects::nonNull)
             .map(StorageLocation::of)
             .collect(Collectors.toSet());
+    HashSet<StorageLocation> redundantLocations = new HashSet<>();
 
     for (StorageLocation potentialParent : locations) {
       for (StorageLocation potentialChild : locations) {
         if (!potentialParent.equals(potentialChild)) {
           if (potentialChild.isChildOf(potentialParent)) {
-            locations.remove(potentialChild);
+            redundantLocations.add(potentialChild);
           }
         }
       }
     }
-    return locations.stream().map(StorageLocation::toString).collect(Collectors.toSet());
+    return locations.stream()
+        .filter(l -> !redundantLocations.contains(l))
+        .map(StorageLocation::toString)
+        .collect(Collectors.toSet());
   }
 }
