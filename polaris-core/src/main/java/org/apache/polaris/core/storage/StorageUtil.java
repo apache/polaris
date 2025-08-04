@@ -98,8 +98,8 @@ public class StorageUtil {
     for (String potentialParent : locationStrings) {
       StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
       for (String potentialChild : locationStrings) {
-        StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
         if (!potentialParent.equals(potentialChild)) {
+          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
           if (potentialChildLocation.isChildOf(potentialParentLocation)) {
             result.remove(potentialChild);
           }
