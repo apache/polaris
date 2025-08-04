@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -51,6 +52,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  private final Clock clock = Clock.systemUTC();
   private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private CallContext callContext;
 
@@ -58,7 +60,7 @@ public class CatalogEntityTest {
   public void setup() {
     RealmContext realmContext = () -> "realm";
     MetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(null, diagnostics);
+        new InMemoryPolarisMetaStoreManagerFactory(clock, diagnostics, null);
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
     this.callContext = new PolarisCallContext(realmContext, metaStore, diagnostics);
   }

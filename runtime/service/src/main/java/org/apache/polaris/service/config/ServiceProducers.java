@@ -159,11 +159,9 @@ public class ServiceProducers {
       RealmContext realmContext,
       PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      Clock clock) {
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(
-        realmContext, metaStoreSession, diagServices, configurationStore, clock);
+    return new PolarisCallContext(realmContext, metaStoreSession, diagServices, configurationStore);
   }
 
   @Produces

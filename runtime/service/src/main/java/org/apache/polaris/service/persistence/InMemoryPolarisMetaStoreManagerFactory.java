@@ -23,6 +23,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,13 +49,15 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
-    super(diagnostics);
+      Clock clock,
+      PolarisDiagnostics diagnostics,
+      PolarisStorageIntegrationProvider storageIntegration) {
+    super(clock, diagnostics);
     this.storageIntegration = storageIntegration;
   }
 

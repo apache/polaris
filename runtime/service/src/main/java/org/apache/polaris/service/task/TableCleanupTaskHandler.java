@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -52,15 +53,18 @@ import org.slf4j.LoggerFactory;
 public class TableCleanupTaskHandler implements TaskHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
   private final TaskExecutor taskExecutor;
+  private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
+      Clock clock,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier) {
     this.taskExecutor = taskExecutor;
+    this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
   }
@@ -183,7 +187,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
               return new TaskEntity.Builder()
                   .setName(taskName)
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .setCreateTimestamp(clock.millis())
                   .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
@@ -222,7 +226,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
               return new TaskEntity.Builder()
                   .setName(taskName)
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .setCreateTimestamp(clock.millis())
                   .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
                   .withData(
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
