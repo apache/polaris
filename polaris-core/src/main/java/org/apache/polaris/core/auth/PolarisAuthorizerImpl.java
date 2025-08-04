@@ -603,9 +603,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   @Override
   public void authorizeOrThrow(@Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal) {
     boolean isRoot =
-            getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
+        getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
     if (!isRoot) {
-      throw new ForbiddenException("Only %s principal can reset credentials", authenticatedPrincipal.getPrincipalEntity().getName());
+      throw new ForbiddenException(
+          "Only %s principal can reset credentials",
+          authenticatedPrincipal.getPrincipalEntity().getName());
     }
   }
 
